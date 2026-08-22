@@ -1,3 +1,5 @@
+import { prisma } from '../../common/prisma.js';
+
 export function parseLocationCode(code: string) {
   if (!code) return { raw: '', formatted: '', can: '', canister: '', level: '', tube: '' };
 
