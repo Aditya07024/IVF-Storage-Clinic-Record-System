@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw } from 'lucide-react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 interface PatientFormProps {
@@ -476,16 +476,36 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
                     Embryo Count for New Freezing Batch *
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={embryoCount}
-                    onChange={(e) => setEmbryoCount(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
-                  />
-                  <span className="text-[10px] text-slate-500 mt-1 block">
-                    Strict Limit: Max 2 embryos per straw. ({Math.ceil(embryoCount / 2)} straw(s) required)
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEmbryoCount(Math.max(1, embryoCount - 1))}
+                      className="w-11 h-11 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl border border-slate-300 font-bold text-lg flex items-center justify-center transition-all shrink-0 active:scale-95 shadow-xs"
+                      title="Decrease Embryo Count"
+                    >
+                      <Minus className="w-4 h-4 text-slate-700" />
+                    </button>
+
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={embryoCount}
+                      onChange={(e) => setEmbryoCount(Math.max(1, Number(e.target.value)))}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-center text-base font-bold font-mono text-slate-900 focus:outline-none focus:border-emerald-500"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setEmbryoCount(embryoCount + 1)}
+                      className="w-11 h-11 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-xl border border-emerald-300 font-bold text-lg flex items-center justify-center transition-all shrink-0 active:scale-95 shadow-xs"
+                      title="Increase Embryo Count"
+                    >
+                      <Plus className="w-4 h-4 text-emerald-800" />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-1.5 block font-medium">
+                    Strict Limit: Max 2 embryos per straw. (<strong className="text-emerald-700 font-bold">{Math.ceil(embryoCount / 2)} straw(s)</strong> required)
                   </span>
                 </div>
 
