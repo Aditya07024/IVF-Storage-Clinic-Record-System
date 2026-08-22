@@ -1,4 +1,4 @@
-import { prisma } from '../../common/prisma.js';
+import { prisma, withDbRetry } from '../../common/prisma.js';
 
 export function parseLocationCode(code: string) {
   if (!code) return { raw: '', formatted: '', can: '', canister: '', level: '', tube: '', tubeColor: '' };
@@ -56,77 +56,85 @@ export interface AssignStorageInput {
 export class StorageService {
   // Initialize storage hierarchy if empty (Cans 1, 2, 3, 4, 5, 8, 10, 14 x 10 Canisters x 2 Levels x 1 Goblet x 11 Viso Tubes)
   async seedHierarchyIfNeeded() {
-    const existingCans = await prisma.can.count();
-    
-    // Check if current Cans match non-sequential CLINIC_CAN_NUMBERS
-    const cans = await prisma.can.findMany({ select: { code: true } });
-    const currentCanCodes = cans.map(c => c.code);
-    const expectedCodes = CLINIC_CAN_NUMBERS.map(c => `CAN-${c.toString().padStart(2, '0')}`);
-    
-    const isMatching = expectedCodes.every(code => currentCanCodes.includes(code)) && currentCanCodes.length === expectedCodes.length;
+    return withDbRetry(async () => {
+      const existingCans = await prisma.can.count();
+      
+      // Check if current Cans match non-sequential CLINIC_CAN_NUMBERS
+      const cans = await prisma.can.findMany({ select: { code: true } });
+      const currentCanCodes = cans.map(c => c.code);
+      const expectedCodes = CLINIC_CAN_NUMBERS.map(c => `CAN-${c.toString().padStart(2, '0')}`);
+      
+      const isMatching = expectedCodes.every(code => currentCanCodes.includes(code)) && currentCanCodes.length === expectedCodes.length;
 
-    if (existingCans > 0 && isMatching) return;
+      if (existingCans > 0 && isMatching) return;
 
-    // If existing Cans differ, clean up and re-seed with exact non-sequential clinic Cans
-    if (existingCans > 0 && !isMatching) {
-      console.log('[Storage] Syncing Cans to non-sequential clinic layout (1, 2, 3, 4, 5, 8, 10, 14)...');
-      await prisma.straw.deleteMany({});
-      await prisma.storageBatch.deleteMany({});
-      await prisma.visoTube.deleteMany({});
-      await prisma.goblet.deleteMany({});
-      await prisma.level.deleteMany({});
-      await prisma.canister.deleteMany({});
-      await prisma.can.deleteMany({});
-    }
+      // If existing Cans differ, clean up and re-seed with exact non-sequential clinic Cans
+      if (existingCans > 0 && !isMatching) {
+        console.log('[Storage] Syncing Cans to non-sequential clinic layout (1, 2, 3, 4, 5, 8, 10, 14)...');
+        await prisma.straw.deleteMany({});
+        await prisma.storageBatch.deleteMany({});
+        await prisma.visoTube.deleteMany({});
+        await prisma.goblet.deleteMany({});
+        await prisma.level.deleteMany({});
+        await prisma.canister.deleteMany({});
+        await prisma.can.deleteMany({});
+      }
 
-    console.log('[Storage] Seeding Cans (1, 2, 3, 4, 5, 8, 10, 14) hierarchy...');
+      console.log('[Storage] Seeding 8 Clinic Cans layout hierarchy...');
 
-    for (const c of CLINIC_CAN_NUMBERS) {
-      const canCode = `CAN-${c.toString().padStart(2, '0')}`;
-      const can = await prisma.can.create({
-        data: {
-          code: canCode,
-          name: `Can ${c.toString().padStart(2, '0')}`,
-        },
-      });
+      for (const canNum of CLINIC_CAN_NUMBERS) {
+        const canCode = `CAN-${canNum.toString().padStart(2, '0')}`;
+        const canName = `Can ${canNum.toString().padStart(2, '0')}`;
 
-      for (let cn = 1; cn <= 10; cn++) {
-        const canister = await prisma.canister.create({
-          data: {
-            canId: can.id,
-            canisterNumber: cn,
-          },
+        const can = await prisma.can.create({
+          data: { code: canCode, name: canName },
         });
 
-        for (let l = 1; l <= 2; l++) {
-          const level = await prisma.level.create({
+        // 10 Canisters per Can (1 to 10)
+        for (let c = 1; c <= 10; c++) {
+          const canisterNumStr = c.toString().padStart(2, '0');
+          const canister = await prisma.canister.create({
             data: {
-              canisterId: canister.id,
-              levelNumber: l,
+              canId: can.id,
+              canisterNumber: c,
             },
           });
 
-          const goblet = await prisma.goblet.create({
-            data: {
-              levelId: level.id,
-              gobletNumber: 1,
-            },
-          });
-
-          for (let v = 1; v <= 11; v++) {
-            const locCode = `CAN${c.toString().padStart(2, '0')}-CANISTER${cn.toString().padStart(2, '0')}-L${l}-G01-V${v.toString().padStart(2, '0')}`;
-            await prisma.visoTube.create({
+          // 2 Levels per Canister (Level 1 Bottom, Level 2 Top)
+          for (let l = 1; l <= 2; l++) {
+            const level = await prisma.level.create({
               data: {
-                gobletId: goblet.id,
-                tubeNumber: v,
-                locationCode: locCode,
+                canisterId: canister.id,
+                levelNumber: l,
               },
             });
+
+            // 1 Goblet per Level
+            const goblet = await prisma.goblet.create({
+              data: {
+                levelId: level.id,
+                gobletNumber: 1,
+              },
+            });
+
+            // 11 Viso Tubes per Goblet (V01 to V11)
+            for (let v = 1; v <= 11; v++) {
+              const tubeNumStr = v.toString().padStart(2, '0');
+              const locCode = `${canCode}-CANISTER${canisterNumStr}-L${l}-G01-V${tubeNumStr}`;
+
+              await prisma.visoTube.create({
+                data: {
+                  gobletId: goblet.id,
+                  tubeNumber: v,
+                  locationCode: locCode,
+                },
+              });
+            }
           }
         }
       }
-    }
-    console.log('[Storage] Storage hierarchy seeding completed for non-sequential Cans.');
+      console.log('[Storage] Storage hierarchy seeding completed for non-sequential Cans.');
+    });
   }
 
   // Find Available Storage Recommendation Algorithm

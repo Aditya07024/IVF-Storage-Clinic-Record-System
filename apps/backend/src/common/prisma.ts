@@ -3,11 +3,19 @@ import { PrismaClient } from '@prisma/client';
 export const prisma = new PrismaClient();
 
 export async function connectPrisma() {
-  try {
-    await prisma.$connect();
-    console.log('[Prisma] Connected to database successfully.');
-  } catch (err) {
-    console.error('[Prisma] Connection error:', err);
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    try {
+      await prisma.$connect();
+      console.log('[Prisma] Connected to database successfully.');
+      return;
+    } catch (err: any) {
+      console.warn(`[Prisma] Connection attempt ${attempt}/5 failed (${err.message}). Retrying in 1.5s...`);
+      if (attempt === 5) {
+        console.error('[Prisma] Final connection error after 5 attempts:', err);
+      } else {
+        await new Promise((res) => setTimeout(res, 1500));
+      }
+    }
   }
 }
 
