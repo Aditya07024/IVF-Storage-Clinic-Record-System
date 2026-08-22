@@ -1,7 +1,6 @@
 import argon2 from 'argon2';
 import { prisma } from '../src/common/prisma.js';
 import { storageService } from '../src/modules/storage/storage.service.js';
-import { thawService } from '../src/modules/thaw/thaw.service.js';
 
 const DEMO_PATIENTS = [
   { name: 'Eleanor Vance', partner: 'Thomas Vance', phone: '+91 98201 12345', comments: 'High egg yield. Grade A embryos.' },
@@ -57,12 +56,18 @@ const DEMO_PATIENTS = [
 ];
 
 async function seed() {
-  console.log('[Seed Script] Seeding database...');
+  console.log('[Fast High-Performance Seeder] Populating database...');
 
   // 1. Storage hierarchy
   await storageService.seedHierarchyIfNeeded();
 
-  // 2. Admin & Staff accounts
+  // 2. Fetch VisoTubes
+  const visoTubes = await prisma.visoTube.findMany({ select: { id: true, locationCode: true } });
+  if (visoTubes.length === 0) {
+    throw new Error('No VisoTubes found in hierarchy.');
+  }
+
+  // 3. Admin & Staff accounts
   let admin = await prisma.user.findUnique({ where: { staffId: 'ADMIN001' } });
   if (!admin) {
     const adminHash = await argon2.hash('AdminPassword123!', { type: argon2.argon2id });
@@ -84,7 +89,7 @@ async function seed() {
       data: {
         staffId: 'STAFF001',
         email: 'staff@ivfclinic.com',
-        name: 'Alex Vance (Embryologist)',
+        name: 'Alex Vance (Senior Embryologist)',
         passwordHash: staffHash,
         role: 'STAFF',
       },
@@ -93,74 +98,174 @@ async function seed() {
 
   const staffUserId = admin.id;
   const staffName = admin.name;
-
-  // 3. Seed 50 Demo Patients
-  const currentCount = await prisma.patient.count();
-  console.log(`[Seed Script] Current patient count in DB: ${currentCount}`);
-
   const colors = ['Pink', 'Green', 'Blue', 'Red', 'Rust', 'Skyblue', 'Purple', 'Yellow', 'Black', 'Grey'];
+  const embryoGrades = ['5AA', '4AA', '3AB', '4BB', '5BA', '6AA', '3AA', '4BA'];
 
-  let seededCount = 0;
+  // 4. Create Patients + Storage Batches + Straws + Embryos
+  console.log('[Fast Seeder] Seeding 50 patients and cryo storage entities...');
+
   for (let i = 0; i < DEMO_PATIENTS.length; i++) {
     const demo = DEMO_PATIENTS[i];
     const targetPatientId = `IVF-2026-${(i + 1).toString().padStart(6, '0')}`;
 
-    const existing = await prisma.patient.findUnique({ where: { patientId: targetPatientId } });
-    if (existing) continue;
+    let patient = await prisma.patient.findUnique({ where: { patientId: targetPatientId } });
 
-    const freezingDaysAgo = Math.floor(Math.random() * 30);
-    const freezingDate = new Date();
-    freezingDate.setDate(freezingDate.getDate() - freezingDaysAgo);
+    if (!patient) {
+      const freezingDaysAgo = Math.floor(Math.random() * 30) + 1;
+      const freezingDate = new Date();
+      freezingDate.setDate(freezingDate.getDate() - freezingDaysAgo);
 
-    const patient = await prisma.patient.create({
-      data: {
-        patientId: targetPatientId,
-        fullName: demo.name,
-        partnerName: demo.partner,
-        phone: demo.phone,
-        visitDate: new Date('2026-08-01'),
-        freezingDate,
-        comments: demo.comments,
-      },
-    });
+      patient = await prisma.patient.create({
+        data: {
+          patientId: targetPatientId,
+          fullName: demo.name,
+          partnerName: demo.partner,
+          phone: demo.phone,
+          visitDate: new Date('2026-08-01'),
+          freezingDate,
+          comments: demo.comments,
+        },
+      });
+    }
 
-    seededCount++;
+    // Add Patient Note
+    const existingNotes = await prisma.patientNote.count({ where: { patientId: patient.id } });
+    if (existingNotes === 0) {
+      await prisma.patientNote.create({
+        data: {
+          patientId: patient.id,
+          authorId: staffUserId,
+          authorName: staffName,
+          noteText: `Initial clinical consultation complete. Patient ${patient.fullName} cleared for vitrification. ${demo.comments}`,
+        },
+      });
+    }
 
-    // Assign Cryo Physical Storage
-    try {
+    // Add Storage Batch, Straws & Embryos
+    const existingBatches = await prisma.storageBatch.count({ where: { patientId: patient.id } });
+    if (existingBatches === 0) {
+      const targetVisoTube = visoTubes[i % visoTubes.length];
       const embryoCount = (i % 3) + 1; // 1, 2, or 3 embryos
       const requiredStraws = Math.ceil(embryoCount / 2);
-      const rec = await storageService.findAvailableStorage(patient.id, freezingDate.toISOString().split('T')[0], embryoCount);
+      const batchCode = `BATCH-${patient.patientId}-B1`;
 
-      if (rec.success && rec.primaryRecommendation) {
-        const strawColors = Array.from({ length: requiredStraws }, (_, idx) => colors[(i + idx) % colors.length]);
-
-        const assignRes = await storageService.assignStorage({
+      const batch = await prisma.storageBatch.create({
+        data: {
+          batchId: batchCode,
           patientId: patient.id,
-          storageDate: freezingDate.toISOString().split('T')[0],
-          embryoCount,
-          visoTubeId: rec.primaryRecommendation.visoTubeId,
-          strawColors,
-          notes: `Seeded demo batch for ${patient.fullName}`,
-        }, staffUserId, staffName);
+          storageDate: patient.freezingDate || new Date(),
+          totalEmbryos: embryoCount,
+          visoTubeId: targetVisoTube.id,
+          notes: `Vitrified demo batch for ${patient.fullName}`,
+        },
+      });
 
-        // Perform 5 thaw operations to populate Thaw records & audit trail
-        if (i % 10 === 0 && assignRes.straws && assignRes.straws.length > 0) {
-          await thawService.thawStraws({
-            strawIds: [assignRes.straws[0].id],
-            doctorId: staffUserId,
-            doctorName: staffName,
-            doctorNotes: `Seeded thaw operation for ${patient.fullName}`,
+      let remainingEmbryos = embryoCount;
+      const isThawPatient = i % 4 === 0; // Thaw 12 patients
+
+      for (let s = 1; s <= requiredStraws; s++) {
+        const strawIdCode = `STR-${(i * 10 + s).toString().padStart(6, '0')}`;
+        const color = colors[(i + s) % colors.length];
+        const embryosInThisStraw = Math.min(2, remainingEmbryos);
+        remainingEmbryos -= embryosInThisStraw;
+        const strawStatus = isThawPatient && s === 1 ? 'THAWED' : 'OCCUPIED';
+
+        const straw = await prisma.straw.create({
+          data: {
+            strawId: strawIdCode,
+            batchId: batch.id,
+            visoTubeId: targetVisoTube.id,
+            color,
+            maxCapacity: 2,
+            status: strawStatus,
+          },
+        });
+
+        // Create Embryos inside Straw
+        for (let e = 1; e <= embryosInThisStraw; e++) {
+          await prisma.embryo.create({
+            data: {
+              strawId: straw.id,
+              embryoNumber: e,
+              grade: embryoGrades[(i + e) % embryoGrades.length],
+              status: strawStatus === 'THAWED' ? 'THAWED' : 'FREEZED',
+              notes: `Day ${5 + (e % 2)} Vitrified Embryo`,
+            },
+          });
+        }
+
+        // If Thawed, create ThawRecord
+        if (strawStatus === 'THAWED') {
+          await prisma.thawRecord.create({
+            data: {
+              strawId: straw.id,
+              patientId: patient.id,
+              batchId: batch.id,
+              originalLocationCode: targetVisoTube.locationCode,
+              thawDate: new Date(),
+              doctorId: staffUserId,
+              doctorName: staffName,
+              status: 'COMPLETED',
+              doctorNotes: `Doctor requested thaw for FET procedure for ${patient.fullName}.`,
+            },
           });
         }
       }
-    } catch (err: any) {
-      console.error(`[Seed Warning] Storage allocation skipped for ${targetPatientId}:`, err.message);
     }
   }
 
-  const finalCount = await prisma.patient.count();
-  console.log(`[Seed Script] Successfully populated database! Total Patients in Database: ${finalCount} (${seededCount} newly added)`);
+  // 5. Seed System Audit Logs
+  const auditLogsCount = await prisma.auditLog.count();
+  if (auditLogsCount < 20) {
+    const actions = [
+      { action: 'USER_LOGIN', entityName: 'User', details: { msg: 'Staff logged into clinic portal' } },
+      { action: 'PATIENT_CREATED', entityName: 'Patient', details: { msg: 'New patient record registered' } },
+      { action: 'STORAGE_ASSIGNED', entityName: 'StorageBatch', details: { msg: 'Embryo freezing batch allocated in Can 01' } },
+      { action: 'STRAW_MOVED', entityName: 'Straw', details: { msg: 'Straw moved from Viso Tube 01 to Viso Tube 04' } },
+      { action: 'THAW_EXECUTED', entityName: 'ThawRecord', details: { msg: 'Embryo straw thawed and storage liberated' } },
+    ];
+
+    for (let a = 0; a < 30; a++) {
+      const act = actions[a % actions.length];
+      await prisma.auditLog.create({
+        data: {
+          userId: staffUserId,
+          userName: staffName,
+          action: act.action,
+          entityName: act.entityName,
+          newData: JSON.stringify(act.details),
+          ipAddress: '127.0.0.1',
+        },
+      });
+    }
+  }
+
+  // Print Summary Table
+  const [usersCount, patientsCount, notesCount, batchesCount, strawsCount, embryosCount, thawsCount, auditCount] = await Promise.all([
+    prisma.user.count(),
+    prisma.patient.count(),
+    prisma.patientNote.count(),
+    prisma.storageBatch.count(),
+    prisma.straw.count(),
+    prisma.embryo.count(),
+    prisma.thawRecord.count(),
+    prisma.auditLog.count(),
+  ]);
+
+  console.log(`
+=================================================================
+🎉 COMPLETE IVF CLINIC DATABASE SEEDING SUCCESSFUL!
+=================================================================
+👥 Staff Users:      ${usersCount}
+🏥 Patients:         ${patientsCount}
+📝 Clinical Notes:   ${notesCount}
+📦 Storage Batches:  ${batchesCount}
+🧪 Frozen Straws:    ${strawsCount}
+🧬 Embryos:          ${embryosCount}
+🔥 Thaw Records:     ${thawsCount}
+📋 Audit Logs:       ${auditCount}
+=================================================================
+  `);
 }
 
 seed()
