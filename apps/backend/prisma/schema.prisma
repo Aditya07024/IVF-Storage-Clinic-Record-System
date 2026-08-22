@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  staffId      String        @unique
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         String        @default("STAFF")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  PatientNote  PatientNote[]
+  ThawRecord   ThawRecord[]
+  OcrRecord    OcrRecord[]
+  AuditLog     AuditLog[]
+}
+
+model Patient {
+  id           String        @id @default(uuid())
+  patientId    String        @unique
+  fullName     String
+  partnerName  String?
+  visitDate    DateTime?
+  deDate       DateTime?
+  freezingDate DateTime?
+  thawDate     DateTime?
+  comments     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  batches      StorageBatch[]
+  notes        PatientNote[]
+  thawRecords  ThawRecord[]
+  ocrRecords   OcrRecord[]
+
+  @@index([patientId])
+  @@index([fullName])
+}
+
+model PatientNote {
+  id         String   @id @default(uuid())
+  patientId  String
+  authorId   String
+  authorName String
+  noteText   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id])
+
+  @@index([patientId])
+}
+
+model Can {
+  id        String     @id @default(uuid())
+  code      String     @unique
+  name      String
+  status    String     @default("ACTIVE")
+  canisters Canister[]
+}
+
+model Canister {
+  id             String   @id @default(uuid())
+  canId          String
+  canisterNumber Int
+  can            Can      @relation(fields: [canId], references: [id], onDelete: Cascade)
+  levels         Level[]
+
+  @@unique([canId, canisterNumber])
+}
+
+model Level {
+  id          String   @id @default(uuid())
+  canisterId  String
+  levelNumber Int
+  canister    Canister @relation(fields: [canisterId], references: [id], onDelete: Cascade)
+  goblets     Goblet[]
+
+  @@unique([canisterId, levelNumber])
+}
+
+model Goblet {
+  id           String     @id @default(uuid())
+  levelId      String
+  gobletNumber Int        @default(1)
+  level        Level      @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  visoTubes    VisoTube[]
+
+  @@unique([levelId, gobletNumber])
+}
+
+model VisoTube {
+  id           String         @id @default(uuid())
+  gobletId     String
+  tubeNumber   Int
+  locationCode String         @unique
+  goblet       Goblet         @relation(fields: [gobletId], references: [id], onDelete: Cascade)
+  straws       Straw[]
+  batches      StorageBatch[]
+
+  @@unique([gobletId, tubeNumber])
+}
+
+model StorageBatch {
+  id           String    @id @default(uuid())
+  batchId      String    @unique
+  patientId    String
+  storageDate  DateTime
+  totalEmbryos Int
+  visoTubeId   String
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  patient      Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  visoTube     VisoTube  @relation(fields: [visoTubeId], references: [id])
+  straws       Straw[]
+
+  @@index([patientId])
+  @@index([storageDate])
+}
+
+model Straw {
+  id          String       @id @default(uuid())
+  strawId     String       @unique
+  batchId     String
+  visoTubeId  String
+  color       String
+  maxCapacity Int          @default(2)
+  status      String       @default("OCCUPIED")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  batch       StorageBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  visoTube    VisoTube     @relation(fields: [visoTubeId], references: [id])
+  embryos     Embryo[]
+  thawRecords ThawRecord[]
+
+  @@index([strawId])
+  @@index([status])
+}
+
+model Embryo {
+  id           String       @id @default(uuid())
+  strawId      String
+  embryoNumber Int
+  grade        String?
+  status       String       @default("FREEZED")
+  notes        String?
+
+  straw        Straw        @relation(fields: [strawId], references: [id], onDelete: Cascade)
+}
+
+model ThawRecord {
+  id                   String   @id @default(uuid())
+  strawId              String
+  patientId            String
+  batchId              String
+  originalLocationCode String
+  thawDate             DateTime @default(now())
+  doctorId             String
+  doctorName           String
+  status               String   @default("COMPLETED")
+  doctorNotes          String?
+  createdAt            DateTime @default(now())
+
+  straw                Straw    @relation(fields: [strawId], references: [id])
+  patient              Patient  @relation(fields: [patientId], references: [id])
+  doctor               User     @relation(fields: [doctorId], references: [id])
+
+  @@index([patientId])
+  @@index([strawId])
+}
+
+model StorageMovement {
+  id              String   @id @default(uuid())
+  strawId         String
+  patientId       String
+  oldLocationCode String
+  newLocationCode String
+  movedAt         DateTime @default(now())
+  staffId         String
+  staffName       String
+  reason          String?
+
+  @@index([strawId])
+  @@index([patientId])
+}
+
+model OcrRecord {
+  id               String    @id @default(uuid())
+  patientId        String?
+  originalFilename String
+  storageKey       String
+  mimeType         String
+  fileSize         Int
+  rawOcrText       String
+  extractedJson    String
+  status           String    @default("PENDING")
+  verifiedBy       String?
+  verifiedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  patient          Patient?  @relation(fields: [patientId], references: [id])
+  verifier         User?     @relation(fields: [verifiedBy], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  userName   String
+  action     String
+  entityName String
+  entityId   String?
+  oldData    String?
+  newData    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityName])
+}
