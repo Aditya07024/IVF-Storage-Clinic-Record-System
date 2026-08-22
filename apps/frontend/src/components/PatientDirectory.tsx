@@ -115,7 +115,8 @@ export const PatientDirectory: React.FC = () => {
   };
 
   const handlePrintPdf = (patientId: string) => {
-    const url = `/api/documents/patient/${patientId}/pdf`;
+    const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
+    const url = `${apiBase}/api/documents/patient/${patientId}/pdf`;
     window.open(url, '_blank');
   };
 
