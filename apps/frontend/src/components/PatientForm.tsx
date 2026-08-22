@@ -748,13 +748,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   {/* Select Viso Tube Dropdown */}
                   <div>
                     <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      4. Select Specific Viso Tube *
+                      4. Select Specific Viso Tube (Available Space Only) *
                     </label>
                     {(() => {
                       const currentCanObj = hierarchyCans.find(c => c.code === manualCanCode);
                       const currentCanisterObj = currentCanObj?.canisters?.find((cn: any) => cn.canisterNumber === manualCanisterNum);
                       const currentLevelObj = currentCanisterObj?.levels?.find((l: any) => l.levelNumber === manualLevelNum);
                       const tubes: any[] = currentLevelObj?.goblets?.[0]?.visoTubes || [];
+                      const requiredStrawsNeeded = Math.ceil(embryoCount / 2);
 
                       if (tubes.length === 0) {
                         return (
@@ -764,27 +765,52 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         );
                       }
 
+                      // STRICT CAPACITY FILTER: Exclude full tubes or tubes with insufficient space
+                      const availableTubes = tubes.filter((t: any) => {
+                        const occupiedCount = t.straws ? t.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
+                        const remaining = 10 - occupiedCount;
+                        return remaining >= requiredStrawsNeeded;
+                      });
+
+                      const fullTubesCount = tubes.length - availableTubes.length;
+
+                      if (availableTubes.length === 0) {
+                        return (
+                          <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-xs font-bold text-amber-900 flex items-center gap-2 shadow-xs">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>Capacity Full: No Viso Tubes in this Level have {requiredStrawsNeeded} free straw slot(s). Please select another Level, Canister, or Can.</span>
+                          </div>
+                        );
+                      }
+
                       return (
-                        <select
-                          value={selectedVisoTubeId}
-                          onChange={(e) => {
-                            setSelectedVisoTubeId(e.target.value);
-                            const found = tubes.find((t: any) => t.id === e.target.value);
-                            if (found) setSelectedLocationCode(found.locationCode);
-                          }}
-                          className="w-full bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 shadow-xs font-mono"
-                        >
-                          {tubes.map((t: any) => {
-                            const occupiedCount = t.straws ? t.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
-                            const remaining = 10 - occupiedCount;
-                            const tNum = t.tubeNumber ? t.tubeNumber.toString().padStart(2, '0') : '01';
-                            return (
-                              <option key={t.id} value={t.id}>
-                                Viso Tube {tNum} ({t.locationCode}) — {remaining} / 10 Straw Slots Free
-                              </option>
-                            );
-                          })}
-                        </select>
+                        <div className="space-y-1.5">
+                          <select
+                            value={selectedVisoTubeId}
+                            onChange={(e) => {
+                              setSelectedVisoTubeId(e.target.value);
+                              const found = availableTubes.find((t: any) => t.id === e.target.value);
+                              if (found) setSelectedLocationCode(found.locationCode);
+                            }}
+                            className="w-full bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 shadow-xs font-mono"
+                          >
+                            {availableTubes.map((t: any) => {
+                              const occupiedCount = t.straws ? t.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
+                              const remaining = 10 - occupiedCount;
+                              const tNum = t.tubeNumber ? t.tubeNumber.toString().padStart(2, '0') : '01';
+                              return (
+                                <option key={t.id} value={t.id}>
+                                  Viso Tube {tNum} ({t.locationCode}) — {remaining} / 10 Straw Slots Free (Available)
+                                </option>
+                              );
+                            })}
+                          </select>
+                          {fullTubesCount > 0 && (
+                            <span className="text-[10px] text-slate-500 font-medium block">
+                              🔒 Note: {fullTubesCount} full/insufficient Viso Tube(s) in this level are automatically hidden.
+                            </span>
+                          )}
+                        </div>
                       );
                     })()}
                   </div>
