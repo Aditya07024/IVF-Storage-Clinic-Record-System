@@ -1,6 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus } from 'lucide-react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X } from 'lucide-react';
 import { apiRequest } from '../api/client';
+
+function parseLocationCode(code: string) {
+  if (!code) return { raw: '', formatted: '' };
+  const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
+  if (!match) return { raw: code, formatted: code };
+  const canNum = match[1].padStart(2, '0');
+  const canisterNum = match[2].padStart(2, '0');
+  const levelNum = parseInt(match[3], 10);
+  const levelName = levelNum === 1 ? 'Level 1 (Bottom)' : levelNum === 2 ? 'Level 2 (Top)' : `Level ${levelNum}`;
+  const tubeNum = match[5].padStart(2, '0');
+  return {
+    raw: code,
+    formatted: `Can ${canNum} • Canister ${canisterNum} • ${levelName} • Viso Tube ${tubeNum}`,
+  };
+}
 
 interface PatientFormProps {
   onSuccess: (patient: any) => void;
@@ -15,6 +30,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [existingSearchResults, setExistingSearchResults] = useState<any[]>([]);
   const [searchingExisting, setSearchingExisting] = useState(false);
   const [selectedExistingPatient, setSelectedExistingPatient] = useState<any | null>(null);
+
+  // Thaw Modal States
+  const [thawModalStraw, setThawModalStraw] = useState<any | null>(null);
+  const [thawDoctorNotes, setThawDoctorNotes] = useState<string>('Thaw executed directly from patient form.');
+  const [executingThaw, setExecutingThaw] = useState(false);
+  const [thawSuccessMsg, setThawSuccessMsg] = useState<string | null>(null);
 
   // Form Fields
   const [customPatientId, setCustomPatientId] = useState('');
@@ -69,7 +90,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   };
 
   // Select Existing Patient & Auto-Fill Fields
-  const handleSelectExistingPatient = (p: any) => {
+  const handleSelectExistingPatient = async (p: any) => {
     setSelectedExistingPatient(p);
     setCustomPatientId(p.patientId || '');
     setFullName(p.fullName || '');
@@ -78,6 +99,48 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setFreezingDate(new Date().toISOString().split('T')[0]);
     setStorageDate(new Date().toISOString().split('T')[0]);
     setExistingSearchResults([]);
+    setThawSuccessMsg(null);
+
+    // Fetch full patient data with batches & straws for Thaw options
+    try {
+      const res = await apiRequest(`/api/patients/${p.id}`);
+      if (res.success && res.patient) {
+        setSelectedExistingPatient(res.patient);
+      }
+    } catch (err: any) {
+      console.error('Failed to load patient detail batches:', err);
+    }
+  };
+
+  // Execute Direct Thaw from Patient Form
+  const handleExecuteThaw = async () => {
+    if (!thawModalStraw || !selectedExistingPatient) return;
+    setExecutingThaw(true);
+    setThawSuccessMsg(null);
+    try {
+      const res = await apiRequest('/api/thaw', {
+        method: 'POST',
+        body: JSON.stringify({
+          strawIds: [thawModalStraw.id],
+          doctorNotes: thawDoctorNotes,
+        }),
+      });
+
+      if (res.success) {
+        setThawSuccessMsg(`Embryo Straw ${thawModalStraw.strawId} successfully thawed & physical storage slot freed!`);
+        setThawModalStraw(null);
+
+        // Refresh patient details to update active straws list
+        const fullRes = await apiRequest(`/api/patients/${selectedExistingPatient.id}`);
+        if (fullRes.success && fullRes.patient) {
+          setSelectedExistingPatient(fullRes.patient);
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to thaw straw.');
+    } finally {
+      setExecutingThaw(false);
+    }
   };
 
   // Clear Selected Existing Patient
@@ -369,6 +432,89 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           </button>
         </div>
       )}
+
+      {thawSuccessMsg && (
+        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center gap-3 text-emerald-950 text-xs font-bold shadow-xs">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span>{thawSuccessMsg}</span>
+        </div>
+      )}
+
+      {/* ACTIVE STORED EMBRYOS & DIRECT THAW PANEL FOR EXISTING PATIENT */}
+      {selectedExistingPatient && (() => {
+        const activeStraws: any[] = [];
+        if (selectedExistingPatient.batches) {
+          selectedExistingPatient.batches.forEach((b: any) => {
+            if (b.straws) {
+              b.straws.forEach((s: any) => {
+                if (s.status === 'OCCUPIED') {
+                  activeStraws.push({ ...s, batchCode: b.batchId, storageDate: b.storageDate });
+                }
+              });
+            }
+          });
+        }
+
+        if (activeStraws.length === 0) {
+          return (
+            <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl text-xs text-slate-600 font-medium flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Snowflake className="w-4 h-4 text-blue-500 shrink-0" />
+                <span>No active frozen embryo straws currently in storage for {selectedExistingPatient.fullName}.</span>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="bg-white p-5 rounded-3xl border border-rose-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-950 font-bold text-sm">
+                <Flame className="w-5 h-5 text-rose-600" />
+                <span>Active Stored Embryos ({activeStraws.length} Active Straws in Cryo Storage)</span>
+              </div>
+              <span className="text-[10px] text-rose-800 font-bold font-mono bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
+                Direct Thaw / Withdrawal Available Here
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {activeStraws.map((straw: any) => {
+                const locCode = straw.visoTube?.locationCode || '';
+                const parsedLoc = locCode ? parseLocationCode(locCode).formatted : 'Location Not Specified';
+                const embryoCount = straw.embryos ? straw.embryos.length : 2;
+
+                return (
+                  <div key={straw.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <span className="font-mono font-bold text-xs text-slate-900">{straw.strawId}</span>
+                      <span className="text-[10px] font-bold font-mono bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300">
+                        {embryoCount} Embryos ({straw.color} Tag)
+                      </span>
+                    </div>
+
+                    <div className="text-xs font-bold text-slate-800 font-mono bg-white p-2.5 rounded-xl border border-slate-200">
+                      {parsedLoc}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setThawModalStraw(straw);
+                        setThawDoctorNotes(`Doctor requested direct thaw of straw ${straw.strawId} for ${selectedExistingPatient.fullName}.`);
+                      }}
+                      className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98"
+                    >
+                      <Flame className="w-4 h-4 text-amber-300" />
+                      <span>Thaw / Withdraw This Straw Now</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Section 1: Clinical Patient Details */}
@@ -884,6 +1030,80 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           </button>
         </div>
       </form>
+
+      {/* THAW CONFIRMATION MODAL */}
+      {thawModalStraw && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-950 font-bold text-base">
+                <Flame className="w-5 h-5 text-rose-600" />
+                <span>Confirm Embryo Straw Thaw</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setThawModalStraw(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center font-bold"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-2 text-xs text-rose-950 font-medium">
+              <div>
+                <strong className="text-slate-900">Straw ID:</strong>{' '}
+                <span className="font-mono font-bold text-rose-900">{thawModalStraw.strawId}</span>
+              </div>
+              <div>
+                <strong className="text-slate-900">Patient:</strong>{' '}
+                <span className="font-bold">{selectedExistingPatient?.fullName}</span> ({selectedExistingPatient?.patientId})
+              </div>
+              <div>
+                <strong className="text-slate-900">Location:</strong>{' '}
+                <span className="font-mono font-bold">{parseLocationCode(thawModalStraw.visoTube?.locationCode || '').formatted}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+                Doctor / Embryologist Thaw Remarks *
+              </label>
+              <textarea
+                rows={3}
+                value={thawDoctorNotes}
+                onChange={(e) => setThawDoctorNotes(e.target.value)}
+                placeholder="Enter thaw reason, clinical notes, or doctor instructions..."
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-xs text-slate-900 font-medium focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setThawModalStraw(null)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteThaw}
+                disabled={executingThaw}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-md disabled:opacity-50 transition-all"
+              >
+                {executingThaw ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Flame className="w-4 h-4 text-amber-300" />
+                    <span>Confirm & Complete Thaw Execution</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
