@@ -87,7 +87,7 @@ export class AuthService {
       role: user.role,
     };
 
-    const accessToken = jwt.sign(payload, CONFIG.JWT_ACCESS_SECRET, { expiresIn: '15m' });
+    const accessToken = jwt.sign(payload, CONFIG.JWT_ACCESS_SECRET, { expiresIn: (CONFIG.JWT_ACCESS_EXPIRATION as any) || '1h' });
     const refreshToken = jwt.sign(payload, CONFIG.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
     // Log Audit Event

@@ -231,15 +231,15 @@ export const ContainerView: React.FC = () => {
               <span className="w-3 h-3 rounded-full bg-amber-500 shadow-sm" />
               <span className="text-slate-900 font-bold">YELLOW = Partially Occupied</span>
             </div>
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-rose-300">
+            {/* <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-rose-300">
               <span className="w-3 h-3 rounded-full bg-rose-600 shadow-sm" />
               <span className="text-slate-900 font-bold">RED = Full (100% Capacity)</span>
-            </div>
+            </div> */}
           </div>
         </div>
 
         {/* Physical Viso Tube Boundary Colors Legend */}
-        <div className="space-y-2">
+        {/* <div className="space-y-2">
           <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <Info className="w-4 h-4 text-emerald-600" />
             <span>Boundary Borders (11 Physical Viso Tube Colors):</span>
@@ -265,7 +265,7 @@ export const ContainerView: React.FC = () => {
               );
             })}
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* ========================================================================= */}
