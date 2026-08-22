@@ -309,29 +309,29 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8 bg-slate-50 min-h-screen">
+    <div className="p-3 sm:p-8 max-w-4xl mx-auto space-y-6 sm:space-y-8 bg-slate-50 min-h-screen w-full overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 text-emerald-600">
-            <UserPlus className="w-6 h-6" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 text-emerald-600 shrink-0">
+            <UserPlus className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Embryo Freezing & Storage Allocation</h1>
-            <p className="text-sm text-slate-600 font-medium">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Embryo Freezing & Storage Allocation</h1>
+            <p className="text-xs sm:text-sm text-slate-600 font-medium">
               Register new patient OR allocate a new embryo freezing batch for an existing patient
             </p>
           </div>
         </div>
 
         {/* Mode Toggle Buttons */}
-        <div className="flex items-center bg-slate-200 p-1 rounded-2xl border border-slate-300">
+        <div className="flex flex-col sm:flex-row items-stretch bg-slate-200 p-1 rounded-2xl border border-slate-300 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => {
               setFormMode('new');
               handleClearSelectedExisting();
             }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-center ${
               formMode === 'new'
                 ? 'bg-white text-emerald-950 shadow-sm border border-slate-200'
                 : 'text-slate-700 hover:text-slate-900'
@@ -342,7 +342,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           <button
             type="button"
             onClick={() => setFormMode('existing')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-center ${
               formMode === 'existing'
                 ? 'bg-white text-emerald-950 shadow-sm border border-slate-200'
                 : 'text-slate-700 hover:text-slate-900'
@@ -540,19 +540,19 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Section 1: Clinical Patient Details */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-          <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center justify-between">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-2">
             <span>Patient & Clinical Details</span>
             {selectedExistingPatient && (
-              <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
+              <span className="text-[10px] sm:text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                 EXISTING PATIENT RECORD
               </span>
             )}
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full">
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex flex-wrap items-center justify-between gap-1">
                 <span>Registration No / Patient ID</span>
                 <span className="text-[10px] text-slate-500 font-normal lowercase">(Provided by Doctor, e.g. IVF-2026-000001)</span>
               </label>
@@ -562,7 +562,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 onChange={(e) => setCustomPatientId(e.target.value)}
                 readOnly={!!selectedExistingPatient}
                 placeholder="e.g. IVF-2026-000001"
-                className={`w-full border rounded-xl px-4 py-3 text-sm font-mono font-bold focus:outline-none ${
+                className={`w-full max-w-full min-w-0 box-border border rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-mono font-bold focus:outline-none ${
                   selectedExistingPatient
                     ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
                     : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
@@ -571,7 +571,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Patient Full Name *
               </label>
               <input
@@ -580,12 +580,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Eleanor Vance"
                 required
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Partner Name
               </label>
               <input
@@ -593,12 +593,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 value={partnerName}
                 onChange={(e) => setPartnerName(e.target.value)}
                 placeholder="e.g. Thomas Vance"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
+                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Mobile Phone
               </label>
               <input
@@ -606,24 +606,24 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. +1 555 0192"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500"
+                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Visit Date
               </label>
               <input
                 type="date"
                 value={visitDate}
                 onChange={(e) => setVisitDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
+                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 New Embryo Freezing Date *
               </label>
               <input
@@ -633,12 +633,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   setFreezingDate(e.target.value);
                   setStorageDate(e.target.value);
                 }}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex flex-wrap items-center justify-between gap-1">
                 <span>DE Date</span>
                 <span className="text-[10px] text-slate-500 font-normal lowercase">(Donor Egg / Diagnostic Date)</span>
               </label>
@@ -646,31 +646,31 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 type="date"
                 value={deDate}
                 onChange={(e) => setDeDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
+                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex flex-wrap items-center justify-between gap-1">
                 <span>Clinical Comments & Doctor Remarks</span>
-                <span className="text-[10px] text-slate-500 font-normal lowercase">(Egg yield, embryo grade quality, special doctor instructions, extra notes)</span>
+                <span className="text-[10px] text-slate-500 font-normal lowercase">(Egg yield, embryo grade quality, special instructions)</span>
               </label>
               <textarea
                 rows={3}
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
                 placeholder="Write clinical comments, doctor instructions, embryo quality remarks, or extra storage notes here..."
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
+                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
               />
             </div>
           </div>
         </div>
 
         {/* Section 2: Storage Allocation Engine */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-emerald-600" />
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-2">
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-emerald-600 shrink-0" />
               <span>Cryo Physical Storage Allocation</span>
             </h2>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -685,32 +685,32 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           </div>
 
           {assignStorageEnabled && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6 w-full">
               {/* Storage Method Toggle */}
-              <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+              <div className="flex flex-col sm:flex-row items-stretch gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full">
                 <button
                   type="button"
                   onClick={() => setAllocationMode('recommended')}
-                  className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     allocationMode === 'recommended'
                       ? 'bg-white text-emerald-950 shadow-xs border border-slate-200'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>Use Recommended Storage (Auto-Optimal)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setAllocationMode('manual')}
-                  className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     allocationMode === 'manual'
                       ? 'bg-white text-emerald-950 shadow-xs border border-slate-200'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <Layers className="w-4 h-4 text-blue-600" />
+                  <Layers className="w-4 h-4 text-blue-600 shrink-0" />
                   <span>Choose Storage Location Manually</span>
                 </button>
               </div>

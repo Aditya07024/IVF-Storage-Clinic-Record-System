@@ -175,9 +175,9 @@ export const ContainerView: React.FC = () => {
             <Layers className="w-7 h-7 text-emerald-600 animate-pulse" />
             <span>Full Container Storage Overview Explorer</span>
           </h1>
-          <p className="text-sm text-slate-600 mt-1 font-medium">
+          {/* <p className="text-sm text-slate-600 mt-1 font-medium">
             Background Fill: <strong className="text-emerald-700">Space Left (Green=Empty, Yellow=Partial, Red=Full)</strong> • Boundaries: <strong className="text-slate-900">Physical Viso Tube Colors</strong>
-          </p>
+          </p> */}
         </div>
 
         {/* 2 View Modes Switcher */}
@@ -283,9 +283,9 @@ export const ContainerView: React.FC = () => {
               <span className="text-xs text-slate-500 font-medium">Click any Hexagon to select Can</span>
             </div>
 
-            <div className="flex flex-col items-center gap-2 sm:gap-3 py-2 sm:py-4">
+            <div className="flex flex-col items-center gap-2 sm:gap-4 py-2 sm:py-4">
               {/* Row 1: Cans 1, 2, 3, 4 */}
-              <div className="grid grid-cols-4 gap-1 sm:gap-3 max-w-full">
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-4 max-w-full">
                 {[1, 2, 3, 4].map((num) => {
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
@@ -301,7 +301,7 @@ export const ContainerView: React.FC = () => {
                       }}
                       className="group relative focus:outline-none transition-transform hover:scale-105 flex flex-col items-center"
                     >
-                      <svg viewBox="0 0 100 115" className="w-16 h-18 sm:w-22 sm:h-24 filter drop-shadow-sm">
+                      <svg viewBox="0 0 100 115" className="w-18 h-20 sm:w-26 sm:h-28 filter drop-shadow-sm">
                         <polygon
                           points="50,2 95,28 95,87 50,113 5,87 5,28"
                           className={`transition-all duration-300 ${colorInfo.fill} ${
@@ -312,10 +312,10 @@ export const ContainerView: React.FC = () => {
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-1 pointer-events-none">
-                        <span className="font-mono text-[11px] sm:text-xs font-black text-slate-950">
+                        <span className="font-mono text-xs sm:text-sm font-black text-slate-950">
                           {code}
                         </span>
-                        <span className={`text-[9px] sm:text-[10px] font-black mt-0.5 px-1.5 sm:px-2 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
+                        <span className={`text-[9.5px] sm:text-xs font-black mt-0.5 px-2 sm:px-2.5 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
                           {colorInfo.label}
                         </span>
                       </div>
@@ -325,7 +325,7 @@ export const ContainerView: React.FC = () => {
               </div>
 
               {/* Row 2: Cans 5, 8, 10, 14 */}
-              <div className="grid grid-cols-4 gap-1 sm:gap-3 max-w-full -mt-2 sm:-mt-3">
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-4 max-w-full -mt-2 sm:-mt-4">
                 {[5, 8, 10, 14].map((num) => {
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
@@ -341,7 +341,7 @@ export const ContainerView: React.FC = () => {
                       }}
                       className="group relative focus:outline-none transition-transform hover:scale-105 flex flex-col items-center"
                     >
-                      <svg viewBox="0 0 100 115" className="w-16 h-18 sm:w-22 sm:h-24 filter drop-shadow-sm">
+                      <svg viewBox="0 0 100 115" className="w-18 h-20 sm:w-26 sm:h-28 filter drop-shadow-sm">
                         <polygon
                           points="50,2 95,28 95,87 50,113 5,87 5,28"
                           className={`transition-all duration-300 ${colorInfo.fill} ${
@@ -352,10 +352,10 @@ export const ContainerView: React.FC = () => {
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-1 pointer-events-none">
-                        <span className="font-mono text-[11px] sm:text-xs font-black text-slate-950">
+                        <span className="font-mono text-xs sm:text-sm font-black text-slate-950">
                           {code}
                         </span>
-                        <span className={`text-[9px] sm:text-[10px] font-black mt-0.5 px-1.5 sm:px-2 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
+                        <span className={`text-[9.5px] sm:text-xs font-black mt-0.5 px-2 sm:px-2.5 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
                           {colorInfo.label}
                         </span>
                       </div>
