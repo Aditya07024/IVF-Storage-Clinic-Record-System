@@ -103,10 +103,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono bg-emerald-800/80 px-2 py-0.5 rounded text-emerald-100 font-bold flex items-center gap-1">
+                {/* <span className="text-[10px] font-mono bg-emerald-800/80 px-2 py-0.5 rounded text-emerald-100 font-bold flex items-center gap-1">
                   <Clock className="w-3 h-3 text-emerald-300 animate-spin" />
                   <span>Auto-close in 5s</span>
-                </span>
+                </span> */}
                 <button
                   onClick={closeMobileMenu}
                   className="p-1 text-white/80 hover:text-white rounded-lg hover:bg-white/10"
