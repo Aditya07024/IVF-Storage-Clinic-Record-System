@@ -30,14 +30,22 @@ export const ThawWorkflow: React.FC = () => {
 
       if (searchRes.success && searchRes.patients) {
         setSearchResults(searchRes.patients);
-        if (searchRes.patients.length === 1 && q) {
-          selectPatientRecord(searchRes.patients[0].id);
+
+        if (q) {
+          // Reset active patient when user searches so exact search results are shown
+          setPatient(null);
+          if (searchRes.patients.length === 1) {
+            selectPatientRecord(searchRes.patients[0].id);
+          } else if (searchRes.patients.length === 0) {
+            setError(`No patient found matching search query "${q}".`);
+          }
         } else if (searchRes.patients.length > 0 && !patient) {
-          // Auto load first patient details
+          // On initial load without query -> load first patient
           selectPatientRecord(searchRes.patients[0].id);
         }
       } else {
         setSearchResults([]);
+        setPatient(null);
         setError('No patient found matching search query.');
       }
     } catch (err: any) {

@@ -163,11 +163,11 @@ export class PatientService {
 
     if (trimmedQuery) {
       const orConditions: any[] = [
-        { patientId: { contains: trimmedQuery } },
-        { fullName: { contains: trimmedQuery } },
-        { partnerName: { contains: trimmedQuery } },
-        { phone: { contains: trimmedQuery } },
-        { comments: { contains: trimmedQuery } },
+        { patientId: { contains: trimmedQuery, mode: 'insensitive' } },
+        { fullName: { contains: trimmedQuery, mode: 'insensitive' } },
+        { partnerName: { contains: trimmedQuery, mode: 'insensitive' } },
+        { phone: { contains: trimmedQuery, mode: 'insensitive' } },
+        { comments: { contains: trimmedQuery, mode: 'insensitive' } },
       ];
 
       // Check if text query itself is a valid date (e.g. 2026-08-20 or 2026/08/20)
