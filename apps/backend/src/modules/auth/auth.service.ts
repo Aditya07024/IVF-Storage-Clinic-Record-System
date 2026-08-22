@@ -115,6 +115,42 @@ export class AuthService {
     };
   }
 
+  async seedUsersIfNeeded(): Promise<void> {
+    try {
+      const adminExists = await prisma.user.findUnique({ where: { staffId: 'ADMIN001' } });
+      if (!adminExists) {
+        const adminHash = await argon2.hash('AdminPassword123!', { type: argon2.argon2id });
+        await prisma.user.create({
+          data: {
+            staffId: 'ADMIN001',
+            email: 'admin@ivfclinic.com',
+            name: 'Dr. Sarah Jenkins (Admin)',
+            passwordHash: adminHash,
+            role: 'ADMIN',
+          },
+        });
+        console.log('[Auth] Auto-seeded default Admin user (ADMIN001)');
+      }
+
+      const staffExists = await prisma.user.findUnique({ where: { staffId: 'STAFF001' } });
+      if (!staffExists) {
+        const staffHash = await argon2.hash('StaffPassword123!', { type: argon2.argon2id });
+        await prisma.user.create({
+          data: {
+            staffId: 'STAFF001',
+            email: 'staff@ivfclinic.com',
+            name: 'Alex Vance (Embryologist)',
+            passwordHash: staffHash,
+            role: 'STAFF',
+          },
+        });
+        console.log('[Auth] Auto-seeded default Staff user (STAFF001)');
+      }
+    } catch (err: any) {
+      console.error('[Auth Seed Warning]', err.message);
+    }
+  }
+
   verifyAccessToken(token: string): JwtPayload {
     try {
       return jwt.verify(token, CONFIG.JWT_ACCESS_SECRET) as JwtPayload;

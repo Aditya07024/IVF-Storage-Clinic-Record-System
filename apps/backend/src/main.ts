@@ -418,6 +418,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 async function startServer() {
   await connectPrisma();
   await storageService.seedHierarchyIfNeeded();
+  await authService.seedUsersIfNeeded();
 
   app.listen(CONFIG.PORT, () => {
     console.log(`[IVF Hardened Backend] Security Shields Active on ${CONFIG.BACKEND_URL} (Port ${CONFIG.PORT})`);
