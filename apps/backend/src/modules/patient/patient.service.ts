@@ -3,6 +3,8 @@ import { prisma } from '../../common/prisma.js';
 export interface CreatePatientInput {
   fullName: string;
   partnerName?: string;
+  phone?: string;
+  dob?: string;
   visitDate?: Date | string;
   deDate?: Date | string;
   freezingDate?: Date | string;
@@ -45,6 +47,8 @@ export class PatientService {
         patientId,
         fullName: input.fullName.trim(),
         partnerName: input.partnerName ? input.partnerName.trim() : null,
+        phone: input.phone ? input.phone.trim() : null,
+        dob: input.dob ? input.dob.trim() : null,
         visitDate: input.visitDate ? new Date(input.visitDate) : null,
         deDate: input.deDate ? new Date(input.deDate) : null,
         freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
@@ -91,6 +95,8 @@ export class PatientService {
       data: {
         fullName: input.fullName !== undefined ? input.fullName.trim() : existing.fullName,
         partnerName: input.partnerName !== undefined ? input.partnerName.trim() : existing.partnerName,
+        phone: input.phone !== undefined ? (input.phone ? input.phone.trim() : null) : existing.phone,
+        dob: input.dob !== undefined ? (input.dob ? input.dob.trim() : null) : existing.dob,
         visitDate: input.visitDate !== undefined ? (input.visitDate ? new Date(input.visitDate) : null) : existing.visitDate,
         deDate: input.deDate !== undefined ? (input.deDate ? new Date(input.deDate) : null) : existing.deDate,
         freezingDate: input.freezingDate !== undefined ? (input.freezingDate ? new Date(input.freezingDate) : null) : existing.freezingDate,
@@ -140,6 +146,8 @@ export class PatientService {
             { patientId: { contains: query.trim(), mode: 'insensitive' as const } },
             { fullName: { contains: query.trim(), mode: 'insensitive' as const } },
             { partnerName: { contains: query.trim(), mode: 'insensitive' as const } },
+            { phone: { contains: query.trim(), mode: 'insensitive' as const } },
+            { comments: { contains: query.trim(), mode: 'insensitive' as const } },
           ],
         }
       : {};
@@ -153,6 +161,7 @@ export class PatientService {
         take: limit,
         include: {
           batches: {
+            orderBy: { storageDate: 'desc' },
             include: {
               straws: { select: { id: true, status: true } },
             },

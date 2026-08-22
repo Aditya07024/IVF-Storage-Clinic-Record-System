@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ThermometerSnowflake, Search, CheckCircle2, ShieldAlert, AlertTriangle, Layers, MoveRight } from 'lucide-react';
+import { ThermometerSnowflake, Search, CheckCircle2, ShieldAlert, AlertTriangle, Layers, MoveRight, User, Calendar, Phone } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 export const ThawWorkflow: React.FC = () => {
   const [patientIdQuery, setPatientIdQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [patient, setPatient] = useState<any | null>(null);
   const [selectedStrawIds, setSelectedStrawIds] = useState<string[]>([]);
   const [doctorNotes, setDoctorNotes] = useState('');
@@ -22,22 +23,41 @@ export const ThawWorkflow: React.FC = () => {
     setError(null);
     setSuccessMsg(null);
     setPatient(null);
+    setSearchResults([]);
     setSelectedStrawIds([]);
 
     try {
       const searchRes = await apiRequest(`/api/patients?q=${encodeURIComponent(patientIdQuery.trim())}`);
       if (searchRes.success && searchRes.patients.length > 0) {
-        const foundId = searchRes.patients[0].id;
-        const detailsRes = await apiRequest(`/api/patients/${foundId}`);
-        if (detailsRes.success) {
-          setPatient(detailsRes.patient);
-          fetchThawHistory(foundId);
+        if (searchRes.patients.length === 1) {
+          // Single match -> load directly
+          selectPatientRecord(searchRes.patients[0].id);
+        } else {
+          // Multiple accounts match -> show selection list with Freezing Dates
+          setSearchResults(searchRes.patients);
         }
       } else {
-        setError('No patient found with provided ID or name.');
+        setError('No patient found matching provided Reg No (ID), Mobile, or Name.');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to find patient.');
+      setError(err.message || 'Failed to search patients.');
+    } finally {
+      setLoadingPatient(false);
+    }
+  };
+
+  const selectPatientRecord = async (id: string) => {
+    setLoadingPatient(true);
+    setError(null);
+    try {
+      const detailsRes = await apiRequest(`/api/patients/${id}`);
+      if (detailsRes.success) {
+        setPatient(detailsRes.patient);
+        setSearchResults([]);
+        fetchThawHistory(id);
+      }
+    } catch (err: any) {
+      setError('Failed to load patient profile: ' + err.message);
     } finally {
       setLoadingPatient(false);
     }
@@ -99,14 +119,14 @@ export const ThawWorkflow: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 min-h-screen">
       <div className="border-b border-slate-200 pb-6">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
           <ThermometerSnowflake className="w-7 h-7 text-emerald-600" />
           <span>Doctor Embryo Thaw / Warm / Withdrawal Workflow</span>
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Doctor-directed straw selection with non-sequential thaw freedom, physical capacity liberation, and 100% audit retention.
+        <p className="text-sm text-slate-600 mt-1 font-medium">
+          Search by <strong className="text-slate-900">Registration No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, or <strong className="text-slate-900">Patient Name</strong>
         </p>
       </div>
 
@@ -125,13 +145,13 @@ export const ThawWorkflow: React.FC = () => {
       )}
 
       {/* Search Patient Box */}
-      <form onSubmit={handleSearchPatient} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-        <div className="relative flex-1">
+      <form onSubmit={handleSearchPatient} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-4">
+        <div className="relative flex-1 w-full">
           <input
             type="text"
             value={patientIdQuery}
             onChange={(e) => setPatientIdQuery(e.target.value)}
-            placeholder="Enter Patient ID (e.g. IVF-2026-000001) or Full Name..."
+            placeholder="Search by Reg No (ID), Mobile Phone, or Patient Name..."
             required
             className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
           />
@@ -141,7 +161,7 @@ export const ThawWorkflow: React.FC = () => {
         <button
           type="submit"
           disabled={loadingPatient}
-          className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 shrink-0 transition-all disabled:opacity-50"
+          className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 shrink-0 transition-all disabled:opacity-50"
         >
           {loadingPatient ? (
             <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -150,6 +170,61 @@ export const ThawWorkflow: React.FC = () => {
           )}
         </button>
       </form>
+
+      {/* Multiple Matching Accounts Choice List */}
+      {searchResults.length > 1 && (
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span>Multiple Accounts Match Query ({searchResults.length} Accounts Found) — Select Intended Account by Freezing Date:</span>
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {searchResults.map((item) => {
+              const freezingDateStr = item.freezingDate || item.batches?.[0]?.storageDate
+                ? new Date(item.freezingDate || item.batches[0].storageDate).toISOString().split('T')[0]
+                : 'Not Specified';
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => selectPatientRecord(item.id)}
+                  className="p-5 bg-slate-50 hover:bg-emerald-50/50 rounded-2xl border border-slate-200 hover:border-emerald-300 transition-all cursor-pointer space-y-3 shadow-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-slate-900 text-base">{item.fullName}</div>
+                    <span className="font-mono text-xs font-bold px-2.5 py-0.5 bg-emerald-100 text-emerald-900 rounded-md border border-emerald-300">
+                      Reg No: {item.patientId}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 bg-amber-100 text-amber-950 font-bold font-mono rounded-lg border border-amber-300">
+                        Freezing Date: {freezingDateStr}
+                      </span>
+                    </div>
+
+                    {item.partnerName && (
+                      <div className="text-slate-600 font-medium">Partner: {item.partnerName}</div>
+                    )}
+                    {item.phone && (
+                      <div className="text-slate-600 font-mono">Mobile: {item.phone}</div>
+                    )}
+                  </div>
+
+                  <div className="text-[11px] font-bold text-emerald-700 flex items-center justify-between pt-1">
+                    <span>Click to view stored straws</span>
+                    <MoveRight className="w-4 h-4 text-emerald-600" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Patient Straw Selection Screen */}
       {patient && (
@@ -161,8 +236,11 @@ export const ThawWorkflow: React.FC = () => {
                 <div>
                   <span className="text-xs font-mono font-bold text-emerald-700">{patient.patientId}</span>
                   <h2 className="text-lg font-bold text-slate-900">{patient.fullName}</h2>
+                  <div className="text-xs text-amber-900 font-mono font-bold mt-1">
+                    Freezing Date: {patient.freezingDate ? new Date(patient.freezingDate).toISOString().split('T')[0] : 'N/A'}
+                  </div>
                 </div>
-                <span className="text-xs text-slate-500 font-semibold">Partner: {patient.partnerName || 'N/A'}</span>
+                <span className="text-xs text-slate-600 font-semibold">Partner: {patient.partnerName || 'N/A'}</span>
               </div>
 
               <div className="space-y-4">
@@ -178,44 +256,36 @@ export const ThawWorkflow: React.FC = () => {
                     <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 shadow-xs">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-mono font-bold text-emerald-800">Batch: {batch.batchId}</span>
-                        <span className="text-slate-500 font-medium">Storage Date: {new Date(batch.storageDate).toLocaleDateString()}</span>
-                        <span className="font-mono font-bold text-slate-900">Location: {batch.visoTube?.locationCode}</span>
+                        <span className="text-slate-600 font-medium">Freezing Date: {new Date(batch.storageDate).toISOString().split('T')[0]}</span>
                       </div>
 
-                      <div className="space-y-2">
-                        {batch.straws.map((straw: any) => {
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {batch.straws?.map((straw: any) => {
                           const isSelected = selectedStrawIds.includes(straw.id);
-                          const isVacant = straw.status === 'VACANT' || straw.status === 'THAWED';
+                          const isThawed = straw.status === 'THAWED';
 
                           return (
                             <div
                               key={straw.id}
-                              onClick={() => !isVacant && toggleStrawSelection(straw.id)}
-                              className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between text-xs cursor-pointer ${
-                                isVacant
+                              onClick={() => !isThawed && toggleStrawSelection(straw.id)}
+                              className={`p-3.5 rounded-xl border transition-all ${
+                                isThawed
                                   ? 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
                                   : isSelected
-                                  ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/30'
-                                  : 'bg-white border-slate-200 hover:border-emerald-300'
+                                  ? 'bg-emerald-100/90 border-emerald-500 ring-2 ring-emerald-500/30 cursor-pointer shadow-sm'
+                                  : 'bg-white border-slate-200 hover:border-emerald-300 cursor-pointer'
                               }`}
                             >
-                              <div className="flex items-center gap-3">
-                                <input
-                                  type="checkbox"
-                                  disabled={isVacant}
-                                  checked={isSelected}
-                                  onChange={() => {}}
-                                  className="w-4 h-4 rounded bg-white border-slate-300 text-emerald-600"
-                                />
-                                <div>
-                                  <div className="font-mono font-bold text-emerald-900">Straw ID: {straw.strawId}</div>
-                                  <div className="text-slate-500 text-[11px]">Color: {straw.color} • {straw.embryos?.length || 0} Embryo(s)</div>
-                                </div>
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span className="font-mono text-slate-900">{straw.strawId}</span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] ${isThawed ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-900 border border-emerald-300'}`}>
+                                  {straw.status}
+                                </span>
                               </div>
-
-                              <span className={`px-2.5 py-1 rounded text-[10px] font-bold border ${isVacant ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-emerald-100 text-emerald-800 border-emerald-300'}`}>
-                                {straw.status}
-                              </span>
+                              <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+                                <span>Color: {straw.color}</span>
+                                <span>{straw.embryos?.length || 0} Embryos</span>
+                              </div>
                             </div>
                           );
                         })}
@@ -227,32 +297,31 @@ export const ThawWorkflow: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column: Execution Box & Audit History */}
-          <div className="space-y-6">
-            {/* Execute Thaw Card */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider text-emerald-800">
-                Confirm Doctor Thaw Action
-              </h3>
+          {/* Right Column: Execution Form */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 self-start">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <ThermometerSnowflake className="w-5 h-5 text-emerald-600" />
+              <span>Confirm Thaw Operation</span>
+            </h2>
 
-              <div className="text-xs text-slate-700 font-semibold">
-                Selected Straws: <strong className="text-emerald-700 font-mono font-bold">{selectedStrawIds.length} straw(s)</strong>
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-medium text-slate-700">
+                Selected Straws: <strong className="text-emerald-700 font-bold">{selectedStrawIds.length} straw(s)</strong>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                  Doctor Notes / Procedure Observations
-                </label>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Embryologist / Doctor Notes</label>
                 <textarea
                   rows={3}
                   value={doctorNotes}
                   onChange={(e) => setDoctorNotes(e.target.value)}
-                  placeholder="Enter doctor notes for this thaw event..."
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                  placeholder="Enter clinical notes for thaw procedure..."
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
                 />
               </div>
 
               <button
+                type="button"
                 onClick={handleExecuteThaw}
                 disabled={selectedStrawIds.length === 0 || thawing}
                 className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
@@ -261,35 +330,11 @@ export const ThawWorkflow: React.FC = () => {
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <ThermometerSnowflake className="w-4 h-4" />
-                    <span>Execute Thaw & Free Capacity</span>
+                    <span>Execute Thaw & Liberate Capacity</span>
+                    <MoveRight className="w-4 h-4" />
                   </>
                 )}
               </button>
-            </div>
-
-            {/* Historical Thaw Audit Log for Patient */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Immutable Thaw History for {patient.fullName}
-              </h3>
-
-              {thawHistory.length === 0 ? (
-                <div className="text-xs text-slate-500 py-2">No prior thaw records for this patient.</div>
-              ) : (
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {thawHistory.map((h) => (
-                    <div key={h.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1">
-                      <div className="flex items-center justify-between text-[11px] text-slate-600">
-                        <span className="font-mono font-bold text-emerald-800">Straw: {h.straw?.strawId || 'N/A'}</span>
-                        <span>{new Date(h.thawDate).toLocaleString()}</span>
-                      </div>
-                      <div className="text-slate-800 font-medium text-[11px]">Original Location: {h.originalLocationCode}</div>
-                      <div className="text-slate-500 text-[10px]">Doctor: {h.doctorName}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>

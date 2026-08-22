@@ -27,7 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
     { id: 'patients', label: 'Patient Directory', icon: Search },
     { id: 'container-view', label: 'Full Container View', icon: Layers },
     { id: 'ocr', label: 'OCR Verification', icon: FileScan },
-    { id: 'thaw', label: 'Thaw / Withdrawal', icon: ThermometerSnowflake },
+    { id: 'thaw', label: 'Thaw', icon: ThermometerSnowflake },
     { id: 'logs', label: 'Audit Logs', icon: ClipboardList },
   ];
 

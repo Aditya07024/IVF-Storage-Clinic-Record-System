@@ -27,6 +27,8 @@ model Patient {
   patientId    String        @unique
   fullName     String
   partnerName  String?
+  phone        String?
+  dob          String?
   visitDate    DateTime?
   deDate       DateTime?
   freezingDate DateTime?
