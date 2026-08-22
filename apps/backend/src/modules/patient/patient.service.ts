@@ -144,6 +144,7 @@ export class PatientService {
           },
         },
         thawRecords: { orderBy: { thawDate: 'desc' } },
+        ocrRecords: { orderBy: { createdAt: 'desc' } },
       },
     });
   }

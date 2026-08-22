@@ -482,13 +482,17 @@ export const PatientDirectory: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => openQuickThawModal(selectedPatient.id)}
-                  className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
-                >
-                  <ThermometerSnowflake className="w-4 h-4" />
-                  <span>Thaw Specimen</span>
-                </button>
+                {selectedPatient.batches?.some((b: any) =>
+                  b.straws?.some((s: any) => s.status === 'OCCUPIED')
+                ) && (
+                  <button
+                    onClick={() => openQuickThawModal(selectedPatient.id)}
+                    className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 active:scale-95"
+                  >
+                    <ThermometerSnowflake className="w-4 h-4" />
+                    <span>Thaw Specimen</span>
+                  </button>
+                )}
                 <button
                   onClick={() => handlePrintPdf(selectedPatient.id)}
                   className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
@@ -572,7 +576,7 @@ export const PatientDirectory: React.FC = () => {
                           : 'N/A'}
                       </div>
                       <div className="text-[10px] font-mono text-emerald-700 font-bold">
-                        System Ref: {batch.visoTube?.locationCode}
+                        System Ref: {batch.visoTube?.locationCode || 'N/A'}
                       </div>
                     </div>
 
@@ -597,6 +601,74 @@ export const PatientDirectory: React.FC = () => {
                 ))
               )}
             </div>
+
+            {/* Thaw / Withdrawal Clinical History Section */}
+            {selectedPatient.thawRecords && selectedPatient.thawRecords.length > 0 && (
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <ThermometerSnowflake className="w-4 h-4 text-rose-600" />
+                  <span>Thaw & Withdrawal Clinical History ({selectedPatient.thawRecords.length})</span>
+                </h3>
+                <div className="overflow-x-auto bg-slate-50 rounded-2xl border border-slate-200 p-3">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
+                        <th className="py-2 px-3">Straw ID</th>
+                        <th className="py-2 px-3">Thaw Date & Time</th>
+                        <th className="py-2 px-3">Executing Doctor / Staff</th>
+                        <th className="py-2 px-3 font-sans">Clinical Doctor Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-slate-800">
+                      {selectedPatient.thawRecords.map((t: any) => (
+                        <tr key={t.id} className="hover:bg-white">
+                          <td className="py-2 px-3 font-bold text-emerald-800">{t.straw?.strawId || t.strawId}</td>
+                          <td className="py-2 px-3 text-slate-600">{new Date(t.thawDate).toLocaleString()}</td>
+                          <td className="py-2 px-3 font-semibold text-slate-900">{t.doctorName}</td>
+                          <td className="py-2 px-3 font-sans text-slate-700 italic">{t.doctorNotes || 'No notes recorded'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Uploaded Documents & OCR Scans History */}
+            {selectedPatient.ocrRecords && selectedPatient.ocrRecords.length > 0 && (
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-teal-600" />
+                  <span>Uploaded Documents & OCR History ({selectedPatient.ocrRecords.length})</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedPatient.ocrRecords.map((ocr: any) => {
+                    const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
+                    const imgUrl = `${apiBase}/uploads/${ocr.storageKey}`;
+                    return (
+                      <div key={ocr.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-semibold">
+                          <span className="truncate max-w-[180px] font-mono text-slate-900">{ocr.originalFilename}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${ocr.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-amber-100 text-amber-900 border border-amber-300'}`}>
+                            {ocr.status}
+                          </span>
+                        </div>
+                        {ocr.mimeType?.startsWith('image/') && (
+                          <div className="relative rounded-xl overflow-hidden border border-slate-300 max-h-36 bg-slate-900 flex items-center justify-center">
+                            <img src={imgUrl} alt={ocr.originalFilename} className="object-contain max-h-36 w-full" />
+                          </div>
+                        )}
+                        {ocr.rawOcrText && (
+                          <div className="text-[10px] font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-700 max-h-20 overflow-y-auto whitespace-pre-wrap">
+                            {ocr.rawOcrText}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
