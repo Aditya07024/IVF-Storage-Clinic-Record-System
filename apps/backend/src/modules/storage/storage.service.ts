@@ -344,7 +344,7 @@ export class StorageService {
   // Get Container Hierarchy Visualization Data
   async getHierarchyOverview(canCode?: string) {
     const cans = await prisma.can.findMany({
-      where: canCode ? { code: canCode } : {},
+      where: canCode && canCode !== 'all' ? { code: canCode } : {},
       orderBy: { code: 'asc' },
       include: {
         canisters: {

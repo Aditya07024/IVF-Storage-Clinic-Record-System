@@ -63,11 +63,42 @@ export const ContainerView: React.FC = () => {
   const [isRefetching, setIsRefetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [canOccupancyMap, setCanOccupancyMap] = useState<Record<string, number>>({});
+
   const CLINIC_CANS = [1, 2, 3, 4, 5, 8, 10, 14];
+
+  useEffect(() => {
+    fetchGlobalOccupancy();
+  }, []);
 
   useEffect(() => {
     fetchHierarchy();
   }, [selectedCanCode]);
+
+  const fetchGlobalOccupancy = async () => {
+    try {
+      const res = await apiRequest('/api/storage/hierarchy?canCode=all');
+      if (res.success && res.cans) {
+        const occMap: Record<string, number> = {};
+        res.cans.forEach((can: any) => {
+          let count = 0;
+          can.canisters?.forEach((cn: any) => {
+            cn.levels?.forEach((l: any) => {
+              l.goblets?.forEach((g: any) => {
+                g.visoTubes?.forEach((v: any) => {
+                  count += v.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
+                });
+              });
+            });
+          });
+          occMap[can.code] = count;
+        });
+        setCanOccupancyMap(occMap);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch global occupancy map:', err);
+    }
+  };
 
   const fetchHierarchy = async () => {
     if (!hierarchy) {
@@ -118,17 +149,17 @@ export const ContainerView: React.FC = () => {
       };
     } else if (occupied >= max) {
       return {
-        fill: 'fill-rose-100/90',
-        stroke: 'stroke-rose-500',
-        bg: 'bg-rose-100 text-rose-900 border-rose-300 font-bold',
+        fill: 'fill-rose-500/90',
+        stroke: 'stroke-rose-700',
+        bg: 'bg-rose-600 text-white border-rose-700 font-bold',
         dot: 'bg-rose-600',
         label: 'FULL',
       };
     } else {
       return {
-        fill: 'fill-amber-100/90',
-        stroke: 'stroke-amber-500',
-        bg: 'bg-amber-100 text-amber-900 border-amber-300 font-bold',
+        fill: 'fill-amber-300/95',
+        stroke: 'stroke-amber-600',
+        bg: 'bg-amber-400 text-amber-950 border-amber-500 font-black shadow-xs',
         dot: 'bg-amber-500',
         label: 'PARTIAL',
       };
@@ -252,25 +283,13 @@ export const ContainerView: React.FC = () => {
               <span className="text-xs text-slate-500 font-medium">Click any Hexagon to select Can</span>
             </div>
 
-            <div className="flex flex-col items-center gap-3 py-4 overflow-x-auto">
+            <div className="flex flex-col items-center gap-2 sm:gap-3 py-2 sm:py-4">
               {/* Row 1: Cans 1, 2, 3, 4 */}
-              <div className="flex items-center justify-center gap-3">
+              <div className="grid grid-cols-4 gap-1 sm:gap-3 max-w-full">
                 {[1, 2, 3, 4].map((num) => {
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
-                  
-                  let occupiedInCan = 0;
-                  if (currentCan && selectedCanCode === code) {
-                    currentCan.canisters?.forEach((cn: any) => {
-                      cn.levels?.forEach((l: any) => {
-                        l.goblets?.forEach((g: any) => {
-                          g.visoTubes?.forEach((v: any) => {
-                            occupiedInCan += v.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                          });
-                        });
-                      });
-                    });
-                  }
+                  const occupiedInCan = canOccupancyMap[code] || 0;
                   const colorInfo = getSpaceFillColor(occupiedInCan, 220);
 
                   return (
@@ -280,23 +299,23 @@ export const ContainerView: React.FC = () => {
                         setSelectedCanCode(code);
                         setSelectedTube(null);
                       }}
-                      className="group relative focus:outline-none transition-transform hover:scale-105"
+                      className="group relative focus:outline-none transition-transform hover:scale-105 flex flex-col items-center"
                     >
-                      <svg width="95" height="105" viewBox="0 0 100 115" className="filter drop-shadow-sm">
+                      <svg viewBox="0 0 100 115" className="w-16 h-18 sm:w-22 sm:h-24 filter drop-shadow-sm">
                         <polygon
                           points="50,2 95,28 95,87 50,113 5,87 5,28"
-                          className={`transition-all duration-300 ${
+                          className={`transition-all duration-300 ${colorInfo.fill} ${
                             isSelected
-                              ? 'stroke-emerald-600 stroke-[4.5] fill-emerald-200/70'
-                              : `${colorInfo.fill} ${colorInfo.stroke} stroke-[2.5]`
+                              ? 'stroke-slate-900 stroke-[5.5]'
+                              : `${colorInfo.stroke} stroke-[2.5]`
                           }`}
                         />
                       </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2 pointer-events-none">
-                        <span className="font-mono text-xs font-black text-slate-900">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-1 pointer-events-none">
+                        <span className="font-mono text-[11px] sm:text-xs font-black text-slate-950">
                           {code}
                         </span>
-                        <span className={`text-[10px] font-extrabold mt-0.5 px-2 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
+                        <span className={`text-[9px] sm:text-[10px] font-black mt-0.5 px-1.5 sm:px-2 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
                           {colorInfo.label}
                         </span>
                       </div>
@@ -305,24 +324,12 @@ export const ContainerView: React.FC = () => {
                 })}
               </div>
 
-              {/* Row 2: Cans 5, 8, 10, 14 (Staggered Offset) */}
-              <div className="flex items-center justify-center gap-3 -mt-4 pl-10">
+              {/* Row 2: Cans 5, 8, 10, 14 */}
+              <div className="grid grid-cols-4 gap-1 sm:gap-3 max-w-full -mt-2 sm:-mt-3">
                 {[5, 8, 10, 14].map((num) => {
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
-                  
-                  let occupiedInCan = 0;
-                  if (currentCan && selectedCanCode === code) {
-                    currentCan.canisters?.forEach((cn: any) => {
-                      cn.levels?.forEach((l: any) => {
-                        l.goblets?.forEach((g: any) => {
-                          g.visoTubes?.forEach((v: any) => {
-                            occupiedInCan += v.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                          });
-                        });
-                      });
-                    });
-                  }
+                  const occupiedInCan = canOccupancyMap[code] || 0;
                   const colorInfo = getSpaceFillColor(occupiedInCan, 220);
 
                   return (
@@ -332,23 +339,23 @@ export const ContainerView: React.FC = () => {
                         setSelectedCanCode(code);
                         setSelectedTube(null);
                       }}
-                      className="group relative focus:outline-none transition-transform hover:scale-105"
+                      className="group relative focus:outline-none transition-transform hover:scale-105 flex flex-col items-center"
                     >
-                      <svg width="95" height="105" viewBox="0 0 100 115" className="filter drop-shadow-sm">
+                      <svg viewBox="0 0 100 115" className="w-16 h-18 sm:w-22 sm:h-24 filter drop-shadow-sm">
                         <polygon
                           points="50,2 95,28 95,87 50,113 5,87 5,28"
-                          className={`transition-all duration-300 ${
+                          className={`transition-all duration-300 ${colorInfo.fill} ${
                             isSelected
-                              ? 'stroke-emerald-600 stroke-[4.5] fill-emerald-200/70'
-                              : `${colorInfo.fill} ${colorInfo.stroke} stroke-[2.5]`
+                              ? 'stroke-slate-900 stroke-[5.5]'
+                              : `${colorInfo.stroke} stroke-[2.5]`
                           }`}
                         />
                       </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2 pointer-events-none">
-                        <span className="font-mono text-xs font-black text-slate-900">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-1 pointer-events-none">
+                        <span className="font-mono text-[11px] sm:text-xs font-black text-slate-950">
                           {code}
                         </span>
-                        <span className={`text-[10px] font-extrabold mt-0.5 px-2 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
+                        <span className={`text-[9px] sm:text-[10px] font-black mt-0.5 px-1.5 sm:px-2 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
                           {colorInfo.label}
                         </span>
                       </div>
