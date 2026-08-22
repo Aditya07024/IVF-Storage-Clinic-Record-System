@@ -114,7 +114,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
-            <span>Storage Chambers / Cans</span>
+            <span>Storage Cans</span>
             <Database className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-3xl font-bold text-slate-900 tracking-tight">{summary.totalCans} Cans</div>
@@ -158,7 +158,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Chamber / Can Storage Overview</h2>
+            <h2 className="text-lg font-bold text-slate-900">Can Storage Overview</h2>
             <p className="text-xs text-slate-500">Live capacity & utilization metrics breakdown per physical Can</p>
           </div>
           <button

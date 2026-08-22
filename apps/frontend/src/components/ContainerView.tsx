@@ -228,14 +228,14 @@ export const ContainerView: React.FC = () => {
       {/* ========================================================================= */}
       {viewMode === 'honeycomb' && (
         <div className="space-y-8">
-          {/* Chamber Cans Space-Fill Honeycomb */}
+          {/* Cans Space-Fill Honeycomb */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <Database className="w-4 h-4 text-emerald-600" />
-                <span>Chambers Overview (Capacity Heatmap):</span>
+                <span>Cans Overview (Capacity Heatmap):</span>
               </div>
-              <span className="text-xs text-slate-500 font-medium">Click any Hexagon to select Chamber</span>
+              <span className="text-xs text-slate-500 font-medium">Click any Hexagon to select Can</span>
             </div>
 
             <div className="flex flex-col items-center gap-3 py-4 overflow-x-auto">
@@ -413,7 +413,7 @@ export const ContainerView: React.FC = () => {
                     <span>Level {selectedLevelNum} — 11 Viso Tubes Pizza Slice Layout</span>
                   </h2>
                   <div className="text-xs text-slate-600 font-mono mt-0.5 font-semibold">
-                    Chamber {selectedCanCode.replace('CAN-', '')} • Canister {selectedCanisterNum.toString().padStart(2, '0')} • Level {selectedLevelNum}
+                    Can {selectedCanCode.replace('CAN-', '')} • Canister {selectedCanisterNum.toString().padStart(2, '0')} • Level {selectedLevelNum}
                   </div>
                 </div>
                 <span className="text-xs px-3 py-1 bg-slate-100 text-emerald-800 font-bold rounded-full font-mono border border-slate-200">
@@ -423,9 +423,9 @@ export const ContainerView: React.FC = () => {
 
               {/* RADIAL PIZZA SLICE GOBLET (FILL = SPACE LEFT, STROKE = PHYSICAL COLOR) */}
               <div className="py-6 flex flex-col items-center justify-center space-y-4">
-                <div className="text-xs text-slate-600 font-bold uppercase tracking-wider">
+                {/* <div className="text-xs text-slate-600 font-bold uppercase tracking-wider">
                   Fill = Space Left (Green/Yellow/Red) • Borders = Physical Colors (Pink, Grey, Red, Black, Green, Rust, Blue, Purple, Yellow, Orange, Skyblue):
-                </div>
+                </div> */}
 
                 <div className="relative flex items-center justify-center">
                   <svg width="370" height="370" viewBox="0 0 360 360" className="filter drop-shadow-lg">
@@ -582,7 +582,7 @@ export const ContainerView: React.FC = () => {
                         <span>{canCode}</span>
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-300">
-                        Chamber {canNum}
+                        Can {canNum}
                       </span>
                     </div>
 

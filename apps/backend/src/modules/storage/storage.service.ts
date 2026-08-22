@@ -12,11 +12,11 @@ export function parseLocationCode(code: string) {
   const levelName = levelNum === 1 ? 'Level 1 (Bottom)' : levelNum === 2 ? 'Level 2 (Top)' : `Level ${levelNum}`;
   const tubeNum = match[5].padStart(2, '0');
 
-  const formatted = `Chamber ${canNum} • Canister ${canisterNum} • ${levelName} • Viso Tube ${tubeNum}`;
+  const formatted = `Can ${canNum} • Canister ${canisterNum} • ${levelName} • Viso Tube ${tubeNum}`;
 
   return {
     raw: code,
-    can: `Chamber ${canNum}`,
+    can: `Can ${canNum}`,
     canister: `Canister ${canisterNum}`,
     level: levelName,
     tube: `Viso Tube ${tubeNum}`,
@@ -59,7 +59,7 @@ export class StorageService {
       const can = await prisma.can.create({
         data: {
           code: canCode,
-          name: `Chamber Can ${c.toString().padStart(2, '0')}`,
+          name: `Can ${c.toString().padStart(2, '0')}`,
         },
       });
 

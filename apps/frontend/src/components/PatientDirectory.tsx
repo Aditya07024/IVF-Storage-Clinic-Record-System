@@ -202,7 +202,7 @@ export const PatientDirectory: React.FC = () => {
                       <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
                       <div className="text-slate-900 font-bold">
                         {batch.visoTube?.locationCode
-                          ? (batch.visoTube.locationCode.replace(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i, 'Chamber $1 • Canister $2 • Level $3 • Viso Tube $5'))
+                          ? (batch.visoTube.locationCode.replace(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i, 'Can $1 • Canister $2 • Level $3 • Viso Tube $5'))
                           : 'N/A'}
                       </div>
                       <div className="text-[10px] font-mono text-emerald-700 font-bold">
