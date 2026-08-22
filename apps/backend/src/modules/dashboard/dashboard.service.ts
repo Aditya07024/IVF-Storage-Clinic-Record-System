@@ -1,20 +1,22 @@
-import { prisma } from '../../common/prisma.js';
+import { prisma, withDbRetry } from '../../common/prisma.js';
 
 export class DashboardService {
   async getDashboardMetrics() {
-    const [cans, totalPatients, pendingOcrCount, recentLogs] = await Promise.all([
-      prisma.can.findMany({
-        orderBy: { code: 'asc' },
-        include: {
-          canisters: {
-            include: {
-              levels: {
-                include: {
-                  goblets: {
-                    include: {
-                      visoTubes: {
-                        include: {
-                          straws: true,
+    return withDbRetry(async () => {
+      const [cans, totalPatients, pendingOcrCount, recentLogs] = await Promise.all([
+        prisma.can.findMany({
+          orderBy: { code: 'asc' },
+          include: {
+            canisters: {
+              include: {
+                levels: {
+                  include: {
+                    goblets: {
+                      include: {
+                        visoTubes: {
+                          include: {
+                            straws: true,
+                          },
                         },
                       },
                     },
@@ -23,18 +25,17 @@ export class DashboardService {
               },
             },
           },
-        },
-      }),
-      prisma.patient.count(),
-      prisma.ocrRecord.count({ where: { status: 'PENDING' } }),
-      prisma.auditLog.findMany({
-        take: 10,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          user: { select: { name: true, staffId: true } },
-        },
-      }),
-    ]);
+        }),
+        prisma.patient.count(),
+        prisma.ocrRecord.count({ where: { status: 'PENDING' } }),
+        prisma.auditLog.findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: { select: { name: true, staffId: true } },
+          },
+        }),
+      ]);
 
     let globalTotalVisoTubes = 0;
     let globalOccupiedStraws = 0;
@@ -80,20 +81,21 @@ export class DashboardService {
       ? `${globalUtilVal.toFixed(2)}%`
       : `${Math.round(globalUtilVal)}%`;
 
-    return {
-      summary: {
-        totalCans: cans.length,
-        totalPatients,
-        totalVisoTubes: globalTotalVisoTubes,
-        maxStrawCapacity: globalMaxStrawCapacity,
-        occupiedStraws: globalOccupiedStraws,
-        availableStraws: globalMaxStrawCapacity - globalOccupiedStraws,
-        globalUtilizationPercentage,
-        pendingOcrCount,
-      },
-      canStats,
-      recentActivity: recentLogs,
-    };
+      return {
+        summary: {
+          totalCans: cans.length,
+          totalPatients,
+          totalVisoTubes: globalTotalVisoTubes,
+          maxStrawCapacity: globalMaxStrawCapacity,
+          occupiedStraws: globalOccupiedStraws,
+          availableStraws: globalMaxStrawCapacity - globalOccupiedStraws,
+          globalUtilizationPercentage,
+          pendingOcrCount,
+        },
+        canStats,
+        recentActivity: recentLogs,
+      };
+    });
   }
 }
 
