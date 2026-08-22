@@ -70,19 +70,22 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} method="post" action="#" className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+            <label htmlFor="accessKey" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
               Website Access Key
             </label>
             <div className="relative">
               <input
+                id="accessKey"
+                name="accessKey"
                 type="password"
                 value={accessKey}
                 onChange={(e) => setAccessKey(e.target.value)}
                 placeholder="Enter access key (Default: clinic2026)"
                 required
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                autoComplete="current-password"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-mono"
               />
               <KeyRound className="w-4 h-4 text-slate-400 absolute right-4 top-3.5" />
             </div>
