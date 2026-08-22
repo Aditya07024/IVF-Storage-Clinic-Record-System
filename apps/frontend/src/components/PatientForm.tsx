@@ -2,6 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
+export const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
+  1: 'Pink',
+  2: 'Grey',
+  3: 'Red',
+  4: 'Black',
+  5: 'Green',
+  6: 'Rust',
+  7: 'Blue',
+  8: 'Purple',
+  9: 'Yellow',
+  10: 'Orange',
+  11: 'Skyblue',
+};
+
 function parseLocationCode(code: string) {
   if (!code) return { raw: '', formatted: '' };
   const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
@@ -10,10 +24,18 @@ function parseLocationCode(code: string) {
   const canisterNum = match[2].padStart(2, '0');
   const levelNum = parseInt(match[3], 10);
   const levelName = levelNum === 1 ? 'Level 1 (Bottom)' : levelNum === 2 ? 'Level 2 (Top)' : `Level ${levelNum}`;
-  const tubeNum = match[5].padStart(2, '0');
+  const tubeNumInt = parseInt(match[5], 10);
+  const tubeNumPadded = match[5].padStart(2, '0');
+  const colorName = VISO_TUBE_COLOR_NAMES[tubeNumInt] || 'Standard';
+
   return {
     raw: code,
-    formatted: `Can ${canNum} • Canister ${canisterNum} • ${levelName} • Viso Tube ${tubeNum}`,
+    can: `Can ${canNum}`,
+    canister: `Canister ${canisterNum}`,
+    level: levelName,
+    tube: `${colorName} Viso Tube (Tube ${tubeNumPadded})`,
+    tubeColor: colorName,
+    formatted: `Can ${canNum} • Canister ${canisterNum} • ${levelName} • ${colorName} Viso Tube (V${tubeNumPadded})`,
   };
 }
 
@@ -802,7 +824,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
                           <div className="text-[10px] text-slate-500 font-semibold uppercase">4. Viso Tube</div>
                           <div className="text-xs font-bold text-emerald-700 mt-0.5">
-                            {recommendation.primaryRecommendation.breakdown?.tube || 'Viso Tube 08'}
+                            {recommendation.primaryRecommendation.breakdown?.tube || 'Viso Tube 09 (Black)'}
                           </div>
                         </div>
                       </div>
@@ -943,10 +965,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                             {availableTubes.map((t: any) => {
                               const occupiedCount = t.straws ? t.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
                               const remaining = 10 - occupiedCount;
-                              const tNum = t.tubeNumber ? t.tubeNumber.toString().padStart(2, '0') : '01';
+                              const tubeInt = t.tubeNumber || parseInt(t.locationCode?.match(/-V(\d+)/i)?.[1] || '1', 10);
+                              const tNum = tubeInt.toString().padStart(2, '0');
+                              const colorName = VISO_TUBE_COLOR_NAMES[tubeInt] || 'Standard';
                               return (
                                 <option key={t.id} value={t.id}>
-                                  Viso Tube {tNum} ({t.locationCode}) — {remaining} / 10 Straw Slots Free (Available)
+                                  Viso Tube {tNum} ({colorName}) — {remaining} / 10 Straw Slots Free (Available)
                                 </option>
                               );
                             })}

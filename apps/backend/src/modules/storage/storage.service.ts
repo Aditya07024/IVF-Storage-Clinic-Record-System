@@ -1,25 +1,43 @@
 import { prisma } from '../../common/prisma.js';
 
 export function parseLocationCode(code: string) {
-  if (!code) return { raw: '', formatted: '', can: '', canister: '', level: '', tube: '' };
+  if (!code) return { raw: '', formatted: '', can: '', canister: '', level: '', tube: '', tubeColor: '' };
 
   const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
-  if (!match) return { raw: code, formatted: code, can: '', canister: '', level: '', tube: '' };
+  if (!match) return { raw: code, formatted: code, can: '', canister: '', level: '', tube: '', tubeColor: '' };
 
   const canNum = match[1].padStart(2, '0');
   const canisterNum = match[2].padStart(2, '0');
   const levelNum = parseInt(match[3], 10);
   const levelName = levelNum === 1 ? 'Level 1 (Bottom)' : levelNum === 2 ? 'Level 2 (Top)' : `Level ${levelNum}`;
-  const tubeNum = match[5].padStart(2, '0');
+  const tubeNumInt = parseInt(match[5], 10);
+  const tubeNumPadded = match[5].padStart(2, '0');
 
-  const formatted = `Can ${canNum} • Canister ${canisterNum} • ${levelName} • Viso Tube ${tubeNum}`;
+  const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
+    1: 'Pink',
+    2: 'Grey',
+    3: 'Red',
+    4: 'Black',
+    5: 'Green',
+    6: 'Rust',
+    7: 'Blue',
+    8: 'Purple',
+    9: 'Yellow',
+    10: 'Orange',
+    11: 'Skyblue',
+  };
+
+  const tubeColor = VISO_TUBE_COLOR_NAMES[tubeNumInt] || 'Standard';
+  const tubeFormatted = `Viso Tube ${tubeNumPadded} (${tubeColor})`;
+  const formatted = `Can ${canNum} • Canister ${canisterNum} • ${levelName} • ${tubeFormatted}`;
 
   return {
     raw: code,
     can: `Can ${canNum}`,
     canister: `Canister ${canisterNum}`,
     level: levelName,
-    tube: `Viso Tube ${tubeNum}`,
+    tube: tubeFormatted,
+    tubeColor,
     formatted,
   };
 }
