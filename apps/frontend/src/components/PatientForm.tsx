@@ -29,12 +29,20 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
   // Storage Allocation State
   const [assignStorageEnabled, setAssignStorageEnabled] = useState(true);
+  const [allocationMode, setAllocationMode] = useState<'recommended' | 'manual'>('recommended');
   const [embryoCount, setEmbryoCount] = useState(2);
   const [storageDate, setStorageDate] = useState(new Date().toISOString().split('T')[0]);
   const [recommendation, setRecommendation] = useState<any>(null);
   const [selectedVisoTubeId, setSelectedVisoTubeId] = useState<string>('');
   const [selectedLocationCode, setSelectedLocationCode] = useState<string>('');
   const [strawColors, setStrawColors] = useState<string[]>(['Pink']);
+
+  // Manual Storage Selection State
+  const [hierarchyCans, setHierarchyCans] = useState<any[]>([]);
+  const [loadingHierarchy, setLoadingHierarchy] = useState(false);
+  const [manualCanCode, setManualCanCode] = useState<string>('CAN-01');
+  const [manualCanisterNum, setManualCanisterNum] = useState<number>(1);
+  const [manualLevelNum, setManualLevelNum] = useState<number>(1);
 
   const [loading, setLoading] = useState(false);
   const [searchingStorage, setSearchingStorage] = useState(false);
@@ -82,6 +90,48 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setExistingSearchQuery('');
   };
 
+  // Fetch full storage hierarchy for manual selection
+  const fetchHierarchy = async () => {
+    if (hierarchyCans.length > 0) return;
+    setLoadingHierarchy(true);
+    try {
+      const res = await apiRequest('/api/storage/hierarchy');
+      if (res.success && res.cans) {
+        setHierarchyCans(res.cans);
+        // Default select first available tube
+        const firstCan = res.cans[0];
+        if (firstCan && firstCan.canisters[0]?.levels[0]?.goblets[0]?.visoTubes[0]) {
+          const tube = firstCan.canisters[0].levels[0].goblets[0].visoTubes[0];
+          setSelectedVisoTubeId(tube.id);
+          setSelectedLocationCode(tube.locationCode);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to load storage hierarchy:', err);
+    } finally {
+      setLoadingHierarchy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (allocationMode === 'manual') {
+      fetchHierarchy();
+    }
+  }, [allocationMode]);
+
+  // Keep straw colors array in sync with required straws count
+  useEffect(() => {
+    const requiredStraws = Math.ceil(embryoCount / 2);
+    setStrawColors(prev => {
+      if (prev.length === requiredStraws) return prev;
+      const next = Array(requiredStraws).fill('Pink');
+      for (let i = 0; i < Math.min(prev.length, requiredStraws); i++) {
+        next[i] = prev[i];
+      }
+      return next;
+    });
+  }, [embryoCount]);
+
   // Search Empty Storage Recommendation
   const handleFindStorage = async () => {
     setError(null);
@@ -102,9 +152,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           setSelectedVisoTubeId(res.primaryRecommendation.visoTubeId);
           setSelectedLocationCode(res.primaryRecommendation.locationCode);
         }
-        const requiredStraws = res.requiredStraws || 1;
-        const initialColors = Array(requiredStraws).fill('Pink');
-        setStrawColors(initialColors);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to calculate storage recommendation.');
@@ -471,6 +518,35 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
           {assignStorageEnabled && (
             <div className="space-y-6">
+              {/* Storage Method Toggle */}
+              <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setAllocationMode('recommended')}
+                  className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                    allocationMode === 'recommended'
+                      ? 'bg-white text-emerald-950 shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>Use Recommended Storage (Auto-Optimal)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAllocationMode('manual')}
+                  className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                    allocationMode === 'manual'
+                      ? 'bg-white text-emerald-950 shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  <span>Choose Storage Location Manually</span>
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
@@ -522,99 +598,240 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 </div>
               </div>
 
-              {/* Recommendation Generator Trigger */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleFindStorage}
-                  disabled={searchingStorage}
-                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {searchingStorage ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-emerald-400" />
-                      <span>Calculate Optimal Storage Location Recommendation</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Recommendation Results Card */}
-              {recommendation && recommendation.primaryRecommendation && (
-                <div className="p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-emerald-200/60 pb-3">
-                    <div className="flex items-center gap-2 text-emerald-950 font-bold text-sm">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      <span>Recommended Physical Storage Location</span>
-                    </div>
-                    <span className="text-[10px] font-mono font-bold bg-emerald-200/80 text-emerald-900 px-2.5 py-1 rounded-full border border-emerald-300">
-                      {recommendation.requiredStraws} Straw(s) Required
-                    </span>
+              {/* RECOMMENDED MODE UI */}
+              {allocationMode === 'recommended' && (
+                <div className="space-y-4">
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleFindStorage}
+                      disabled={searchingStorage}
+                      className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                    >
+                      {searchingStorage ? (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 text-emerald-400" />
+                          <span>Calculate Optimal Storage Location Recommendation</span>
+                        </>
+                      )}
+                    </button>
                   </div>
 
-                  {/* Visual Location Breakdown Badges */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
-                      <div className="text-[10px] text-slate-500 font-semibold uppercase">1. Can</div>
-                      <div className="text-xs font-bold text-slate-900 mt-0.5">
-                        {recommendation.primaryRecommendation.breakdown?.can || 'Can 01'}
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
-                      <div className="text-[10px] text-slate-500 font-semibold uppercase">2. Canister</div>
-                      <div className="text-xs font-bold text-slate-900 mt-0.5">
-                        {recommendation.primaryRecommendation.breakdown?.canister || 'Canister 06'}
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
-                      <div className="text-[10px] text-slate-500 font-semibold uppercase">3. Level</div>
-                      <div className="text-xs font-bold text-slate-900 mt-0.5">
-                        {recommendation.primaryRecommendation.breakdown?.level || 'Level 1'}
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
-                      <div className="text-[10px] text-slate-500 font-semibold uppercase">4. Viso Tube</div>
-                      <div className="text-xs font-bold text-emerald-700 mt-0.5">
-                        {recommendation.primaryRecommendation.breakdown?.tube || 'Viso Tube 08'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Straw Color Selection */}
-                  <div className="space-y-2 pt-2">
-                    <div className="text-xs font-bold text-slate-800">
-                      Specify Visual Straw Identification Tag Color:
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {strawColors.map((color, idx) => (
-                        <div key={idx} className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200">
-                          <span className="text-xs font-mono font-bold text-slate-500">Straw #{idx + 1}:</span>
-                          <select
-                            value={color}
-                            onChange={(e) => {
-                              const updated = [...strawColors];
-                              updated[idx] = e.target.value;
-                              setStrawColors(updated);
-                            }}
-                            className="bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 flex-1"
-                          >
-                            {['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].map((c) => (
-                              <option key={c} value={c}>
-                                {c} Tag
-                              </option>
-                            ))}
-                          </select>
+                  {recommendation && recommendation.primaryRecommendation && (
+                    <div className="p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl space-y-4">
+                      <div className="flex items-center justify-between border-b border-emerald-200/60 pb-3">
+                        <div className="flex items-center gap-2 text-emerald-950 font-bold text-sm">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <span>Recommended Physical Storage Location</span>
                         </div>
-                      ))}
+                        <span className="text-[10px] font-mono font-bold bg-emerald-200/80 text-emerald-900 px-2.5 py-1 rounded-full border border-emerald-300">
+                          {recommendation.requiredStraws} Straw(s) Required
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
+                          <div className="text-[10px] text-slate-500 font-semibold uppercase">1. Can</div>
+                          <div className="text-xs font-bold text-slate-900 mt-0.5">
+                            {recommendation.primaryRecommendation.breakdown?.can || 'Can 01'}
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
+                          <div className="text-[10px] text-slate-500 font-semibold uppercase">2. Canister</div>
+                          <div className="text-xs font-bold text-slate-900 mt-0.5">
+                            {recommendation.primaryRecommendation.breakdown?.canister || 'Canister 06'}
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
+                          <div className="text-[10px] text-slate-500 font-semibold uppercase">3. Level</div>
+                          <div className="text-xs font-bold text-slate-900 mt-0.5">
+                            {recommendation.primaryRecommendation.breakdown?.level || 'Level 1'}
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
+                          <div className="text-[10px] text-slate-500 font-semibold uppercase">4. Viso Tube</div>
+                          <div className="text-xs font-bold text-emerald-700 mt-0.5">
+                            {recommendation.primaryRecommendation.breakdown?.tube || 'Viso Tube 08'}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
+
+              {/* MANUAL SELECTION MODE UI */}
+              {allocationMode === 'manual' && (
+                <div className="p-5 bg-blue-50/60 border border-blue-200 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-blue-200 pb-3">
+                    <div className="flex items-center gap-2 text-blue-950 font-bold text-sm">
+                      <Layers className="w-5 h-5 text-blue-600" />
+                      <span>Manual Cryo Tank Location Selector</span>
+                    </div>
+                    {loadingHierarchy && (
+                      <span className="text-[10px] text-blue-700 font-medium flex items-center gap-1">
+                        <span className="w-3 h-3 border-2 border-blue-500/30 border-t-blue-600 rounded-full animate-spin" />
+                        Loading storage layout...
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Select Can */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        1. Select Can *
+                      </label>
+                      <select
+                        value={manualCanCode}
+                        onChange={(e) => {
+                          setManualCanCode(e.target.value);
+                          const canObj = hierarchyCans.find(c => c.code === e.target.value);
+                          if (canObj && canObj.canisters[0]?.levels[0]?.goblets[0]?.visoTubes[0]) {
+                            const t = canObj.canisters[0].levels[0].goblets[0].visoTubes[0];
+                            setSelectedVisoTubeId(t.id);
+                            setSelectedLocationCode(t.locationCode);
+                          }
+                        }}
+                        className="w-full bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 shadow-xs"
+                      >
+                        {[1, 2, 3, 4, 5, 8, 10, 14].map(cNum => {
+                          const code = `CAN-${cNum.toString().padStart(2, '0')}`;
+                          return (
+                            <option key={code} value={code}>
+                              Can {cNum.toString().padStart(2, '0')}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    {/* Select Canister */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        2. Select Canister *
+                      </label>
+                      <select
+                        value={manualCanisterNum}
+                        onChange={(e) => setManualCanisterNum(Number(e.target.value))}
+                        className="w-full bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 shadow-xs"
+                      >
+                        {Array.from({ length: 10 }, (_, i) => i + 1).map(cn => (
+                          <option key={cn} value={cn}>
+                            Canister {cn.toString().padStart(2, '0')}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Select Level */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        3. Select Level *
+                      </label>
+                      <select
+                        value={manualLevelNum}
+                        onChange={(e) => setManualLevelNum(Number(e.target.value))}
+                        className="w-full bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 shadow-xs"
+                      >
+                        <option value={1}>Level 1 (Bottom)</option>
+                        <option value={2}>Level 2 (Top)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Select Viso Tube Dropdown */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      4. Select Specific Viso Tube *
+                    </label>
+                    {(() => {
+                      const currentCanObj = hierarchyCans.find(c => c.code === manualCanCode);
+                      const currentCanisterObj = currentCanObj?.canisters?.find((cn: any) => cn.canisterNumber === manualCanisterNum);
+                      const currentLevelObj = currentCanisterObj?.levels?.find((l: any) => l.levelNumber === manualLevelNum);
+                      const tubes: any[] = currentLevelObj?.goblets?.[0]?.visoTubes || [];
+
+                      if (tubes.length === 0) {
+                        return (
+                          <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-500 italic font-medium">
+                            Loading Viso Tubes for {manualCanCode} Canister {manualCanisterNum.toString().padStart(2, '0')} Level {manualLevelNum}...
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <select
+                          value={selectedVisoTubeId}
+                          onChange={(e) => {
+                            setSelectedVisoTubeId(e.target.value);
+                            const found = tubes.find((t: any) => t.id === e.target.value);
+                            if (found) setSelectedLocationCode(found.locationCode);
+                          }}
+                          className="w-full bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 shadow-xs font-mono"
+                        >
+                          {tubes.map((t: any) => {
+                            const occupiedCount = t.straws ? t.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
+                            const remaining = 10 - occupiedCount;
+                            const tNum = t.tubeNumber ? t.tubeNumber.toString().padStart(2, '0') : '01';
+                            return (
+                              <option key={t.id} value={t.id}>
+                                Viso Tube {tNum} ({t.locationCode}) — {remaining} / 10 Straw Slots Free
+                              </option>
+                            );
+                          })}
+                        </select>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Active Selected Location Display */}
+                  {selectedLocationCode && (
+                    <div className="p-3 bg-white border border-blue-200 rounded-xl flex items-center justify-between">
+                      <div className="text-xs font-bold text-slate-800">
+                        Selected Destination Location:
+                      </div>
+                      <span className="text-xs font-mono font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-lg border border-blue-300">
+                        {selectedLocationCode}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Straw Color Selection */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                  <span>Specify Visual Straw Color Tags:</span>
+                  <span className="text-[10px] text-slate-500 font-normal">({Math.ceil(embryoCount / 2)} Straw Tags Needed)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {strawColors.map((color, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-xs font-mono font-bold text-slate-500">Straw #{idx + 1}:</span>
+                      <select
+                        value={color}
+                        onChange={(e) => {
+                          const updated = [...strawColors];
+                          updated[idx] = e.target.value;
+                          setStrawColors(updated);
+                        }}
+                        className="bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 flex-1"
+                      >
+                        {['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].map((c) => (
+                          <option key={c} value={c}>
+                            {c} Tag
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
