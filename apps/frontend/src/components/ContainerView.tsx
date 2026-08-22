@@ -63,11 +63,12 @@ export const ContainerView: React.FC = () => {
   const currentGoblet = currentLevel?.goblets?.[0];
   const visoTubes = currentGoblet?.visoTubes || [];
 
-  // Helper to determine space-fill status color in Light Mode (Green, Yellow, Red)
+  // Helper to determine space-fill status color & boundary stroke color in Light Mode
   const getSpaceFillColor = (occupied: number, max: number = 10) => {
     if (occupied === 0) {
       return {
-        fill: 'fill-emerald-100/90 stroke-emerald-500',
+        fill: 'fill-emerald-100/90',
+        stroke: 'stroke-emerald-500',
         bg: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
         dot: 'bg-emerald-500',
         text: 'text-emerald-950',
@@ -75,7 +76,8 @@ export const ContainerView: React.FC = () => {
       };
     } else if (occupied >= max) {
       return {
-        fill: 'fill-rose-100/90 stroke-rose-500',
+        fill: 'fill-rose-100/90',
+        stroke: 'stroke-rose-500',
         bg: 'bg-rose-100 text-rose-900 border-rose-300 font-bold',
         dot: 'bg-rose-600',
         text: 'text-rose-950',
@@ -83,7 +85,8 @@ export const ContainerView: React.FC = () => {
       };
     } else {
       return {
-        fill: 'fill-amber-100/90 stroke-amber-500',
+        fill: 'fill-amber-100/90',
+        stroke: 'stroke-amber-500',
         bg: 'bg-amber-100 text-amber-900 border-amber-300 font-bold',
         dot: 'bg-amber-500',
         text: 'text-amber-950',
@@ -148,17 +151,17 @@ export const ContainerView: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-emerald-300">
             <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-sm" />
             <span className="text-slate-900 font-bold">GREEN = Empty (0% Occupied)</span>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-amber-300">
             <span className="w-3.5 h-3.5 rounded-full bg-amber-500 shadow-sm" />
             <span className="text-slate-900 font-bold">YELLOW = Partially Occupied</span>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-rose-300">
             <span className="w-3.5 h-3.5 rounded-full bg-rose-600 shadow-sm" />
             <span className="text-slate-900 font-bold">RED = Full (100% Capacity)</span>
           </div>
@@ -175,7 +178,7 @@ export const ContainerView: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <Database className="w-4 h-4 text-emerald-600" />
-                <span>Chambers Overview (Honeycomb Capacity Heatmap):</span>
+                <span>Chambers Overview (Color-Coded Capacity Heatmap):</span>
               </div>
               <span className="text-xs text-slate-500 font-medium">Click any Hexagon to select Chamber</span>
             </div>
@@ -215,8 +218,8 @@ export const ContainerView: React.FC = () => {
                           points="50,2 95,28 95,87 50,113 5,87 5,28"
                           className={`transition-all duration-300 ${
                             isSelected
-                              ? 'stroke-emerald-600 stroke-[4] fill-emerald-200/60'
-                              : `${colorInfo.fill} stroke-2`
+                              ? 'stroke-emerald-600 stroke-[4.5] fill-emerald-200/70'
+                              : `${colorInfo.fill} ${colorInfo.stroke} stroke-[2.5]`
                           }`}
                         />
                       </svg>
@@ -267,8 +270,8 @@ export const ContainerView: React.FC = () => {
                           points="50,2 95,28 95,87 50,113 5,87 5,28"
                           className={`transition-all duration-300 ${
                             isSelected
-                              ? 'stroke-emerald-600 stroke-[4] fill-emerald-200/60'
-                              : `${colorInfo.fill} stroke-2`
+                              ? 'stroke-emerald-600 stroke-[4.5] fill-emerald-200/70'
+                              : `${colorInfo.fill} ${colorInfo.stroke} stroke-[2.5]`
                           }`}
                         />
                       </svg>
@@ -365,8 +368,8 @@ export const ContainerView: React.FC = () => {
 
               {/* RADIAL PIZZA SLICE GOBLET (10 PIZZA WEDGE SECTORS + 1 CENTER CORE TUBE) */}
               <div className="py-6 flex flex-col items-center justify-center space-y-4">
-                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                  Physical Circular Cone Goblet Layout (10 Radial Pizza Slices + 1 Center Core Tube):
+                <div className="text-xs text-slate-600 font-bold uppercase tracking-wider">
+                  Physical Circular Cone Goblet Layout (Color-Coded Boundaries):
                 </div>
 
                 <div className="relative flex items-center justify-center">
@@ -414,8 +417,8 @@ export const ContainerView: React.FC = () => {
                             d={pathData}
                             className={`transition-all duration-300 ${
                               isSelected
-                                ? 'stroke-emerald-600 stroke-[4] fill-emerald-200/90 shadow-md'
-                                : `${colorInfo.fill} stroke-2 stroke-slate-300 hover:stroke-emerald-500 hover:scale-[1.02]`
+                                ? 'stroke-emerald-600 stroke-[4.5] fill-emerald-200/90 shadow-md'
+                                : `${colorInfo.fill} ${colorInfo.stroke} stroke-[2.5] hover:scale-[1.02]`
                             }`}
                           />
                           <text
@@ -456,8 +459,8 @@ export const ContainerView: React.FC = () => {
                             r="42"
                             className={`transition-all duration-300 ${
                               isSelected
-                                ? 'stroke-emerald-600 stroke-[4] fill-emerald-200/90 shadow-md'
-                                : `${colorInfo.fill} stroke-2 stroke-slate-300 hover:stroke-emerald-500 hover:scale-105`
+                                ? 'stroke-emerald-600 stroke-[4.5] fill-emerald-200/90 shadow-md'
+                                : `${colorInfo.fill} ${colorInfo.stroke} stroke-[2.5] hover:scale-105`
                             }`}
                           />
                           <text
