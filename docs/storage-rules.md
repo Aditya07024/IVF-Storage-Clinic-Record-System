@@ -1,7 +1,7 @@
 # Storage Hierarchy & Business Rules
 
 ## Physical Storage Hierarchy
-$$\text{Can / Chamber} \longrightarrow \text{Canister} \longrightarrow \text{Level (L1/L2)} \longrightarrow \text{Goblet} \longrightarrow \text{Viso Tube} \longrightarrow \text{Straw} \longrightarrow \text{Embryo}$$
+$$\text{Can} \longrightarrow \text{Canister} \longrightarrow \text{Level (L1/L2)} \longrightarrow \text{Viso Tube} \longrightarrow \text{Straw} \longrightarrow \text{Embryo}$$
 
 ## Key Business Rules Matrix
 1. **Straw Capacity Enforced Server-Side**:

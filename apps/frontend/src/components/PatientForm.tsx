@@ -313,9 +313,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       {/* Visual Location Breakdown Badges */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                         <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-sm">
-                          <div className="text-[10px] text-slate-500 font-semibold uppercase">1. Chamber</div>
+                          <div className="text-[10px] text-slate-500 font-semibold uppercase">1. Can</div>
                           <div className="text-xs font-bold text-slate-900 mt-0.5">
-                            {recommendation.primaryRecommendation.breakdown?.can || 'Chamber 01'}
+                            {recommendation.primaryRecommendation.breakdown?.can || 'Can 01'}
                           </div>
                         </div>
 
