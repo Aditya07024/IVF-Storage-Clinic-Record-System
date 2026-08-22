@@ -14,6 +14,7 @@ import {
   Dna,
   FileText,
   X,
+  ThermometerSnowflake,
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
 import { parseLocationCode } from '../../../backend/src/modules/storage/storage.service';
@@ -711,9 +712,40 @@ export const ContainerView: React.FC = () => {
                               </div>
                             </div>
 
-                            <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold font-mono rounded-full self-start sm:self-auto">
-                              Straw ID: {straw.strawId}
-                            </span>
+                            <div className="flex items-center gap-2 self-start sm:self-auto">
+                              <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold font-mono rounded-full">
+                                Straw ID: {straw.strawId}
+                              </span>
+
+                              {straw.status === 'OCCUPIED' && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!confirm(`Are you sure you want to thaw Straw ${straw.strawId}? This will liberate physical capacity.`)) return;
+                                    try {
+                                      const res = await apiRequest('/api/thaw', {
+                                        method: 'POST',
+                                        body: JSON.stringify({
+                                          strawIds: [straw.id],
+                                          doctorNotes: 'Thawed directly from Viso Tube Inspector modal',
+                                        }),
+                                      });
+                                      if (res.success) {
+                                        alert(res.message || 'Straw thawed successfully!');
+                                        setSelectedTube(null);
+                                        fetchHierarchy();
+                                      }
+                                    } catch (err: any) {
+                                      alert('Thaw failed: ' + err.message);
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-full shadow-xs flex items-center gap-1 transition-all"
+                                >
+                                  <ThermometerSnowflake className="w-3.5 h-3.5" />
+                                  <span>Thaw Straw</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {/* Specimen Details Grid */}

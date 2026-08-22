@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, FileText, ChevronRight, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X } from 'lucide-react';
+import { Search, Printer, FileText, ChevronRight, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 export const PatientDirectory: React.FC = () => {
@@ -16,6 +16,12 @@ export const PatientDirectory: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
+
+  // Quick Thaw Modal States
+  const [quickThawPatient, setQuickThawPatient] = useState<any | null>(null);
+  const [selectedStrawIds, setSelectedStrawIds] = useState<string[]>([]);
+  const [doctorNotes, setDoctorNotes] = useState('');
+  const [thawing, setThawing] = useState(false);
 
   useEffect(() => {
     fetchPatients();
@@ -56,6 +62,58 @@ export const PatientDirectory: React.FC = () => {
     }
   };
 
+  const openQuickThawModal = async (patientId: string) => {
+    try {
+      const res = await apiRequest(`/api/patients/${patientId}`);
+      if (res.success) {
+        setQuickThawPatient(res.patient);
+        setSelectedStrawIds([]);
+        setDoctorNotes('');
+      }
+    } catch (err: any) {
+      alert('Failed to load patient straws: ' + err.message);
+    }
+  };
+
+  const toggleStrawSelection = (strawId: string) => {
+    if (selectedStrawIds.includes(strawId)) {
+      setSelectedStrawIds(selectedStrawIds.filter((id) => id !== strawId));
+    } else {
+      setSelectedStrawIds([...selectedStrawIds, strawId]);
+    }
+  };
+
+  const handleExecuteQuickThaw = async () => {
+    if (selectedStrawIds.length === 0) {
+      alert('Please select at least one straw to thaw/warm.');
+      return;
+    }
+
+    setThawing(true);
+    try {
+      const res = await apiRequest('/api/thaw', {
+        method: 'POST',
+        body: JSON.stringify({
+          strawIds: selectedStrawIds,
+          doctorNotes: doctorNotes.trim() || undefined,
+        }),
+      });
+
+      if (res.success) {
+        alert(res.message || 'Thaw operation completed and physical capacity liberated!');
+        setQuickThawPatient(null);
+        setSelectedStrawIds([]);
+        setDoctorNotes('');
+        fetchPatients();
+        if (selectedPatient) handleSelectPatient(selectedPatient.id);
+      }
+    } catch (err: any) {
+      alert('Thaw failed: ' + err.message);
+    } finally {
+      setThawing(false);
+    }
+  };
+
   const handlePrintPdf = (patientId: string) => {
     const url = `/api/documents/patient/${patientId}/pdf`;
     window.open(url, '_blank');
@@ -65,15 +123,14 @@ export const PatientDirectory: React.FC = () => {
     <div className="p-8 max-w-7xl mx-auto space-y-6 bg-slate-50 min-h-screen">
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Patient Record Directory (8 Lakh Scale Optimized)</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Patient Record Directory</h1>
           <p className="text-sm text-slate-600 mt-1 font-medium">
-            High-performance indexed search by <strong className="text-slate-900">Reg No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, <strong className="text-slate-900">Patient Name</strong>, or <strong className="text-slate-900">Freezing Date</strong>
+            Search by <strong className="text-slate-900">Reg No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, <strong className="text-slate-900">Patient Name</strong>, or <strong className="text-slate-900">Freezing Date</strong>
           </p>
         </div>
 
-        {/* Multi-Field Search & Freezing Date Filter Bar with Explicit Search Button */}
+        {/* Multi-Field Search Bar with Explicit Search Button */}
         <form onSubmit={handleExecuteSearch} className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-          {/* Search Query Input with Explicit Search Button */}
           <div className="md:col-span-6 flex items-center gap-2">
             <div className="relative flex-1">
               <input
@@ -87,7 +144,6 @@ export const PatientDirectory: React.FC = () => {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
 
-            {/* Explicit Search Action Button */}
             <button
               type="submit"
               disabled={loading}
@@ -104,7 +160,6 @@ export const PatientDirectory: React.FC = () => {
             </button>
           </div>
 
-          {/* Freezing Date Picker Filter */}
           <div className="md:col-span-3 flex items-center gap-2">
             <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
             <div className="relative flex-1">
@@ -130,7 +185,6 @@ export const PatientDirectory: React.FC = () => {
             )}
           </div>
 
-          {/* Sort Control */}
           <div className="md:col-span-3 flex items-center gap-2">
             <ArrowUpDown className="w-4 h-4 text-slate-500 shrink-0" />
             <select
@@ -157,22 +211,6 @@ export const PatientDirectory: React.FC = () => {
         </div>
       )}
 
-      {/* Active Freezing Date Filter Indicator */}
-      {freezingDateFilter && (
-        <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between text-xs text-emerald-950 font-bold">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-emerald-600" />
-            <span>Filtering Patients by Freezing Date: <strong className="font-mono text-emerald-900">{freezingDateFilter}</strong></span>
-          </div>
-          <button
-            onClick={() => setFreezingDateFilter('')}
-            className="text-xs text-emerald-800 hover:text-emerald-950 underline font-bold"
-          >
-            Show All Patients
-          </button>
-        </div>
-      )}
-
       {/* Patient Table */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -193,7 +231,7 @@ export const PatientDirectory: React.FC = () => {
                   <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                     <div className="flex justify-center items-center gap-2 text-emerald-600 font-semibold">
                       <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
-                      <span>Searching & filtering database index...</span>
+                      <span>Searching database index...</span>
                     </div>
                   </td>
                 </tr>
@@ -241,16 +279,29 @@ export const PatientDirectory: React.FC = () => {
                           {p.batches?.length || 0} Storage Batch(es)
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        {/* Direct 1-Click Thaw Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openQuickThawModal(p.id);
+                          }}
+                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl border border-rose-200 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs"
+                          title="Execute Thaw for this patient"
+                        >
+                          <ThermometerSnowflake className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Thaw</span>
+                        </button>
+
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePrintPdf(p.id);
                           }}
-                          className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-sm"
+                          className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs"
                         >
                           <Printer className="w-3.5 h-3.5" />
-                          <span>Print Document</span>
+                          <span>Print</span>
                         </button>
                       </td>
                     </tr>
@@ -261,6 +312,125 @@ export const PatientDirectory: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* 1-Click Quick Thaw Modal */}
+      {quickThawPatient && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-white p-6 rounded-3xl border border-slate-200 shadow-2xl space-y-6 text-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-700">
+                  <ThermometerSnowflake className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Execute Thaw / Warming Operation</h2>
+                  <p className="text-xs text-slate-500 font-mono font-bold">
+                    Patient: {quickThawPatient.fullName} • Reg No: {quickThawPatient.patientId}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setQuickThawPatient(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Straw Selection */}
+            <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+              <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Select Straw(s) to Thaw & Liberate Physical Capacity:
+              </div>
+
+              {quickThawPatient.batches?.length === 0 ? (
+                <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 border border-slate-200 text-center">
+                  No active cryo storage batches found for this patient.
+                </div>
+              ) : (
+                quickThawPatient.batches?.map((batch: any) => (
+                  <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
+                      <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span>
+                      <span className="text-slate-600 font-mono">Stored: {new Date(batch.storageDate).toISOString().split('T')[0]}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {batch.straws?.map((straw: any) => {
+                        const isSelected = selectedStrawIds.includes(straw.id);
+                        const isThawed = straw.status === 'THAWED' || straw.status === 'VACANT';
+
+                        return (
+                          <div
+                            key={straw.id}
+                            onClick={() => !isThawed && toggleStrawSelection(straw.id)}
+                            className={`p-3 rounded-xl border transition-all ${
+                              isThawed
+                                ? 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
+                                : isSelected
+                                ? 'bg-rose-100/90 border-rose-500 ring-2 ring-rose-500/30 cursor-pointer shadow-xs'
+                                : 'bg-white border-slate-200 hover:border-rose-300 cursor-pointer'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between text-xs font-bold">
+                              <span className="font-mono text-slate-900">{straw.strawId}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] ${isThawed ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-900 border border-emerald-300'}`}>
+                                {straw.status}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+                              <span>Tag Color: {straw.color}</span>
+                              <span>{straw.embryos?.length || 0} Embryos</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {/* Doctor Remarks / Thaw Notes */}
+              <div className="space-y-1 pt-2">
+                <label className="text-xs font-bold text-slate-700">Doctor Thaw Notes / Clinical Remarks</label>
+                <textarea
+                  rows={2}
+                  value={doctorNotes}
+                  onChange={(e) => setDoctorNotes(e.target.value)}
+                  placeholder="Write clinical notes for this thaw operation..."
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-rose-500 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setQuickThawPatient(null)}
+                className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecuteQuickThaw}
+                disabled={selectedStrawIds.length === 0 || thawing}
+                className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 disabled:opacity-50 transition-all"
+              >
+                {thawing ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <ThermometerSnowflake className="w-4 h-4" />
+                    <span>Thaw {selectedStrawIds.length} Selected Straw(s) & Liberate Capacity</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detail Drawer Modal */}
       {selectedPatient && (
@@ -276,11 +446,18 @@ export const PatientDirectory: React.FC = () => {
               </div>
               <div className="flex items-center gap-3">
                 <button
+                  onClick={() => openQuickThawModal(selectedPatient.id)}
+                  className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <ThermometerSnowflake className="w-4 h-4" />
+                  <span>Thaw Specimen</span>
+                </button>
+                <button
                   onClick={() => handlePrintPdf(selectedPatient.id)}
                   className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Print Document PDF</span>
+                  <span>Print PDF</span>
                 </button>
                 <button
                   onClick={() => setSelectedPatient(null)}
