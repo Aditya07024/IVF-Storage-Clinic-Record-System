@@ -311,9 +311,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       </div>
 
                       {/* Visual Location Breakdown Badges */}
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                         <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-sm">
-                          <div className="text-[10px] text-slate-500 font-semibold uppercase">1. Chamber / Can</div>
+                          <div className="text-[10px] text-slate-500 font-semibold uppercase">1. Chamber</div>
                           <div className="text-xs font-bold text-slate-900 mt-0.5">
                             {recommendation.primaryRecommendation.breakdown?.can || 'Chamber 01'}
                           </div>
@@ -333,15 +333,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                           </div>
                         </div>
 
-                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-sm">
-                          <div className="text-[10px] text-slate-500 font-semibold uppercase">4. Goblet</div>
-                          <div className="text-xs font-bold text-slate-900 mt-0.5">
-                            {recommendation.primaryRecommendation.breakdown?.goblet || 'Goblet 01'}
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-2.5 rounded-xl border border-emerald-300 text-center col-span-2 sm:col-span-1 shadow-sm">
-                          <div className="text-[10px] text-emerald-700 font-semibold uppercase">5. Viso Tube</div>
+                        <div className="bg-white p-2.5 rounded-xl border border-emerald-300 text-center shadow-sm">
+                          <div className="text-[10px] text-emerald-700 font-semibold uppercase">4. Viso Tube</div>
                           <div className="text-xs font-bold text-emerald-800 mt-0.5">
                             {recommendation.primaryRecommendation.breakdown?.tube || 'Viso Tube 08'}
                           </div>

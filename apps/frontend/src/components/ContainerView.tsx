@@ -404,7 +404,7 @@ export const ContainerView: React.FC = () => {
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span>Goblet 01 — 11 Viso Tubes Pizza Slice Layout</span>
+                    <span>Level {selectedLevelNum} — 11 Viso Tubes Pizza Slice Layout</span>
                   </h2>
                   <div className="text-xs text-slate-600 font-mono mt-0.5 font-semibold">
                     Chamber {selectedCanCode.replace('CAN-', '')} • Canister {selectedCanisterNum.toString().padStart(2, '0')} • Level {selectedLevelNum}
