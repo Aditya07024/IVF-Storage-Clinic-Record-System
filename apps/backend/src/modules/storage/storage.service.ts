@@ -26,6 +26,15 @@ export function parseLocationCode(code: string) {
 
 export const CLINIC_CAN_NUMBERS = [1, 2, 3, 4, 5, 8, 10, 14];
 
+export interface AssignStorageInput {
+  patientId: string;
+  storageDate: string;
+  embryoCount: number;
+  visoTubeId: string;
+  strawColors: string[];
+  notes?: string;
+}
+
 export class StorageService {
   // Initialize storage hierarchy if empty (Cans 1, 2, 3, 4, 5, 8, 10, 14 x 10 Canisters x 2 Levels x 1 Goblet x 11 Viso Tubes)
   async seedHierarchyIfNeeded() {
