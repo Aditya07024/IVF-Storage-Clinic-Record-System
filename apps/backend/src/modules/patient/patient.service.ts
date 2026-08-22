@@ -143,11 +143,11 @@ export class PatientService {
     const searchFilter = query.trim()
       ? {
           OR: [
-            { patientId: { contains: query.trim(), mode: 'insensitive' as const } },
-            { fullName: { contains: query.trim(), mode: 'insensitive' as const } },
-            { partnerName: { contains: query.trim(), mode: 'insensitive' as const } },
-            { phone: { contains: query.trim(), mode: 'insensitive' as const } },
-            { comments: { contains: query.trim(), mode: 'insensitive' as const } },
+            { patientId: { contains: query.trim() } },
+            { fullName: { contains: query.trim() } },
+            { partnerName: { contains: query.trim() } },
+            { phone: { contains: query.trim() } },
+            { comments: { contains: query.trim() } },
           ],
         }
       : {};
