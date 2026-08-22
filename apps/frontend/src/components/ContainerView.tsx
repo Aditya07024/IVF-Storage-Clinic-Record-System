@@ -363,40 +363,42 @@ export const ContainerView: React.FC = () => {
                 </span>
               </div>
 
-              {/* RADIAL CIRCULAR CONE GOBLET (11 VISUALLY DIVIDED VISO TUBES) */}
+              {/* RADIAL PIZZA SLICE GOBLET (10 PIZZA WEDGE SECTORS + 1 CENTER CORE TUBE) */}
               <div className="py-6 flex flex-col items-center justify-center space-y-4">
                 <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                  Physical Circular Cone Goblet Layout (10 Outer Radial Tubes + 1 Center Core Tube):
+                  Physical Circular Cone Goblet Layout (10 Radial Pizza Slices + 1 Center Core Tube):
                 </div>
 
                 <div className="relative flex items-center justify-center">
-                  <svg width="360" height="360" viewBox="0 0 360 360" className="filter drop-shadow-md">
-                    {/* Outer Goblet Rim */}
-                    <circle cx="180" cy="180" r="165" className="fill-slate-100/90 stroke-slate-300 stroke-[4]" />
-                    <circle cx="180" cy="180" r="155" className="fill-white stroke-emerald-500/20 stroke-2 stroke-dashed" />
+                  <svg width="370" height="370" viewBox="0 0 360 360" className="filter drop-shadow-lg">
+                    {/* Outer Circular Goblet Rim */}
+                    <circle cx="180" cy="180" r="168" className="fill-slate-100/90 stroke-slate-300 stroke-[4]" />
+                    <circle cx="180" cy="180" r="162" className="fill-white stroke-emerald-500/20 stroke-2 stroke-dashed" />
 
-                    {/* Radial Guide Spoke Lines */}
-                    {Array.from({ length: 10 }).map((_, i) => {
-                      const angleRad = ((i * 36 - 90) * Math.PI) / 180;
-                      const x2 = 180 + 155 * Math.cos(angleRad);
-                      const y2 = 180 + 155 * Math.sin(angleRad);
-                      return (
-                        <line
-                          key={i}
-                          x1="180"
-                          y1="180"
-                          x2={x2}
-                          y2={y2}
-                          className="stroke-slate-200 stroke-1 stroke-dashed"
-                        />
-                      );
-                    })}
-
-                    {/* Outer 10 Radial Viso Tubes (V01 to V10) */}
+                    {/* 10 Outer Radial Pizza Slices / Wedges (V01 to V10) */}
                     {visoTubes.slice(0, 10).map((tube: any, idx: number) => {
-                      const angleRad = ((idx * 36 - 90) * Math.PI) / 180;
-                      const cx = 180 + 105 * Math.cos(angleRad);
-                      const cy = 180 + 105 * Math.sin(angleRad);
+                      const startAngle = idx * 36 - 90 + 1.5;
+                      const endAngle = (idx + 1) * 36 - 90 - 1.5;
+                      const midAngleRad = (((startAngle + endAngle) / 2) * Math.PI) / 180;
+
+                      // SVG Pizza Slice Path (Outer Radius 156, Inner Radius 48)
+                      const pathData = (() => {
+                        const rad1 = (startAngle * Math.PI) / 180;
+                        const rad2 = (endAngle * Math.PI) / 180;
+                        const xo1 = 180 + 156 * Math.cos(rad1);
+                        const yo1 = 180 + 156 * Math.sin(rad1);
+                        const xo2 = 180 + 156 * Math.cos(rad2);
+                        const yo2 = 180 + 156 * Math.sin(rad2);
+                        const xi2 = 180 + 48 * Math.cos(rad2);
+                        const yi2 = 180 + 48 * Math.sin(rad2);
+                        const xi1 = 180 + 48 * Math.cos(rad1);
+                        const yi1 = 180 + 48 * Math.sin(rad1);
+                        return `M ${xo1} ${yo1} A 156 156 0 0 1 ${xo2} ${yo2} L ${xi2} ${yi2} A 48 48 0 0 0 ${xi1} ${yi1} Z`;
+                      })();
+
+                      // Text label position at mid-radius 102
+                      const tx = 180 + 102 * Math.cos(midAngleRad);
+                      const ty = 180 + 102 * Math.sin(midAngleRad);
 
                       const occupiedCount = tube.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
                       const colorInfo = getSpaceFillColor(occupiedCount, 10);
@@ -408,27 +410,25 @@ export const ContainerView: React.FC = () => {
                           onClick={() => setSelectedTube(tube)}
                           className="cursor-pointer group"
                         >
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r="32"
+                          <path
+                            d={pathData}
                             className={`transition-all duration-300 ${
                               isSelected
                                 ? 'stroke-emerald-600 stroke-[4] fill-emerald-200/90 shadow-md'
-                                : `${colorInfo.fill} stroke-2 hover:stroke-emerald-500 hover:scale-105`
+                                : `${colorInfo.fill} stroke-2 stroke-slate-300 hover:stroke-emerald-500 hover:scale-[1.02]`
                             }`}
                           />
                           <text
-                            x={cx}
-                            y={cy - 4}
+                            x={tx}
+                            y={ty - 4}
                             textAnchor="middle"
                             className="font-mono text-xs font-black fill-slate-900 pointer-events-none select-none"
                           >
                             V{tube.tubeNumber.toString().padStart(2, '0')}
                           </text>
                           <text
-                            x={cx}
-                            y={cy + 10}
+                            x={tx}
+                            y={ty + 10}
                             textAnchor="middle"
                             className="font-mono text-[9px] font-extrabold fill-slate-700 pointer-events-none select-none"
                           >
@@ -453,11 +453,11 @@ export const ContainerView: React.FC = () => {
                           <circle
                             cx="180"
                             cy="180"
-                            r="38"
+                            r="42"
                             className={`transition-all duration-300 ${
                               isSelected
                                 ? 'stroke-emerald-600 stroke-[4] fill-emerald-200/90 shadow-md'
-                                : `${colorInfo.fill} stroke-2 hover:stroke-emerald-500 hover:scale-105`
+                                : `${colorInfo.fill} stroke-2 stroke-slate-300 hover:stroke-emerald-500 hover:scale-105`
                             }`}
                           />
                           <text
