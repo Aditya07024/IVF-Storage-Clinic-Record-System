@@ -1060,9 +1060,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         }}
                         className="bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 flex-1"
                       >
-                        {['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].map((c) => (
+                        {['Pink', 'White', 'Blue', 'Purple', 'Yellow', 'Black'].map((c) => (
                           <option key={c} value={c}>
-                            {c} Tag
+                            {c} Straw Tag
                           </option>
                         ))}
                       </select>

@@ -98,7 +98,7 @@ async function seed() {
 
   const staffUserId = admin.id;
   const staffName = admin.name;
-  const colors = ['Pink', 'Green', 'Blue', 'Red', 'Rust', 'Skyblue', 'Purple', 'Yellow', 'Black', 'Grey'];
+  const colors = ['Pink', 'White', 'Blue', 'Purple', 'Yellow', 'Black'];
   const embryoGrades = ['5AA', '4AA', '3AB', '4BB', '5BA', '6AA', '3AA', '4BA'];
 
   // 4. Create Patients + Storage Batches + Straws + Embryos
