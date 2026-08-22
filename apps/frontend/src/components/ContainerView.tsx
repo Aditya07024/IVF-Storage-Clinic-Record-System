@@ -427,16 +427,18 @@ export const ContainerView: React.FC = () => {
                     <circle cx="180" cy="180" r="168" className="fill-slate-100/90 stroke-slate-300 stroke-[4]" />
                     <circle cx="180" cy="180" r="162" className="fill-white stroke-emerald-500/20 stroke-2 stroke-dashed" />
 
-                    {/* 10 Outer Radial Pizza Slices / Wedges (V01 to V10) */}
-                    {visoTubes.slice(0, 10).map((tube: any, idx: number) => {
+                    {/* 11 Radial Pizza Slices / Wedges (V01 to V11) */}
+                    {visoTubes.slice(0, 11).map((tube: any, idx: number) => {
                       const tubeNum = tube.tubeNumber;
                       const tubeColor = VISO_TUBE_COLOR_MAP[tubeNum] || VISO_TUBE_COLOR_MAP[1];
 
-                      const startAngle = idx * 36 - 90 + 1.5;
-                      const endAngle = (idx + 1) * 36 - 90 - 1.5;
+                      // 11 Equal Angular Slices (360 / 11 = 32.72727 degrees per slice)
+                      const sliceAngle = 360 / 11;
+                      const startAngle = idx * sliceAngle - 90 + 1.2;
+                      const endAngle = (idx + 1) * sliceAngle - 90 - 1.2;
                       const midAngleRad = (((startAngle + endAngle) / 2) * Math.PI) / 180;
 
-                      // SVG Pizza Slice Path (Outer Radius 156, Inner Radius 48)
+                      // SVG Pizza Slice Path (Outer Radius 156, Inner Empty Hole Radius 40)
                       const pathData = (() => {
                         const rad1 = (startAngle * Math.PI) / 180;
                         const rad2 = (endAngle * Math.PI) / 180;
@@ -444,16 +446,16 @@ export const ContainerView: React.FC = () => {
                         const yo1 = 180 + 156 * Math.sin(rad1);
                         const xo2 = 180 + 156 * Math.cos(rad2);
                         const yo2 = 180 + 156 * Math.sin(rad2);
-                        const xi2 = 180 + 48 * Math.cos(rad2);
-                        const yi2 = 180 + 48 * Math.sin(rad2);
-                        const xi1 = 180 + 48 * Math.cos(rad1);
-                        const yi1 = 180 + 48 * Math.sin(rad1);
-                        return `M ${xo1} ${yo1} A 156 156 0 0 1 ${xo2} ${yo2} L ${xi2} ${yi2} A 48 48 0 0 0 ${xi1} ${yi1} Z`;
+                        const xi2 = 180 + 40 * Math.cos(rad2);
+                        const yi2 = 180 + 40 * Math.sin(rad2);
+                        const xi1 = 180 + 40 * Math.cos(rad1);
+                        const yi1 = 180 + 40 * Math.sin(rad1);
+                        return `M ${xo1} ${yo1} A 156 156 0 0 1 ${xo2} ${yo2} L ${xi2} ${yi2} A 40 40 0 0 0 ${xi1} ${yi1} Z`;
                       })();
 
-                      // Text label position at mid-radius 102
-                      const tx = 180 + 102 * Math.cos(midAngleRad);
-                      const ty = 180 + 102 * Math.sin(midAngleRad);
+                      // Text label position at mid-radius 98
+                      const tx = 180 + 98 * Math.cos(midAngleRad);
+                      const ty = 180 + 98 * Math.sin(midAngleRad);
 
                       const occupiedCount = tube.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
                       const capacityColor = getSpaceFillColor(occupiedCount, 10);
@@ -483,7 +485,7 @@ export const ContainerView: React.FC = () => {
                           </text>
                           <text
                             x={tx}
-                            y={ty + 6}
+                            y={ty + 5}
                             textAnchor="middle"
                             className="font-mono text-[9px] font-extrabold fill-slate-800 pointer-events-none select-none"
                           >
@@ -491,7 +493,7 @@ export const ContainerView: React.FC = () => {
                           </text>
                           <text
                             x={tx}
-                            y={ty + 18}
+                            y={ty + 16}
                             textAnchor="middle"
                             className="font-mono text-[9px] font-extrabold fill-slate-700 pointer-events-none select-none"
                           >
@@ -501,57 +503,29 @@ export const ContainerView: React.FC = () => {
                       );
                     })}
 
-                    {/* Center Core Viso Tube (V11 Skyblue) */}
-                    {visoTubes.slice(10, 11).map((tube: any) => {
-                      const tubeNum = 11;
-                      const tubeColor = VISO_TUBE_COLOR_MAP[tubeNum];
-                      const occupiedCount = tube.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                      const capacityColor = getSpaceFillColor(occupiedCount, 10);
-                      const isSelected = selectedTube?.id === tube.id;
-
-                      return (
-                        <g
-                          key={tube.id}
-                          onClick={() => setSelectedTube(tube)}
-                          className="cursor-pointer group"
-                        >
-                          <circle
-                            cx="180"
-                            cy="180"
-                            r="42"
-                            className={`transition-all duration-300 ${
-                              isSelected
-                                ? 'stroke-slate-900 stroke-[5] fill-emerald-200/90 shadow-md'
-                                : `${capacityColor.fill} ${tubeColor.stroke} stroke-[3.5] hover:scale-105`
-                            }`}
-                          />
-                          <text
-                            x="180"
-                            y="170"
-                            textAnchor="middle"
-                            className="font-mono text-xs font-black fill-slate-900 pointer-events-none select-none"
-                          >
-                            V11 (Core)
-                          </text>
-                          <text
-                            x="180"
-                            y="182"
-                            textAnchor="middle"
-                            className="font-mono text-[9px] font-extrabold fill-sky-950 pointer-events-none select-none"
-                          >
-                            Skyblue
-                          </text>
-                          <text
-                            x="180"
-                            y="194"
-                            textAnchor="middle"
-                            className="font-mono text-[9px] font-extrabold fill-slate-800 pointer-events-none select-none"
-                          >
-                            {occupiedCount}/10
-                          </text>
-                        </g>
-                      );
-                    })}
+                    {/* Center Empty Hole in Middle of Goblet Wheel */}
+                    <circle
+                      cx="180"
+                      cy="180"
+                      r="36"
+                      className="fill-slate-100/95 stroke-slate-300 stroke-2 stroke-dashed pointer-events-none"
+                    />
+                    <text
+                      x="180"
+                      y="177"
+                      textAnchor="middle"
+                      className="font-mono text-[8px] font-black fill-slate-500 pointer-events-none select-none uppercase tracking-wider"
+                    >
+                      CENTER
+                    </text>
+                    <text
+                      x="180"
+                      y="187"
+                      textAnchor="middle"
+                      className="font-mono text-[8px] font-extrabold fill-slate-400 pointer-events-none select-none uppercase"
+                    >
+                      HOLE
+                    </text>
                   </svg>
                 </div>
               </div>
