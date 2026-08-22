@@ -46,7 +46,7 @@ app.use(
 // 2. Strict CORS Security Policy
 app.use(
   cors({
-    origin: CONFIG.FRONTEND_URL || 'http://localhost:3000',
+    origin: CONFIG.FRONTEND_URL === '*' ? true : (CONFIG.FRONTEND_URL || 'http://localhost:3000'),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-access-key'],
