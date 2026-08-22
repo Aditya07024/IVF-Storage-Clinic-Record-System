@@ -150,10 +150,9 @@ export const ThawWorkflow: React.FC = () => {
         setSelectedStrawIds([]);
         setDoctorNotes('');
         if (patient) {
-          const detailsRes = await apiRequest(`/api/patients/${patient.id}`);
-          if (detailsRes.success) setPatient(detailsRes.patient);
-          fetchThawHistory(patient.id);
+          await selectPatientRecord(patient.id);
         }
+        await loadPatients(patientIdQuery);
       }
     } catch (err: any) {
       setError(err.message || 'Thaw/withdrawal operation failed.');
@@ -304,69 +303,109 @@ export const ThawWorkflow: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-emerald-600" />
-                  <span>Select Straw(s) for Thawing / Warming:</span>
+                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-emerald-600" />
+                    <span>Select Active Straw(s) for Thawing / Warming:</span>
+                  </span>
                 </div>
 
                 {patient.batches?.length === 0 ? (
                   <div className="p-4 bg-slate-50 rounded-2xl text-xs text-slate-500 border border-slate-200">No active storage batches for this patient.</div>
                 ) : (
-                  patient.batches.map((batch: any) => (
-                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 shadow-xs">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono font-bold text-emerald-800">Batch ID: {batch.batchId}</span>
-                        <span className="text-slate-600 font-medium">Date: {new Date(batch.storageDate).toISOString().split('T')[0]}</span>
-                      </div>
+                  patient.batches.map((batch: any) => {
+                    const activeStraws = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
+                    const thawedStraws = batch.straws?.filter((s: any) => s.status === 'THAWED' || s.status === 'VACANT') || [];
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {batch.straws?.map((straw: any) => {
-                          const isSelected = selectedStrawIds.includes(straw.id);
-                          const isThawed = straw.status === 'THAWED';
+                    return (
+                      <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
+                        <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
+                          <span className="font-mono font-bold text-emerald-800">Batch ID: {batch.batchId}</span>
+                          <span className="text-slate-600 font-medium">Date: {new Date(batch.storageDate).toISOString().split('T')[0]}</span>
+                        </div>
 
-                          const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || straw.locationCode || '';
-                          const parsedLoc = parseLocationCode(locCode);
+                        {/* Active Selectable Straws */}
+                        {activeStraws.length === 0 ? (
+                          <div className="p-3 bg-emerald-50 rounded-xl text-xs font-bold text-emerald-900 border border-emerald-200 flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span>All straws in this batch have already been thawed / withdrawn.</span>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {activeStraws.map((straw: any) => {
+                              const isSelected = selectedStrawIds.includes(straw.id);
+                              const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || straw.locationCode || '';
+                              const parsedLoc = parseLocationCode(locCode);
 
-                          return (
-                            <div
-                              key={straw.id}
-                              onClick={() => !isThawed && toggleStrawSelection(straw.id)}
-                              className={`p-3.5 rounded-xl border transition-all space-y-2 ${
-                                isThawed
-                                  ? 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
-                                  : isSelected
-                                  ? 'bg-emerald-100/90 border-emerald-500 ring-2 ring-emerald-500/30 cursor-pointer shadow-sm'
-                                  : 'bg-white border-slate-200 hover:border-emerald-300 cursor-pointer'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between text-xs font-bold">
-                                <span className="font-mono text-slate-900">{straw.strawId}</span>
-                                <span className={`px-2 py-0.5 rounded text-[10px] ${isThawed ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-900 border border-emerald-300'}`}>
-                                  {straw.status}
-                                </span>
-                              </div>
+                              return (
+                                <div
+                                  key={straw.id}
+                                  onClick={() => toggleStrawSelection(straw.id)}
+                                  className={`p-3.5 rounded-xl border transition-all space-y-2 cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-emerald-100/90 border-emerald-500 ring-2 ring-emerald-500/30 shadow-sm'
+                                      : 'bg-white border-slate-200 hover:border-emerald-300'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between text-xs font-bold">
+                                    <span className="font-mono text-slate-900">{straw.strawId}</span>
+                                    <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold">
+                                      AVAILABLE ({straw.status})
+                                    </span>
+                                  </div>
 
-                              <div className="text-[11px] text-slate-500 flex items-center justify-between">
-                                <span>Tag Color: <strong className="text-slate-800 font-semibold">{straw.color}</strong></span>
-                                <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                  {straw.embryos?.length || 2} Embryos
-                                </span>
-                              </div>
+                                  <div className="text-[11px] text-slate-500 flex items-center justify-between">
+                                    <span>Tag Color: <strong className="text-slate-800 font-semibold">{straw.color}</strong></span>
+                                    <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                      {straw.embryos?.length || 2} Embryos
+                                    </span>
+                                  </div>
 
-                              {/* Physical Storage Location Badge */}
-                              <div className="pt-2 border-t border-slate-100 flex items-start gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                                <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <div>
-                                  <span className="text-[10px] text-slate-500 font-semibold uppercase block leading-tight">Physical Storage Location:</span>
-                                  <span className="font-mono font-bold text-[11px] text-slate-900 leading-snug">{parsedLoc.formatted}</span>
+                                  {/* Physical Storage Location Badge */}
+                                  <div className="pt-2 border-t border-slate-100 flex items-start gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                    <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                    <div>
+                                      <span className="text-[10px] text-slate-500 font-semibold uppercase block leading-tight">Physical Storage Location:</span>
+                                      <span className="font-mono font-bold text-[11px] text-slate-900 leading-snug">{parsedLoc.formatted}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Thawed / Withdrawn Straws Archive */}
+                        {thawedStraws.length > 0 && (
+                          <div className="pt-3 border-t border-slate-200 space-y-2">
+                            <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
+                              <span>Thawed / Withdrawn Straws Archive ({thawedStraws.length}):</span>
+                              <span className="text-[10px] text-slate-500 font-mono font-normal">(Non-Selectable)</span>
                             </div>
-                          );
-                        })}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {thawedStraws.map((straw: any) => {
+                                const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || straw.locationCode || '';
+                                const parsedLoc = parseLocationCode(locCode);
+                                return (
+                                  <div key={straw.id} className="p-3 bg-slate-100/90 rounded-xl border border-slate-200 opacity-80 space-y-1">
+                                    <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-700">
+                                      <span>{straw.strawId}</span>
+                                      <span className="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-200 rounded text-[9px] uppercase font-sans font-bold">
+                                        THAWED / WITHDRAWN
+                                      </span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-600 font-mono">
+                                      {parsedLoc.formatted}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
