@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 interface PatientFormProps {
@@ -7,13 +7,23 @@ interface PatientFormProps {
 }
 
 export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
+  // Mode: 'new' | 'existing'
+  const [formMode, setFormMode] = useState<'new' | 'existing'>('new');
+
+  // Existing Patient Search States
+  const [existingSearchQuery, setExistingSearchQuery] = useState('');
+  const [existingSearchResults, setExistingSearchResults] = useState<any[]>([]);
+  const [searchingExisting, setSearchingExisting] = useState(false);
+  const [selectedExistingPatient, setSelectedExistingPatient] = useState<any | null>(null);
+
+  // Form Fields
   const [customPatientId, setCustomPatientId] = useState('');
   const [fullName, setFullName] = useState('');
   const [partnerName, setPartnerName] = useState('');
   const [phone, setPhone] = useState('');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [deDate, setDeDate] = useState('');
-  const [freezingDate, setFreezingDate] = useState('');
+  const [freezingDate, setFreezingDate] = useState(new Date().toISOString().split('T')[0]);
   const [thawDate, setThawDate] = useState('');
   const [comments, setComments] = useState('');
 
@@ -30,6 +40,48 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [searchingStorage, setSearchingStorage] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Handle Existing Patient Search
+  const handleSearchExisting = async (q: string) => {
+    setExistingSearchQuery(q);
+    if (!q.trim()) {
+      setExistingSearchResults([]);
+      return;
+    }
+    setSearchingExisting(true);
+    try {
+      const res = await apiRequest(`/api/patients?q=${encodeURIComponent(q.trim())}`);
+      if (res.success) {
+        setExistingSearchResults(res.patients);
+      }
+    } catch (err: any) {
+      console.error('Failed to search existing patients:', err);
+    } finally {
+      setSearchingExisting(false);
+    }
+  };
+
+  // Select Existing Patient & Auto-Fill Fields
+  const handleSelectExistingPatient = (p: any) => {
+    setSelectedExistingPatient(p);
+    setCustomPatientId(p.patientId || '');
+    setFullName(p.fullName || '');
+    setPartnerName(p.partnerName || '');
+    setPhone(p.phone || '');
+    setFreezingDate(new Date().toISOString().split('T')[0]);
+    setStorageDate(new Date().toISOString().split('T')[0]);
+    setExistingSearchResults([]);
+  };
+
+  // Clear Selected Existing Patient
+  const handleClearSelectedExisting = () => {
+    setSelectedExistingPatient(null);
+    setCustomPatientId('');
+    setFullName('');
+    setPartnerName('');
+    setPhone('');
+    setExistingSearchQuery('');
+  };
+
   // Search Empty Storage Recommendation
   const handleFindStorage = async () => {
     setError(null);
@@ -38,7 +90,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       const res = await apiRequest('/api/storage/find-empty', {
         method: 'POST',
         body: JSON.stringify({
-          patientId: 'NEW_PATIENT',
+          patientId: selectedExistingPatient ? selectedExistingPatient.id : 'NEW_PATIENT',
           storageDate,
           embryoCount: Number(embryoCount),
         }),
@@ -67,28 +119,44 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      const patientRes = await apiRequest('/api/patients', {
-        method: 'POST',
-        body: JSON.stringify({
-          patientId: customPatientId.trim() || undefined,
-          fullName,
-          partnerName: partnerName || undefined,
-          phone: phone || undefined,
-          visitDate: visitDate || undefined,
-          deDate: deDate || undefined,
-          freezingDate: freezingDate || undefined,
-          thawDate: thawDate || undefined,
-          comments: comments || undefined,
-        }),
-      });
+      let targetPatient = selectedExistingPatient;
 
-      const newPatient = patientRes.patient;
+      if (!targetPatient) {
+        // Create new patient record
+        const patientRes = await apiRequest('/api/patients', {
+          method: 'POST',
+          body: JSON.stringify({
+            patientId: customPatientId.trim() || undefined,
+            fullName,
+            partnerName: partnerName || undefined,
+            phone: phone || undefined,
+            visitDate: visitDate || undefined,
+            deDate: deDate || undefined,
+            freezingDate: freezingDate || undefined,
+            thawDate: thawDate || undefined,
+            comments: comments || undefined,
+          }),
+        });
+        targetPatient = patientRes.patient;
+      } else {
+        // Optionally update existing patient fields if modified
+        await apiRequest(`/api/patients/${targetPatient.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            fullName: fullName.trim(),
+            partnerName: partnerName ? partnerName.trim() : undefined,
+            phone: phone ? phone.trim() : undefined,
+            freezingDate: freezingDate || undefined,
+            comments: comments ? comments.trim() : undefined,
+          }),
+        });
+      }
 
       if (assignStorageEnabled && selectedVisoTubeId) {
         await apiRequest('/api/storage/assign', {
           method: 'POST',
           body: JSON.stringify({
-            patientId: newPatient.id,
+            patientId: targetPatient.id,
             storageDate,
             embryoCount: Number(embryoCount),
             visoTubeId: selectedVisoTubeId,
@@ -98,7 +166,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         });
       }
 
-      onSuccess(newPatient);
+      // Re-fetch updated patient details to return
+      const fullRes = await apiRequest(`/api/patients/${targetPatient.id}`);
+      onSuccess(fullRes.patient || targetPatient);
     } catch (err: any) {
       setError(err.message || 'Failed to save patient record.');
     } finally {
@@ -107,43 +177,181 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3 border-b border-slate-200 pb-6 mb-8">
-        <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 text-emerald-600">
-          <UserPlus className="w-6 h-6" />
+    <div className="p-8 max-w-4xl mx-auto space-y-8 bg-slate-50 min-h-screen">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 text-emerald-600">
+            <UserPlus className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Embryo Freezing & Storage Allocation</h1>
+            <p className="text-sm text-slate-600 font-medium">
+              Register new patient OR allocate a new embryo freezing batch for an existing patient
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Create New Patient Record</h1>
-          <p className="text-sm text-slate-500">Register new patient details & allocate physical embryo storage</p>
+
+        {/* Mode Toggle Buttons */}
+        <div className="flex items-center bg-slate-200 p-1 rounded-2xl border border-slate-300">
+          <button
+            type="button"
+            onClick={() => {
+              setFormMode('new');
+              handleClearSelectedExisting();
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              formMode === 'new'
+                ? 'bg-white text-emerald-950 shadow-sm border border-slate-200'
+                : 'text-slate-700 hover:text-slate-900'
+            }`}
+          >
+            🆕 New Patient
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormMode('existing')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              formMode === 'existing'
+                ? 'bg-white text-emerald-950 shadow-sm border border-slate-200'
+                : 'text-slate-700 hover:text-slate-900'
+            }`}
+          >
+            🔄 Existing Patient (New Batch)
+          </button>
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm">
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm">
           <ShieldAlert className="w-5 h-5 shrink-0 text-rose-600" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* Existing Patient Search Panel */}
+      {formMode === 'existing' && !selectedExistingPatient && (
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Search className="w-4 h-4 text-emerald-600" />
+              <span>Search Existing Patient by Reg No (ID), Mobile, or Name:</span>
+            </h2>
+          </div>
+
+          <div className="relative">
+            <input
+              type="text"
+              value={existingSearchQuery}
+              onChange={(e) => handleSearchExisting(e.target.value)}
+              placeholder="Type Reg No (e.g. IVF-2026-000001), Mobile, or Patient Name..."
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+            />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+          </div>
+
+          {/* Search Results Choice List */}
+          {searchingExisting ? (
+            <div className="text-xs text-emerald-600 font-semibold text-center py-4">
+              Searching existing patient database...
+            </div>
+          ) : existingSearchResults.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              {existingSearchResults.map((p) => {
+                const freezingDateStr = p.freezingDate || p.batches?.[0]?.storageDate
+                  ? new Date(p.freezingDate || p.batches[0].storageDate).toISOString().split('T')[0]
+                  : 'Not Specified';
+
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => handleSelectExistingPatient(p)}
+                    className="p-4 bg-slate-50 hover:bg-emerald-50/60 rounded-2xl border border-slate-200 hover:border-emerald-400 transition-all cursor-pointer space-y-2 shadow-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 text-sm">{p.fullName}</span>
+                      <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded border border-emerald-300">
+                        {p.patientId}
+                      </span>
+                    </div>
+
+                    <div className="text-xs space-y-1">
+                      <div className="text-slate-600">
+                        <span className="font-semibold text-slate-800">Freezing Date:</span>{' '}
+                        <strong className="text-emerald-950 font-mono">{freezingDateStr}</strong>
+                      </div>
+                      {p.phone && <div className="text-slate-500 font-mono">Mobile: {p.phone}</div>}
+                    </div>
+
+                    <div className="text-[11px] font-bold text-emerald-700 pt-1 flex items-center gap-1">
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>Click to select for new embryo batch</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : existingSearchQuery.trim() ? (
+            <div className="text-xs text-slate-500 text-center py-4">
+              No matching existing patient records found.
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Selected Existing Patient Highlight Banner */}
+      {selectedExistingPatient && (
+        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center justify-between text-emerald-950 text-xs shadow-sm">
+          <div className="flex items-center gap-3">
+            <UserCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div>
+              <div className="font-bold text-sm text-slate-900">
+                Existing Patient Selected: {selectedExistingPatient.fullName}
+              </div>
+              <div className="text-slate-600 font-mono font-bold">
+                Reg No: {selectedExistingPatient.patientId} • Previous Batches: {selectedExistingPatient.batches?.length || 0}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleClearSelectedExisting}
+            className="px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-100 font-bold text-xs rounded-xl border border-slate-300 shadow-xs"
+          >
+            Change Patient
+          </button>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Section 1: Clinical Patient Details */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-          <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+          <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center justify-between">
             <span>Patient & Clinical Details</span>
+            {selectedExistingPatient && (
+              <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
+                EXISTING PATIENT RECORD
+              </span>
+            )}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center justify-between">
-                <span>Doctor Provided Registration No / Patient ID</span>
-                <span className="text-[10px] text-slate-500 font-normal lowercase">(Provided by Doctor, e.g. IVF-2026-000001 or REG-1049. Leave blank to auto-assign)</span>
+                <span>Registration No / Patient ID</span>
+                <span className="text-[10px] text-slate-500 font-normal lowercase">(Provided by Doctor, e.g. IVF-2026-000001)</span>
               </label>
               <input
                 type="text"
                 value={customPatientId}
                 onChange={(e) => setCustomPatientId(e.target.value)}
-                placeholder="e.g. IVF-2026-000001 (Doctor Registration Code)"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                readOnly={!!selectedExistingPatient}
+                placeholder="e.g. IVF-2026-000001"
+                className={`w-full border rounded-xl px-4 py-3 text-sm font-mono font-bold focus:outline-none ${
+                  selectedExistingPatient
+                    ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
+                    : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
+                }`}
               />
             </div>
 
@@ -157,7 +365,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Eleanor Vance"
                 required
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
               />
             </div>
 
@@ -176,6 +384,19 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                Mobile Phone
+              </label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. +1 555 0192"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
                 Visit Date
               </label>
               <input
@@ -183,6 +404,21 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 value={visitDate}
                 onChange={(e) => setVisitDate(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                New Embryo Freezing Date *
+              </label>
+              <input
+                type="date"
+                value={freezingDate}
+                onChange={(e) => {
+                  setFreezingDate(e.target.value);
+                  setStorageDate(e.target.value);
+                }}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
               />
             </div>
 
@@ -198,209 +434,146 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
               />
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                Freezing Date
-              </label>
-              <input
-                type="date"
-                value={freezingDate}
-                onChange={(e) => setFreezingDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                Thaw Date
-              </label>
-              <input
-                type="date"
-                value={thawDate}
-                onChange={(e) => setThawDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              Doctor / Staff Notes & Comments
-            </label>
-            <textarea
-              rows={4}
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              placeholder="Enter multiline doctor notes, embryo grade observations, or medical history..."
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
-            />
           </div>
         </div>
 
-        {/* Section 2: Storage Location Recommendation Tool */}
+        {/* Section 2: Storage Allocation Engine */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Layers className="w-5 h-5 text-emerald-600" />
-              <span>Embryo Physical Storage Allocation</span>
+              <span>Cryo Physical Storage Allocation</span>
             </h2>
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={assignStorageEnabled}
                 onChange={(e) => setAssignStorageEnabled(e.target.checked)}
-                className="w-4 h-4 rounded bg-slate-100 border-slate-300 text-emerald-600 focus:ring-0"
+                className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
               />
-              <span>Allocate Physical Storage Now</span>
+              <span className="text-xs font-bold text-slate-700">Allocate Storage Slot Now</span>
             </label>
           </div>
 
           {assignStorageEnabled && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                    Storage Date
-                  </label>
-                  <input
-                    type="date"
-                    value={storageDate}
-                    onChange={(e) => setStorageDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                    Number of Embryos
+                    Embryo Count for New Freezing Batch *
                   </label>
                   <input
                     type="number"
                     min={1}
                     max={20}
                     value={embryoCount}
-                    onChange={(e) => setEmbryoCount(parseInt(e.target.value, 10) || 1)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
+                    onChange={(e) => setEmbryoCount(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
                   />
+                  <span className="text-[10px] text-slate-500 mt-1 block">
+                    Strict Limit: Max 2 embryos per straw. ({Math.ceil(embryoCount / 2)} straw(s) required)
+                  </span>
                 </div>
 
-                <div className="flex items-end">
-                  <button
-                    type="button"
-                    onClick={handleFindStorage}
-                    disabled={searchingStorage}
-                    className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold py-3 rounded-xl transition-all text-xs flex items-center justify-center gap-2"
-                  >
-                    {searchingStorage ? (
-                      <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 text-emerald-600" />
-                        <span>Find Available Storage</span>
-                      </>
-                    )}
-                  </button>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                    Storage Cycle Date
+                  </label>
+                  <input
+                    type="date"
+                    value={storageDate}
+                    onChange={(e) => setStorageDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500"
+                  />
                 </div>
               </div>
 
-              {/* Recommendation Results */}
-              {recommendation && (
-                <div className="p-5 bg-slate-50 rounded-3xl border border-emerald-200 space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between text-xs text-slate-700">
-                    <span className="font-bold text-emerald-800 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
-                      <span>Recommended Physical Storage Location:</span>
-                    </span>
-                    <span>
-                      Required Straws: <strong className="text-slate-900">{recommendation.requiredStraws}</strong> (Max 2 embryos/straw)
+              {/* Recommendation Generator Trigger */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleFindStorage}
+                  disabled={searchingStorage}
+                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {searchingStorage ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 text-emerald-400" />
+                      <span>Calculate Optimal Storage Location Recommendation</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Recommendation Results Card */}
+              {recommendation && recommendation.primaryRecommendation && (
+                <div className="p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-emerald-200/60 pb-3">
+                    <div className="flex items-center gap-2 text-emerald-950 font-bold text-sm">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      <span>Recommended Physical Storage Location</span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-emerald-200/80 text-emerald-900 px-2.5 py-1 rounded-full border border-emerald-300">
+                      {recommendation.requiredStraws} Straw(s) Required
                     </span>
                   </div>
 
-                  {recommendation.primaryRecommendation ? (
-                    <div className="p-5 bg-emerald-100/60 border border-emerald-300 rounded-2xl space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
-                          Clinic Staff Physical Path Guide
-                        </div>
-                        <div className="text-xs px-3 py-1 bg-emerald-600 text-white font-bold rounded-lg shadow-sm">
-                          Recommended Location
-                        </div>
-                      </div>
-
-                      {/* Visual Location Breakdown Badges */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-sm">
-                          <div className="text-[10px] text-slate-500 font-semibold uppercase">1. Can</div>
-                          <div className="text-xs font-bold text-slate-900 mt-0.5">
-                            {recommendation.primaryRecommendation.breakdown?.can || 'Can 01'}
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-sm">
-                          <div className="text-[10px] text-slate-500 font-semibold uppercase">2. Canister</div>
-                          <div className="text-xs font-bold text-slate-900 mt-0.5">
-                            {recommendation.primaryRecommendation.breakdown?.canister || 'Canister 06'}
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-sm">
-                          <div className="text-[10px] text-slate-500 font-semibold uppercase">3. Level</div>
-                          <div className="text-xs font-bold text-emerald-700 mt-0.5">
-                            {recommendation.primaryRecommendation.breakdown?.level || 'Level 1 (Bottom)'}
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-2.5 rounded-xl border border-emerald-300 text-center shadow-sm">
-                          <div className="text-[10px] text-emerald-700 font-semibold uppercase">4. Viso Tube</div>
-                          <div className="text-xs font-bold text-emerald-800 mt-0.5">
-                            {recommendation.primaryRecommendation.breakdown?.tube || 'Viso Tube 08'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Readable summary & system reference code */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs pt-2 border-t border-emerald-200 text-slate-700 gap-1">
-                        <div>
-                          <span className="text-slate-500 font-medium">Staff Description: </span>
-                          <strong className="text-slate-900 font-bold">
-                            {recommendation.primaryRecommendation.formattedLocation || recommendation.primaryRecommendation.explanation}
-                          </strong>
-                        </div>
-                        <div className="text-[11px] font-mono text-emerald-800 font-bold">
-                          System ID: {recommendation.primaryRecommendation.locationCode}
-                        </div>
+                  {/* Visual Location Breakdown Badges */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
+                      <div className="text-[10px] text-slate-500 font-semibold uppercase">1. Can</div>
+                      <div className="text-xs font-bold text-slate-900 mt-0.5">
+                        {recommendation.primaryRecommendation.breakdown?.can || 'Can 01'}
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-xs text-amber-800 font-bold">No primary Viso Tube match found. Select an alternative location below.</div>
-                  )}
 
-                  {/* Straw Color Chooser */}
-                  <div className="pt-2 border-t border-slate-200 space-y-3">
-                    <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                      <span>Physical Straw Color Markers:</span>
-                      <span className="text-[10px] text-slate-500 font-normal lowercase">(Color is visual metadata, system ID is unique)</span>
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
+                      <div className="text-[10px] text-slate-500 font-semibold uppercase">2. Canister</div>
+                      <div className="text-xs font-bold text-slate-900 mt-0.5">
+                        {recommendation.primaryRecommendation.breakdown?.canister || 'Canister 06'}
+                      </div>
                     </div>
 
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
+                      <div className="text-[10px] text-slate-500 font-semibold uppercase">3. Level</div>
+                      <div className="text-xs font-bold text-slate-900 mt-0.5">
+                        {recommendation.primaryRecommendation.breakdown?.level || 'Level 1'}
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
+                      <div className="text-[10px] text-slate-500 font-semibold uppercase">4. Viso Tube</div>
+                      <div className="text-xs font-bold text-emerald-700 mt-0.5">
+                        {recommendation.primaryRecommendation.breakdown?.tube || 'Viso Tube 08'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Straw Color Selection */}
+                  <div className="space-y-2 pt-2">
+                    <div className="text-xs font-bold text-slate-800">
+                      Specify Visual Straw Identification Tag Color:
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {Array.from({ length: recommendation.requiredStraws }).map((_, idx) => (
-                        <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
-                          <span className="text-xs text-slate-600 font-semibold">Straw #{idx + 1}:</span>
+                      {strawColors.map((color, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200">
+                          <span className="text-xs font-mono font-bold text-slate-500">Straw #{idx + 1}:</span>
                           <select
-                            value={strawColors[idx] || 'Pink'}
+                            value={color}
                             onChange={(e) => {
                               const updated = [...strawColors];
                               updated[idx] = e.target.value;
                               setStrawColors(updated);
                             }}
-                            className="bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 px-3 py-1.5 focus:outline-none"
+                            className="bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 flex-1"
                           >
-                            <option value="Pink">Pink Straw</option>
-                            <option value="Blue">Blue Straw</option>
-                            <option value="White">White Straw</option>
-                            <option value="Yellow">Yellow Straw</option>
-                            <option value="Green">Green Straw</option>
+                            {['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].map((c) => (
+                              <option key={c} value={c}>
+                                {c} Tag
+                              </option>
+                            ))}
                           </select>
                         </div>
                       ))}
@@ -412,19 +585,23 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           )}
         </div>
 
-        {/* Submit Buttons */}
-        <div className="flex items-center justify-end gap-4 pt-4 border-t border-slate-200">
+        {/* Form Submission Controls */}
+        <div className="flex items-center justify-end gap-4">
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/20 text-sm flex items-center gap-2 disabled:opacity-50 transition-all"
+            className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all"
           >
             {loading ? (
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
                 <Save className="w-5 h-5" />
-                <span>Save Patient & Assign Storage</span>
+                <span>
+                  {selectedExistingPatient
+                    ? `Save New Embryo Batch for ${selectedExistingPatient.fullName}`
+                    : 'Save & Allocate Embryo Storage Record'}
+                </span>
               </>
             )}
           </button>
