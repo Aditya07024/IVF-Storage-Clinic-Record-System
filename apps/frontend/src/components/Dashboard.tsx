@@ -110,41 +110,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Top Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+      {/* Top Metric Cards (2 Rows 2 Cols on Mobile) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 sm:space-y-3">
+          <div className="flex items-center justify-between text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
             <span>Storage Cans</span>
-            <Database className="w-4 h-4 text-emerald-600" />
+            <Database className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
           </div>
-          <div className="text-3xl font-bold text-slate-900 tracking-tight">{summary.totalCans} Cans</div>
-          <div className="text-xs text-slate-500">{summary.totalVisoTubes} total Viso Tubes</div>
+          <div className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight">{summary.totalCans} Cans</div>
+          <div className="text-[11px] sm:text-xs text-slate-500">{summary.totalVisoTubes} total Viso Tubes</div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
-            <span>Occupied Straw Capacity</span>
-            <Layers className="w-4 h-4 text-emerald-600" />
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 sm:space-y-3">
+          <div className="flex items-center justify-between text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+            <span>Occupied Straws</span>
+            <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
           </div>
-          <div className="text-3xl font-bold text-emerald-700 tracking-tight">{summary.occupiedStraws}</div>
-          <div className="text-xs text-slate-500">Total occupied straws in storage</div>
+          <div className="text-xl sm:text-3xl font-bold text-emerald-700 tracking-tight">{summary.occupiedStraws}</div>
+          <div className="text-[11px] sm:text-xs text-slate-500">Total occupied straws</div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 sm:space-y-3">
+          <div className="flex items-center justify-between text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
             <span>Available Capacity</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
           </div>
-          <div className="text-3xl font-bold text-emerald-600 tracking-tight">{summary.availableStraws}</div>
-          <div className="text-xs text-slate-500">Straw slots ready for allocation</div>
+          <div className="text-xl sm:text-3xl font-bold text-emerald-600 tracking-tight">{summary.availableStraws}</div>
+          <div className="text-[11px] sm:text-xs text-slate-500">Straw slots available</div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 sm:space-y-3">
+          <div className="flex items-center justify-between text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
             <span>Global Utilization</span>
-            <Activity className="w-4 h-4 text-emerald-600" />
+            <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
           </div>
-          <div className="text-3xl font-bold text-slate-900 tracking-tight">{summary.globalUtilizationPercentage}</div>
+          <div className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight">{summary.globalUtilizationPercentage}</div>
           <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
             <div
               className="bg-gradient-to-r from-emerald-500 to-teal-600 h-full rounded-full transition-all duration-500"
