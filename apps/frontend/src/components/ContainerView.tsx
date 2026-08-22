@@ -428,18 +428,49 @@ export const ContainerView: React.FC = () => {
 
             {/* Viso Tubes Cluster */}
             <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span>Level {selectedLevelNum} — 11 Viso Tubes</span>
-                  </h2>
-                  <div className="text-xs text-slate-600 font-mono mt-0.5 font-semibold">
-                    Can {selectedCanCode.replace('CAN-', '')} • Canister {selectedCanisterNum.toString().padStart(2, '0')} • Level {selectedLevelNum}
+              <div className="space-y-4 border-b border-slate-100 pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <span>Level {selectedLevelNum} — 11 Viso Tubes</span>
+                    </h2>
+                    <div className="text-xs text-slate-600 font-mono mt-0.5 font-semibold">
+                      Can {selectedCanCode.replace('CAN-', '')} • Canister {selectedCanisterNum.toString().padStart(2, '0')} • Level {selectedLevelNum}
+                    </div>
+                  </div>
+                  <span className="text-xs px-3 py-1 bg-slate-100 text-emerald-800 font-bold rounded-full font-mono border border-slate-200">
+                    11 Viso Tubes
+                  </span>
+                </div>
+
+                {/* Boundary Borders (11 Physical Viso Tube Colors) Legend */}
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Boundary Borders (11 Physical Viso Tube Colors):</span>
+                  </div>
+
+                  <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-11 gap-1.5">
+                    {Object.entries(VISO_TUBE_COLOR_MAP).map(([numStr, color]) => {
+                      const num = parseInt(numStr, 10);
+                      return (
+                        <div
+                          key={num}
+                          className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border text-center justify-center shadow-2xs"
+                          style={{ borderColor: color.dotHex }}
+                        >
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs border border-black/10"
+                            style={{ backgroundColor: color.dotHex }}
+                          />
+                          <span className="text-[10px] font-extrabold text-slate-900">
+                            V{num.toString().padStart(2, '0')}: {color.name}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                <span className="text-xs px-3 py-1 bg-slate-100 text-emerald-800 font-bold rounded-full font-mono border border-slate-200">
-                  11 Viso Tubes
-                </span>
               </div>
 
               {/* RADIAL PIZZA SLICE GOBLET (FILL = SPACE LEFT, STROKE = PHYSICAL COLOR) */}
