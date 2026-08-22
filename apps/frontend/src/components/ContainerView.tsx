@@ -45,7 +45,8 @@ export const ContainerView: React.FC = () => {
   // Overview Modes: honeycomb | matrix
   const [viewMode, setViewMode] = useState<OverviewMode>('honeycomb');
 
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isRefetching, setIsRefetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const CLINIC_CANS = [1, 2, 3, 4, 5, 8, 10, 14];
@@ -55,7 +56,11 @@ export const ContainerView: React.FC = () => {
   }, [selectedCanCode]);
 
   const fetchHierarchy = async () => {
-    setLoading(true);
+    if (!hierarchy) {
+      setInitialLoading(true);
+    } else {
+      setIsRefetching(true);
+    }
     setError(null);
     try {
       const res = await apiRequest(`/api/storage/hierarchy?canCode=${selectedCanCode}`);
@@ -65,16 +70,17 @@ export const ContainerView: React.FC = () => {
     } catch (err: any) {
       setError(err.message || 'Failed to fetch storage hierarchy.');
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
+      setIsRefetching(false);
     }
   };
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[500px]">
         <div className="flex flex-col items-center gap-3 text-emerald-600">
           <div className="w-8 h-8 border-3 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
-          <span className="text-sm font-medium">Loading Viso Tube & Patient Details...</span>
+          <span className="text-sm font-medium">Loading Storage Layout...</span>
         </div>
       </div>
     );
