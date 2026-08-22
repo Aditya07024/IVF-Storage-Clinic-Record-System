@@ -16,6 +16,32 @@ export const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   11: 'Skyblue',
 };
 
+export const VISO_TUBE_STYLE_MAP: Record<number, { name: string; bg: string; dotHex: string }> = {
+  1: { name: 'Pink', bg: 'bg-pink-100 text-pink-900 border-pink-400 font-bold', dotHex: '#ec4899' },
+  2: { name: 'Grey', bg: 'bg-slate-200 text-slate-900 border-slate-400 font-bold', dotHex: '#6b7280' },
+  3: { name: 'Red', bg: 'bg-rose-100 text-rose-900 border-rose-400 font-bold', dotHex: '#ef4444' },
+  4: { name: 'Black', bg: 'bg-slate-900 text-white border-slate-700 font-bold', dotHex: '#0f172a' },
+  5: { name: 'Green', bg: 'bg-emerald-100 text-emerald-900 border-emerald-400 font-bold', dotHex: '#10b981' },
+  6: { name: 'Rust', bg: 'bg-amber-100 text-amber-950 border-amber-500 font-bold', dotHex: '#c2410c' },
+  7: { name: 'Blue', bg: 'bg-blue-100 text-blue-900 border-blue-400 font-bold', dotHex: '#3b82f6' },
+  8: { name: 'Purple', bg: 'bg-purple-100 text-purple-900 border-purple-400 font-bold', dotHex: '#a855f7' },
+  9: { name: 'Yellow', bg: 'bg-yellow-100 text-yellow-950 border-yellow-400 font-bold', dotHex: '#eab308' },
+  10: { name: 'Orange', bg: 'bg-orange-100 text-orange-950 border-orange-400 font-bold', dotHex: '#f97316' },
+  11: { name: 'Skyblue', bg: 'bg-sky-100 text-sky-900 border-sky-400 font-bold', dotHex: '#0ea5e9' },
+};
+
+export function getVisoTubeStyle(tubeStr?: string, locCode?: string) {
+  let tubeNum = 1;
+  if (locCode) {
+    const match = locCode.match(/-V(\d+)$/i);
+    if (match) tubeNum = parseInt(match[1], 10);
+  } else if (tubeStr) {
+    const match = tubeStr.match(/(?:Tube|V|Viso Tube)\s*(\d+)/i);
+    if (match) tubeNum = parseInt(match[1], 10);
+  }
+  return VISO_TUBE_STYLE_MAP[tubeNum] || VISO_TUBE_STYLE_MAP[1];
+}
+
 function parseLocationCode(code: string) {
   if (!code) return { raw: '', formatted: '' };
   const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
@@ -821,12 +847,23 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                           </div>
                         </div>
 
-                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
-                          <div className="text-[10px] text-slate-500 font-semibold uppercase">4. Viso Tube</div>
-                          <div className="text-xs font-bold text-emerald-700 mt-0.5">
-                            {recommendation.primaryRecommendation.breakdown?.tube || 'Viso Tube 09 (Black)'}
-                          </div>
-                        </div>
+                        {(() => {
+                          const tubeStyle = getVisoTubeStyle(
+                            recommendation.primaryRecommendation.breakdown?.tube,
+                            recommendation.primaryRecommendation.locationCode
+                          );
+                          return (
+                            <div className={`p-2.5 rounded-xl border text-center shadow-xs transition-all ${tubeStyle.bg}`}>
+                              <div className="text-[10px] font-bold uppercase opacity-90 flex items-center justify-center gap-1">
+                                <span className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: tubeStyle.dotHex }} />
+                                <span>4. Viso Tube</span>
+                              </div>
+                              <div className="text-xs font-black mt-0.5">
+                                {recommendation.primaryRecommendation.breakdown?.tube || `Viso Tube ${tubeStyle.name}`}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}
@@ -986,16 +1023,21 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   </div>
 
                   {/* Active Selected Location Display */}
-                  {selectedLocationCode && (
-                    <div className="p-3 bg-white border border-blue-200 rounded-xl flex items-center justify-between">
-                      <div className="text-xs font-bold text-slate-800">
-                        Selected Destination Location:
+                  {selectedLocationCode && (() => {
+                    const parsedLoc = parseLocationCode(selectedLocationCode);
+                    const tubeStyle = getVisoTubeStyle(undefined, selectedLocationCode);
+                    return (
+                      <div className="p-3 bg-white border border-slate-200 rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-xs">
+                        <div className="text-xs font-bold text-slate-800">
+                          Selected Destination Location:
+                        </div>
+                        <span className={`text-xs font-mono px-3 py-1 rounded-lg border flex items-center gap-1.5 shadow-2xs ${tubeStyle.bg}`}>
+                          <span className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: tubeStyle.dotHex }} />
+                          <span>{parsedLoc.formatted || selectedLocationCode}</span>
+                        </span>
                       </div>
-                      <span className="text-xs font-mono font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-lg border border-blue-300">
-                        {selectedLocationCode}
-                      </span>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
 
