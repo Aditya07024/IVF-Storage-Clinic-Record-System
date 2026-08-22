@@ -17,7 +17,20 @@ import {
   ThermometerSnowflake,
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
-import { parseLocationCode } from '../../../backend/src/modules/storage/storage.service';
+
+export function parseLocationCode(code: string) {
+  if (!code) return { can: '01', canister: '01', level: '1', goblet: '01', tube: '01', formatted: 'Unknown' };
+  const match = code.match(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i);
+  if (!match) return { can: '01', canister: '01', level: '1', goblet: '01', tube: '01', formatted: code };
+  return {
+    can: match[1],
+    canister: match[2],
+    level: match[3],
+    goblet: match[4],
+    tube: match[5],
+    formatted: `Can ${match[1]} • Canister ${match[2]} • Level ${match[3]} (${match[3] === '1' ? 'Bottom' : 'Top'}) • Viso Tube ${match[5]}`,
+  };
+}
 
 export type OverviewMode = 'honeycomb' | 'matrix';
 
