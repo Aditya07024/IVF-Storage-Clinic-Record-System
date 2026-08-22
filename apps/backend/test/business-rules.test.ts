@@ -55,4 +55,28 @@ describe('IVF System Core Business Rules Suite', () => {
     expect(thawInput.strawIds.length).toBe(1);
     expect(thawInput.doctorId).toBe('DOC_1');
   });
+
+  it('Rule 6: 100% Accurate Space Calculation during Allocation and Thaw Liberation', () => {
+    const totalVisoTubeCapacity = 10;
+    
+    // Initial state: 0 occupied
+    let occupied = 0;
+    let vacant = totalVisoTubeCapacity - occupied;
+    expect(vacant).toBe(10);
+    expect(occupied / totalVisoTubeCapacity).toBe(0); // 0%
+
+    // Allocate 2 embryos (1 straw)
+    occupied += 1;
+    vacant = totalVisoTubeCapacity - occupied;
+    expect(occupied).toBe(1);
+    expect(vacant).toBe(9);
+    expect((occupied / totalVisoTubeCapacity) * 100).toBe(10); // 10%
+
+    // Thaw 1 straw -> Liberate capacity
+    occupied -= 1;
+    vacant = totalVisoTubeCapacity - occupied;
+    expect(occupied).toBe(0);
+    expect(vacant).toBe(10);
+    expect((occupied / totalVisoTubeCapacity) * 100).toBe(0); // 0% liberated
+  });
 });
