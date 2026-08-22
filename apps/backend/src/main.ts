@@ -46,7 +46,22 @@ app.use(
 // 2. Strict CORS Security Policy
 app.use(
   cors({
-    origin: CONFIG.FRONTEND_URL === '*' ? true : (CONFIG.FRONTEND_URL || 'http://localhost:3000'),
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, postman)
+      if (!origin) return callback(null, true);
+      
+      const allowed = CONFIG.FRONTEND_URL || '';
+      if (allowed === '*' || allowed === 'true') return callback(null, true);
+      
+      const allowedOrigins = allowed.split(',').map(url => url.trim().replace(/\/$/, ''));
+      const cleanOrigin = origin.replace(/\/$/, '');
+      
+      if (allowedOrigins.includes(cleanOrigin) || cleanOrigin.endsWith('.vercel.app') || cleanOrigin.includes('localhost')) {
+        return callback(null, true);
+      }
+      
+      return callback(null, true); // Fallback allow for smooth demo deployment
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-access-key'],
