@@ -16,6 +16,7 @@ import { ocrService } from './modules/ocr/ocr.service.js';
 import { documentService } from './modules/document/document.service.js';
 import { auditService } from './modules/audit/audit.service.js';
 import { dashboardService } from './modules/dashboard/dashboard.service.js';
+import { serverCache } from './common/cache.js';
 
 const app = express();
 
@@ -279,8 +280,13 @@ app.post('/api/patients/:id/notes', accessKeyGuard, jwtAuthGuard, async (req: Au
 // --- STORAGE ROUTES ---
 app.get('/api/storage/hierarchy', accessKeyGuard, jwtAuthGuard, async (req, res) => {
   try {
-    const canCode = req.query.canCode as string;
+    const canCode = (req.query.canCode as string) || 'all';
+    const cacheKey = `storage_hierarchy_${canCode}`;
+    const cached = serverCache.get(cacheKey);
+    if (cached) return res.json({ success: true, ...cached });
+
     const overview = await storageService.getHierarchyOverview(canCode);
+    serverCache.set(cacheKey, overview, 60); // 60s cache for fast loading
     return res.json({ success: true, ...overview });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
@@ -300,6 +306,7 @@ app.post('/api/storage/find-empty', accessKeyGuard, jwtAuthGuard, async (req, re
 app.post('/api/storage/assign', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await storageService.assignStorage(req.body, req.user!.userId, req.user!.name || req.user!.staffId);
+    serverCache.clear(); // Invalidate cache on new straw placement
     return res.json({ success: true, ...result });
   } catch (err: any) {
     return res.status(400).json({ success: false, error: err.message });
@@ -310,6 +317,7 @@ app.post('/api/storage/move', accessKeyGuard, jwtAuthGuard, async (req: Authenti
   try {
     const { strawId, targetVisoTubeId, reason } = req.body;
     const result = await storageService.moveStraw(strawId, targetVisoTubeId, req.user!.userId, req.user!.name || req.user!.staffId, reason);
+    serverCache.clear(); // Invalidate cache on straw move
     return res.json({ success: true, straw: result });
   } catch (err: any) {
     return res.status(400).json({ success: false, error: err.message });
@@ -326,6 +334,7 @@ app.post('/api/thaw', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedReq
       doctorName: req.user!.name || req.user!.staffId,
       doctorNotes,
     });
+    serverCache.clear(); // Invalidate cache on straw thaw
     return res.json({ success: true, ...result });
   } catch (err: any) {
     return res.status(400).json({ success: false, error: err.message });
@@ -386,7 +395,12 @@ app.get('/api/documents/patient/:id/pdf', accessKeyGuard, jwtAuthGuard, async (r
 // --- DASHBOARD ROUTE ---
 app.get('/api/dashboard', accessKeyGuard, jwtAuthGuard, async (req, res) => {
   try {
+    const cacheKey = 'dashboard_metrics';
+    const cached = serverCache.get(cacheKey);
+    if (cached) return res.json({ success: true, ...cached });
+
     const metrics = await dashboardService.getDashboardMetrics();
+    serverCache.set(cacheKey, metrics, 30); // 30s cache for fast dashboard loading
     return res.json({ success: true, ...metrics });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
