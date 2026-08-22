@@ -14,7 +14,7 @@ export class AuditService {
 
     const where: any = {};
     if (query.userId) where.userId = query.userId;
-    if (query.action) where.action = { contains: query.action, mode: 'insensitive' };
+    if (query.action) where.action = { contains: query.action };
     if (query.entityName) where.entityName = query.entityName;
 
     const [total, logs] = await Promise.all([

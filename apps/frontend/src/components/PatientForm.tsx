@@ -7,8 +7,10 @@ interface PatientFormProps {
 }
 
 export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
+  const [customPatientId, setCustomPatientId] = useState('');
   const [fullName, setFullName] = useState('');
   const [partnerName, setPartnerName] = useState('');
+  const [phone, setPhone] = useState('');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [deDate, setDeDate] = useState('');
   const [freezingDate, setFreezingDate] = useState('');
@@ -68,8 +70,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       const patientRes = await apiRequest('/api/patients', {
         method: 'POST',
         body: JSON.stringify({
+          patientId: customPatientId.trim() || undefined,
           fullName,
           partnerName: partnerName || undefined,
+          phone: phone || undefined,
           visitDate: visitDate || undefined,
           deDate: deDate || undefined,
           freezingDate: freezingDate || undefined,
@@ -129,6 +133,20 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Doctor Provided Registration No / Patient ID</span>
+                <span className="text-[10px] text-slate-500 font-normal lowercase">(Provided by Doctor, e.g. IVF-2026-000001 or REG-1049. Leave blank to auto-assign)</span>
+              </label>
+              <input
+                type="text"
+                value={customPatientId}
+                onChange={(e) => setCustomPatientId(e.target.value)}
+                placeholder="e.g. IVF-2026-000001 (Doctor Registration Code)"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
                 Patient Full Name *

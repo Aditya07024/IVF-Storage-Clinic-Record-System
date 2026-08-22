@@ -1,6 +1,7 @@
 import { prisma } from '../../common/prisma.js';
 
 export interface CreatePatientInput {
+  patientId?: string;
   fullName: string;
   partnerName?: string;
   phone?: string;
@@ -40,7 +41,16 @@ export class PatientService {
   }
 
   async createPatient(input: CreatePatientInput, staffUserId: string, staffName: string) {
-    const patientId = await this.generateNextPatientId();
+    let patientId = input.patientId && input.patientId.trim() ? input.patientId.trim() : '';
+
+    if (patientId) {
+      const existing = await prisma.patient.findUnique({ where: { patientId } });
+      if (existing) {
+        throw new Error(`Patient Registration No / ID "${patientId}" already exists in system. Please enter a unique ID or search existing records.`);
+      }
+    } else {
+      patientId = await this.generateNextPatientId();
+    }
 
     const patient = await prisma.patient.create({
       data: {
