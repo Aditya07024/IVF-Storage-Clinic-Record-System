@@ -434,6 +434,20 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
               />
             </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Clinical Comments & Doctor Remarks</span>
+                <span className="text-[10px] text-slate-500 font-normal lowercase">(Egg yield, embryo grade quality, special doctor instructions, extra notes)</span>
+              </label>
+              <textarea
+                rows={3}
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                placeholder="Write clinical comments, doctor instructions, embryo quality remarks, or extra storage notes here..."
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
+              />
+            </div>
           </div>
         </div>
 
