@@ -218,8 +218,61 @@ app.post('/api/auth/logout', (req, res) => {
   return res.json({ success: true, message: 'Logged out successfully.' });
 });
 
+// Admin Role Guard Middleware
+const adminRoleGuard = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Access Denied: Administrator role required.' });
+  }
+  next();
+};
+
 app.get('/api/auth/me', accessKeyGuard, jwtAuthGuard, (req: AuthenticatedRequest, res) => {
   return res.json({ success: true, user: req.user });
+});
+
+// --- ADMIN STAFF & PASSWORD MANAGEMENT ROUTES ---
+app.get('/api/admin/users', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res) => {
+  try {
+    const users = await authService.getAllUsers();
+    return res.json({ success: true, users });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/admin/users', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { staffId, name, email, password, role } = req.body;
+    if (!staffId || !name || !password) {
+      return res.status(400).json({ success: false, error: 'Staff ID, Name, and Password are required.' });
+    }
+    const user = await authService.createUser({ staffId, name, email, password, role }, req.user?.userId);
+    return res.json({ success: true, user });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/admin/users/:id/password', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword) {
+      return res.status(400).json({ success: false, error: 'New password is required.' });
+    }
+    const user = await authService.resetPassword(req.params.id, newPassword, req.user?.userId);
+    return res.json({ success: true, message: `Password reset successfully for ${user.staffId}`, user });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/admin/users/:id', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res) => {
+  try {
+    const result = await authService.deleteUser(req.params.id, req.user?.userId);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
 });
 
 // --- PATIENT ROUTES ---

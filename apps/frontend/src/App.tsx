@@ -9,6 +9,7 @@ import { ContainerView } from './components/ContainerView';
 import { OcrVerification } from './components/OcrVerification';
 import { ThawWorkflow } from './components/ThawWorkflow';
 import { AuditLogs } from './components/AuditLogs';
+import { AdminPanel } from './components/AdminPanel';
 import { apiRequest } from './api/client';
 
 export const AppContent: React.FC = () => {
@@ -83,6 +84,7 @@ export const AppContent: React.FC = () => {
         {activeTab === 'ocr' && <OcrVerification />}
         {activeTab === 'thaw' && <ThawWorkflow />}
         {activeTab === 'logs' && <AuditLogs />}
+        {activeTab === 'admin' && <AdminPanel />}
       </main>
     </div>
   );

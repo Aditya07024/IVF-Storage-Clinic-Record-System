@@ -166,6 +166,128 @@ export class AuthService {
       throw new Error('Unauthorized refresh token.');
     }
   }
+
+  // Admin Methods: Staff Account & Password Management
+  async getAllUsers() {
+    return prisma.user.findMany({
+      orderBy: { staffId: 'asc' },
+      select: {
+        id: true,
+        staffId: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async createUser(input: { staffId: string; name: string; email?: string; password: string; role?: string }, adminUserId?: string) {
+    const sId = input.staffId.trim().toUpperCase();
+    const existingStaffId = await prisma.user.findUnique({ where: { staffId: sId } });
+    if (existingStaffId) {
+      throw new Error(`Staff ID "${sId}" already exists. Please choose a unique Staff ID.`);
+    }
+
+    const email = input.email ? input.email.trim().toLowerCase() : `${sId.toLowerCase()}@ivfclinic.com`;
+    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    if (existingEmail) {
+      throw new Error(`Email "${email}" already registered.`);
+    }
+
+    const passwordHash = await this.hashPassword(input.password);
+    const user = await prisma.user.create({
+      data: {
+        staffId: sId,
+        name: input.name.trim(),
+        email,
+        passwordHash,
+        role: input.role || 'STAFF',
+      },
+      select: {
+        id: true,
+        staffId: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    if (adminUserId) {
+      await prisma.auditLog.create({
+        data: {
+          userId: adminUserId,
+          userName: 'Admin',
+          action: 'ADMIN_CREATE_USER',
+          entityName: 'User',
+          entityId: user.id,
+          newData: `Created new staff account ${user.staffId} (${user.name}) with role ${user.role}`,
+        },
+      });
+    }
+
+    return user;
+  }
+
+  async resetPassword(targetUserId: string, newPassword: string, adminUserId?: string) {
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters long.');
+    }
+
+    const passwordHash = await this.hashPassword(newPassword);
+    const updatedUser = await prisma.user.update({
+      where: { id: targetUserId },
+      data: { passwordHash },
+      select: {
+        id: true,
+        staffId: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    if (adminUserId) {
+      await prisma.auditLog.create({
+        data: {
+          userId: adminUserId,
+          userName: 'Admin',
+          action: 'ADMIN_RESET_PASSWORD',
+          entityName: 'User',
+          entityId: updatedUser.id,
+          newData: `Reset password for staff account ${updatedUser.staffId} (${updatedUser.name})`,
+        },
+      });
+    }
+
+    return updatedUser;
+  }
+
+  async deleteUser(targetUserId: string, adminUserId?: string) {
+    const user = await prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!user) throw new Error('User account not found.');
+    if (user.staffId === 'ADMIN001') {
+      throw new Error('Primary system administrator (ADMIN001) cannot be deleted.');
+    }
+
+    await prisma.user.delete({ where: { id: targetUserId } });
+
+    if (adminUserId) {
+      await prisma.auditLog.create({
+        data: {
+          userId: adminUserId,
+          userName: 'Admin',
+          action: 'ADMIN_DELETE_USER',
+          entityName: 'User',
+          entityId: targetUserId,
+          newData: `Deleted staff account ${user.staffId} (${user.name})`,
+        },
+      });
+    }
+
+    return { success: true, deletedStaffId: user.staffId };
+  }
 }
 
 export const authService = new AuthService();
