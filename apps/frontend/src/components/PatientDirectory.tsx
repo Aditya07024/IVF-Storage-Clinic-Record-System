@@ -3,8 +3,8 @@ import { Search, Printer, FileText, ChevronRight, Layers, User, Calendar, Shield
 import { apiRequest } from '../api/client';
 
 export const PatientDirectory: React.FC = () => {
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [queryInput, setQueryInput] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
   const [freezingDateFilter, setFreezingDateFilter] = useState('');
   const [sortBy, setSortBy] = useState('freezingDate');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
@@ -18,23 +18,21 @@ export const PatientDirectory: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQuery(query);
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [query]);
-
-  useEffect(() => {
     fetchPatients();
-  }, [debouncedQuery, freezingDateFilter, sortBy, sortOrder, page]);
+  }, [activeQuery, freezingDateFilter, sortBy, sortOrder, page]);
+
+  const handleExecuteSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setPage(1);
+    setActiveQuery(queryInput.trim());
+  };
 
   const fetchPatients = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await apiRequest(
-        `/api/patients?q=${encodeURIComponent(debouncedQuery)}&freezingDate=${encodeURIComponent(freezingDateFilter)}&sortBy=${sortBy}&sortOrder=${sortOrder}&page=${page}&limit=10`
+        `/api/patients?q=${encodeURIComponent(activeQuery)}&freezingDate=${encodeURIComponent(freezingDateFilter)}&sortBy=${sortBy}&sortOrder=${sortOrder}&page=${page}&limit=10`
       );
       if (res.success) {
         setPatients(res.patients);
@@ -67,28 +65,47 @@ export const PatientDirectory: React.FC = () => {
     <div className="p-8 max-w-7xl mx-auto space-y-6 bg-slate-50 min-h-screen">
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Patient Record Directory</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Patient Record Directory (8 Lakh Scale Optimized)</h1>
           <p className="text-sm text-slate-600 mt-1 font-medium">
-            Search by <strong className="text-slate-900">Reg No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, <strong className="text-slate-900">Patient Name</strong>, or <strong className="text-slate-900">Freezing Date</strong>
+            High-performance indexed search by <strong className="text-slate-900">Reg No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, <strong className="text-slate-900">Patient Name</strong>, or <strong className="text-slate-900">Freezing Date</strong>
           </p>
         </div>
 
-        {/* Multi-Field Search & Freezing Date Filter Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-          {/* Search Query Input */}
-          <div className="relative md:col-span-1">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search Reg No, Mobile, Name, Date..."
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
-            />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+        {/* Multi-Field Search & Freezing Date Filter Bar with Explicit Search Button */}
+        <form onSubmit={handleExecuteSearch} className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          {/* Search Query Input with Explicit Search Button */}
+          <div className="md:col-span-6 flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={queryInput}
+                onChange={(e) => setQueryInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleExecuteSearch(e)}
+                placeholder="Type Reg No, Mobile, Name, or Date..."
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            </div>
+
+            {/* Explicit Search Action Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-2 shrink-0 transition-all disabled:opacity-50"
+            >
+              {loading ? (
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Search</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Freezing Date Picker Filter */}
-          <div className="flex items-center gap-2">
+          <div className="md:col-span-3 flex items-center gap-2">
             <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
             <div className="relative flex-1">
               <input
@@ -114,7 +131,7 @@ export const PatientDirectory: React.FC = () => {
           </div>
 
           {/* Sort Control */}
-          <div className="flex items-center gap-2">
+          <div className="md:col-span-3 flex items-center gap-2">
             <ArrowUpDown className="w-4 h-4 text-slate-500 shrink-0" />
             <select
               value={`${sortBy}-${sortOrder}`}
@@ -125,12 +142,12 @@ export const PatientDirectory: React.FC = () => {
               }}
               className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
             >
-              <option value="freezingDate-desc">📅 Freezing Date (Newest First)</option>
-              <option value="freezingDate-asc">📅 Freezing Date (Oldest First)</option>
-              <option value="createdAt-desc">🕒 Registration Date (Newest)</option>
+              <option value="freezingDate-desc">📅 Freezing Date (Newest)</option>
+              <option value="freezingDate-asc">📅 Freezing Date (Oldest)</option>
+              <option value="createdAt-desc">🕒 Registration Date</option>
             </select>
           </div>
-        </div>
+        </form>
       </div>
 
       {error && (
@@ -176,14 +193,14 @@ export const PatientDirectory: React.FC = () => {
                   <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                     <div className="flex justify-center items-center gap-2 text-emerald-600 font-semibold">
                       <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
-                      <span>Searching & filtering database...</span>
+                      <span>Searching & filtering database index...</span>
                     </div>
                   </td>
                 </tr>
               ) : patients.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
-                    No matching patient records found.
+                    No matching patient records found. Click "Search" button above.
                   </td>
                 </tr>
               ) : (

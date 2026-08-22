@@ -44,6 +44,8 @@ model Patient {
 
   @@index([patientId])
   @@index([fullName])
+  @@index([phone])
+  @@index([freezingDate])
 }
 
 model PatientNote {
