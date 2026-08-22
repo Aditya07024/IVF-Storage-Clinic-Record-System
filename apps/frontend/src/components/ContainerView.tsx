@@ -8,8 +8,15 @@ import {
   CheckCircle2,
   ChevronRight,
   Info,
+  User,
+  Calendar,
+  Tag,
+  Dna,
+  FileText,
+  X,
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
+import { parseLocationCode } from '../../../backend/src/modules/storage/storage.service';
 
 export type OverviewMode = 'honeycomb' | 'matrix';
 
@@ -67,7 +74,7 @@ export const ContainerView: React.FC = () => {
       <div className="flex items-center justify-center h-full min-h-[500px]">
         <div className="flex flex-col items-center gap-3 text-emerald-600">
           <div className="w-8 h-8 border-3 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
-          <span className="text-sm font-medium">Loading Physical Viso Tube Geometry...</span>
+          <span className="text-sm font-medium">Loading Viso Tube & Patient Details...</span>
         </div>
       </div>
     );
@@ -630,57 +637,170 @@ export const ContainerView: React.FC = () => {
         </div>
       )}
 
-      {/* Selected Tube Inspection Modal */}
+      {/* Selected Tube Comprehensive Patient & Straw Inspector Modal */}
       {selectedTube && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <div className="text-xs font-mono font-bold text-emerald-700">{selectedTube.locationCode}</div>
-                <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <span>Viso Tube #{selectedTube.tubeNumber} Inspector</span>
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono ${VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.bg || ''}`}>
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white p-7 rounded-3xl border border-slate-200 space-y-6 shadow-2xl my-8">
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-200 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold px-2.5 py-0.5 bg-emerald-100 text-emerald-900 rounded-full border border-emerald-300">
+                    {selectedTube.locationCode}
+                  </span>
+                  <span className={`text-xs px-3 py-0.5 rounded-full font-mono font-bold border ${VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.bg || ''}`}>
                     Color: {VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.name}
                   </span>
                 </div>
+                <h2 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>Viso Tube #{selectedTube.tubeNumber} Specimen & Patient Inspector</span>
+                </h2>
+                <div className="text-xs text-slate-600 font-medium">
+                  {parseLocationCode(selectedTube.locationCode).formatted}
+                </div>
               </div>
+
               <button
                 onClick={() => setSelectedTube(null)}
-                className="text-xs text-slate-600 font-bold hover:text-slate-900 px-3 py-1.5 bg-slate-100 rounded-xl"
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
               >
-                Close
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {selectedTube.straws?.length === 0 ? (
-              <div className="text-xs text-emerald-800 py-3 font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>This Viso Tube ({VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.name}) is 100% EMPTY (All 10 straw slots available for allocation).</span>
+            {/* Modal Body */}
+            {selectedTube.straws?.filter((s: any) => s.status === 'OCCUPIED').length === 0 ? (
+              /* EMPTY VISO TUBE CARD */
+              <div className="p-6 bg-emerald-50/70 border border-emerald-200 rounded-3xl space-y-3 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto border border-emerald-300">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">
+                  This Viso Tube ({VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.name}) is 100% EMPTY
+                </h3>
+                <p className="text-xs text-slate-600 max-w-md mx-auto">
+                  All <strong>10 straw slots</strong> are vacant and available for immediate patient specimen allocation.
+                </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">Stored Straws:</div>
-                {selectedTube.straws?.map((straw: any) => (
-                  <div key={straw.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between text-xs">
-                    <div>
-                      <div className="flex items-center gap-2 font-mono font-bold text-emerald-800">
-                        <span>Straw ID: {straw.strawId}</span>
-                        <span className="px-2 py-0.5 bg-white text-slate-800 rounded text-[10px] font-bold border border-slate-200">
-                          Color: {straw.color}
-                        </span>
-                      </div>
-                      <div className="text-slate-700 font-medium mt-1">
-                        Patient: <strong className="text-slate-900 font-bold">{straw.batch?.patient?.fullName || 'N/A'}</strong> (ID: {straw.batch?.patient?.patientId})
-                      </div>
-                    </div>
-
-                    <span className={`px-2.5 py-1 rounded text-[10px] font-bold border ${straw.status === 'OCCUPIED' ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                      {straw.status}
-                    </span>
+              /* OCCUPIED VISO TUBE PATIENT & STRAW DETAILS LIST */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <User className="w-4 h-4 text-emerald-600" />
+                    <span>Stored Patient Specimens ({selectedTube.straws.filter((s: any) => s.status === 'OCCUPIED').length} Straws Present):</span>
                   </div>
-                ))}
+                  <span className="text-xs text-emerald-700 font-extrabold font-mono">
+                    {10 - selectedTube.straws.filter((s: any) => s.status === 'OCCUPIED').length} Slots Vacant
+                  </span>
+                </div>
+
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                  {selectedTube.straws
+                    .filter((straw: any) => straw.status === 'OCCUPIED')
+                    .map((straw: any, idx: number) => {
+                      const patient = straw.batch?.patient;
+                      const embryos = straw.embryos || [];
+                      const storageDate = straw.batch?.storageDate
+                        ? new Date(straw.batch.storageDate).toISOString().split('T')[0]
+                        : 'N/A';
+
+                      return (
+                        <div
+                          key={straw.id}
+                          className="p-5 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 hover:border-emerald-300 transition-all"
+                        >
+                          {/* Straw & Patient Header */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm border border-emerald-300">
+                                #{idx + 1}
+                              </div>
+                              <div>
+                                <div className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                                  <span>{patient?.fullName || 'Anonymous Patient'}</span>
+                                  <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 font-mono rounded-md font-bold border border-slate-200">
+                                    ID: {patient?.patientId || 'N/A'}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-500 flex items-center gap-4 mt-0.5">
+                                  {patient?.dob && <span>DOB: {patient.dob}</span>}
+                                  {patient?.phone && <span>Phone: {patient.phone}</span>}
+                                </div>
+                              </div>
+                            </div>
+
+                            <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold font-mono rounded-full self-start sm:self-auto">
+                              Straw ID: {straw.strawId}
+                            </span>
+                          </div>
+
+                          {/* Specimen Details Grid */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                            <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 space-y-1">
+                              <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                <Dna className="w-3 h-3 text-emerald-600" />
+                                <span>Embryos Stored</span>
+                              </div>
+                              <div className="font-bold text-slate-900">
+                                {embryos.length || straw.batch?.totalEmbryos || 1} Embryo(s)
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 space-y-1">
+                              <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                <Tag className="w-3 h-3 text-emerald-600" />
+                                <span>Straw Color</span>
+                              </div>
+                              <div className="font-bold text-slate-900">
+                                {straw.color || 'Pink'}
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 space-y-1">
+                              <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-emerald-600" />
+                                <span>Storage Date</span>
+                              </div>
+                              <div className="font-bold text-slate-900 font-mono">
+                                {storageDate}
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 space-y-1">
+                              <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                                <FileText className="w-3 h-3 text-emerald-600" />
+                                <span>Batch Code</span>
+                              </div>
+                              <div className="font-bold text-slate-900 font-mono">
+                                {straw.batch?.batchId || 'BATCH-2026-01'}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Notes if available */}
+                          {straw.batch?.notes && (
+                            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs text-amber-900 font-medium">
+                              <strong>Clinical Notes:</strong> {straw.batch.notes}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
               </div>
             )}
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end border-t border-slate-200 pt-4">
+              <button
+                onClick={() => setSelectedTube(null)}
+                className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm"
+              >
+                Close Inspector
+              </button>
+            </div>
           </div>
         </div>
       )}
