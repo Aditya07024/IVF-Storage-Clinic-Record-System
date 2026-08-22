@@ -3,7 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
+import fs from 'fs';
 import { CONFIG, verifyAccessKey } from './common/config.js';
 import { connectPrisma } from './common/prisma.js';
 import { authService } from './modules/auth/auth.service.js';
@@ -16,20 +18,93 @@ import { auditService } from './modules/audit/audit.service.js';
 import { dashboardService } from './modules/dashboard/dashboard.service.js';
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({
-  origin: CONFIG.FRONTEND_URL,
-  credentials: true,
-}));
+// =========================================================================
+// ENTERPRISE BACKEND API SECURITY HARDENING
+// =========================================================================
+
+// 1. Helmet Security Headers (Anti-XSS, Clickjacking, MIME-Sniffing protection)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        connectSrc: ["'self'"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    hidePoweredBy: true,
+    frameguard: { action: 'deny' },
+    xssFilter: true,
+  })
+);
+
+// 2. Strict CORS Security Policy
+app.use(
+  cors({
+    origin: CONFIG.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-access-key'],
+  })
+);
+
+// 3. Rate Limiting (Prevents Brute-Force Password Attacks & DoS Network Flooding)
+const globalApiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 150, // max 150 API calls per min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Security Warning: Too many API requests from this IP. Please slow down.' },
+});
+
+const authLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // max 10 login attempts per 15 mins per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Security Policy: Too many failed login attempts. Access locked for 15 minutes.' },
+});
+
+app.use('/api/', globalApiLimiter);
+
+// 4. Payload Size Limits & Cookie Parsing
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
-// Serve uploaded images statically with authorization
-app.use('/uploads', express.static(path.resolve(CONFIG.STORAGE_LOCAL_DIR)));
+// 5. Multer File Upload Security & Strict MIME Filter
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // Max 5MB file upload limit
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Security Policy Violation: Only JPEG, PNG, WEBP, and PDF documents are allowed.'));
+    }
+  },
+});
 
-// Custom Request Interface
+// 6. Static Upload File Serving with Path Traversal Protection
+app.get('/uploads/:key', (req, res) => {
+  const safeFilename = path.basename(req.params.key); // Prevents directory traversal attacks like ../../
+  const uploadDirectory = path.resolve(CONFIG.STORAGE_LOCAL_DIR);
+  const targetPath = path.join(uploadDirectory, safeFilename);
+
+  if (!fs.existsSync(targetPath)) {
+    return res.status(404).json({ success: false, error: 'Document image not found.' });
+  }
+
+  return res.sendFile(targetPath);
+});
+
+// Custom Authenticated Request Interface
 interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;
@@ -43,7 +118,7 @@ interface AuthenticatedRequest extends Request {
 const accessKeyGuard = (req: Request, res: Response, next: NextFunction) => {
   const providedKey = (req.headers['x-access-key'] as string) || req.cookies?.app_access_key;
   if (!providedKey || !verifyAccessKey(providedKey)) {
-    return res.status(403).json({ error: 'Access Denied: Invalid site access key.' });
+    return res.status(403).json({ error: 'Access Denied: Invalid site access key hash.' });
   }
   next();
 };
@@ -51,7 +126,7 @@ const accessKeyGuard = (req: Request, res: Response, next: NextFunction) => {
 // Layer 2 Staff JWT Authentication Guard Middleware
 const jwtAuthGuard = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-  const token = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.split(' ')[1] : req.cookies?.accessToken;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : req.cookies?.accessToken;
 
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized: Missing staff login token.' });
@@ -87,11 +162,15 @@ app.post('/api/auth/access-key', (req, res) => {
   return res.json({ success: true, message: 'Application access granted.' });
 });
 
-app.post('/api/auth/login', accessKeyGuard, async (req, res) => {
+app.post('/api/auth/login', accessKeyGuard, authLoginLimiter, async (req, res) => {
   try {
     const { staffId, password } = req.body;
+    if (!staffId || !password) {
+      return res.status(400).json({ success: false, error: 'Staff ID and password are required.' });
+    }
+
     const ip = req.ip || '127.0.0.1';
-    const result = await authService.login(staffId, password, ip);
+    const result = await authService.login(String(staffId).trim(), String(password), ip);
 
     res.cookie('accessToken', result.accessToken, {
       httpOnly: true,
@@ -136,6 +215,7 @@ app.get('/api/patients', accessKeyGuard, jwtAuthGuard, async (req, res) => {
     const freezingDate = (req.query.freezingDate as string) || '';
     const sortBy = (req.query.sortBy as string) || 'freezingDate';
     const sortOrder = (req.query.sortOrder as string) === 'asc' ? 'asc' : 'desc';
+
     const result = await patientService.searchPatients(query, page, limit, freezingDate, sortBy, sortOrder);
     return res.json({ success: true, ...result });
   } catch (err: any) {
@@ -313,10 +393,10 @@ app.get('/api/audit/logs', accessKeyGuard, jwtAuthGuard, async (req, res) => {
   }
 });
 
-// Global Error Handler
+// Global Error Handler (Hides internal stack traces from external hackers)
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('[Backend Error]', err);
-  res.status(500).json({ error: 'An unexpected internal error occurred. Please try again.' });
+  console.error('[Backend Error Log]', err);
+  res.status(500).json({ success: false, error: 'An unexpected internal server error occurred.' });
 });
 
 // Start Server
@@ -325,7 +405,7 @@ async function startServer() {
   await storageService.seedHierarchyIfNeeded();
 
   app.listen(CONFIG.PORT, () => {
-    console.log(`[IVF Backend] Server running on ${CONFIG.BACKEND_URL} (Port ${CONFIG.PORT})`);
+    console.log(`[IVF Hardened Backend] Security Shields Active on ${CONFIG.BACKEND_URL} (Port ${CONFIG.PORT})`);
   });
 }
 
