@@ -142,14 +142,14 @@ export const ThawWorkflow: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 min-h-screen">
-      <div className="border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="p-3 sm:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-8 bg-slate-50 min-h-screen w-full box-border overflow-x-hidden">
+      <div className="border-b border-slate-200 pb-4 sm:pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
-            <ThermometerSnowflake className="w-7 h-7 text-emerald-600" />
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+            <ThermometerSnowflake className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-600 shrink-0" />
             <span>Doctor Embryo Thaw / Warm / Withdrawal Workflow</span>
           </h1>
-          <p className="text-sm text-slate-600 mt-1 font-medium">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
             Search by <strong className="text-slate-900">Registration No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, or <strong className="text-slate-900">Patient Name</strong>
           </p>
         </div>
@@ -178,16 +178,16 @@ export const ThawWorkflow: React.FC = () => {
       )}
 
       {/* Search Box */}
-      <form onSubmit={handleSearchPatient} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-4">
-        <div className="relative flex-1 w-full">
+      <form onSubmit={handleSearchPatient} className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full max-w-full overflow-hidden box-border">
+        <div className="relative flex-1 w-full min-w-0">
           <input
             type="text"
             value={patientIdQuery}
             onChange={handleInputChange}
             placeholder="Search by Reg No (e.g. IVF-2026-000001), Mobile Phone, or Patient Name..."
-            className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
+            className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
           />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
         </div>
 
         <button

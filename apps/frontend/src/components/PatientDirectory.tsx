@@ -121,26 +121,26 @@ export const PatientDirectory: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6 bg-slate-50 min-h-screen">
-      <div className="flex flex-col gap-4 border-b border-slate-200 pb-6">
+    <div className="p-3 sm:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 bg-slate-50 min-h-screen w-full box-border overflow-x-hidden">
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 sm:pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Patient Record Directory</h1>
-          <p className="text-sm text-slate-600 mt-1 font-medium">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Patient Record Directory</h1>
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
             Search by <strong className="text-slate-900">Reg No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, <strong className="text-slate-900">Patient Name</strong>, or <strong className="text-slate-900">Freezing Date</strong>
           </p>
         </div>
 
         {/* Multi-Field Search Bar with Explicit Search Button */}
-        <form onSubmit={handleExecuteSearch} className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="md:col-span-6 flex items-center gap-2">
-            <div className="relative flex-1">
+        <form onSubmit={handleExecuteSearch} className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm w-full max-w-full overflow-hidden box-border">
+          <div className="md:col-span-6 flex items-center gap-2 w-full min-w-0">
+            <div className="relative flex-1 min-w-0">
               <input
                 type="text"
                 value={queryInput}
                 onChange={(e) => setQueryInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleExecuteSearch(e)}
                 placeholder="Type Reg No, Mobile, Name, or Date..."
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
