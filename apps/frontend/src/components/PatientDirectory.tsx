@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, FileText, ChevronRight, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle } from 'lucide-react';
+import { Search, Printer, FileText, ChevronRight, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 export const PatientDirectory: React.FC = () => {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [freezingDateFilter, setFreezingDateFilter] = useState('');
+  const [sortBy, setSortBy] = useState('freezingDate');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+
   const [patients, setPatients] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -23,13 +27,15 @@ export const PatientDirectory: React.FC = () => {
 
   useEffect(() => {
     fetchPatients();
-  }, [debouncedQuery, page]);
+  }, [debouncedQuery, freezingDateFilter, sortBy, sortOrder, page]);
 
   const fetchPatients = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiRequest(`/api/patients?q=${encodeURIComponent(debouncedQuery)}&page=${page}&limit=10`);
+      const res = await apiRequest(
+        `/api/patients?q=${encodeURIComponent(debouncedQuery)}&freezingDate=${encodeURIComponent(freezingDateFilter)}&sortBy=${sortBy}&sortOrder=${sortOrder}&page=${page}&limit=10`
+      );
       if (res.success) {
         setPatients(res.patients);
         setTotal(res.total);
@@ -59,24 +65,71 @@ export const PatientDirectory: React.FC = () => {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6 bg-slate-50 min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Patient Record Directory</h1>
           <p className="text-sm text-slate-600 mt-1 font-medium">
-            Search by <strong className="text-slate-900">Registration No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, or <strong className="text-slate-900">Patient Full Name</strong>
+            Search by <strong className="text-slate-900">Reg No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, <strong className="text-slate-900">Patient Name</strong>, or <strong className="text-slate-900">Freezing Date</strong>
           </p>
         </div>
 
-        {/* Debounced Search Bar */}
-        <div className="relative w-full sm:w-96">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by Reg No, Mobile, or Name..."
-            className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 shadow-sm"
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+        {/* Multi-Field Search & Freezing Date Filter Bar */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          {/* Search Query Input */}
+          <div className="relative md:col-span-1">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search Reg No, Mobile, Name, Date..."
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+            />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          </div>
+
+          {/* Freezing Date Picker Filter */}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="relative flex-1">
+              <input
+                type="date"
+                value={freezingDateFilter}
+                onChange={(e) => {
+                  setFreezingDateFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            {freezingDateFilter && (
+              <button
+                type="button"
+                onClick={() => setFreezingDateFilter('')}
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-lg bg-slate-100 hover:bg-slate-200"
+                title="Clear Freezing Date Filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Sort Control */}
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="w-4 h-4 text-slate-500 shrink-0" />
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [sb, so] = e.target.value.split('-');
+                setSortBy(sb);
+                setSortOrder(so as 'asc' | 'desc');
+              }}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="freezingDate-desc">📅 Freezing Date (Newest First)</option>
+              <option value="freezingDate-asc">📅 Freezing Date (Oldest First)</option>
+              <option value="createdAt-desc">🕒 Registration Date (Newest)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -84,6 +137,22 @@ export const PatientDirectory: React.FC = () => {
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-sm flex items-center gap-3">
           <ShieldAlert className="w-5 h-5 shrink-0 text-rose-600" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* Active Freezing Date Filter Indicator */}
+      {freezingDateFilter && (
+        <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between text-xs text-emerald-950 font-bold">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-emerald-600" />
+            <span>Filtering Patients by Freezing Date: <strong className="font-mono text-emerald-900">{freezingDateFilter}</strong></span>
+          </div>
+          <button
+            onClick={() => setFreezingDateFilter('')}
+            className="text-xs text-emerald-800 hover:text-emerald-950 underline font-bold"
+          >
+            Show All Patients
+          </button>
         </div>
       )}
 
@@ -107,7 +176,7 @@ export const PatientDirectory: React.FC = () => {
                   <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                     <div className="flex justify-center items-center gap-2 text-emerald-600 font-semibold">
                       <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
-                      <span>Searching database by Reg No, Mobile, Name...</span>
+                      <span>Searching & filtering database...</span>
                     </div>
                   </td>
                 </tr>

@@ -133,7 +133,10 @@ app.get('/api/patients', accessKeyGuard, jwtAuthGuard, async (req, res) => {
     const query = (req.query.q as string) || '';
     const page = parseInt((req.query.page as string) || '1', 10);
     const limit = parseInt((req.query.limit as string) || '10', 10);
-    const result = await patientService.searchPatients(query, page, limit);
+    const freezingDate = (req.query.freezingDate as string) || '';
+    const sortBy = (req.query.sortBy as string) || 'freezingDate';
+    const sortOrder = (req.query.sortOrder as string) === 'asc' ? 'asc' : 'desc';
+    const result = await patientService.searchPatients(query, page, limit, freezingDate, sortBy, sortOrder);
     return res.json({ success: true, ...result });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });

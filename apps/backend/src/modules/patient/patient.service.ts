@@ -148,25 +148,68 @@ export class PatientService {
     });
   }
 
-  async searchPatients(query: string = '', page: number = 1, limit: number = 10) {
+  async searchPatients(
+    query: string = '',
+    page: number = 1,
+    limit: number = 10,
+    freezingDateFilter?: string,
+    sortBy: string = 'freezingDate',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ) {
     const skip = (page - 1) * limit;
-    const searchFilter = query.trim()
-      ? {
+    const whereConditions: any[] = [];
+
+    const trimmedQuery = query.trim();
+
+    if (trimmedQuery) {
+      const orConditions: any[] = [
+        { patientId: { contains: trimmedQuery } },
+        { fullName: { contains: trimmedQuery } },
+        { partnerName: { contains: trimmedQuery } },
+        { phone: { contains: trimmedQuery } },
+        { comments: { contains: trimmedQuery } },
+      ];
+
+      // Check if text query itself is a valid date (e.g. 2026-08-20 or 2026/08/20)
+      const parsedQueryDate = new Date(trimmedQuery);
+      if (!isNaN(parsedQueryDate.getTime()) && trimmedQuery.length >= 8) {
+        const nextDay = new Date(parsedQueryDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        orConditions.push(
+          { freezingDate: { gte: parsedQueryDate, lt: nextDay } },
+          { batches: { some: { storageDate: { gte: parsedQueryDate, lt: nextDay } } } }
+        );
+      }
+
+      whereConditions.push({ OR: orConditions });
+    }
+
+    // Explicit Freezing Date Filter from date picker
+    if (freezingDateFilter && freezingDateFilter.trim()) {
+      const targetDate = new Date(freezingDateFilter.trim());
+      if (!isNaN(targetDate.getTime())) {
+        const nextDay = new Date(targetDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        whereConditions.push({
           OR: [
-            { patientId: { contains: query.trim() } },
-            { fullName: { contains: query.trim() } },
-            { partnerName: { contains: query.trim() } },
-            { phone: { contains: query.trim() } },
-            { comments: { contains: query.trim() } },
+            { freezingDate: { gte: targetDate, lt: nextDay } },
+            { batches: { some: { storageDate: { gte: targetDate, lt: nextDay } } } },
           ],
-        }
-      : {};
+        });
+      }
+    }
+
+    const searchFilter = whereConditions.length > 0 ? { AND: whereConditions } : {};
+
+    const orderByClause = sortBy === 'freezingDate'
+      ? [{ freezingDate: sortOrder }, { createdAt: 'desc' }]
+      : [{ createdAt: sortOrder }];
 
     const [total, patients] = await Promise.all([
       prisma.patient.count({ where: searchFilter }),
       prisma.patient.findMany({
         where: searchFilter,
-        orderBy: { createdAt: 'desc' },
+        orderBy: orderByClause as any,
         skip,
         take: limit,
         include: {
