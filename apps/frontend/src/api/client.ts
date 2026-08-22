@@ -1,3 +1,5 @@
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '';
+
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const accessKey = localStorage.getItem('app_access_key') || '';
   const token = localStorage.getItem('access_token') || '';
@@ -15,7 +17,9 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(endpoint, {
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  const response = await fetch(url, {
     ...options,
     headers,
   });
