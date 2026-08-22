@@ -7,10 +7,26 @@ import {
   Hexagon as HexIcon,
   CheckCircle2,
   ChevronRight,
+  Info,
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 export type OverviewMode = 'honeycomb' | 'matrix';
+
+// Exact Physical Viso Tube Color Definitions (11 Tubes per Goblet with strict boundary stroke colors)
+export const VISO_TUBE_COLOR_MAP: Record<number, { name: string; stroke: string; bg: string; dotHex: string }> = {
+  1: { name: 'Pink', stroke: 'stroke-pink-500', bg: 'bg-pink-100 text-pink-900 border-pink-400', dotHex: '#ec4899' },
+  2: { name: 'Grey', stroke: 'stroke-slate-600', bg: 'bg-slate-200 text-slate-900 border-slate-400', dotHex: '#6b7280' },
+  3: { name: 'Red', stroke: 'stroke-rose-600', bg: 'bg-rose-100 text-rose-900 border-rose-400', dotHex: '#ef4444' },
+  4: { name: 'Black', stroke: 'stroke-slate-950', bg: 'bg-slate-900 text-white border-slate-700', dotHex: '#0f172a' },
+  5: { name: 'Green', stroke: 'stroke-emerald-600', bg: 'bg-emerald-100 text-emerald-900 border-emerald-400', dotHex: '#10b981' },
+  6: { name: 'Rust', stroke: 'stroke-amber-800', bg: 'bg-amber-100 text-amber-950 border-amber-500', dotHex: '#c2410c' },
+  7: { name: 'Blue', stroke: 'stroke-blue-600', bg: 'bg-blue-100 text-blue-900 border-blue-400', dotHex: '#3b82f6' },
+  8: { name: 'Purple', stroke: 'stroke-purple-600', bg: 'bg-purple-100 text-purple-900 border-purple-400', dotHex: '#a855f7' },
+  9: { name: 'Yellow', stroke: 'stroke-yellow-500', bg: 'bg-yellow-100 text-yellow-900 border-yellow-400', dotHex: '#eab308' },
+  10: { name: 'Orange', stroke: 'stroke-orange-500', bg: 'bg-orange-100 text-orange-900 border-orange-400', dotHex: '#f97316' },
+  11: { name: 'Skyblue', stroke: 'stroke-sky-500', bg: 'bg-sky-100 text-sky-900 border-sky-400', dotHex: '#0ea5e9' },
+};
 
 export const ContainerView: React.FC = () => {
   const [hierarchy, setHierarchy] = useState<any>(null);
@@ -51,7 +67,7 @@ export const ContainerView: React.FC = () => {
       <div className="flex items-center justify-center h-full min-h-[500px]">
         <div className="flex flex-col items-center gap-3 text-emerald-600">
           <div className="w-8 h-8 border-3 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
-          <span className="text-sm font-medium">Loading Green & White Storage Geometry...</span>
+          <span className="text-sm font-medium">Loading Physical Viso Tube Geometry...</span>
         </div>
       </div>
     );
@@ -63,7 +79,7 @@ export const ContainerView: React.FC = () => {
   const currentGoblet = currentLevel?.goblets?.[0];
   const visoTubes = currentGoblet?.visoTubes || [];
 
-  // Helper to determine space-fill status color & boundary stroke color in Light Mode
+  // Helper to determine space-fill background color according to space left (Green = Empty, Yellow = Partial, Red = Full)
   const getSpaceFillColor = (occupied: number, max: number = 10) => {
     if (occupied === 0) {
       return {
@@ -71,7 +87,6 @@ export const ContainerView: React.FC = () => {
         stroke: 'stroke-emerald-500',
         bg: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
         dot: 'bg-emerald-500',
-        text: 'text-emerald-950',
         label: 'EMPTY',
       };
     } else if (occupied >= max) {
@@ -80,7 +95,6 @@ export const ContainerView: React.FC = () => {
         stroke: 'stroke-rose-500',
         bg: 'bg-rose-100 text-rose-900 border-rose-300 font-bold',
         dot: 'bg-rose-600',
-        text: 'text-rose-950',
         label: 'FULL',
       };
     } else {
@@ -89,7 +103,6 @@ export const ContainerView: React.FC = () => {
         stroke: 'stroke-amber-500',
         bg: 'bg-amber-100 text-amber-900 border-amber-300 font-bold',
         dot: 'bg-amber-500',
-        text: 'text-amber-950',
         label: 'PARTIAL',
       };
     }
@@ -105,7 +118,7 @@ export const ContainerView: React.FC = () => {
             <span>Full Container Storage Overview Explorer</span>
           </h1>
           <p className="text-sm text-slate-600 mt-1 font-medium">
-            Interactive Cryo Storage Overview: <strong className="text-emerald-700">Honeycomb Space Fill</strong> & <strong className="text-emerald-700">Clinic Capacity Matrix</strong>
+            Background Fill: <strong className="text-emerald-700">Space Left (Green=Empty, Yellow=Partial, Red=Full)</strong> • Boundaries: <strong className="text-slate-900">Physical Viso Tube Colors</strong>
           </p>
         </div>
 
@@ -144,26 +157,55 @@ export const ContainerView: React.FC = () => {
         </div>
       )}
 
-      {/* SPACE FILL LEGEND BAR */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 text-xs">
-        <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider">
-          <span>Capacity Color Legend:</span>
+      {/* SPACE LEFT CAPACITY & PHYSICAL BOUNDARY COLOR LEGEND BAR */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        {/* Capacity Legend */}
+        <div className="flex flex-wrap items-center justify-between gap-4 text-xs border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider">
+            <span>Background Fill (Space Left):</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-emerald-300">
+              <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm" />
+              <span className="text-slate-900 font-bold">GREEN = Empty (0% Occupied)</span>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-amber-300">
+              <span className="w-3 h-3 rounded-full bg-amber-500 shadow-sm" />
+              <span className="text-slate-900 font-bold">YELLOW = Partially Occupied</span>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-rose-300">
+              <span className="w-3 h-3 rounded-full bg-rose-600 shadow-sm" />
+              <span className="text-slate-900 font-bold">RED = Full (100% Capacity)</span>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-emerald-300">
-            <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-sm" />
-            <span className="text-slate-900 font-bold">GREEN = Empty (0% Occupied)</span>
+        {/* Physical Viso Tube Boundary Colors Legend */}
+        <div className="space-y-2">
+          <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <Info className="w-4 h-4 text-emerald-600" />
+            <span>Boundary Borders (11 Physical Viso Tube Colors):</span>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-amber-300">
-            <span className="w-3.5 h-3.5 rounded-full bg-amber-500 shadow-sm" />
-            <span className="text-slate-900 font-bold">YELLOW = Partially Occupied</span>
-          </div>
-
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-rose-300">
-            <span className="w-3.5 h-3.5 rounded-full bg-rose-600 shadow-sm" />
-            <span className="text-slate-900 font-bold">RED = Full (100% Capacity)</span>
+          <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-11 gap-2">
+            {Object.entries(VISO_TUBE_COLOR_MAP).map(([numStr, color]) => {
+              const num = parseInt(numStr, 10);
+              return (
+                <div
+                  key={num}
+                  className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border text-center justify-center shadow-2xs"
+                  style={{ borderColor: color.dotHex }}
+                >
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0 shadow-xs border border-black/10"
+                    style={{ backgroundColor: color.dotHex }}
+                  />
+                  <span className="text-[10px] font-extrabold text-slate-900">
+                    V{num.toString().padStart(2, '0')}: {color.name}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -178,7 +220,7 @@ export const ContainerView: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <Database className="w-4 h-4 text-emerald-600" />
-                <span>Chambers Overview (Color-Coded Capacity Heatmap):</span>
+                <span>Chambers Overview (Capacity Heatmap):</span>
               </div>
               <span className="text-xs text-slate-500 font-medium">Click any Hexagon to select Chamber</span>
             </div>
@@ -355,7 +397,7 @@ export const ContainerView: React.FC = () => {
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span>Goblet 01 — Viso Tubes Space Fill</span>
+                    <span>Goblet 01 — 11 Viso Tubes Pizza Slice Layout</span>
                   </h2>
                   <div className="text-xs text-slate-600 font-mono mt-0.5 font-semibold">
                     Chamber {selectedCanCode.replace('CAN-', '')} • Canister {selectedCanisterNum.toString().padStart(2, '0')} • Level {selectedLevelNum}
@@ -366,10 +408,10 @@ export const ContainerView: React.FC = () => {
                 </span>
               </div>
 
-              {/* RADIAL PIZZA SLICE GOBLET (10 PIZZA WEDGE SECTORS + 1 CENTER CORE TUBE) */}
+              {/* RADIAL PIZZA SLICE GOBLET (FILL = SPACE LEFT, STROKE = PHYSICAL COLOR) */}
               <div className="py-6 flex flex-col items-center justify-center space-y-4">
                 <div className="text-xs text-slate-600 font-bold uppercase tracking-wider">
-                  Physical Circular Cone Goblet Layout (Color-Coded Boundaries):
+                  Fill = Space Left (Green/Yellow/Red) • Borders = Physical Colors (Pink, Grey, Red, Black, Green, Rust, Blue, Purple, Yellow, Orange, Skyblue):
                 </div>
 
                 <div className="relative flex items-center justify-center">
@@ -380,6 +422,9 @@ export const ContainerView: React.FC = () => {
 
                     {/* 10 Outer Radial Pizza Slices / Wedges (V01 to V10) */}
                     {visoTubes.slice(0, 10).map((tube: any, idx: number) => {
+                      const tubeNum = tube.tubeNumber;
+                      const tubeColor = VISO_TUBE_COLOR_MAP[tubeNum] || VISO_TUBE_COLOR_MAP[1];
+
                       const startAngle = idx * 36 - 90 + 1.5;
                       const endAngle = (idx + 1) * 36 - 90 - 1.5;
                       const midAngleRad = (((startAngle + endAngle) / 2) * Math.PI) / 180;
@@ -404,7 +449,7 @@ export const ContainerView: React.FC = () => {
                       const ty = 180 + 102 * Math.sin(midAngleRad);
 
                       const occupiedCount = tube.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                      const colorInfo = getSpaceFillColor(occupiedCount, 10);
+                      const capacityColor = getSpaceFillColor(occupiedCount, 10);
                       const isSelected = selectedTube?.id === tube.id;
 
                       return (
@@ -417,13 +462,13 @@ export const ContainerView: React.FC = () => {
                             d={pathData}
                             className={`transition-all duration-300 ${
                               isSelected
-                                ? 'stroke-emerald-600 stroke-[4.5] fill-emerald-200/90 shadow-md'
-                                : `${colorInfo.fill} ${colorInfo.stroke} stroke-[2.5] hover:scale-[1.02]`
+                                ? 'stroke-slate-900 stroke-[5] fill-emerald-200/90 shadow-md'
+                                : `${capacityColor.fill} ${tubeColor.stroke} stroke-[3.5] hover:scale-[1.02]`
                             }`}
                           />
                           <text
                             x={tx}
-                            y={ty - 4}
+                            y={ty - 6}
                             textAnchor="middle"
                             className="font-mono text-xs font-black fill-slate-900 pointer-events-none select-none"
                           >
@@ -431,7 +476,15 @@ export const ContainerView: React.FC = () => {
                           </text>
                           <text
                             x={tx}
-                            y={ty + 10}
+                            y={ty + 6}
+                            textAnchor="middle"
+                            className="font-mono text-[9px] font-extrabold fill-slate-800 pointer-events-none select-none"
+                          >
+                            {tubeColor.name}
+                          </text>
+                          <text
+                            x={tx}
+                            y={ty + 18}
                             textAnchor="middle"
                             className="font-mono text-[9px] font-extrabold fill-slate-700 pointer-events-none select-none"
                           >
@@ -441,10 +494,12 @@ export const ContainerView: React.FC = () => {
                       );
                     })}
 
-                    {/* Center Core Viso Tube (V11) */}
+                    {/* Center Core Viso Tube (V11 Skyblue) */}
                     {visoTubes.slice(10, 11).map((tube: any) => {
+                      const tubeNum = 11;
+                      const tubeColor = VISO_TUBE_COLOR_MAP[tubeNum];
                       const occupiedCount = tube.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                      const colorInfo = getSpaceFillColor(occupiedCount, 10);
+                      const capacityColor = getSpaceFillColor(occupiedCount, 10);
                       const isSelected = selectedTube?.id === tube.id;
 
                       return (
@@ -459,13 +514,13 @@ export const ContainerView: React.FC = () => {
                             r="42"
                             className={`transition-all duration-300 ${
                               isSelected
-                                ? 'stroke-emerald-600 stroke-[4.5] fill-emerald-200/90 shadow-md'
-                                : `${colorInfo.fill} ${colorInfo.stroke} stroke-[2.5] hover:scale-105`
+                                ? 'stroke-slate-900 stroke-[5] fill-emerald-200/90 shadow-md'
+                                : `${capacityColor.fill} ${tubeColor.stroke} stroke-[3.5] hover:scale-105`
                             }`}
                           />
                           <text
                             x="180"
-                            y="175"
+                            y="170"
                             textAnchor="middle"
                             className="font-mono text-xs font-black fill-slate-900 pointer-events-none select-none"
                           >
@@ -473,9 +528,17 @@ export const ContainerView: React.FC = () => {
                           </text>
                           <text
                             x="180"
-                            y="190"
+                            y="182"
                             textAnchor="middle"
-                            className="font-mono text-[9px] font-extrabold fill-slate-700 pointer-events-none select-none"
+                            className="font-mono text-[9px] font-extrabold fill-sky-950 pointer-events-none select-none"
+                          >
+                            Skyblue
+                          </text>
+                          <text
+                            x="180"
+                            y="194"
+                            textAnchor="middle"
+                            className="font-mono text-[9px] font-extrabold fill-slate-800 pointer-events-none select-none"
                           >
                             {occupiedCount}/10
                           </text>
@@ -574,7 +637,12 @@ export const ContainerView: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <div className="text-xs font-mono font-bold text-emerald-700">{selectedTube.locationCode}</div>
-                <div className="text-sm font-bold text-slate-900">Viso Tube #{selectedTube.tubeNumber} Contents Inspector</div>
+                <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <span>Viso Tube #{selectedTube.tubeNumber} Inspector</span>
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono ${VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.bg || ''}`}>
+                    Color: {VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.name}
+                  </span>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedTube(null)}
@@ -587,7 +655,7 @@ export const ContainerView: React.FC = () => {
             {selectedTube.straws?.length === 0 ? (
               <div className="text-xs text-emerald-800 py-3 font-bold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>This Viso Tube is 100% EMPTY (All 10 straw slots available for allocation).</span>
+                <span>This Viso Tube ({VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.name}) is 100% EMPTY (All 10 straw slots available for allocation).</span>
               </div>
             ) : (
               <div className="space-y-3">
