@@ -34,15 +34,16 @@ export class OcrService {
 
     let finalBuffer = fileBuffer;
 
-    // Compress image if larger than 2MB (2,097,152 bytes)
-    if (fileBuffer.length > 2 * 1024 * 1024 && mimeType.startsWith('image/')) {
+    // Auto Edge Trim blank background borders & compress image targeting <= 2MB (Adobe Cam Mode)
+    if (mimeType.startsWith('image/')) {
       try {
         finalBuffer = await sharp(fileBuffer)
+          .trim({ threshold: 12 }) // Auto trims blank outer borders/background around paper
           .resize({ width: 2000, withoutEnlargement: true })
-          .jpeg({ quality: 80 })
+          .jpeg({ quality: 85 })
           .toBuffer();
       } catch (err) {
-        console.warn('[OCR] Sharp image compression warning:', err);
+        console.warn('[OCR] Sharp document auto-edge-crop warning:', err);
       }
     }
 

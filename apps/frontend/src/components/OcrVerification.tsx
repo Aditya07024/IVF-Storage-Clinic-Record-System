@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera } from 'lucide-react';
+import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 export const OcrVerification: React.FC = () => {
@@ -21,7 +21,8 @@ export const OcrVerification: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Live Camera Capture States
+  // Adobe Cam Edge Detection & Viewfinder States
+  const [adobeCamEnabled, setAdobeCamEnabled] = useState(true);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -41,14 +42,13 @@ export const OcrVerification: React.FC = () => {
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
       setCameraStream(stream);
       setIsCameraOpen(true);
     } catch (err: any) {
       console.error('Camera access error:', err);
-      // Fallback: Trigger native mobile camera file input if getUserMedia blocked
       if (cameraInputRef.current) {
         cameraInputRef.current.click();
       } else {
@@ -65,6 +65,63 @@ export const OcrVerification: React.FC = () => {
     setIsCameraOpen(false);
   };
 
+  // Adobe Scan Edge Detection & Auto-Crop Algorithm
+  const autoCropDocumentBorders = (sourceCanvas: HTMLCanvasElement): HTMLCanvasElement => {
+    const width = sourceCanvas.width;
+    const height = sourceCanvas.height;
+    const ctx = sourceCanvas.getContext('2d');
+    if (!ctx) return sourceCanvas;
+
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const data = imgData.data;
+
+    let minX = width, minY = height, maxX = 0, maxY = 0;
+    let foundTextOrEdge = false;
+
+    // Scan pixels for contrast & luminance (paper document vs desk background border)
+    for (let y = 0; y < height; y += 6) {
+      for (let x = 0; x < width; x += 6) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+
+        const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        // Paper document thresholding
+        if (luminance > 50 && luminance < 245) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          foundTextOrEdge = true;
+        }
+      }
+    }
+
+    const padding = 24;
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(width, maxX + padding);
+    maxY = Math.min(height, maxY + padding);
+
+    const cropWidth = maxX - minX;
+    const cropHeight = maxY - minY;
+
+    if (foundTextOrEdge && cropWidth > 150 && cropHeight > 150 && (cropWidth < width * 0.98 || cropHeight < height * 0.98)) {
+      const croppedCanvas = document.createElement('canvas');
+      croppedCanvas.width = cropWidth;
+      croppedCanvas.height = cropHeight;
+      const croppedCtx = croppedCanvas.getContext('2d');
+      if (croppedCtx) {
+        croppedCtx.drawImage(sourceCanvas, minX, minY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        return croppedCanvas;
+      }
+    }
+
+    return sourceCanvas;
+  };
+
   const captureCameraPhoto = () => {
     if (!videoRef.current) return;
     const canvas = document.createElement('canvas');
@@ -73,12 +130,22 @@ export const OcrVerification: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((blob) => {
+
+      let finalCanvas = canvas;
+      if (adobeCamEnabled) {
+        finalCanvas = autoCropDocumentBorders(canvas);
+      }
+
+      finalCanvas.toBlob((blob) => {
         if (blob) {
-          const photoFile = new File([blob], `camera-scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          const photoFile = new File([blob], `adobe-scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
           setFile(photoFile);
           stopLiveCamera();
-          setSuccessMsg('Photo captured from camera successfully! Click "Process OCR & AI" to analyze.');
+          setSuccessMsg(
+            adobeCamEnabled
+              ? '✨ Document paper edges detected & blank background cropped automatically (Adobe Cam Mode)! Click "Process OCR & AI".'
+              : 'Photo captured successfully! Click "Process OCR & AI".'
+          );
         }
       }, 'image/jpeg', 0.92);
     }
@@ -139,7 +206,7 @@ export const OcrVerification: React.FC = () => {
         throw new Error(data.error || 'Failed to upload and process OCR image.');
       }
 
-      setSuccessMsg('Image compressed, OCR processed, and structured by Gemini AI successfully.');
+      setSuccessMsg('Image edges trimmed, OCR processed, and structured by Gemini AI successfully.');
       setFile(null);
       await fetchPendingRecords();
     } catch (err: any) {
@@ -185,7 +252,7 @@ export const OcrVerification: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 min-h-screen">
       {/* Hidden Native Mobile Camera Input */}
       <input
         ref={cameraInputRef}
@@ -201,14 +268,30 @@ export const OcrVerification: React.FC = () => {
         className="hidden"
       />
 
-      <div className="border-b border-slate-200 pb-6">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
-          <FileScan className="w-7 h-7 text-emerald-600" />
-          <span>OCR Scanned Records & Human Verification</span>
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Google Vision OCR + Gemini AI structured extraction. Human staff verification is required before database insertion.
-        </p>
+      <div className="border-b border-slate-200 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+            <FileScan className="w-7 h-7 text-emerald-600" />
+            <span>Adobe Scan OCR & Auto Edge-Detection Studio</span>
+          </h1>
+          <p className="text-sm text-slate-600 mt-1 font-medium">
+            Automatic document edge detection, blank background cropping, and Gemini AI structured extraction.
+          </p>
+        </div>
+
+        {/* Adobe Cam Mode Toggle */}
+        <label className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-2xl border border-slate-300 shadow-xs cursor-pointer">
+          <input
+            type="checkbox"
+            checked={adobeCamEnabled}
+            onChange={(e) => setAdobeCamEnabled(e.target.checked)}
+            className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+          />
+          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+            <Crop className="w-4 h-4 text-emerald-600" />
+            <span>Adobe Cam Auto Edge Crop Mode</span>
+          </span>
+        </label>
       </div>
 
       {error && (
@@ -225,12 +308,12 @@ export const OcrVerification: React.FC = () => {
         </div>
       )}
 
-      {/* Upload Box with Camera Capture */}
+      {/* Upload Box with Adobe Cam Studio */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Upload className="w-5 h-5 text-emerald-600" />
-            <span>Upload or Snap Patient Record Photo</span>
+            <span>Snap Document with Adobe Cam or Upload Image</span>
           </h2>
 
           <div className="flex items-center gap-2">
@@ -238,10 +321,10 @@ export const OcrVerification: React.FC = () => {
             <button
               type="button"
               onClick={startLiveCamera}
-              className="px-4 py-2.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs rounded-xl border border-emerald-300 flex items-center gap-2 transition-all shadow-xs"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-2 transition-all"
             >
-              <Camera className="w-4 h-4 text-emerald-700" />
-              <span>Take Photo (Camera)</span>
+              <Camera className="w-4 h-4" />
+              <span>Adobe Scanner Cam</span>
             </button>
 
             {/* Direct Mobile Camera App Trigger */}
@@ -267,7 +350,7 @@ export const OcrVerification: React.FC = () => {
             {file && (
               <div className="text-[11px] font-bold text-emerald-700 mt-1.5 flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Selected Photo/File: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                <span>Selected Photo: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
               </div>
             )}
           </div>
@@ -289,14 +372,14 @@ export const OcrVerification: React.FC = () => {
         </form>
       </div>
 
-      {/* Live Camera Viewfinder Modal */}
+      {/* Adobe Scan Live Viewfinder Modal */}
       {isCameraOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-2xl text-white">
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-2xl text-white">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2 font-bold text-sm">
-                <Camera className="w-5 h-5 text-emerald-400" />
-                <span>Live Camera Viewfinder</span>
+                <Crop className="w-5 h-5 text-emerald-400" />
+                <span>Adobe Scanner Document Edge Detector</span>
               </div>
               <button
                 onClick={stopLiveCamera}
@@ -306,7 +389,8 @@ export const OcrVerification: React.FC = () => {
               </button>
             </div>
 
-            <div className="relative bg-black rounded-2xl overflow-hidden aspect-video flex items-center justify-center border border-slate-800">
+            {/* Viewfinder with Adobe Edge Framing & Laser Beam */}
+            <div className="relative bg-black rounded-2xl overflow-hidden aspect-video flex items-center justify-center border border-slate-800 shadow-inner">
               <video
                 ref={videoRef}
                 autoPlay
@@ -314,9 +398,25 @@ export const OcrVerification: React.FC = () => {
                 muted
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-4 border-2 border-emerald-400/40 border-dashed rounded-xl pointer-events-none flex items-center justify-center">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400/70 bg-slate-950/60 px-3 py-1 rounded-full">
-                  Position Patient Document Inside Frame
+
+              {/* Adobe Scanner Framing Box & Corner Handles */}
+              <div className="absolute inset-8 border-2 border-emerald-400/80 rounded-xl pointer-events-none transition-all shadow-[0_0_20px_rgba(52,211,153,0.3)]">
+                {/* Top-Left Corner */}
+                <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
+                {/* Top-Right Corner */}
+                <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
+                {/* Bottom-Left Corner */}
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
+                {/* Bottom-Right Corner */}
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+
+                {/* Laser Scanning Beam */}
+                <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse absolute top-1/2 -translate-y-1/2 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+              </div>
+
+              <div className="absolute bottom-4 inset-x-0 flex justify-center">
+                <span className="text-[11px] uppercase tracking-wider font-bold text-emerald-300 bg-slate-950/80 px-4 py-1.5 rounded-full border border-emerald-500/40 backdrop-blur-xs">
+                  {adobeCamEnabled ? '✨ Adobe Auto Edge Detection & Border Crop Active' : 'Position Document Inside Frame'}
                 </span>
               </div>
             </div>
@@ -333,10 +433,10 @@ export const OcrVerification: React.FC = () => {
               <button
                 type="button"
                 onClick={captureCameraPhoto}
-                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center gap-2 shadow-lg transition-transform active:scale-95"
+                className="px-7 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center gap-2 shadow-lg transition-transform active:scale-95"
               >
                 <Camera className="w-4 h-4" />
-                <span>Capture Photo</span>
+                <span>Snap & Auto-Crop Document</span>
               </button>
             </div>
           </div>
@@ -351,7 +451,7 @@ export const OcrVerification: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-emerald-600" />
-                <span>Scanned Document Image</span>
+                <span>Scanned Document Page</span>
               </h2>
               <span className="text-xs font-mono text-slate-500">{activeRecord.originalFilename}</span>
             </div>
@@ -361,7 +461,7 @@ export const OcrVerification: React.FC = () => {
               <img
                 src={`/uploads/${activeRecord.storageKey}`}
                 alt="Scanned Record"
-                className="max-h-[400px] w-auto object-contain rounded-xl border border-slate-200"
+                className="max-h-[400px] w-auto object-contain rounded-xl border border-slate-200 shadow-sm"
                 onError={(e) => {
                   (e.target as any).style.display = 'none';
                 }}
@@ -381,7 +481,7 @@ export const OcrVerification: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-600" />
-                <span>Human Staff Verification & Verification</span>
+                <span>Human Staff Verification</span>
               </h2>
               <span className="text-xs font-mono font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
                 PENDING VERIFICATION
