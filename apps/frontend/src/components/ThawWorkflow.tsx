@@ -1,6 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { ThermometerSnowflake, Search, CheckCircle2, ShieldAlert, AlertTriangle, Layers, MoveRight, User, Calendar, Phone, RefreshCw } from 'lucide-react';
+import { ThermometerSnowflake, Search, CheckCircle2, ShieldAlert, AlertTriangle, Layers, MoveRight, User, Calendar, Phone, RefreshCw, MapPin } from 'lucide-react';
 import { apiRequest } from '../api/client';
+
+const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
+  1: 'Pink', 2: 'Grey', 3: 'Red', 4: 'Black', 5: 'Green',
+  6: 'Rust', 7: 'Blue', 8: 'Purple', 9: 'Yellow', 10: 'Orange', 11: 'Skyblue',
+};
+
+function parseLocationCode(code: string) {
+  if (!code) return { formatted: 'Location Not Specified' };
+  const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
+  if (!match) return { formatted: code };
+  const canNum = match[1].padStart(2, '0');
+  const canisterNum = match[2].padStart(2, '0');
+  const levelNum = parseInt(match[3], 10);
+  const tubeNumInt = parseInt(match[5], 10);
+  const tubeNumPadded = match[5].padStart(2, '0');
+  const colorName = VISO_TUBE_COLOR_NAMES[tubeNumInt] || 'Standard';
+
+  return {
+    formatted: `Can ${canNum} • Canister ${canisterNum} • Level ${levelNum} • ${colorName} Viso Tube (V${tubeNumPadded})`,
+  };
+}
 
 export const ThawWorkflow: React.FC = () => {
   const [patientIdQuery, setPatientIdQuery] = useState('');
@@ -303,11 +324,14 @@ export const ThawWorkflow: React.FC = () => {
                           const isSelected = selectedStrawIds.includes(straw.id);
                           const isThawed = straw.status === 'THAWED';
 
+                          const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || straw.locationCode || '';
+                          const parsedLoc = parseLocationCode(locCode);
+
                           return (
                             <div
                               key={straw.id}
                               onClick={() => !isThawed && toggleStrawSelection(straw.id)}
-                              className={`p-3.5 rounded-xl border transition-all ${
+                              className={`p-3.5 rounded-xl border transition-all space-y-2 ${
                                 isThawed
                                   ? 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
                                   : isSelected
@@ -321,9 +345,21 @@ export const ThawWorkflow: React.FC = () => {
                                   {straw.status}
                                 </span>
                               </div>
-                              <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+
+                              <div className="text-[11px] text-slate-500 flex items-center justify-between">
                                 <span>Tag Color: <strong className="text-slate-800 font-semibold">{straw.color}</strong></span>
-                                <span className="font-semibold text-emerald-700">{straw.embryos?.length || 0} Embryos</span>
+                                <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                  {straw.embryos?.length || 2} Embryos
+                                </span>
+                              </div>
+
+                              {/* Physical Storage Location Badge */}
+                              <div className="pt-2 border-t border-slate-100 flex items-start gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="text-[10px] text-slate-500 font-semibold uppercase block leading-tight">Physical Storage Location:</span>
+                                  <span className="font-mono font-bold text-[11px] text-slate-900 leading-snug">{parsedLoc.formatted}</span>
+                                </div>
                               </div>
                             </div>
                           );
