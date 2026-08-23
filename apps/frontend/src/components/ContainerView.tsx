@@ -307,7 +307,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
                   const occupiedInCan = canOccupancyMap[code] || 0;
-                  const colorInfo = getSpaceFillColor(occupiedInCan, 220);
+                  const colorInfo = getSpaceFillColor(occupiedInCan, 2200);
 
                   return (
                     <button
@@ -347,7 +347,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
                   const occupiedInCan = canOccupancyMap[code] || 0;
-                  const colorInfo = getSpaceFillColor(occupiedInCan, 220);
+                  const colorInfo = getSpaceFillColor(occupiedInCan, 2200);
 
                   return (
                     <button
@@ -396,7 +396,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     const num = idx + 1;
                     const isSelected = selectedCanisterNum === num;
                     const cnOccupied = canisterOccupancyMap[`${selectedCanCode}-C${num}`] || 0;
-                    const cnMax = 22; // 22 Viso Tubes per canister
+                    const cnMax = 220; // 220 straws per canister (22 Viso Tubes x 10 straws)
 
                     let bgStyle = 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold';
                     if (cnOccupied >= cnMax) {
@@ -667,7 +667,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                         {Array.from({ length: 10 }).map((_, idx) => {
                           const cn = idx + 1;
                           const cnOccupied = canisterOccupancyMap[`${canCode}-C${cn}`] || 0;
-                          const cnMax = 22; // 22 Viso Tubes per canister
+                          const cnMax = 220; // 220 straws per canister (22 Viso Tubes x 10 straws)
 
                           let bgStyle = 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold';
                           if (cnOccupied >= cnMax) {
