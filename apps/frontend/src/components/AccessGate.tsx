@@ -70,7 +70,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} method="post" action="#" className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label htmlFor="accessKey" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
               Website Access Key

@@ -163,7 +163,7 @@ const jwtAuthGuard = (req: AuthenticatedRequest, res: Response, next: NextFuncti
 };
 
 // --- AUTH ROUTES ---
-app.post('/api/auth/access-key', (req, res) => {
+const handleAccessKeyVerification = (req: Request, res: Response) => {
   const { accessKey } = req.body;
   if (!accessKey || !verifyAccessKey(accessKey)) {
     return res.status(403).json({ success: false, error: 'Invalid application access key.' });
@@ -176,7 +176,11 @@ app.post('/api/auth/access-key', (req, res) => {
   });
 
   return res.json({ success: true, message: 'Application access granted.' });
-});
+};
+
+app.post('/api/auth/access-key', handleAccessKeyVerification);
+app.post('/access-key', handleAccessKeyVerification);
+app.post('/api/access-key', handleAccessKeyVerification);
 
 app.post('/api/auth/login', accessKeyGuard, authLoginLimiter, async (req, res) => {
   try {
