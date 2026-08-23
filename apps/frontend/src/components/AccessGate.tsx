@@ -116,7 +116,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
                 type="password"
                 value={accessKey}
                 onChange={(e) => setAccessKey(e.target.value)}
-                placeholder="Enter access key (Default: clinic2026)"
+                placeholder="Enter access key"
                 required
                 autoComplete="current-password"
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-mono"
