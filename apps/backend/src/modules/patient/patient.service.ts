@@ -143,7 +143,10 @@ export class PatientService {
             },
           },
         },
-        thawRecords: { orderBy: { thawDate: 'desc' } },
+        thawRecords: {
+          orderBy: { thawDate: 'desc' },
+          include: { straw: { select: { strawId: true } } },
+        },
         ocrRecords: { orderBy: { createdAt: 'desc' } },
       },
     });

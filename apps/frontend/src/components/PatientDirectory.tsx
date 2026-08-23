@@ -568,17 +568,21 @@ export const PatientDirectory: React.FC = () => {
                     </div>
 
                     {/* Viso Tube Location Breakdown */}
-                    <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
-                      <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
-                      <div className="text-slate-900 font-bold">
-                        {batch.visoTube?.locationCode
-                          ? (batch.visoTube.locationCode.replace(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i, 'Can $1 • Canister $2 • Level $3 • Viso Tube $5'))
-                          : 'N/A'}
-                      </div>
-                      <div className="text-[10px] font-mono text-emerald-700 font-bold">
-                        System Ref: {batch.visoTube?.locationCode || 'N/A'}
-                      </div>
-                    </div>
+                    {(() => {
+                      const locCode = batch.straws?.[0]?.visoTube?.locationCode || '';
+                      const formatted = locCode
+                        ? locCode.replace(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i, 'Can $1 • Canister $2 • Level $3 • Viso Tube $5')
+                        : 'Not Assigned';
+                      return (
+                        <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
+                          <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
+                          <div className="text-slate-900 font-bold">{formatted}</div>
+                          <div className="text-[10px] font-mono text-emerald-700 font-bold">
+                            System Ref: {locCode || 'Not Assigned'}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Straws List */}
                     <div className="space-y-1.5">
