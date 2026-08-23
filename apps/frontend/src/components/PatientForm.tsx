@@ -860,7 +860,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4 text-emerald-400" />
                           <span>Calculate Optimal Storage Location Recommendation</span>
                         </>
                       )}
