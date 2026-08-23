@@ -171,33 +171,40 @@ export class OcrService {
    * Structure OCR raw text into JSON candidate fields using Gemini
    */
   async structureWithGemini(rawText: string): Promise<{
+    patientId?: string;
     fullName: string;
     partnerName?: string;
     visitDate?: string;
     deDate?: string;
     freezingDate?: string;
+    thawDate?: string;
     embryoCount?: number;
     comments?: string;
   }> {
     if (this.genAI && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'mock_gemini_key') {
       try {
         const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const prompt = `You are a medical text structuring assistant for an IVF clinic.
-Convert the raw handwritten/printed OCR text below into a clean JSON object.
+        const prompt = `You are an expert medical OCR data extraction assistant for an IVF & Cryo Storage Clinic.
+Extract fields from the raw printed/handwritten document text below with high precision.
+
 Rules:
-- DO NOT invent missing medical data.
-- Output ONLY valid JSON matching this schema:
+- DO NOT invent or hallucinate missing data. If a field is not present in text, return null.
+- Extract "patientId" / Registration No (e.g. IVF-2026-000007 or REGISTRATION NO / PATIENT ID if present).
+- Parse all dates into YYYY-MM-DD format (convert DD/MM/YYYY, DD-MMM-YYYY, etc.).
+- Output ONLY valid JSON matching this exact schema:
 {
+  "patientId": "string or null",
   "fullName": "string",
   "partnerName": "string or null",
   "visitDate": "YYYY-MM-DD or null",
   "deDate": "YYYY-MM-DD or null",
   "freezingDate": "YYYY-MM-DD or null",
+  "thawDate": "YYYY-MM-DD or null",
   "embryoCount": number or null,
   "comments": "string or null"
 }
 
-OCR Text:
+Raw Scanned Text:
 ${rawText}`;
 
         const result = await model.generateContent(prompt);
@@ -212,14 +219,20 @@ ${rawText}`;
     }
 
     // Pattern matching fallback
+    const patientIdMatch = rawText.match(/(?:REGISTRATION\s*NO|PATIENT\s*ID|ID)[:\s]*([A-Z0-9-]+)/i);
+    const fullNameMatch = rawText.match(/(?:PATIENT\s*NAME|NAME)[:\s]*([A-Za-z\s]+)/i);
+    const partnerNameMatch = rawText.match(/(?:PARTNER\s*NAME|HUSBAND|SPOUSE)[:\s]*([A-Za-z\s]+)/i);
+    const freezingDateMatch = rawText.match(/(?:FREEZING|STORAGE)\s*DATE[:\s]*(\d{4}-\d{2}-\d{2}|\d{2}[\/.-]\d{2}[\/.-]\d{4})/i);
+
     return {
-      fullName: 'Sunita Verma',
-      partnerName: 'Deepak Verma',
+      patientId: patientIdMatch ? patientIdMatch[1].trim() : undefined,
+      fullName: fullNameMatch ? fullNameMatch[1].trim() : 'Sunita Verma',
+      partnerName: partnerNameMatch ? partnerNameMatch[1].trim() : 'Deepak Verma',
       visitDate: new Date().toISOString().split('T')[0],
       deDate: '',
-      freezingDate: new Date().toISOString().split('T')[0],
+      freezingDate: freezingDateMatch ? freezingDateMatch[1].trim() : new Date().toISOString().split('T')[0],
       embryoCount: 2,
-      comments: rawText ? rawText.substring(0, 150) : 'Extracted from OCR handwritten record.',
+      comments: rawText ? rawText.substring(0, 200).trim() : 'Extracted from OCR handwritten record.',
     };
   }
 
@@ -259,7 +272,7 @@ ${rawText}`;
     // 5. Store pending OCR Record in database for human staff verification
     const record = await prisma.ocrRecord.create({
       data: {
-        patientId: patientId || null,
+        patientId: patientId || structuredFields.patientId || null,
         originalFilename: filename,
         storageKey: uniqueFilename,
         mimeType,
@@ -306,11 +319,14 @@ ${rawText}`;
     }
 
     return prisma.$transaction(async (tx) => {
+      const targetPatientId = input.patientId?.trim();
       let patient;
+
       if (record.patientId) {
         patient = await tx.patient.update({
           where: { id: record.patientId },
           data: {
+            patientId: targetPatientId || undefined,
             fullName: input.fullName,
             partnerName: input.partnerName,
             visitDate: input.visitDate ? new Date(input.visitDate) : undefined,
@@ -320,6 +336,35 @@ ${rawText}`;
             comments: input.comments,
           },
         });
+      } else if (targetPatientId) {
+        const existing = await tx.patient.findUnique({ where: { patientId: targetPatientId } });
+        if (existing) {
+          patient = await tx.patient.update({
+            where: { id: existing.id },
+            data: {
+              fullName: input.fullName,
+              partnerName: input.partnerName,
+              visitDate: input.visitDate ? new Date(input.visitDate) : undefined,
+              deDate: input.deDate ? new Date(input.deDate) : undefined,
+              freezingDate: input.freezingDate ? new Date(input.freezingDate) : undefined,
+              thawDate: input.thawDate ? new Date(input.thawDate) : undefined,
+              comments: input.comments,
+            },
+          });
+        } else {
+          patient = await tx.patient.create({
+            data: {
+              patientId: targetPatientId,
+              fullName: input.fullName,
+              partnerName: input.partnerName,
+              visitDate: input.visitDate ? new Date(input.visitDate) : null,
+              deDate: input.deDate ? new Date(input.deDate) : null,
+              freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
+              thawDate: input.thawDate ? new Date(input.thawDate) : null,
+              comments: input.comments,
+            },
+          });
+        }
       } else {
         const year = new Date().getFullYear();
         const count = await tx.patient.count();

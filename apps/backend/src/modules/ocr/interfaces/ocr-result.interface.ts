@@ -7,6 +7,7 @@ export interface OcrExtractionResult {
 
 export interface VerifyOcrInput {
   ocrRecordId: string;
+  patientId?: string;
   fullName: string;
   partnerName?: string;
   visitDate?: string;

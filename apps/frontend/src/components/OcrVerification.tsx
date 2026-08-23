@@ -8,12 +8,14 @@ export const OcrVerification: React.FC = () => {
   const [activeRecord, setActiveRecord] = useState<any | null>(null);
 
   // Verification Form Fields
+  const [patientId, setPatientId] = useState('');
   const [fullName, setFullName] = useState('');
   const [partnerName, setPartnerName] = useState('');
   const [visitDate, setVisitDate] = useState('');
   const [deDate, setDeDate] = useState('');
   const [freezingDate, setFreezingDate] = useState('');
   const [thawDate, setThawDate] = useState('');
+  const [embryoCount, setEmbryoCount] = useState('');
   const [comments, setComments] = useState('');
 
   const [uploading, setUploading] = useState(false);
@@ -168,13 +170,15 @@ export const OcrVerification: React.FC = () => {
   const selectRecord = (record: any) => {
     setActiveRecord(record);
     const json = record.extractedJson || {};
+    setPatientId(json.patientId || record.patientId || '');
     setFullName(json.fullName || '');
     setPartnerName(json.partnerName || '');
     setVisitDate(json.visitDate || '');
     setDeDate(json.deDate || '');
     setFreezingDate(json.freezingDate || '');
     setThawDate(json.thawDate || '');
-    setComments(json.comments || record.rawOcrText || '');
+    setEmbryoCount(json.embryoCount ? String(json.embryoCount) : '');
+    setComments(json.comments || '');
   };
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -185,18 +189,14 @@ export const OcrVerification: React.FC = () => {
     setError(null);
     setSuccessMsg(null);
 
-    const formData = new FormData();
-    formData.append('image', file);
-
-    const accessKey = localStorage.getItem('app_access_key') || '';
-    const token = localStorage.getItem('access_token') || '';
-
     try {
-      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL
-        || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:4000'
-          : 'https://ivf-storage-clinic-record-system.onrender.com');
-      const res = await fetch(`${apiBase}/api/ocr/upload`, {
+      const token = localStorage.getItem('access_token');
+      const accessKey = localStorage.getItem('app_access_key') || 'clinic2026';
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/ocr/upload', {
         method: 'POST',
         headers: {
           'x-access-key': accessKey,
@@ -233,6 +233,7 @@ export const OcrVerification: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({
           ocrRecordId: activeRecord.id,
+          patientId: patientId.trim() || undefined,
           fullName: fullName.trim(),
           partnerName: partnerName.trim() || undefined,
           visitDate: visitDate || undefined,
@@ -493,27 +494,76 @@ export const OcrVerification: React.FC = () => {
             </div>
 
             <form onSubmit={handleVerify} className="space-y-4 text-xs">
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Patient Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
-                  placeholder="Full Name"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Registration No (Patient ID)</label>
+                  <input
+                    type="text"
+                    value={patientId}
+                    onChange={(e) => setPatientId(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono font-bold"
+                    placeholder="e.g. IVF-2026-000007"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Patient Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                    placeholder="Full Name"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Partner Name</label>
-                <input
-                  type="text"
-                  value={partnerName}
-                  onChange={(e) => setPartnerName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
-                  placeholder="Partner Name"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Partner Name</label>
+                  <input
+                    type="text"
+                    value={partnerName}
+                    onChange={(e) => setPartnerName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
+                    placeholder="Partner Name"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Frozen Embryos Count</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={embryoCount}
+                    onChange={(e) => setEmbryoCount(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                    placeholder="e.g. 4"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Freezing / Storage Date</label>
+                  <input
+                    type="date"
+                    value={freezingDate}
+                    onChange={(e) => setFreezingDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Thaw / Withdrawal Date</label>
+                  <input
+                    type="date"
+                    value={thawDate}
+                    onChange={(e) => setThawDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -528,7 +578,7 @@ export const OcrVerification: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">DE Date</label>
+                  <label className="font-semibold text-slate-700">DE Date (Donor Egg)</label>
                   <input
                     type="date"
                     value={deDate}
@@ -538,34 +588,13 @@ export const OcrVerification: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Freezing Date</label>
-                  <input
-                    type="date"
-                    value={freezingDate}
-                    onChange={(e) => setFreezingDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Thaw Date</label>
-                  <input
-                    type="date"
-                    value={thawDate}
-                    onChange={(e) => setThawDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Staff Verification Notes / Raw Text</label>
+                <label className="font-semibold text-slate-700">Clinical Comments / Verification Notes</label>
                 <textarea
                   rows={3}
                   value={comments}
                   onChange={(e) => setComments(e.target.value)}
+                  placeholder="Enter staff clinical comments or verification notes..."
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono text-[11px]"
                 />
               </div>
