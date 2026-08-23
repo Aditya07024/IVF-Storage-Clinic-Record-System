@@ -98,7 +98,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [comments, setComments] = useState('');
 
   // Storage Allocation State
-  const [assignStorageEnabled, setAssignStorageEnabled] = useState(true);
+  const [assignStorageEnabled, setAssignStorageEnabled] = useState(false);
   const [allocationMode, setAllocationMode] = useState<'recommended' | 'manual'>('recommended');
   const [embryoCount, setEmbryoCount] = useState(2);
   const [storageDate, setStorageDate] = useState(new Date().toISOString().split('T')[0]);
