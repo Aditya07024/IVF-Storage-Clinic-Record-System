@@ -98,11 +98,25 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 }, // Max 15MB file upload limit
   fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/tiff', 'application/pdf'];
-    if (allowedMimeTypes.includes(file.mimetype.toLowerCase())) {
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/tiff',
+      'image/heic',
+      'image/heif',
+      'image/heic-sequence',
+      'image/heif-sequence',
+      'image/bmp',
+      'image/gif',
+      'application/pdf',
+    ];
+    const isExtensionAllowed = /\.(jpe?g|png|webp|tiff?|heic|heif|bmp|gif|pdf)$/i.test(file.originalname);
+    if (allowedMimeTypes.includes(file.mimetype.toLowerCase()) || isExtensionAllowed) {
       cb(null, true);
     } else {
-      cb(new Error('Security Policy Violation: Only JPEG, PNG, WEBP, TIFF, and PDF documents are allowed.'));
+      cb(new Error('Security Policy Violation: Only JPEG, PNG, WEBP, HEIC, HEIF, TIFF, and PDF documents are allowed.'));
     }
   },
 });
