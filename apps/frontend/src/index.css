@@ -12,8 +12,25 @@
     font-family: 'Outfit', sans-serif;
   }
   input[type="date"] {
+    height: 2.75rem !important;
+    line-height: 1.25rem !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    min-height: 1.5em;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+  }
+  input[type="date"]::-webkit-datetime-edit {
+    padding: 0;
+    margin: 0;
+  }
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+    margin: 0;
   }
   input[type="date"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
