@@ -7,8 +7,8 @@ interface LoginFormProps {
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
-  const [staffId, setStaffId] = useState('STAFF001');
-  const [password, setPassword] = useState('StaffPassword123!');
+  const [staffId, setStaffId] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
