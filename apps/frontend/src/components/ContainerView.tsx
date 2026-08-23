@@ -143,29 +143,34 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
   // Helper to determine space-fill background color according to space left (Green = Empty, Yellow = Partial, Red = Full)
   const getSpaceFillColor = (occupied: number, max: number = 10) => {
+    const rawPercentage = max > 0 ? (occupied / max) * 100 : 0;
+    const formattedLabel = rawPercentage > 0 && rawPercentage < 1
+      ? `${rawPercentage.toFixed(2)}%`
+      : `${Math.round(rawPercentage)}%`;
+
     if (occupied === 0) {
       return {
         fill: 'fill-emerald-100/90',
         stroke: 'stroke-emerald-500',
-        bg: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
+        bg: 'bg-emerald-100 text-emerald-950 border-emerald-300 font-mono font-bold',
         dot: 'bg-emerald-500',
-        label: 'EMPTY',
+        label: '0%',
       };
     } else if (occupied >= max) {
       return {
         fill: 'fill-rose-500/90',
         stroke: 'stroke-rose-700',
-        bg: 'bg-rose-600 text-white border-rose-700 font-bold',
+        bg: 'bg-rose-600 text-white border-rose-700 font-mono font-bold',
         dot: 'bg-rose-600',
-        label: 'FULL',
+        label: '100%',
       };
     } else {
       return {
         fill: 'fill-amber-300/95',
         stroke: 'stroke-amber-600',
-        bg: 'bg-amber-400 text-amber-950 border-amber-500 font-black shadow-xs',
+        bg: 'bg-amber-400 text-amber-950 border-amber-500 font-mono font-black shadow-xs',
         dot: 'bg-amber-500',
-        label: 'PARTIAL',
+        label: formattedLabel,
       };
     }
   };

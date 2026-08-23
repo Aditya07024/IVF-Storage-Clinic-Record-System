@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X } from 'lucide-react';
-import { apiRequest } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 
 export const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink',
@@ -471,9 +471,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           ) : existingSearchResults.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
               {existingSearchResults.map((p) => {
-                const freezingDateStr = p.freezingDate || p.batches?.[0]?.storageDate
-                  ? new Date(p.freezingDate || p.batches[0].storageDate).toISOString().split('T')[0]
-                  : 'Not Specified';
+                const freezingDateStr = formatDateDDMMYYYY(p.freezingDate || p.batches?.[0]?.storageDate);
 
                 return (
                   <div

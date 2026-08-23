@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ThermometerSnowflake, Search, CheckCircle2, ShieldAlert, AlertTriangle, Layers, MoveRight, User, Calendar, Phone, RefreshCw, MapPin } from 'lucide-react';
-import { apiRequest } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 
 const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink', 2: 'Grey', 3: 'Red', 4: 'Black', 5: 'Green',
@@ -236,9 +236,7 @@ export const ThawWorkflow: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[360px] overflow-y-auto pr-1">
             {searchResults.map((item) => {
               const isSelected = patient?.id === item.id;
-              const freezingDateStr = item.freezingDate || item.batches?.[0]?.storageDate
-                ? new Date(item.freezingDate || item.batches[0].storageDate).toISOString().split('T')[0]
-                : 'Not Specified';
+              const freezingDateStr = formatDateDDMMYYYY(item.freezingDate || item.batches?.[0]?.storageDate);
 
               const activeStrawsCount = item.batches?.reduce((acc: number, b: any) => {
                 return acc + (b.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0);
@@ -297,7 +295,7 @@ export const ThawWorkflow: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-amber-950 font-mono font-bold px-2.5 py-1 bg-amber-100 rounded-lg border border-amber-300 inline-block">
-                    Freezing Date: {patient.freezingDate ? new Date(patient.freezingDate).toISOString().split('T')[0] : 'N/A'}
+                    Freezing Date: {formatDateDDMMYYYY(patient.freezingDate)}
                   </span>
                 </div>
               </div>

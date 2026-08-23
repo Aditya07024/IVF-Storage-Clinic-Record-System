@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight } from 'lucide-react';
-import { apiRequest } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 
 export const PatientDirectory: React.FC = () => {
   const [queryInput, setQueryInput] = useState('');
@@ -248,7 +248,7 @@ export const PatientDirectory: React.FC = () => {
                   const isDuplicateName = sameNameCount > 1;
 
                   const freezingDateObj = p.freezingDate || p.batches?.[0]?.storageDate;
-                  const freezingDateStr = freezingDateObj ? new Date(freezingDateObj).toISOString().split('T')[0] : 'Not Specified';
+                  const freezingDateStr = formatDateDDMMYYYY(freezingDateObj);
 
                   return (
                     <tr
@@ -478,7 +478,7 @@ export const PatientDirectory: React.FC = () => {
                 <span className="text-xs font-mono font-bold text-emerald-700">{selectedPatient.patientId}</span>
                 <h2 className="text-xl font-bold text-slate-900">{selectedPatient.fullName}</h2>
                 <div className="text-xs text-slate-600 font-mono font-bold mt-1">
-                  Freezing Date: {selectedPatient.freezingDate ? new Date(selectedPatient.freezingDate).toISOString().split('T')[0] : 'N/A'}
+                  Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -519,7 +519,7 @@ export const PatientDirectory: React.FC = () => {
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-slate-500 font-semibold block uppercase text-[10px]">Freezing / Storage Date:</span>
                 <strong className="text-slate-900 font-mono text-sm">
-                  {selectedPatient.freezingDate ? new Date(selectedPatient.freezingDate).toISOString().split('T')[0] : 'N/A'}
+                  {formatDateDDMMYYYY(selectedPatient.freezingDate)}
                 </strong>
               </div>
 
@@ -563,7 +563,7 @@ export const PatientDirectory: React.FC = () => {
                     <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
                       <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span>
                       <span className="text-slate-600 font-medium">
-                        Stored on: {new Date(batch.storageDate).toISOString().split('T')[0]}
+                        Stored on: {formatDateDDMMYYYY(batch.storageDate)}
                       </span>
                     </div>
 
