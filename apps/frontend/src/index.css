@@ -11,6 +11,16 @@
   h1, h2, h3, h4, .font-display {
     font-family: 'Outfit', sans-serif;
   }
+  input[type="date"] {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    opacity: 0.75;
+  }
 }
 
 .glass-panel {

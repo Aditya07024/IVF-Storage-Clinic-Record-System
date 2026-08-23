@@ -691,8 +691,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             </div>
 
             {/* Dedicated Date Fields 3-Column Subgrid */}
-            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-              <div className="min-w-0">
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 w-full max-w-full overflow-hidden">
+              <div className="w-full max-w-full min-w-0 overflow-hidden">
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 truncate">
                   Visit Date
                 </label>
@@ -700,11 +700,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   type="date"
                   value={visitDate}
                   onChange={(e) => setVisitDate(e.target.value)}
-                  className="w-full min-w-0 max-w-full box-border bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+                  className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-2.5 sm:px-3 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
                 />
               </div>
 
-              <div className="min-w-0">
+              <div className="w-full max-w-full min-w-0 overflow-hidden">
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 truncate">
                   Freezing Date *
                 </label>
@@ -715,11 +715,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     setFreezingDate(e.target.value);
                     setStorageDate(e.target.value);
                   }}
-                  className="w-full min-w-0 max-w-full box-border bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                  className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-2.5 sm:px-3 py-2.5 text-xs sm:text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
-              <div className="min-w-0">
+              <div className="w-full max-w-full min-w-0 overflow-hidden">
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 truncate" title="Donor Egg / Diagnostic Date">
                   DE Date <span className="text-[10px] text-slate-500 font-normal lowercase">(Donor Egg)</span>
                 </label>
@@ -727,7 +727,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   type="date"
                   value={deDate}
                   onChange={(e) => setDeDate(e.target.value)}
-                  className="w-full min-w-0 max-w-full box-border bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+                  className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-2.5 sm:px-3 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
                 />
               </div>
             </div>

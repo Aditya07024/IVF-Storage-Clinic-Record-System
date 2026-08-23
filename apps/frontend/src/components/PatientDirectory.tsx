@@ -539,7 +539,7 @@ export const PatientDirectory: React.FC = () => {
               <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-emerald-600" />
-                  <span>Cryo Storage Specimen Batches</span>
+                  <span>Active Cryo Storage Specimen Batches</span>
                 </span>
                 {(() => {
                   const activeCount = selectedPatient.batches?.filter((b: any) =>
@@ -547,63 +547,75 @@ export const PatientDirectory: React.FC = () => {
                   ).length || 0;
                   return (
                     <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold border ${activeCount > 0 ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-300'}`}>
-                      {activeCount} Active Batch(es) • {selectedPatient.batches?.length || 0} Total
+                      {activeCount} Active Batch(es)
                     </span>
                   );
                 })()}
               </h3>
 
-              {selectedPatient.batches?.length === 0 ? (
-                <div className="text-xs text-slate-500 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                  No cryo storage batches allocated for this patient yet.
-                </div>
-              ) : (
-                selectedPatient.batches?.map((batch: any) => (
-                  <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
-                      <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span>
-                      <span className="text-slate-600 font-medium">
-                        Stored on: {formatDateDDMMYYYY(batch.storageDate)}
-                      </span>
+              {(() => {
+                const activeBatches = selectedPatient.batches?.filter((batch: any) =>
+                  batch.straws?.some((straw: any) => straw.status === 'OCCUPIED')
+                ) || [];
+
+                if (activeBatches.length === 0) {
+                  return (
+                    <div className="text-xs text-slate-600 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center font-medium">
+                      0 Active Specimen Batches in Storage (All specimen have been thawed & withdrawn)
                     </div>
+                  );
+                }
 
-                    {/* Viso Tube Location Breakdown */}
-                    {(() => {
-                      const locCode = batch.straws?.[0]?.visoTube?.locationCode || '';
-                      const formatted = locCode
-                        ? locCode.replace(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i, 'Can $1 • Canister $2 • Level $3 • Viso Tube $5')
-                        : 'Not Assigned';
-                      return (
-                        <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
-                          <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
-                          <div className="text-slate-900 font-bold">{formatted}</div>
-                          <div className="text-[10px] font-mono text-emerald-700 font-bold">
-                            System Ref: {locCode || 'Not Assigned'}
+                return activeBatches.map((batch: any) => {
+                  const activeStraws = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
+
+                  return (
+                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
+                        <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span>
+                        <span className="text-slate-600 font-medium">
+                          Stored on: {formatDateDDMMYYYY(batch.storageDate)}
+                        </span>
+                      </div>
+
+                      {/* Viso Tube Location Breakdown */}
+                      {(() => {
+                        const locCode = activeStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
+                        const formatted = locCode
+                          ? locCode.replace(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i, 'Can $1 • Canister $2 • Level $3 • Viso Tube $5')
+                          : 'Not Assigned';
+                        return (
+                          <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
+                            <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
+                            <div className="text-slate-900 font-bold">{formatted}</div>
+                            <div className="text-[10px] font-mono text-emerald-700 font-bold">
+                              System Ref: {locCode || 'Not Assigned'}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
+                        );
+                      })()}
 
-                    {/* Straws List */}
-                    <div className="space-y-1.5">
-                      <div className="text-[11px] font-bold text-slate-700">Straws in this Batch:</div>
-                      {batch.straws?.map((straw: any) => (
-                        <div key={straw.id} className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between">
-                          <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
-                            <span>Straw ID: {straw.strawId}</span>
-                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded border border-slate-200">
-                              Color: {straw.color}
+                      {/* Straws List */}
+                      <div className="space-y-1.5">
+                        <div className="text-[11px] font-bold text-slate-700">Active Straws in this Batch:</div>
+                        {activeStraws.map((straw: any) => (
+                          <div key={straw.id} className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between">
+                            <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
+                              <span>Straw ID: {straw.strawId}</span>
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded border border-slate-200">
+                                Color: {straw.color}
+                              </span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
+                              OCCUPIED ({straw.embryos?.length || 0} Embryos)
                             </span>
                           </div>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${straw.status === 'OCCUPIED' ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                            {straw.status} ({straw.embryos?.length || 0} Embryos)
-                          </span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  );
+                });
+              })()}
             </div>
 
             {/* Thaw / Withdrawal Clinical History Section */}
