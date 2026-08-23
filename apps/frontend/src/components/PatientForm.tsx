@@ -623,11 +623,35 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
           <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-2">
             <span>Patient & Clinical Details</span>
-            {selectedExistingPatient && (
-              <span className="text-[10px] sm:text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                EXISTING PATIENT RECORD
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const randomId = `IVF-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+                  setCustomPatientId(randomId);
+                  setFullName('Sunita Verma');
+                  setPartnerName('Deepak Verma');
+                  setPhone('+91 98260 78901');
+                  const today = new Date().toISOString().split('T')[0];
+                  setVisitDate(today);
+                  setFreezingDate(today);
+                  setStorageDate(today);
+                  setDeDate(today);
+                  setComments('Demo patient allocation test. Grade A 5AA blastocysts.');
+                }}
+                className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs rounded-xl border border-amber-300 shadow-2xs transition-all active:scale-95 flex items-center gap-1.5"
+                title="Auto-fill sample patient data"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>Auto-Fill Demo Data</span>
+              </button>
+
+              {selectedExistingPatient && (
+                <span className="text-[10px] sm:text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                  EXISTING PATIENT RECORD
+                </span>
+              )}
+            </div>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full">

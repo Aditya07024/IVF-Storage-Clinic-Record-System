@@ -63,6 +63,40 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
           </p>
         </div>
 
+        {/* 1-Click Quick Demo Access Key Button */}
+        <div className="mb-5 p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-2">
+          <div className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
+            ⚡ Quick 1-Click Demo Access Key:
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              setAccessKey('clinic2026');
+              setError(null);
+              setLoading(true);
+              try {
+                const res = await apiRequest('/api/auth/access-key', {
+                  method: 'POST',
+                  body: JSON.stringify({ accessKey: 'clinic2026' }),
+                });
+                if (res.success) {
+                  localStorage.setItem('app_access_key', 'clinic2026');
+                  setIsGranted(true);
+                }
+              } catch (err: any) {
+                setError(err.message || 'Demo access key failed.');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+            className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+          >
+            <KeyRound className="w-4 h-4 text-emerald-200" />
+            <span>Unlock Website with Demo Access Key (clinic2026)</span>
+          </button>
+        </div>
+
         {error && (
           <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm">
             <ShieldAlert className="w-5 h-5 shrink-0 text-rose-600" />
