@@ -427,12 +427,14 @@ app.post('/api/ocr/extract', accessKeyGuard, jwtAuthGuard, upload.single('image'
 
 app.post('/api/ocr/upload', accessKeyGuard, jwtAuthGuard, upload.single('image'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, error: 'No image file uploaded.' });
+    const file = req.file || (req.files && (req.files as any)[0]);
+    if (!file) return res.status(400).json({ success: false, error: 'No image file uploaded.' });
     const patientId = req.body.patientId as string;
-    const result = await ocrService.uploadAndProcess(req.file.buffer, req.file.originalname, req.file.mimetype, patientId);
+    const result = await ocrService.uploadAndProcess(file.buffer, file.originalname, file.mimetype, patientId);
     return res.json({ success: true, ...result });
   } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message });
+    console.error('[OCR Upload Error]', err);
+    return res.status(400).json({ success: false, error: err.message || 'Failed to process document upload.' });
   }
 });
 
