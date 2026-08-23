@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { prisma } from '../../common/prisma.js';
 import { CONFIG } from '../../common/config.js';
@@ -7,16 +8,8 @@ import { OcrExtractionResult, VerifyOcrInput } from './interfaces/ocr-result.int
 import { ALLOWED_OCR_MIME_TYPES, MAX_OCR_FILE_SIZE } from './dto/extract-ocr.dto.js';
 import { imageProcessingService } from '../image-processing/image-processing.service.js';
 
-let visionModule: any = null;
-try {
-  // Safe require for build-time resolution on Render/CI environments
-  visionModule = require('@google-cloud/vision');
-} catch (e: any) {
-  console.warn('[OcrService] @google-cloud/vision package load notice:', e.message || e);
-}
-
 export class OcrService {
-  private visionClient: any = null;
+  private visionClient: ImageAnnotatorClient | null = null;
   private genAI: GoogleGenerativeAI | null = null;
 
   constructor() {
@@ -52,13 +45,8 @@ export class OcrService {
           options.projectId = CONFIG.GOOGLE_CLOUD_PROJECT_ID;
         }
 
-        const ClientClass = visionModule?.ImageAnnotatorClient || visionModule?.default?.ImageAnnotatorClient;
-        if (ClientClass) {
-          this.visionClient = new ClientClass(options);
-          console.log('[OcrService] Google Cloud Vision client initialized securely.');
-        } else {
-          console.warn('[OcrService] @google-cloud/vision module not available.');
-        }
+        this.visionClient = new ImageAnnotatorClient(options);
+        console.log('[OcrService] Google Cloud Vision client initialized securely.');
       }
     } catch (err: any) {
       console.error('[OcrService] Failed to initialize Google Cloud Vision client:', err.message || err);
