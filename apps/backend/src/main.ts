@@ -93,19 +93,37 @@ app.use(cookieParser());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
-// 5. Multer File Upload Security & Strict MIME Filter
+// 5. Multer File Upload Security & Strict MIME Filter (15MB Limit)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // Max 5MB file upload limit
+  limits: { fileSize: 15 * 1024 * 1024 }, // Max 15MB file upload limit
   fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (allowedMimeTypes.includes(file.mimetype)) {
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/tiff', 'application/pdf'];
+    if (allowedMimeTypes.includes(file.mimetype.toLowerCase())) {
       cb(null, true);
     } else {
-      cb(new Error('Security Policy Violation: Only JPEG, PNG, WEBP, and PDF documents are allowed.'));
+      cb(new Error('Security Policy Violation: Only JPEG, PNG, WEBP, TIFF, and PDF documents are allowed.'));
     }
   },
 });
+
+// Resilient Multer Single File Middleware Wrapper
+const uploadSingle = (fieldName: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    upload.single(fieldName)(req, res, (err: any) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ success: false, error: 'File size exceeds maximum upload limit of 15MB.' });
+          }
+          return res.status(400).json({ success: false, error: `Upload error: ${err.message}` });
+        }
+        return res.status(400).json({ success: false, error: err.message || 'File upload error.' });
+      }
+      next();
+    });
+  };
+};
 
 // 6. Static Upload File Serving with Path Traversal Protection
 app.get('/uploads/:key', (req, res) => {
@@ -408,7 +426,7 @@ app.get('/api/thaw/history/:patientId', accessKeyGuard, jwtAuthGuard, async (req
 });
 
 // --- OCR ROUTES ---
-app.post('/api/ocr/extract', accessKeyGuard, jwtAuthGuard, upload.single('image'), async (req, res) => {
+app.post('/api/ocr/extract', accessKeyGuard, jwtAuthGuard, uploadSingle('image'), async (req, res) => {
   try {
     const file = req.file || (req.files && (req.files as any)[0]);
     if (!file) return res.status(400).json({ success: false, error: 'No image file uploaded.' });
@@ -425,7 +443,7 @@ app.post('/api/ocr/extract', accessKeyGuard, jwtAuthGuard, upload.single('image'
   }
 });
 
-app.post('/api/ocr/upload', accessKeyGuard, jwtAuthGuard, upload.single('image'), async (req, res) => {
+app.post('/api/ocr/upload', accessKeyGuard, jwtAuthGuard, uploadSingle('image'), async (req, res) => {
   try {
     const file = req.file || (req.files && (req.files as any)[0]);
     if (!file) return res.status(400).json({ success: false, error: 'No image file uploaded.' });
