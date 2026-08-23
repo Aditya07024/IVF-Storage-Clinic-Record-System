@@ -4,7 +4,8 @@ const getApiBaseUrl = () => {
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     return 'http://localhost:4000';
   }
-  return '';
+  // Production: frontend on Vercel, backend on Render
+  return 'https://ivf-storage-clinic-record-system.onrender.com';
 };
 
 const API_BASE_URL = getApiBaseUrl();

@@ -192,7 +192,11 @@ export const OcrVerification: React.FC = () => {
     const token = localStorage.getItem('access_token') || '';
 
     try {
-      const res = await fetch('/api/ocr/upload', {
+      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL
+        || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'http://localhost:4000'
+          : 'https://ivf-storage-clinic-record-system.onrender.com');
+      const res = await fetch(`${apiBase}/api/ocr/upload`, {
         method: 'POST',
         headers: {
           'x-access-key': accessKey,
