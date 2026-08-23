@@ -269,7 +269,7 @@ export const PatientDirectory: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-1.5 py-1 rounded-xl text-xs font-bold font-mono border ${isDuplicateName ? 'bg-amber-100 text-amber-950 border-amber-400' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
-                          Freezing Date: {freezingDateStr}
+                          Freezing Date: <br></br>{freezingDateStr}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-slate-700 font-mono text-xs font-semibold">
