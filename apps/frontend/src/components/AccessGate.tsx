@@ -109,7 +109,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
 
         <div className="mt-8 text-center border-t border-slate-100 pt-4">
           <p className="text-xs text-slate-400">
-            IVF Clinic Internal System • Security Key Hash Enforced
+            IVF Clinic Internal System
           </p>
         </div>
       </div>

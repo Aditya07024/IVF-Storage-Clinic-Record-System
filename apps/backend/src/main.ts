@@ -496,4 +496,10 @@ async function startServer() {
   });
 }
 
-startServer();
+// Auto-start server in standalone Node environment
+if (process.env.VERCEL !== '1') {
+  startServer().catch((err) => console.error('[Fatal Startup Error]', err));
+}
+
+export { app };
+export default app;
