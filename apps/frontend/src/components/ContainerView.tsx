@@ -68,6 +68,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
   const [error, setError] = useState<string | null>(null);
 
   const [canOccupancyMap, setCanOccupancyMap] = useState<Record<string, number>>({});
+  const [canisterOccupancyMap, setCanisterOccupancyMap] = useState<Record<string, number>>({});
 
   const CLINIC_CANS = [1, 2, 3, 4, 5, 8, 10, 14];
 
@@ -84,20 +85,27 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
       const res = await apiRequest('/api/storage/hierarchy?canCode=all');
       if (res.success && res.cans) {
         const occMap: Record<string, number> = {};
+        const cnOccMap: Record<string, number> = {};
+
         res.cans.forEach((can: any) => {
-          let count = 0;
+          let canCount = 0;
           can.canisters?.forEach((cn: any) => {
+            let cnCount = 0;
             cn.levels?.forEach((l: any) => {
               l.goblets?.forEach((g: any) => {
                 g.visoTubes?.forEach((v: any) => {
-                  count += v.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
+                  const occStraws = v.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
+                  cnCount += occStraws;
                 });
               });
             });
+            canCount += cnCount;
+            cnOccMap[`${can.code}-C${cn.canisterNumber}`] = cnCount;
           });
-          occMap[can.code] = count;
+          occMap[can.code] = canCount;
         });
         setCanOccupancyMap(occMap);
+        setCanisterOccupancyMap(cnOccMap);
       }
     } catch (err: any) {
       console.error('Failed to fetch global occupancy map:', err);
@@ -646,13 +654,26 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                       <div className="grid grid-cols-5 gap-1.5">
                         {Array.from({ length: 10 }).map((_, idx) => {
                           const cn = idx + 1;
+                          const cnOccupied = canisterOccupancyMap[`${canCode}-C${cn}`] || 0;
+                          const cnMax = 22; // 22 Viso Tubes per canister
+
+                          let bgStyle = 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold';
+                          if (cnOccupied >= cnMax) {
+                            bgStyle = 'bg-rose-500 border-rose-700 text-white font-black shadow-xs';
+                          } else if (cnOccupied > 0) {
+                            bgStyle = 'bg-amber-300 border-amber-500 text-amber-950 font-black shadow-xs';
+                          }
+
                           return (
                             <div
                               key={cn}
-                              className="bg-slate-100 p-2 rounded-xl border border-slate-200 text-center space-y-1 hover:bg-emerald-100 transition-colors"
+                              className={`p-1.5 rounded-xl border text-center space-y-0.5 transition-all ${bgStyle}`}
+                              title={`${canCode} Canister ${cn}: ${cnOccupied}/${cnMax} occupied`}
                             >
-                              <div className="text-[10px] font-mono font-bold text-slate-800">C{cn}</div>
-                              <div className="w-full bg-emerald-500 h-1.5 rounded-full" />
+                              <div className="text-[10px] font-mono font-bold">C{cn}</div>
+                              <div className="text-[9px] font-mono font-black">
+                                {cnOccupied > 0 ? (cnOccupied >= cnMax ? 'FULL' : `${cnOccupied}`) : '0'}
+                              </div>
                             </div>
                           );
                         })}
