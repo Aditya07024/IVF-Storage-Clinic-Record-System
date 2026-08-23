@@ -826,10 +826,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     <button
                       type="button"
                       onClick={() => setEmbryoCount(Math.max(1, embryoCount - 1))}
-                      className="w-11 h-11 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl border border-slate-300 font-bold text-lg flex items-center justify-center transition-all shrink-0 active:scale-95 shadow-xs"
+                      className="w-11 h-11 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded-xl border border-rose-300 font-bold text-lg flex items-center justify-center transition-all shrink-0 active:scale-95 shadow-xs"
                       title="Decrease Embryo Count"
                     >
-                      <Minus className="w-4 h-4 text-slate-700" />
+                      <Minus className="w-4 h-4 text-rose-700 stroke-[2.5]" />
                     </button>
 
                     <input
