@@ -182,9 +182,8 @@ export class OcrService {
     comments?: string;
   }> {
     if (this.genAI && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'mock_gemini_key') {
-      try {
-        const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const prompt = `You are an expert medical OCR data extraction assistant for an IVF & Cryo Storage Clinic.
+      const candidateModels = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-1.5-flash', 'gemini-pro'];
+      const prompt = `You are an expert medical OCR data extraction assistant for an IVF & Cryo Storage Clinic.
 Extract fields from the raw printed/handwritten document text below with high precision.
 
 Rules:
@@ -194,7 +193,7 @@ Rules:
 - Output ONLY valid JSON matching this exact schema:
 {
   "patientId": "string or null",
-  "fullName": "string",
+  "fullName": "string or null",
   "partnerName": "string or null",
   "visitDate": "YYYY-MM-DD or null",
   "deDate": "YYYY-MM-DD or null",
@@ -207,18 +206,33 @@ Rules:
 Raw Scanned Text:
 ${rawText}`;
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
+      for (const modelName of candidateModels) {
+        try {
+          const model = this.genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(prompt);
+          const responseText = result.response.text();
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return {
+              patientId: parsed.patientId || undefined,
+              fullName: parsed.fullName || '',
+              partnerName: parsed.partnerName || '',
+              visitDate: parsed.visitDate || '',
+              deDate: parsed.deDate || '',
+              freezingDate: parsed.freezingDate || '',
+              thawDate: parsed.thawDate || '',
+              embryoCount: parsed.embryoCount || undefined,
+              comments: parsed.comments || '',
+            };
+          }
+        } catch (err: any) {
+          // try next candidate model name
         }
-      } catch (err: any) {
-        console.warn('[OcrService] Gemini AI fallback to pattern matcher:', err.message || err);
       }
     }
 
-    // Pattern matching fallback
+    // Pattern matching fallback (clean empty defaults, no hardcoded mock names)
     const patientIdMatch = rawText.match(/(?:REGISTRATION\s*NO|PATIENT\s*ID|ID)[:\s]*([A-Z0-9-]+)/i);
     const fullNameMatch = rawText.match(/(?:PATIENT\s*NAME|NAME)[:\s]*([A-Za-z\s]+)/i);
     const partnerNameMatch = rawText.match(/(?:PARTNER\s*NAME|HUSBAND|SPOUSE)[:\s]*([A-Za-z\s]+)/i);
@@ -226,13 +240,13 @@ ${rawText}`;
 
     return {
       patientId: patientIdMatch ? patientIdMatch[1].trim() : undefined,
-      fullName: fullNameMatch ? fullNameMatch[1].trim() : 'Sunita Verma',
-      partnerName: partnerNameMatch ? partnerNameMatch[1].trim() : 'Deepak Verma',
-      visitDate: new Date().toISOString().split('T')[0],
+      fullName: fullNameMatch ? fullNameMatch[1].trim() : '',
+      partnerName: partnerNameMatch ? partnerNameMatch[1].trim() : '',
+      visitDate: '',
       deDate: '',
-      freezingDate: freezingDateMatch ? freezingDateMatch[1].trim() : new Date().toISOString().split('T')[0],
-      embryoCount: 2,
-      comments: rawText ? rawText.substring(0, 200).trim() : 'Extracted from OCR handwritten record.',
+      freezingDate: freezingDateMatch ? freezingDateMatch[1].trim() : '',
+      embryoCount: undefined,
+      comments: '',
     };
   }
 

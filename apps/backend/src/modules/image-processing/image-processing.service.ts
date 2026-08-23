@@ -6,18 +6,21 @@ export class ImageProcessingService {
    * - Validates image format.
    * - Resizes if width > 2000px.
    * - Compresses images larger than ~2MB while maintaining high contrast & readability (quality 85).
-   * - Preserves original image untouched if already <= 2MB and within dimensions.
+   * - Preserves original image untouched for HEIC/HEIF or images already <= 2MB.
    */
   async optimizeForStorage(
     fileBuffer: Buffer,
     mimeType: string
   ): Promise<{ buffer: Buffer; optimized: boolean; fileSize: number }> {
-    if (!mimeType.startsWith('image/')) {
-      return { buffer: fileBuffer, optimized: false, fileSize: fileBuffer.length };
+    const initialSize = fileBuffer.length;
+
+    // HEIC/HEIF or non-raster image formats
+    const cleanMime = mimeType.toLowerCase();
+    if (!cleanMime.startsWith('image/') || cleanMime.includes('heic') || cleanMime.includes('heif')) {
+      return { buffer: fileBuffer, optimized: false, fileSize: initialSize };
     }
 
     const TWO_MB = 2 * 1024 * 1024;
-    const initialSize = fileBuffer.length;
 
     try {
       const metadata = await sharp(fileBuffer).metadata();
@@ -35,15 +38,14 @@ export class ImageProcessingService {
       }
 
       let optimizedBuffer: Buffer;
-      if (mimeType === 'image/png') {
+      if (cleanMime === 'image/png') {
         optimizedBuffer = await pipeline.png({ compressionLevel: 8 }).toBuffer();
-      } else if (mimeType === 'image/webp') {
+      } else if (cleanMime === 'image/webp') {
         optimizedBuffer = await pipeline.webp({ quality: 85 }).toBuffer();
       } else {
         optimizedBuffer = await pipeline.jpeg({ quality: 85, mozjpeg: true }).toBuffer();
       }
 
-      // If optimization resulted in larger file size and no resize occurred, return original
       if (optimizedBuffer.length > initialSize && !needsResize) {
         return { buffer: fileBuffer, optimized: false, fileSize: initialSize };
       }
@@ -53,8 +55,8 @@ export class ImageProcessingService {
         optimized: true,
         fileSize: optimizedBuffer.length,
       };
-    } catch (err) {
-      console.warn('[ImageProcessingService] Optimization warning, keeping original buffer:', err);
+    } catch (err: any) {
+      console.log('[ImageProcessingService] Keeping original image buffer:', err.message || err);
       return { buffer: fileBuffer, optimized: false, fileSize: initialSize };
     }
   }
