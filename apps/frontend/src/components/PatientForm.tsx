@@ -642,7 +642,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 onChange={(e) => setCustomPatientId(e.target.value)}
                 readOnly={!!selectedExistingPatient}
                 placeholder="e.g. IVF-2026-000001"
-                className={`w-full max-w-full min-w-0 box-border border rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-mono font-bold focus:outline-none ${
+                className={`w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none ${
                   selectedExistingPatient
                     ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
                     : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
@@ -660,7 +660,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Eleanor Vance"
                 required
-                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
               />
             </div>
 
@@ -673,7 +673,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 value={partnerName}
                 onChange={(e) => setPartnerName(e.target.value)}
                 placeholder="e.g. Thomas Vance"
-                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
+                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
@@ -686,50 +686,48 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. +1 555 0192"
-                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500"
+                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500"
               />
             </div>
 
-            {/* Dedicated Date Fields 3-Column Subgrid */}
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 w-full max-w-full overflow-hidden">
-              <div className="w-full max-w-full min-w-0 overflow-hidden">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 truncate">
-                  Visit Date
-                </label>
-                <input
-                  type="date"
-                  value={visitDate}
-                  onChange={(e) => setVisitDate(e.target.value)}
-                  className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-2.5 sm:px-3 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Visit Date
+              </label>
+              <input
+                type="date"
+                value={visitDate}
+                onChange={(e) => setVisitDate(e.target.value)}
+                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+              />
+            </div>
 
-              <div className="w-full max-w-full min-w-0 overflow-hidden">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 truncate">
-                  Freezing Date *
-                </label>
-                <input
-                  type="date"
-                  value={freezingDate}
-                  onChange={(e) => {
-                    setFreezingDate(e.target.value);
-                    setStorageDate(e.target.value);
-                  }}
-                  className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-2.5 sm:px-3 py-2.5 text-xs sm:text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                New Embryo Freezing Date *
+              </label>
+              <input
+                type="date"
+                value={freezingDate}
+                onChange={(e) => {
+                  setFreezingDate(e.target.value);
+                  setStorageDate(e.target.value);
+                }}
+                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500"
+              />
+            </div>
 
-              <div className="w-full max-w-full min-w-0 overflow-hidden">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 truncate" title="Donor Egg / Diagnostic Date">
-                  DE Date <span className="text-[10px] text-slate-500 font-normal lowercase">(Donor Egg)</span>
-                </label>
-                <input
-                  type="date"
-                  value={deDate}
-                  onChange={(e) => setDeDate(e.target.value)}
-                  className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-2.5 sm:px-3 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                <span>DE Date</span>
+                <span className="text-[10px] text-slate-500 font-normal lowercase">(Donor Egg / Diagnostic Date)</span>
+              </label>
+              <input
+                type="date"
+                value={deDate}
+                onChange={(e) => setDeDate(e.target.value)}
+                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+              />
             </div>
 
             <div className="md:col-span-2">
@@ -742,7 +740,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
                 placeholder="Write unlimited clinical comments, doctor instructions, embryo quality remarks, OCR notes, or detailed storage records here..."
-                className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl px-3 sm:px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium min-h-[140px] resize-y leading-relaxed"
+                className="w-full max-w-full box-border bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium min-h-[140px] resize-y leading-relaxed"
               />
             </div>
           </div>
