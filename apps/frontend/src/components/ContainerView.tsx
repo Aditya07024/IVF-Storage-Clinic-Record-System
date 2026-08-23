@@ -395,6 +395,16 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   {Array.from({ length: 10 }).map((_, idx) => {
                     const num = idx + 1;
                     const isSelected = selectedCanisterNum === num;
+                    const cnOccupied = canisterOccupancyMap[`${selectedCanCode}-C${num}`] || 0;
+                    const cnMax = 22; // 22 Viso Tubes per canister
+
+                    let bgStyle = 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold';
+                    if (cnOccupied >= cnMax) {
+                      bgStyle = 'bg-rose-500 border-rose-700 text-white font-black shadow-xs';
+                    } else if (cnOccupied > 0) {
+                      bgStyle = 'bg-amber-300 border-amber-500 text-amber-950 font-black shadow-xs';
+                    }
+
                     return (
                       <button
                         key={num}
@@ -402,13 +412,15 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           setSelectedCanisterNum(num);
                           setSelectedTube(null);
                         }}
-                        className={`py-3 rounded-xl text-xs font-bold transition-all border ${
-                          isSelected
-                            ? 'bg-emerald-100 text-emerald-900 border-emerald-400 shadow-sm'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        className={`py-2.5 rounded-xl text-xs font-mono font-bold transition-all border flex flex-col items-center justify-center gap-0.5 ${bgStyle} ${
+                          isSelected ? 'ring-2 ring-slate-900 ring-offset-1 shadow-md scale-105' : 'hover:scale-102'
                         }`}
+                        title={`Canister ${num}: ${cnOccupied}/${cnMax} occupied`}
                       >
-                        C{num}
+                        <span>C{num.toString().padStart(2, '0')}</span>
+                        <span className="text-[9px] font-extrabold opacity-90">
+                          {cnOccupied > 0 ? (cnOccupied >= cnMax ? 'FULL' : `${cnOccupied}`) : '0'}
+                        </span>
                       </button>
                     );
                   })}
