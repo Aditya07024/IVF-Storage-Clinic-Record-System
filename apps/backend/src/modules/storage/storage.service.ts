@@ -230,17 +230,33 @@ export class StorageService {
     };
   }
 
-  // Generate Straw ID: STR-000001
+  // Generate Straw ID: STR-000001 (uses MAX existing ID, not count)
   private async generateNextStrawId(): Promise<string> {
-    const count = await prisma.straw.count();
-    return `STR-${(count + 1).toString().padStart(6, '0')}`;
+    const lastStraw = await prisma.straw.findFirst({
+      orderBy: { strawId: 'desc' },
+      select: { strawId: true },
+    });
+    let nextNum = 1;
+    if (lastStraw?.strawId) {
+      const match = lastStraw.strawId.match(/STR-(\d+)/);
+      if (match) nextNum = parseInt(match[1], 10) + 1;
+    }
+    return `STR-${nextNum.toString().padStart(6, '0')}`;
   }
 
-  // Generate Batch ID: BATCH-2026-000001
+  // Generate Batch ID: BATCH-2026-000001 (uses MAX existing ID, not count)
   private async generateNextBatchId(): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await prisma.storageBatch.count();
-    return `BATCH-${year}-${(count + 1).toString().padStart(6, '0')}`;
+    const lastBatch = await prisma.storageBatch.findFirst({
+      orderBy: { batchId: 'desc' },
+      select: { batchId: true },
+    });
+    let nextNum = 1;
+    if (lastBatch?.batchId) {
+      const match = lastBatch.batchId.match(/BATCH-\d{4}-(\d+)/);
+      if (match) nextNum = parseInt(match[1], 10) + 1;
+    }
+    return `BATCH-${year}-${nextNum.toString().padStart(6, '0')}`;
   }
 
   // Assign Storage with PostgreSQL Row Transaction & Lock
