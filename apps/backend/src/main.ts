@@ -6,7 +6,7 @@ import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
-import { CONFIG, verifyAccessKey } from './common/config.js';
+import { CONFIG, verifyAccessKey, validateConfig } from './common/config.js';
 import { connectPrisma } from './common/prisma.js';
 import { authService } from './modules/auth/auth.service.js';
 import { patientService } from './modules/patient/patient.service.js';
@@ -408,6 +408,23 @@ app.get('/api/thaw/history/:patientId', accessKeyGuard, jwtAuthGuard, async (req
 });
 
 // --- OCR ROUTES ---
+app.post('/api/ocr/extract', accessKeyGuard, jwtAuthGuard, upload.single('image'), async (req, res) => {
+  try {
+    const file = req.file || (req.files && (req.files as any)[0]);
+    if (!file) return res.status(400).json({ success: false, error: 'No image file uploaded.' });
+
+    const extractionResult = await ocrService.extractTextFromBuffer(file.buffer, file.mimetype, file.originalname);
+    return res.json({
+      success: true,
+      text: extractionResult.text,
+      provider: extractionResult.provider,
+      status: extractionResult.status,
+    });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message || 'Unable to process the image. Please try again.' });
+  }
+});
+
 app.post('/api/ocr/upload', accessKeyGuard, jwtAuthGuard, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, error: 'No image file uploaded.' });
@@ -487,6 +504,11 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 // Start Server
 async function startServer() {
+  const configValidation = validateConfig();
+  if (!configValidation.valid) {
+    console.warn('[Configuration Warning]', configValidation.errors.join(' '));
+  }
+
   await connectPrisma();
   await storageService.seedHierarchyIfNeeded();
   await authService.seedUsersIfNeeded();

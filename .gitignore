@@ -1,6 +1,8 @@
 node_modules
 dist
 .env
+.env.*
+!.env.example
 *.log
 uploads/
 coverage/
@@ -8,3 +10,11 @@ coverage/
 *.db
 dev.db
 apps/backend/prisma/dev.db
+
+# Credentials & Security Protection
+credentials/
+**/credentials/
+apps/backend/credentials/
+**/*service-account*.json
+**/*google-vision*.json
+ivf-storage-management-system-*.json

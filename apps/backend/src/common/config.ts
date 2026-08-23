@@ -24,7 +24,19 @@ export const CONFIG = {
   
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   GOOGLE_CLOUD_PROJECT_ID: process.env.GOOGLE_CLOUD_PROJECT_ID || '',
+  GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '',
+  OCR_PROVIDER: process.env.OCR_PROVIDER || 'google',
 };
+
+export function validateConfig(): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (CONFIG.OCR_PROVIDER === 'google') {
+    if (!CONFIG.GOOGLE_APPLICATION_CREDENTIALS) {
+      errors.push('GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.');
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
 
 export function verifyAccessKey(providedKey: string): boolean {
   if (!providedKey) return false;
