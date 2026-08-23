@@ -488,6 +488,17 @@ app.post('/api/ocr/verify', accessKeyGuard, jwtAuthGuard, async (req: Authentica
   }
 });
 
+app.post('/api/ocr/discard', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { ocrRecordId } = req.body;
+    if (!ocrRecordId) return res.status(400).json({ success: false, error: 'ocrRecordId is required.' });
+    const result = await ocrService.discardOcr(ocrRecordId, req.user!.userId, req.user!.name || req.user!.staffId);
+    return res.json({ success: true, ...result });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // --- DOCUMENT PDF ROUTES ---
 app.get('/api/documents/patient/:id/pdf', accessKeyGuard, jwtAuthGuard, async (req, res) => {
   try {

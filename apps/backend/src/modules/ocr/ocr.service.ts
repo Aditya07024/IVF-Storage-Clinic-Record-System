@@ -415,6 +415,45 @@ ${rawText}`;
       };
     });
   }
+
+  /**
+   * Discard / delete pending OCR record and uploaded file
+   */
+  async discardOcr(ocrRecordId: string, staffUserId: string, staffName: string) {
+    const record = await prisma.ocrRecord.findUnique({ where: { id: ocrRecordId } });
+    if (!record) {
+      throw new Error('OCR record not found.');
+    }
+
+    if (record.storageKey) {
+      const filePath = path.join(path.resolve(CONFIG.STORAGE_LOCAL_DIR), record.storageKey);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (err) {
+          console.warn('[OcrService] Warning deleting discarded file:', err);
+        }
+      }
+    }
+
+    await prisma.ocrRecord.delete({ where: { id: ocrRecordId } });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: staffUserId,
+        userName: staffName,
+        action: 'OCR_DISCARDED',
+        entityName: 'OcrRecord',
+        entityId: ocrRecordId,
+        newData: JSON.stringify({
+          originalFilename: record.originalFilename,
+          status: 'DISCARDED',
+        }),
+      },
+    });
+
+    return { message: 'Scanned OCR record discarded successfully.' };
+  }
 }
 
 export const ocrService = new OcrService();

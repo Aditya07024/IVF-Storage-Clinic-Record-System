@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders } from 'lucide-react';
+import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2 } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 export const OcrVerification: React.FC = () => {
@@ -253,6 +253,35 @@ export const OcrVerification: React.FC = () => {
       setError(err.message || 'Failed to verify OCR record.');
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const handleDiscard = async (recordIdToDiscard?: string) => {
+    const targetId = recordIdToDiscard || activeRecord?.id;
+    if (!targetId) return;
+
+    if (!window.confirm('Are you sure you want to discard and delete this scanned OCR record?')) {
+      return;
+    }
+
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await apiRequest('/api/ocr/discard', {
+        method: 'POST',
+        body: JSON.stringify({ ocrRecordId: targetId }),
+      });
+
+      if (res.success) {
+        setSuccessMsg('Scanned OCR record discarded and removed from queue.');
+        if (activeRecord?.id === targetId) {
+          setActiveRecord(null);
+        }
+        await fetchPendingRecords();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to discard OCR record.');
     }
   };
 
@@ -599,20 +628,31 @@ export const OcrVerification: React.FC = () => {
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={verifying}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
-              >
-                {verifying ? (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Approve & Insert Verified Record into Database</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleDiscard(activeRecord.id)}
+                  className="px-4 py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 flex items-center justify-center gap-2 transition-all shadow-xs shrink-0"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-600" />
+                  <span>Discard Scan</span>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={verifying}
+                  className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+                >
+                  {verifying ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Approve & Save Verified Record</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -636,17 +676,30 @@ export const OcrVerification: React.FC = () => {
                 <div
                   key={record.id}
                   onClick={() => selectRecord(record)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 ${
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-3 relative group ${
                     activeRecord?.id === record.id
                       ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20 shadow-md'
                       : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-900 truncate max-w-[180px]">{record.originalFilename}</span>
-                    <span className="text-[10px] font-mono bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-bold border border-amber-300">
-                      PENDING
-                    </span>
+                    <span className="font-bold text-slate-900 truncate max-w-[160px]">{record.originalFilename}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-bold border border-amber-300">
+                        PENDING
+                      </span>
+                      <button
+                        type="button"
+                        title="Discard this scan"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDiscard(record.id);
+                        }}
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-[11px] text-slate-600 font-mono truncate">
                     Extracted Name: {record.extractedJson?.fullName || 'N/A'}
