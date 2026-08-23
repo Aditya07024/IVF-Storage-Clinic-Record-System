@@ -69,6 +69,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
   const [canOccupancyMap, setCanOccupancyMap] = useState<Record<string, number>>({});
   const [canisterOccupancyMap, setCanisterOccupancyMap] = useState<Record<string, number>>({});
+  const [levelOccupancyMap, setLevelOccupancyMap] = useState<Record<string, number>>({});
 
   const CLINIC_CANS = [1, 2, 3, 4, 5, 8, 10, 14];
 
@@ -86,18 +87,22 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
       if (res.success && res.cans) {
         const occMap: Record<string, number> = {};
         const cnOccMap: Record<string, number> = {};
+        const lvlOccMap: Record<string, number> = {};
 
         res.cans.forEach((can: any) => {
           let canCount = 0;
           can.canisters?.forEach((cn: any) => {
             let cnCount = 0;
             cn.levels?.forEach((l: any) => {
+              let lCount = 0;
               l.goblets?.forEach((g: any) => {
                 g.visoTubes?.forEach((v: any) => {
                   const occStraws = v.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                  cnCount += occStraws;
+                  lCount += occStraws;
                 });
               });
+              cnCount += lCount;
+              lvlOccMap[`${can.code}-C${cn.canisterNumber}-L${l.levelNumber}`] = lCount;
             });
             canCount += cnCount;
             cnOccMap[`${can.code}-C${cn.canisterNumber}`] = cnCount;
@@ -106,6 +111,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
         });
         setCanOccupancyMap(occMap);
         setCanisterOccupancyMap(cnOccMap);
+        setLevelOccupancyMap(lvlOccMap);
       }
     } catch (err: any) {
       console.error('Failed to fetch global occupancy map:', err);
@@ -123,6 +129,29 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
       const res = await apiRequest(`/api/storage/hierarchy?canCode=${selectedCanCode}`);
       if (res.success) {
         setHierarchy(res);
+        if (res.cans) {
+          const cnOccMap = { ...canisterOccupancyMap };
+          const lvlOccMap = { ...levelOccupancyMap };
+          res.cans.forEach((can: any) => {
+            can.canisters?.forEach((cn: any) => {
+              let cnCount = 0;
+              cn.levels?.forEach((l: any) => {
+                let lCount = 0;
+                l.goblets?.forEach((g: any) => {
+                  g.visoTubes?.forEach((v: any) => {
+                    const occ = v.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
+                    lCount += occ;
+                  });
+                });
+                cnCount += lCount;
+                lvlOccMap[`${can.code}-C${cn.canisterNumber}-L${l.levelNumber}`] = lCount;
+              });
+              cnOccMap[`${can.code}-C${cn.canisterNumber}`] = cnCount;
+            });
+          });
+          setCanisterOccupancyMap(cnOccMap);
+          setLevelOccupancyMap(lvlOccMap);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch storage hierarchy.');
@@ -307,7 +336,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
                   const occupiedInCan = canOccupancyMap[code] || 0;
-                  const colorInfo = getSpaceFillColor(occupiedInCan, 2200);
+                  const colorInfo = getSpaceFillColor(occupiedInCan, 2640);
 
                   return (
                     <button
@@ -347,7 +376,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
                   const occupiedInCan = canOccupancyMap[code] || 0;
-                  const colorInfo = getSpaceFillColor(occupiedInCan, 2200);
+                  const colorInfo = getSpaceFillColor(occupiedInCan, 2640);
 
                   return (
                     <button
@@ -396,7 +425,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     const num = idx + 1;
                     const isSelected = selectedCanisterNum === num;
                     const cnOccupied = canisterOccupancyMap[`${selectedCanCode}-C${num}`] || 0;
-                    const cnMax = 220; // 220 straws per canister (22 Viso Tubes x 10 straws)
+                    const cnMax = 264; // 264 straws per canister capacity
 
                     let bgStyle = 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold';
                     if (cnOccupied >= cnMax) {
@@ -412,14 +441,14 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           setSelectedCanisterNum(num);
                           setSelectedTube(null);
                         }}
-                        className={`py-2.5 rounded-xl text-xs font-mono font-bold transition-all border flex flex-col items-center justify-center gap-0.5 ${bgStyle} ${
+                        className={`py-2 px-1 rounded-xl text-xs font-mono font-bold transition-all border flex flex-col items-center justify-center gap-0.5 ${bgStyle} ${
                           isSelected ? 'ring-2 ring-slate-900 ring-offset-1 shadow-md scale-105' : 'hover:scale-102'
                         }`}
-                        title={`Canister ${num}: ${cnOccupied}/${cnMax} occupied`}
+                        title={`Canister ${num}: ${cnOccupied}/${cnMax} straws occupied`}
                       >
                         <span>C{num.toString().padStart(2, '0')}</span>
-                        <span className="text-[9px] font-extrabold opacity-90">
-                          {cnOccupied > 0 ? (cnOccupied >= cnMax ? 'FULL' : `${cnOccupied}`) : '0'}
+                        <span className="text-[8.5px] font-mono font-extrabold tracking-tighter">
+                          {cnOccupied >= cnMax ? 'FULL' : `${cnOccupied}/${cnMax}`}
                         </span>
                       </button>
                     );
@@ -434,6 +463,16 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 <div className="grid grid-cols-2 gap-3">
                   {[1, 2].map((lvl) => {
                     const isSelected = selectedLevelNum === lvl;
+                    const lOccupied = levelOccupancyMap[`${selectedCanCode}-C${selectedCanisterNum}-L${lvl}`] || 0;
+                    const lMax = 132; // 132 straws max per Level
+
+                    let bgStyle = 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold';
+                    if (lOccupied >= lMax) {
+                      bgStyle = 'bg-rose-500 border-rose-700 text-white font-black shadow-xs';
+                    } else if (lOccupied > 0) {
+                      bgStyle = 'bg-amber-300 border-amber-500 text-amber-950 font-black shadow-xs';
+                    }
+
                     return (
                       <button
                         key={lvl}
@@ -441,13 +480,15 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           setSelectedLevelNum(lvl);
                           setSelectedTube(null);
                         }}
-                        className={`py-3 px-4 rounded-xl text-xs font-bold transition-all border text-center ${
-                          isSelected
-                            ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-emerald-500 shadow-sm'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        className={`py-3 px-3 rounded-xl text-xs font-mono font-bold transition-all border flex flex-col items-center justify-center gap-1 ${bgStyle} ${
+                          isSelected ? 'ring-2 ring-slate-900 ring-offset-1 shadow-md scale-102' : 'hover:scale-101'
                         }`}
+                        title={`Level ${lvl}: ${lOccupied}/${lMax} straws occupied`}
                       >
-                        Level {lvl} {lvl === 1 ? '(Bottom)' : '(Top)'}
+                        <span>Level {lvl} {lvl === 1 ? '(Bottom)' : '(Top)'}</span>
+                        <span className="text-[10px] font-mono font-extrabold tracking-tight opacity-95">
+                          {lOccupied >= lMax ? 'FULL' : `${lOccupied}/${lMax}`}
+                        </span>
                       </button>
                     );
                   })}
