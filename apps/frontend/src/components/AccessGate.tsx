@@ -65,9 +65,6 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
 
         {/* 1-Click Quick Demo Access Key Button */}
         <div className="mb-5 p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-2">
-          <div className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
-            ⚡ Quick 1-Click Demo Access Key:
-          </div>
           <button
             type="button"
             onClick={async () => {
