@@ -12,7 +12,7 @@ import {
 import { apiRequest } from '../api/client';
 
 interface DashboardProps {
-  onNavigate: (tab: any) => void;
+  onNavigate: (tab: any, canCode?: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
@@ -172,9 +172,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {canStats.map((can: any) => (
-            <div key={can.canId} className="bg-slate-50/60 p-5 rounded-2xl border border-slate-200 space-y-3 hover:border-emerald-300 transition-all">
+            <div
+              key={can.canId}
+              onClick={() => onNavigate('container-view', can.canCode)}
+              className="bg-slate-50/60 p-5 rounded-2xl border border-slate-200 space-y-3 hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all group relative overflow-hidden"
+              title={`Click to open ${can.canCode} in Full Container View`}
+            >
               <div className="flex items-center justify-between">
-                <div className="font-semibold text-sm text-slate-900">{can.canCode}</div>
+                <div className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
+                  <span>{can.canCode}</span>
+                  <span className="text-[10px] text-emerald-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
+                </div>
                 <span
                   className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
                     can.utilizationPercentage > 80

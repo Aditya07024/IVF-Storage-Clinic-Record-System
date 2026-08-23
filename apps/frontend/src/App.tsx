@@ -16,10 +16,18 @@ export const AppContent: React.FC = () => {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [selectedCanCode, setSelectedCanCode] = useState<string>('CAN-01');
 
   useEffect(() => {
     checkCurrentUser();
   }, []);
+
+  const handleNavigateFromDashboard = (tab: NavTab, canCode?: string) => {
+    if (canCode) {
+      setSelectedCanCode(canCode);
+    }
+    setActiveTab(tab);
+  };
 
   const checkCurrentUser = async () => {
     const token = localStorage.getItem('access_token');
@@ -77,10 +85,10 @@ export const AppContent: React.FC = () => {
       />
 
       <main className="flex-1 overflow-y-auto min-h-screen pb-16">
-        {activeTab === 'dashboard' && <Dashboard onNavigate={(t) => setActiveTab(t)} />}
-        {activeTab === 'new-patient' && <PatientForm onSuccess={() => setActiveTab('patients')} />}
+        {activeTab === 'dashboard' && <Dashboard onNavigate={handleNavigateFromDashboard} />}
+        {activeTab === 'new-patient' && <PatientForm onSuccess={() => {}} />}
         {activeTab === 'patients' && <PatientDirectory />}
-        {activeTab === 'container-view' && <ContainerView />}
+        {activeTab === 'container-view' && <ContainerView initialCanCode={selectedCanCode} />}
         {activeTab === 'ocr' && <OcrVerification />}
         {activeTab === 'thaw' && <ThawWorkflow />}
         {activeTab === 'logs' && <AuditLogs />}

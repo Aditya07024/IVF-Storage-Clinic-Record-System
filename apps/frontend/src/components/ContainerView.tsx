@@ -49,9 +49,13 @@ export const VISO_TUBE_COLOR_MAP: Record<number, { name: string; stroke: string;
   11: { name: 'Skyblue', stroke: 'stroke-sky-500', bg: 'bg-sky-100 text-sky-900 border-sky-400', dotHex: '#0ea5e9' },
 };
 
-export const ContainerView: React.FC = () => {
+interface ContainerViewProps {
+  initialCanCode?: string;
+}
+
+export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) => {
   const [hierarchy, setHierarchy] = useState<any>(null);
-  const [selectedCanCode, setSelectedCanCode] = useState<string>('CAN-01');
+  const [selectedCanCode, setSelectedCanCode] = useState<string>(initialCanCode || 'CAN-01');
   const [selectedCanisterNum, setSelectedCanisterNum] = useState<number>(1);
   const [selectedLevelNum, setSelectedLevelNum] = useState<number>(1);
   const [selectedTube, setSelectedTube] = useState<any | null>(null);

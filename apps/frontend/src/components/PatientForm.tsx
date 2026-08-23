@@ -84,6 +84,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [thawDoctorNotes, setThawDoctorNotes] = useState<string>('Thaw executed directly from patient form.');
   const [executingThaw, setExecutingThaw] = useState(false);
   const [thawSuccessMsg, setThawSuccessMsg] = useState<string | null>(null);
+  const [saveSuccessDetails, setSaveSuccessDetails] = useState<any | null>(null);
 
   // Form Fields
   const [customPatientId, setCustomPatientId] = useState('');
@@ -324,9 +325,25 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         });
       }
 
-      // Re-fetch updated patient details to return
+      // Re-fetch updated patient details
       const fullRes = await apiRequest(`/api/patients/${targetPatient.id}`);
-      onSuccess(fullRes.patient || targetPatient);
+      const updatedPatient = fullRes.patient || targetPatient;
+
+      setSaveSuccessDetails({
+        patientId: updatedPatient.patientId,
+        fullName: updatedPatient.fullName,
+        status: assignStorageEnabled ? 'ALLOCATED & OCCUPIED' : 'RECORD UPDATED',
+        embryoCount: assignStorageEnabled ? Number(embryoCount) : 0,
+        strawCount: assignStorageEnabled ? strawColors.length : 0,
+        location: assignStorageEnabled ? selectedLocationCode : null,
+        timestamp: new Date().toLocaleString(),
+      });
+
+      if (formMode === 'existing') {
+        setSelectedExistingPatient(updatedPatient);
+      }
+
+      onSuccess(updatedPatient);
     } catch (err: any) {
       setError(err.message || 'Failed to save patient record.');
     } finally {
@@ -378,6 +395,45 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           </button>
         </div>
       </div>
+
+      {saveSuccessDetails && (
+        <div className="p-5 bg-emerald-50 border-2 border-emerald-300 rounded-3xl space-y-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 text-emerald-950 font-bold text-base">
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+              <span>Embryo Storage Record Saved & Allocated Successfully!</span>
+            </div>
+            <button
+              onClick={() => setSaveSuccessDetails(null)}
+              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-200/80 hover:bg-emerald-300/80 px-3 py-1 rounded-full transition-all"
+            >
+              Dismiss
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white p-3.5 rounded-2xl border border-emerald-200 font-mono">
+            <div>
+              <span className="text-slate-500 font-sans block text-[10px] uppercase font-semibold">Patient:</span>
+              <strong className="text-slate-900">{saveSuccessDetails.fullName} ({saveSuccessDetails.patientId})</strong>
+            </div>
+            <div>
+              <span className="text-slate-500 font-sans block text-[10px] uppercase font-semibold">Storage Status:</span>
+              <strong className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 inline-block font-bold">
+                {saveSuccessDetails.status}
+              </strong>
+            </div>
+            <div>
+              <span className="text-slate-500 font-sans block text-[10px] uppercase font-semibold">Straws / Embryos:</span>
+              <strong className="text-slate-900">{saveSuccessDetails.strawCount} Straw(s) • {saveSuccessDetails.embryoCount} Embryos</strong>
+            </div>
+          </div>
+          {saveSuccessDetails.location && (
+            <div className="text-xs font-mono bg-emerald-950 text-emerald-100 p-3 rounded-xl border border-emerald-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
+              <span className="font-sans text-[11px] font-semibold uppercase text-emerald-300">Physical Storage Location:</span>
+              <span className="font-bold">{parseLocationCode(saveSuccessDetails.location).formatted}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm">
