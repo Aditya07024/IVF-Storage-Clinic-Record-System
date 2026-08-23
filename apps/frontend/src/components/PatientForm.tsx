@@ -654,8 +654,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             </div>
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full">
-            <div className="md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-full">
+            <div className="md:col-span-2 min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Registration No / Patient ID
               </label>
@@ -665,7 +665,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 onChange={(e) => setCustomPatientId(e.target.value)}
                 readOnly={!!selectedExistingPatient}
                 placeholder="e.g. IVF-2026-000001"
-                className={`w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
+                className={`w-full min-w-0 max-w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
                   selectedExistingPatient
                     ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
                     : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
@@ -673,7 +673,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
-            <div>
+            <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Patient Full Name *
               </label>
@@ -683,11 +683,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Eleanor Vance"
                 required
-                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
               />
             </div>
 
-            <div>
+            <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Partner Name
               </label>
@@ -696,11 +696,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 value={partnerName}
                 onChange={(e) => setPartnerName(e.target.value)}
                 placeholder="e.g. Thomas Vance"
-                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block"
               />
             </div>
 
-            <div>
+            <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Mobile Phone
               </label>
@@ -709,11 +709,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. +1 555 0192"
-                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
               />
             </div>
 
-            <div>
+            <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Visit Date
               </label>
@@ -721,11 +721,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 type="date"
                 value={visitDate}
                 onChange={(e) => setVisitDate(e.target.value)}
-                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono block"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono block"
               />
             </div>
 
-            <div>
+            <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 New Embryo Freezing Date *
               </label>
@@ -736,11 +736,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   setFreezingDate(e.target.value);
                   setStorageDate(e.target.value);
                 }}
-                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block"
               />
             </div>
 
-            <div>
+            <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 DE Date (Donor Egg)
               </label>
@@ -748,7 +748,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 type="date"
                 value={deDate}
                 onChange={(e) => setDeDate(e.target.value)}
-                className="w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono block"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono block"
               />
             </div>
 

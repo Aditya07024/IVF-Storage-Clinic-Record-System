@@ -14,7 +14,9 @@
   input[type="date"] {
     height: 2.75rem !important;
     line-height: 1.25rem !important;
+    min-width: 0 !important;
     max-width: 100% !important;
+    width: 100% !important;
     box-sizing: border-box !important;
   }
   input[type="date"]::-webkit-date-and-time-value {
