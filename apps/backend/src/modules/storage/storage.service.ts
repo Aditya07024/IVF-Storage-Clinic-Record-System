@@ -230,55 +230,46 @@ export class StorageService {
     };
   }
 
-  // Generate Straw ID: STR-000001 (uses MAX existing ID + transaction awareness)
+  // Generate Straw ID: STR-000001 (Fast single query)
   private async generateNextStrawId(txClient?: any): Promise<string> {
     const db = txClient || prisma;
-    const straws = await db.straw.findMany({
-      where: { strawId: { startsWith: 'STR-' } },
+    const count = await db.straw.count();
+    const lastStraw = await db.straw.findFirst({
+      orderBy: { createdAt: 'desc' },
       select: { strawId: true },
     });
 
     let maxNum = 0;
-    for (const s of straws) {
-      const match = s.strawId.match(/STR-(\d+)/);
+    if (lastStraw?.strawId) {
+      const match = lastStraw.strawId.match(/STR-(\d+)/);
       if (match) {
-        const num = parseInt(match[1], 10);
-        if (!isNaN(num) && num > maxNum) {
-          maxNum = num;
-        }
+        maxNum = parseInt(match[1], 10);
       }
     }
 
-    const count = await db.straw.count();
-    const nextNum = Math.max(maxNum + 1, count + 1);
-
+    const nextNum = Math.max((isNaN(maxNum) ? 0 : maxNum) + 1, count + 1);
     return `STR-${nextNum.toString().padStart(6, '0')}`;
   }
 
-  // Generate Batch ID: BATCH-2026-000001 (uses MAX existing ID + transaction awareness)
+  // Generate Batch ID: BATCH-2026-000001 (Fast single query)
   private async generateNextBatchId(txClient?: any): Promise<string> {
     const db = txClient || prisma;
     const year = new Date().getFullYear();
-
-    const batches = await db.storageBatch.findMany({
-      where: { batchId: { startsWith: 'BATCH-' } },
+    const count = await db.storageBatch.count();
+    const lastBatch = await db.storageBatch.findFirst({
+      orderBy: { createdAt: 'desc' },
       select: { batchId: true },
     });
 
     let maxNum = 0;
-    for (const b of batches) {
-      const match = b.batchId.match(/BATCH-\d{4}-(\d+)/) || b.batchId.match(/BATCH-(\d+)/);
+    if (lastBatch?.batchId) {
+      const match = lastBatch.batchId.match(/BATCH-\d{4}-(\d+)/) || lastBatch.batchId.match(/BATCH-(\d+)/);
       if (match) {
-        const num = parseInt(match[1], 10);
-        if (!isNaN(num) && num > maxNum) {
-          maxNum = num;
-        }
+        maxNum = parseInt(match[1], 10);
       }
     }
 
-    const count = await db.storageBatch.count();
-    const nextNum = Math.max(maxNum + 1, count + 1);
-
+    const nextNum = Math.max((isNaN(maxNum) ? 0 : maxNum) + 1, count + 1);
     return `BATCH-${year}-${nextNum.toString().padStart(6, '0')}`;
   }
 
@@ -370,7 +361,8 @@ export class StorageService {
             data: {
               strawId: straw.id,
               embryoNumber: e,
-              status: 'FREEZED',
+              grade: `Grade-A (Day 5)`,
+              status: 'FROZEN',
             },
           });
         }
@@ -401,7 +393,7 @@ export class StorageService {
         straws: createdStraws,
         locationCode: visoTube.locationCode,
       };
-    });
+    }, { timeout: 25000, maxWait: 10000 });
   }
 
   // Get Container Hierarchy Visualization Data
