@@ -15,8 +15,9 @@ import {
   FileText,
   X,
   ThermometerSnowflake,
+  RotateCw,
 } from 'lucide-react';
-import { apiRequest } from '../api/client';
+import { apiRequest, clearApiCache } from '../api/client';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
 export function parseLocationCode(code: string) {
@@ -199,8 +200,34 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
     };
   };
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefreshStorage = async () => {
+    setRefreshing(true);
+    clearApiCache();
+    await Promise.all([
+      fetchGlobalOccupancy(),
+      fetchHierarchy(),
+      new Promise((res) => setTimeout(res, 600)),
+    ]);
+    setRefreshing(false);
+  };
+
   return (
     <div className="p-3 sm:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-8 bg-slate-50 min-h-screen w-full box-border overflow-x-hidden">
+      {/* Refresh Loading Banner Indicator */}
+      {refreshing && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-emerald-950 font-medium text-xs shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2.5 font-bold">
+            <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
+            <span>Reloading updated physical storage layout & canister occupancy...</span>
+          </div>
+          <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+            REFRESHING MAP
+          </span>
+        </div>
+      )}
+
       {/* Header & Overview Mode Selector */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
@@ -208,36 +235,44 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
             <Layers className="w-7 h-7 text-emerald-600 animate-pulse" />
             <span>Full Container Storage Overview Explorer</span>
           </h1>
-          {/* <p className="text-sm text-slate-600 mt-1 font-medium">
-            Background Fill: <strong className="text-emerald-700">Space Left (Green=Empty, Yellow=Partial, Red=Full)</strong> • Boundaries: <strong className="text-slate-900">Physical Viso Tube Colors</strong>
-          </p> */}
         </div>
 
-        {/* 2 View Modes Switcher */}
-        <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
-            onClick={() => setViewMode('honeycomb')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              viewMode === 'honeycomb'
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+            onClick={handleRefreshStorage}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 shadow-xs transition-all active:scale-95 disabled:opacity-50"
           >
-            <HexIcon className="w-4 h-4" />
-            <span>Honeycomb View</span>
+            <RotateCw className={`w-4 h-4 text-slate-700 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{refreshing ? 'Refreshing...' : 'Refresh Storage Map'}</span>
           </button>
 
-          <button
-            onClick={() => setViewMode('matrix')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              viewMode === 'matrix'
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Grid className="w-4 h-4" />
-            <span>Clinic Capacity Matrix</span>
-          </button>
+          {/* 2 View Modes Switcher */}
+          <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+            <button
+              onClick={() => setViewMode('honeycomb')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'honeycomb'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <HexIcon className="w-4 h-4" />
+              <span>Honeycomb View</span>
+            </button>
+
+            <button
+              onClick={() => setViewMode('matrix')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'matrix'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Grid className="w-4 h-4" />
+              <span>Clinic Capacity Matrix</span>
+            </button>
+          </div>
         </div>
       </div>
 

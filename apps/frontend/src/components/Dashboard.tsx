@@ -8,8 +8,9 @@ import {
   Activity,
   ArrowRight,
   UserPlus,
+  RotateCw,
 } from 'lucide-react';
-import { apiRequest } from '../api/client';
+import { apiRequest, clearApiCache } from '../api/client';
 import { get8StepHeatmapColor } from '../utils/heatmap';
 
 interface DashboardProps {
@@ -39,7 +40,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   };
 
-  if (loading) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    clearApiCache();
+    await Promise.all([
+      fetchDashboard(),
+      new Promise((res) => setTimeout(res, 600)),
+    ]);
+    setRefreshing(false);
+  };
+
+  if (loading && !refreshing) {
     return (
       <div className="flex items-center justify-center h-full min-h-[500px]">
         <div className="flex flex-col items-center gap-3 text-emerald-600">
@@ -50,7 +63,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return (
       <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-sm flex items-center justify-between">
         <span>{error}</span>
@@ -61,17 +74,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     );
   }
 
-  const { summary, canStats, recentActivity } = data;
+  const { summary, canStats, recentActivity } = data || { summary: {}, canStats: [], recentActivity: [] };
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
+      {/* Refresh Loading Banner Indicator */}
+      {refreshing && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-emerald-950 font-medium text-xs shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2.5 font-bold">
+            <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
+            <span>Reloading updated operational metrics & storage utilization...</span>
+          </div>
+          <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+            REFRESHING DATA
+          </span>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Clinic Operational Dashboard</h1>
           <p className="text-sm text-slate-500 mt-1">Real-time IVF embryo storage utilization & staff operational status</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 shadow-xs transition-all active:scale-95 disabled:opacity-50"
+          >
+            <RotateCw className={`w-4 h-4 text-slate-700 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
+          </button>
           <button
             onClick={() => onNavigate('new-patient')}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all"
