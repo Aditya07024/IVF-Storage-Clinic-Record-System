@@ -534,8 +534,23 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               <div className="font-bold text-sm text-slate-900">
                 Existing Patient Selected: {selectedExistingPatient.fullName}
               </div>
-              <div className="text-slate-600 font-mono font-bold">
-                Reg No: {selectedExistingPatient.patientId} • Previous Batches: {selectedExistingPatient.batches?.length || 0}
+              <div className="text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                <span>Reg No: {selectedExistingPatient.patientId}</span>
+                <span>•</span>
+                <span>Total Batches Recorded: {selectedExistingPatient.batches?.length || 0}</span>
+                {(() => {
+                  const activeBatches = selectedExistingPatient.batches?.filter((b: any) =>
+                    b.straws?.some((s: any) => s.status === 'OCCUPIED')
+                  ).length || 0;
+                  const activeStraws = selectedExistingPatient.batches?.reduce((acc: number, b: any) => {
+                    return acc + (b.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0);
+                  }, 0) || 0;
+                  return (
+                    <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11px] border border-emerald-300 font-bold ml-1">
+                      {activeBatches} Active Batch(es) • {activeStraws} Active Straw(s) in Storage
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>
