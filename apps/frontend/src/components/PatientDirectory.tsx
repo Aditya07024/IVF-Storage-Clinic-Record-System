@@ -597,9 +597,9 @@ export const PatientDirectory: React.FC = () => {
             </div>
 
             {/* Patient Metadata Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Registration No (Patient ID):</span>
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Registration No (ID):</span>
                 <strong className="text-emerald-800 font-mono text-sm">{selectedPatient.patientId}</strong>
               </div>
 
@@ -614,21 +614,39 @@ export const PatientDirectory: React.FC = () => {
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Doctor Name / Physician:</span>
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Doctor / Physician:</span>
                 <strong className="text-slate-900 font-bold">{selectedPatient.doctorName || 'N/A'}</strong>
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Freezing / Storage Date:</span>
-                <strong className="text-slate-900 font-mono text-sm">
-                  {formatDateDDMMYYYY(selectedPatient.freezingDate)}
-                </strong>
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Visit Date:</span>
+                <strong className="text-slate-900 font-mono">{formatDateDDMMYYYY(selectedPatient.visitDate)}</strong>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Freezing Date:</span>
+                <strong className="text-slate-900 font-mono">{formatDateDDMMYYYY(selectedPatient.freezingDate)}</strong>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">DE Date (Donor Egg):</span>
+                <strong className="text-slate-900 font-mono">{formatDateDDMMYYYY(selectedPatient.deDate)}</strong>
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-slate-500 font-semibold block uppercase text-[10px]">Mobile Phone:</span>
                 <strong className="text-slate-900 font-mono">{selectedPatient.phone || 'N/A'}</strong>
               </div>
+            </div>
+
+            {/* Clinical Comments & Doctor Remarks Card */}
+            <div className="p-4 bg-amber-50/80 rounded-2xl border border-amber-200 space-y-1 text-xs">
+              <span className="text-amber-950 font-bold uppercase text-[10px] tracking-wider block">
+                Clinical Comments & Doctor Remarks (egg yield, embryo grade quality, special instructions):
+              </span>
+              <p className="text-slate-800 font-mono text-xs whitespace-pre-wrap leading-relaxed">
+                {selectedPatient.comments && selectedPatient.comments.trim() ? selectedPatient.comments : 'No clinical comments recorded.'}
+              </p>
             </div>
 
             {/* Storage Batches Section */}

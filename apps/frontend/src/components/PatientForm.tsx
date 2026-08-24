@@ -468,12 +468,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   </p>
                 </div>
               </div>
-              <button
+              {/* <button
                 onClick={() => setSaveSuccessDetails(null)}
                 className="text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-200/80 hover:bg-emerald-300 px-3 py-1.5 rounded-full transition-all border border-emerald-300"
               >
                 Dismiss
-              </button>
+              </button> */}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white p-4 rounded-2xl border border-emerald-200 font-mono shadow-xs">
