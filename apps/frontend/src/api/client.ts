@@ -72,10 +72,28 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
 
   const url = `${API_BASE_URL}${endpoint}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  let response: Response | undefined;
+  let fetchError: any = null;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+      });
+      fetchError = null;
+      break;
+    } catch (err: any) {
+      fetchError = err;
+      if (attempt < 2) {
+        await new Promise((res) => setTimeout(res, 600 * (attempt + 1)));
+      }
+    }
+  }
+
+  if (fetchError || !response) {
+    throw new Error(fetchError?.message || 'Network connection interrupted. Retrying automatically...');
+  }
 
   if (response.status === 401 && !(options as any)._isRetry) {
     const refreshToken = localStorage.getItem('refresh_token');

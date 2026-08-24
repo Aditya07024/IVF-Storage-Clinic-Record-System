@@ -36,7 +36,7 @@ export const BackgroundTaskProvider: React.FC<{ children: React.ReactNode }> = (
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const runTask = useCallback(async (taskItem: BackgroundTask) => {
+  const runTask = useCallback(async (taskItem: BackgroundTask, attemptCount = 0) => {
     try {
       if (!taskItem.action) return;
       const result = await taskItem.action();
@@ -60,6 +60,15 @@ export const BackgroundTaskProvider: React.FC<{ children: React.ReactNode }> = (
       console.error('[Background Task Error]', err);
       const msg = err.message || 'Background task failed.';
       
+      // Auto-retry up to 2 times for transient network/socket glitches before flagging error
+      const isTransient = msg.includes('Load failed') || msg.includes('fetch') || msg.includes('Network') || msg.includes('connection');
+      if (isTransient && attemptCount < 2) {
+        setTimeout(() => {
+          runTask(taskItem, attemptCount + 1);
+        }, 1200 * (attemptCount + 1));
+        return;
+      }
+
       setTasks((prev) =>
         prev.map((t) => (t.id === taskItem.id ? { ...t, status: 'ERROR', errorMessage: msg } : t))
       );
