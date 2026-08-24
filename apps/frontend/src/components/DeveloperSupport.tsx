@@ -65,7 +65,7 @@ export const DeveloperSupport: React.FC = () => {
     },
     {
       q: 'How long do staff user login sessions remain active?',
-      a: 'Staff JWT access tokens remain active for 24 hours with automatic silent background token renewal, ensuring uninterrupted operations during clinic shifts.',
+      a: 'Staff remain active for 24 hours with automatic silent background token renewal, ensuring uninterrupted operations during clinic shifts.',
     },
   ];
 
@@ -89,7 +89,7 @@ export const DeveloperSupport: React.FC = () => {
             </p>
           </div>
 
-          <div className="shrink-0 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 space-y-2 text-xs font-mono">
+          {/* <div className="shrink-0 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 space-y-2 text-xs font-mono">
             <div className="flex items-center gap-2 text-emerald-400 font-bold">
               <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping" />
               <span>SYSTEM STATUS: OPERATIONAL</span>
@@ -99,7 +99,7 @@ export const DeveloperSupport: React.FC = () => {
               <div>Database: Neon Cloud (Active)</div>
               <div>Build Version: v2.4.0-clinic-2026</div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -116,16 +116,17 @@ export const DeveloperSupport: React.FC = () => {
               <p className="text-xs text-slate-500 font-medium">Send bug logs, system questions, or technical requests.</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-xs font-bold text-slate-800 break-all">
-              aditya07024@gmail.com
+              adityakumar07024@gmail.com
             </div>
           </div>
 
           <a
-            href="mailto:aditya07024@gmail.com?subject=IVF%20Clinic%20System%20Support%20Request"
-            className="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200 transition-all flex items-center justify-center gap-2"
+            href="mailto:adityakumar07024@gmail.com?subject=IVF%20Clinic%20System%20Support%20Request"
+            className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-emerald-500/20"
           >
-            <span>Send Email</span>
-            <ExternalLink className="w-3.5 h-3.5" />
+            <Mail className="w-4 h-4 text-emerald-200" />
+            <span>Send Email to Developer</span>
+            <ExternalLink className="w-3.5 h-3.5 opacity-80" />
           </a>
         </div>
 
@@ -140,18 +141,19 @@ export const DeveloperSupport: React.FC = () => {
               <p className="text-xs text-slate-500 font-medium">Instant developer contact for urgent clinical assistance.</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-xs font-bold text-slate-800">
-              +91 98100 10102
+              +91 8650970092
             </div>
           </div>
 
           <a
-            href="https://wa.me/919810010102?text=Hello%20Developer%2C%20I%20need%20support%20with%20the%20IVF%20Clinic%20Record%20System"
+            href="https://wa.me/918650970092?text=Hello%20Developer%2C%20I%20need%20support%20with%20the%20IVF%20Clinic%20Record%20System"
             target="_blank"
             rel="noreferrer"
-            className="w-full py-2.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-xl text-xs font-bold border border-teal-200 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-teal-500/20"
           >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Chat on WhatsApp</span>
+            <MessageSquare className="w-4 h-4 text-emerald-200" />
+            <span>Chat on WhatsApp (+91 8650970092)</span>
+            <ExternalLink className="w-3.5 h-3.5 opacity-80" />
           </a>
         </div>
 
@@ -345,7 +347,7 @@ export const DeveloperSupport: React.FC = () => {
           </div>
 
           {/* Architecture Tech Stack Box */}
-          <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-3 shadow-md">
+          {/* <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-3 shadow-md">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="font-bold text-xs flex items-center gap-2 text-emerald-400">
                 <Terminal className="w-4 h-4" />
@@ -371,7 +373,7 @@ export const DeveloperSupport: React.FC = () => {
                 <span className="text-slate-200 font-bold">Google Cloud Vision API</span>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
