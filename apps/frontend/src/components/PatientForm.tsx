@@ -443,42 +443,71 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         </div>
       </div>
 
+      {/* Embryo Storage Record Saved Success Modal Popup */}
       {saveSuccessDetails && (
-        <div className="p-5 bg-emerald-50 border-2 border-emerald-300 rounded-3xl space-y-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5 text-emerald-950 font-bold text-base">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-              <span>Embryo Storage Record Saved & Allocated Successfully!</span>
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-emerald-50 border-2 border-emerald-400 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 text-slate-900">
+            <div className="flex items-center justify-between border-b border-emerald-200 pb-3">
+              <div className="flex items-center gap-3 text-emerald-950 font-bold text-base sm:text-lg">
+                <div className="w-10 h-10 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-sm shrink-0">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2>Embryo Storage Record Saved & Allocated Successfully!</h2>
+                  <p className="text-xs text-emerald-800 font-medium font-sans">
+                    Cryo storage slot locked & audit trail recorded.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSaveSuccessDetails(null)}
+                className="text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-200/80 hover:bg-emerald-300 px-3 py-1.5 rounded-full transition-all border border-emerald-300"
+              >
+                Dismiss
+              </button>
             </div>
-            <button
-              onClick={() => setSaveSuccessDetails(null)}
-              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-200/80 hover:bg-emerald-300/80 px-3 py-1 rounded-full transition-all"
-            >
-              Dismiss
-            </button>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white p-4 rounded-2xl border border-emerald-200 font-mono shadow-xs">
+              <div>
+                <span className="text-slate-500 font-sans block text-[10px] uppercase font-bold tracking-wider">Patient:</span>
+                <strong className="text-slate-900 text-sm font-sans">{saveSuccessDetails.fullName}</strong>
+                <span className="block text-emerald-700 font-bold text-xs">{saveSuccessDetails.patientId}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-sans block text-[10px] uppercase font-bold tracking-wider">Storage Status:</span>
+                <strong className="text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-300 inline-block font-bold mt-1">
+                  {saveSuccessDetails.status}
+                </strong>
+              </div>
+              <div>
+                <span className="text-slate-500 font-sans block text-[10px] uppercase font-bold tracking-wider">Straws / Embryos:</span>
+                <strong className="text-slate-900 block text-xs mt-1">
+                  {saveSuccessDetails.strawCount} Straw(s) • {saveSuccessDetails.embryoCount} Embryos
+                </strong>
+              </div>
+            </div>
+
+            {saveSuccessDetails.location && (
+              <div className="text-xs font-mono bg-emerald-950 text-emerald-100 p-4 rounded-2xl border border-emerald-800 space-y-1 shadow-sm">
+                <span className="font-sans text-[11px] font-bold uppercase tracking-wider text-emerald-400 block">
+                  Allocated Physical Storage Location:
+                </span>
+                <span className="font-bold text-sm text-emerald-50 block leading-snug">
+                  {parseLocationCode(saveSuccessDetails.location).formatted}
+                </span>
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSaveSuccessDetails(null)}
+                className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 text-center"
+              >
+                Okay, Done
+              </button>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white p-3.5 rounded-2xl border border-emerald-200 font-mono">
-            <div>
-              <span className="text-slate-500 font-sans block text-[10px] uppercase font-semibold">Patient:</span>
-              <strong className="text-slate-900">{saveSuccessDetails.fullName} ({saveSuccessDetails.patientId})</strong>
-            </div>
-            <div>
-              <span className="text-slate-500 font-sans block text-[10px] uppercase font-semibold">Storage Status:</span>
-              <strong className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 inline-block font-bold">
-                {saveSuccessDetails.status}
-              </strong>
-            </div>
-            <div>
-              <span className="text-slate-500 font-sans block text-[10px] uppercase font-semibold">Straws / Embryos:</span>
-              <strong className="text-slate-900">{saveSuccessDetails.strawCount} Straw(s) • {saveSuccessDetails.embryoCount} Embryos</strong>
-            </div>
-          </div>
-          {saveSuccessDetails.location && (
-            <div className="text-xs font-mono bg-emerald-950 text-emerald-100 p-3 rounded-xl border border-emerald-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
-              <span className="font-sans text-[11px] font-semibold uppercase text-emerald-300">Physical Storage Location:</span>
-              <span className="font-bold">{parseLocationCode(saveSuccessDetails.location).formatted}</span>
-            </div>
-          )}
         </div>
       )}
 
