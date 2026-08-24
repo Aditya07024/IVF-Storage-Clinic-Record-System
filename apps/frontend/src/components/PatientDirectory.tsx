@@ -13,6 +13,8 @@ export const PatientDirectory: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
@@ -35,23 +37,40 @@ export const PatientDirectory: React.FC = () => {
 
   const fetchPatients = async () => {
     setLoading(true);
+    setLoadingProgress(15);
     setError(null);
+
+    const progressInterval = setInterval(() => {
+      setLoadingProgress((prev) => {
+        if (prev >= 90) return prev;
+        return prev + Math.floor(Math.random() * 15 + 10);
+      });
+    }, 120);
+
     try {
       const res = await apiRequest(
         `/api/patients?q=${encodeURIComponent(activeQuery)}&freezingDate=${encodeURIComponent(freezingDateFilter)}&sortBy=${sortBy}&sortOrder=${sortOrder}&page=${page}&limit=10`
       );
+      clearInterval(progressInterval);
+      setLoadingProgress(100);
+
       if (res.success) {
         setPatients(res.patients);
         setTotal(res.total);
       }
     } catch (err: any) {
+      clearInterval(progressInterval);
       setError(err.message || 'Failed to fetch patients.');
     } finally {
-      setLoading(false);
+      setTimeout(() => {
+        setLoading(false);
+        setLoadingProgress(0);
+      }, 180);
     }
   };
 
   const handleSelectPatient = async (id: string) => {
+    setLoadingDetailId(id);
     try {
       const res = await apiRequest(`/api/patients/${id}`);
       if (res.success) {
@@ -59,6 +78,8 @@ export const PatientDirectory: React.FC = () => {
       }
     } catch (err: any) {
       alert('Failed to load patient details: ' + err.message);
+    } finally {
+      setLoadingDetailId(null);
     }
   };
 
@@ -213,7 +234,17 @@ export const PatientDirectory: React.FC = () => {
       )}
 
       {/* Patient Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative">
+        {/* Animated Top Progress Bar */}
+        {loading && (
+          <div className="w-full bg-slate-100 h-1.5 overflow-hidden absolute top-0 inset-x-0 z-20">
+            <div
+              className="bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 h-full transition-all duration-200 ease-out shadow-[0_0_10px_rgba(16,185,129,0.8)]"
+              style={{ width: `${loadingProgress}%` }}
+            />
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-800">
             <thead className="bg-slate-100 text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
@@ -228,14 +259,48 @@ export const PatientDirectory: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
-                    <div className="flex justify-center items-center gap-2 text-emerald-600 font-semibold">
-                      <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
-                      <span>Searching database index...</span>
-                    </div>
-                  </td>
-                </tr>
+                <>
+                  {/* Real-time Loader Progress Notice Banner */}
+                  <tr>
+                    <td colSpan={6} className="bg-emerald-50/70 px-6 py-3 border-b border-emerald-100">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <div className="flex items-center gap-2 text-emerald-900 font-bold">
+                          <span className="w-3.5 h-3.5 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
+                          <span>Searching patient database records...</span>
+                        </div>
+                        <span className="font-bold text-emerald-800 bg-emerald-100 px-3 py-0.5 rounded-full border border-emerald-300">
+                          {loadingProgress}% Loaded
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* 5 Shimmer Skeleton Rows */}
+                  {[1, 2, 3, 4, 5].map((idx) => (
+                    <tr key={idx} className="animate-pulse bg-white">
+                      <td className="px-6 py-4">
+                        <div className="h-4 bg-slate-200 rounded-md w-24" />
+                      </td>
+                      <td className="px-6 py-4 space-y-2">
+                        <div className="h-4 bg-slate-200 rounded-md w-36" />
+                        <div className="h-3 bg-slate-100 rounded-md w-24" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-6 bg-slate-100 rounded-xl w-32" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-4 bg-slate-200 rounded-md w-28" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-6 bg-slate-100 rounded-lg w-28" />
+                      </td>
+                      <td className="px-6 py-4 flex justify-end gap-2">
+                        <div className="h-8 bg-slate-200 rounded-xl w-16" />
+                        <div className="h-8 bg-slate-200 rounded-xl w-16" />
+                      </td>
+                    </tr>
+                  ))}
+                </>
               ) : patients.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
@@ -249,14 +314,22 @@ export const PatientDirectory: React.FC = () => {
 
                   const freezingDateObj = p.freezingDate || p.batches?.[0]?.storageDate;
                   const freezingDateStr = formatDateDDMMYYYY(freezingDateObj);
+                  const isOpeningDetail = loadingDetailId === p.id;
 
                   return (
                     <tr
                       key={p.id}
                       onClick={() => handleSelectPatient(p.id)}
-                      className="hover:bg-emerald-50/40 cursor-pointer transition-colors"
+                      className={`hover:bg-emerald-50/40 cursor-pointer transition-colors relative ${
+                        isOpeningDetail ? 'bg-emerald-50/80' : ''
+                      }`}
                     >
-                      <td className="px-6 py-4 font-mono font-bold text-emerald-700">{p.patientId}</td>
+                      <td className="px-6 py-4 font-mono font-bold text-emerald-700 flex items-center gap-2">
+                        {isOpeningDetail && (
+                          <span className="w-3.5 h-3.5 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
+                        )}
+                        <span>{p.patientId}</span>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-slate-900">
                           {p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}
