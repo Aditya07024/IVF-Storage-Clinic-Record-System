@@ -585,40 +585,44 @@ export const PatientDirectory: React.FC = () => {
       {selectedPatient && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex justify-end">
           <div className="w-full max-w-2xl bg-white h-full border-l border-slate-200 p-6 overflow-y-auto space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <span className="text-xs font-mono font-bold text-emerald-700">{selectedPatient.patientId}</span>
-                <h2 className="text-xl font-bold text-slate-900">{selectedPatient.fullName}</h2>
-                <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-                  <span className="text-emerald-800 bg-emerald-100 px-1.5 py-0 rounded border border-emerald-300">
+            <div className="flex flex-row items-start justify-between gap-3 border-b border-slate-100 pb-4">
+              {/* Left Column: Patient Details & Dates */}
+              <div className="flex-1 min-w-0 space-y-1">
+                <span className="text-xs font-mono font-bold text-emerald-700 block">{selectedPatient.patientId}</span>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight truncate">{selectedPatient.fullName}</h2>
+                <div className="text-xs text-slate-600 font-mono font-bold flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-x-2.5 mt-1">
+                  <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 w-fit">
                     Visit Date: {formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}
                   </span>
-                  {/* <span>•</span> */}
-                  <span>Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}</span>
+                  <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 w-fit">
+                    Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+
+              {/* Right Column: Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
                 {selectedPatient.batches?.some((b: any) =>
                   b.straws?.some((s: any) => s.status === 'OCCUPIED')
                 ) && (
                   <button
                     onClick={() => openQuickThawModal(selectedPatient.id)}
-                    className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 active:scale-95"
+                    className="w-full sm:w-auto px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 whitespace-nowrap"
                   >
-                    <ThermometerSnowflake className="w-4 h-4" />
+                    <ThermometerSnowflake className="w-3.5 h-3.5" />
                     <span>Thaw Specimen</span>
                   </button>
                 )}
                 <button
                   onClick={() => handlePrintPdf(selectedPatient.id)}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                  className="w-full sm:w-auto px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
                 >
-                  <Printer className="w-4 h-4" />
+                  <Printer className="w-3.5 h-3.5" />
                   <span>Print PDF</span>
                 </button>
                 <button
                   onClick={() => setSelectedPatient(null)}
-                  className="px-3.5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all"
+                  className="w-full sm:w-auto px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all whitespace-nowrap text-center"
                 >
                   Close
                 </button>
