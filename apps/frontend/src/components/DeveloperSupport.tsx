@@ -106,9 +106,9 @@ export const DeveloperSupport: React.FC = () => {
       {/* Developer Profile & Direct Contact Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Contact Method 1: Email */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between hover:border-emerald-300 transition-all group">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between hover:border-blue-300 transition-all group">
           <div className="space-y-3">
-            <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-700 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-700 group-hover:scale-105 transition-transform">
               <Mail className="w-6 h-6" />
             </div>
             <div>
@@ -122,18 +122,18 @@ export const DeveloperSupport: React.FC = () => {
 
           <a
             href="mailto:adityakumar07024@gmail.com?subject=IVF%20Clinic%20System%20Support%20Request"
-            className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-emerald-500/20"
+            className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-blue-500/30"
           >
-            <Mail className="w-4 h-4 text-emerald-200" />
+            <Mail className="w-4 h-4 text-blue-200" />
             <span>Send Email to Developer</span>
             <ExternalLink className="w-3.5 h-3.5 opacity-80" />
           </a>
         </div>
 
         {/* Contact Method 2: Direct Phone / WhatsApp */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between hover:border-teal-300 transition-all group">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between hover:border-blue-300 transition-all group">
           <div className="space-y-3">
-            <div className="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center text-teal-700 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-700 group-hover:scale-105 transition-transform">
               <Phone className="w-6 h-6" />
             </div>
             <div>
@@ -149,9 +149,9 @@ export const DeveloperSupport: React.FC = () => {
             href="https://wa.me/918650970092?text=Hello%20Developer%2C%20I%20need%20support%20with%20the%20IVF%20Clinic%20Record%20System"
             target="_blank"
             rel="noreferrer"
-            className="w-full py-3 bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-teal-500/20"
+            className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-blue-500/30"
           >
-            <MessageSquare className="w-4 h-4 text-emerald-200" />
+            <MessageSquare className="w-4 h-4 text-blue-200" />
             <span>Chat on WhatsApp (+91 8650970092)</span>
             <ExternalLink className="w-3.5 h-3.5 opacity-80" />
           </a>
