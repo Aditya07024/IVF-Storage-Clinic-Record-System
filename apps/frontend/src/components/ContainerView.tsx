@@ -257,7 +257,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
               <Info className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>8-Step Physical Heatmap Scale (0% to 100% Occupancy):</span>
             </span>
-            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">Swipe or View Tiers</span>
+            {/* <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">Swipe or View Tiers</span> */}
           </div>
 
           {/* Sleek Visual Gradient Bar */}

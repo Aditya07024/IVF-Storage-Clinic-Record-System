@@ -249,10 +249,27 @@ export class PatientService {
         orderBy: orderByClause as any,
         skip,
         take: limit,
-        include: {
+        select: {
+          id: true,
+          patientId: true,
+          fullName: true,
+          partnerName: true,
+          partnerAge: true,
+          patientAge: true,
+          doctorName: true,
+          phone: true,
+          visitDate: true,
+          freezingDate: true,
+          deDate: true,
+          comments: true,
+          createdAt: true,
+          updatedAt: true,
           batches: {
             orderBy: { storageDate: 'desc' },
-            include: {
+            select: {
+              id: true,
+              batchId: true,
+              storageDate: true,
               straws: { select: { id: true, status: true } },
             },
           },

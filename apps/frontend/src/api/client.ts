@@ -29,7 +29,7 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const cacheKey = `${endpoint}`;
 
   // 1. Return from cache immediately if valid GET request
-  if (isGet && !options.headers) {
+  if (isGet && !(options as any).skipCache) {
     const cached = apiCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       return cached.data;
