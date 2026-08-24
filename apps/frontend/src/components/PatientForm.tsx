@@ -616,10 +616,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     onClick={() => handleSelectExistingPatient(p)}
                     className="p-4 bg-slate-50 hover:bg-emerald-50/60 rounded-2xl border border-slate-200 hover:border-emerald-400 transition-all cursor-pointer space-y-2 shadow-xs"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 text-sm">{p.fullName}</span>
-                      <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded border border-emerald-300">
-                        {p.patientId}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-slate-900 text-sm truncate">{p.fullName}</span>
+                      <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-950 rounded border border-emerald-300 shrink-0">
+                        Reg No: {p.patientId}
                       </span>
                     </div>
 
@@ -850,8 +850,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-full">
             <div className="md:col-span-2 min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Registration No
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <span>Registration No (Unique Primary Key)</span>
+                <span className="text-[10px] text-emerald-700 font-mono font-bold">Mandatory Unique Identifier</span>
               </label>
               <input
                 type="text"
@@ -865,6 +866,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
                 }`}
               />
+              <p className="text-[11px] text-slate-500 font-medium mt-1">
+                Registration No is the unique primary key. Duplicate patient names are fully supported for separate accounts.
+              </p>
             </div>
 
             <div className="min-w-0 max-w-full">
