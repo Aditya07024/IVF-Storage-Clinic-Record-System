@@ -58,7 +58,7 @@ export const DeveloperSupport: React.FC = () => {
     const generatedRef = `TICKET-2026-${Math.floor(100000 + Math.random() * 900000)}`;
 
     try {
-      const res = await apiRequest('/api/support/ticket', {
+      await apiRequest('/api/support/ticket', {
         method: 'POST',
         body: JSON.stringify({
           ticketRef: generatedRef,
@@ -70,14 +70,23 @@ export const DeveloperSupport: React.FC = () => {
         }),
       });
 
-      if (res.success) {
-        setTicketRef(res.ticketRef || generatedRef);
-        fetchTickets();
-      } else {
-        setTicketRef(generatedRef);
-      }
+      setTicketRef(generatedRef);
+      fetchTickets();
+
+      // Construct pre-filled Gmail Compose URL
+      const subject = `[IVF Support Request] ${category} - ${priority} (${generatedRef})`;
+      const bodyText = `IVF Clinic Support Ticket Reference: ${generatedRef}\nSubmitted By: ${name.trim()} (${email.trim()})\nCategory: ${category}\nPriority: ${priority}\n\nMessage Details:\n${message.trim()}`;
+      
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=adityakumar07024@gmail.com&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+      
+      // Open Gmail directly in a new tab
+      window.open(gmailUrl, '_blank');
     } catch {
       setTicketRef(generatedRef);
+      const subject = `[IVF Support Request] ${category} - ${priority} (${generatedRef})`;
+      const bodyText = `IVF Clinic Support Ticket Reference: ${generatedRef}\nSubmitted By: ${name.trim()} (${email.trim()})\nCategory: ${category}\nPriority: ${priority}\n\nMessage Details:\n${message.trim()}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=adityakumar07024@gmail.com&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+      window.open(gmailUrl, '_blank');
     } finally {
       setSubmitting(false);
     }
@@ -105,7 +114,7 @@ export const DeveloperSupport: React.FC = () => {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 p-6 sm:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 p-6 m-3 sm:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -232,17 +241,39 @@ export const DeveloperSupport: React.FC = () => {
                 </div>
               </div>
               <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                Thank you! Your ticket <strong>{ticketRef}</strong> has been logged into the system audit record and sent to lead developer Aditya Kumar. You can view all logged tickets in the list below.
+                Thank you! Your ticket <strong>{ticketRef}</strong> has been saved in the system audit database. We have also prepared an email with your typed details ready to send in Gmail.
               </p>
-              <button
-                onClick={() => {
-                  setTicketRef(null);
-                  setMessage('');
-                }}
-                className="px-4 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-xs"
-              >
-                Submit Another Request
-              </button>
+              
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                <a
+                  href={`https://mail.google.com/mail/?view=cm&fs=1&to=adityakumar07024@gmail.com&su=${encodeURIComponent(`[IVF Support Request] ${category} - ${priority} (${ticketRef})`)}&body=${encodeURIComponent(`IVF Clinic Support Ticket Reference: ${ticketRef}\nSubmitted By: ${name} (${email})\nCategory: ${category}\nPriority: ${priority}\n\nMessage Details:\n${message}`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                >
+                  <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Open Gmail with Typed Message</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+
+                <a
+                  href={`mailto:adityakumar07024@gmail.com?subject=${encodeURIComponent(`[IVF Support Request] ${category} - ${priority} (${ticketRef})`)}&body=${encodeURIComponent(`IVF Clinic Support Ticket Reference: ${ticketRef}\nSubmitted By: ${name} (${email})\nCategory: ${category}\nPriority: ${priority}\n\nMessage Details:\n${message}`)}`}
+                  className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Open System Mail App</span>
+                </a>
+
+                <button
+                  onClick={() => {
+                    setTicketRef(null);
+                    setMessage('');
+                  }}
+                  className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition-all"
+                >
+                  Submit Another Request
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSendInquiry} className="space-y-4">
@@ -370,7 +401,7 @@ export const DeveloperSupport: React.FC = () => {
       </div>
 
       {/* Persistent Support Ticket History Table */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+      {/* <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-slate-900" />
@@ -448,7 +479,7 @@ export const DeveloperSupport: React.FC = () => {
             </table>
           </div>
         )}
-      </div>
+      </div> */}
     </div>
   );
 };
