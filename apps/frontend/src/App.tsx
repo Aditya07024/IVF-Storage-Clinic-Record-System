@@ -106,10 +106,10 @@ import { BackgroundTaskProvider } from './context/BackgroundTaskContext';
 
 export default function App() {
   return (
-    <AccessGate>
-      <BackgroundTaskProvider>
+    <BackgroundTaskProvider>
+      <AccessGate>
         <AppContent />
-      </BackgroundTaskProvider>
-    </AccessGate>
+      </AccessGate>
+    </BackgroundTaskProvider>
   );
 }

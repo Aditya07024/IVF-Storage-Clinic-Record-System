@@ -284,34 +284,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     }
   };
 
-  useEffect(() => {
-    if (assignStorageEnabled && allocationMode === 'recommended') {
-      handleFindStorage();
-    }
-  }, [assignStorageEnabled, allocationMode, embryoCount, storageDate, selectedExistingPatient]);
-
-  useEffect(() => {
-    if (saveSuccessDetails) {
-      const timer = setTimeout(() => {
-        setSaveSuccessDetails(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [saveSuccessDetails]);
-
-  // Keep straw colors array in sync with required straws count
-  useEffect(() => {
-    const requiredStraws = Math.ceil(embryoCount / 2);
-    setStrawColors(prev => {
-      if (prev.length === requiredStraws) return prev;
-      const next = Array(requiredStraws).fill('Pink');
-      for (let i = 0; i < Math.min(prev.length, requiredStraws); i++) {
-        next[i] = prev[i];
-      }
-      return next;
-    });
-  }, [embryoCount]);
-
   // Search Empty Storage Recommendation
   const handleFindStorage = async () => {
     setError(null);
@@ -339,6 +311,36 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       setSearchingStorage(false);
     }
   };
+
+  const fetchRecommendation = handleFindStorage;
+
+  useEffect(() => {
+    if (assignStorageEnabled && allocationMode === 'recommended') {
+      handleFindStorage();
+    }
+  }, [assignStorageEnabled, allocationMode, embryoCount, storageDate, selectedExistingPatient]);
+
+  useEffect(() => {
+    if (saveSuccessDetails) {
+      const timer = setTimeout(() => {
+        setSaveSuccessDetails(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [saveSuccessDetails]);
+
+  // Keep straw colors array in sync with required straws count
+  useEffect(() => {
+    const requiredStraws = Math.ceil(embryoCount / 2);
+    setStrawColors(prev => {
+      if (prev.length === requiredStraws) return prev;
+      const next = Array(requiredStraws).fill('Pink');
+      for (let i = 0; i < Math.min(prev.length, requiredStraws); i++) {
+        next[i] = prev[i];
+      }
+      return next;
+    });
+  }, [embryoCount]);
 
   const { enqueueTask } = useBackgroundTask();
 
