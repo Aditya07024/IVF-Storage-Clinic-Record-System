@@ -10,6 +10,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
+import { get8StepHeatmapColor } from '../utils/heatmap';
 
 interface DashboardProps {
   onNavigate: (tab: any, canCode?: string) => void;
@@ -171,50 +172,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {canStats.map((can: any) => (
-            <div
-              key={can.canId}
-              onClick={() => onNavigate('container-view', can.canCode)}
-              className="bg-slate-50/60 p-5 rounded-2xl border border-slate-200 space-y-3 hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all group relative overflow-hidden"
-              title={`Click to open ${can.canCode} in Full Container View`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
-                  <span>{can.canCode}</span>
-                  <span className="text-[10px] text-emerald-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
+          {canStats.map((can: any) => {
+            const step = get8StepHeatmapColor(can.utilizationPercentage || 0);
+            return (
+              <div
+                key={can.canId}
+                onClick={() => onNavigate('container-view', can.canCode)}
+                className="bg-slate-50/60 p-5 rounded-2xl border border-slate-200 space-y-3 hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all group relative overflow-hidden"
+                title={`Click to open ${can.canCode} in Full Container View`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
+                    <span>{can.canCode}</span>
+                    <span className="text-[10px] text-emerald-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
+                  </div>
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${step.bgClass}`}
+                    style={{ backgroundColor: step.hex }}
+                  >
+                    {can.utilizationPercentage}% Occupied ({step.name})
+                  </span>
                 </div>
-                <span
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                    can.utilizationPercentage > 80
-                      ? 'bg-rose-100 text-rose-800 border-rose-300'
-                      : can.utilizationPercentage > 50
-                      ? 'bg-amber-100 text-amber-800 border-amber-300'
-                      : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                  }`}
-                >
-                  {can.utilizationPercentage}% Occupied
-                </span>
-              </div>
 
-              <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    can.utilizationPercentage > 80
-                      ? 'bg-rose-500'
-                      : can.utilizationPercentage > 50
-                      ? 'bg-amber-500'
-                      : 'bg-emerald-500'
-                  }`}
-                  style={{ width: `${can.utilizationPercentage}%` }}
-                />
-              </div>
+                <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden border border-slate-300">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${can.utilizationPercentage}%`, backgroundColor: step.hex }}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                <span>{can.occupiedStraws} / {can.maxCapacityStraws} straws</span>
-                <span className="text-slate-600 font-medium">{can.availableStraws} available</span>
+                <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                  <span>{can.occupiedStraws} / {can.maxCapacityStraws} straws</span>
+                  <span className="text-slate-600 font-medium">{can.availableStraws} available</span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

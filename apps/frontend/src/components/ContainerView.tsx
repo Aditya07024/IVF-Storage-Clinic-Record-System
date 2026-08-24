@@ -17,6 +17,7 @@ import {
   ThermometerSnowflake,
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
+import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
 export function parseLocationCode(code: string) {
   if (!code) return { can: '01', canister: '01', level: '1', goblet: '01', tube: '01', formatted: 'Unknown' };
@@ -178,38 +179,24 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
   const currentGoblet = currentLevel?.goblets?.[0];
   const visoTubes = currentGoblet?.visoTubes || [];
 
-  // Helper to determine space-fill background color according to space left (Green = Empty, Yellow = Partial, Red = Full)
+  // Helper to determine space-fill background color using 8-Step Extended Heatmap Scale
   const getSpaceFillColor = (occupied: number, max: number = 10) => {
     const rawPercentage = max > 0 ? (occupied / max) * 100 : 0;
+    const step = get8StepHeatmapColor(rawPercentage);
+
     const formattedLabel = rawPercentage > 0 && rawPercentage < 1
       ? `${rawPercentage.toFixed(2)}%`
       : `${Math.round(rawPercentage)}%`;
 
-    if (occupied === 0) {
-      return {
-        fill: 'fill-emerald-100/90',
-        stroke: 'stroke-emerald-500',
-        bg: 'bg-emerald-100 text-emerald-950 border-emerald-300 font-mono font-bold',
-        dot: 'bg-emerald-500',
-        label: '0%',
-      };
-    } else if (occupied >= max) {
-      return {
-        fill: 'fill-rose-500/90',
-        stroke: 'stroke-rose-700',
-        bg: 'bg-rose-600 text-white border-rose-700 font-mono font-bold',
-        dot: 'bg-rose-600',
-        label: '100%',
-      };
-    } else {
-      return {
-        fill: 'fill-amber-300/95',
-        stroke: 'stroke-amber-600',
-        bg: 'bg-amber-400 text-amber-950 border-amber-500 font-mono font-black shadow-xs',
-        dot: 'bg-amber-500',
-        label: formattedLabel,
-      };
-    }
+    return {
+      hex: step.hex,
+      fill: step.hex,
+      bg: step.bgClass,
+      stroke: step.strokeClass,
+      textClass: step.textClass,
+      label: formattedLabel,
+      stepName: step.name,
+    };
   };
 
   return (
@@ -263,24 +250,23 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
       {/* SPACE LEFT CAPACITY & PHYSICAL BOUNDARY COLOR LEGEND BAR */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-        {/* Capacity Legend */}
-        <div className="flex flex-wrap items-center justify-between gap-4 text-xs border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2 font-bold text-slate-900 uppercase tracking-wider">
-            <span>Background Fill (Space Left):</span>
+        {/* 8-Step Extended Heatmap Scale Legend */}
+        <div className="space-y-2.5">
+          <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <Info className="w-4 h-4 text-emerald-600" />
+            <span>8-Step Physical Storage Heatmap Scale (0% to 100% Occupancy):</span>
           </div>
-          <div className="flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-emerald-300">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm" />
-              <span className="text-slate-900 font-bold">GREEN = Empty (0% Occupied)</span>
-            </div>
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-amber-300">
-              <span className="w-3 h-3 rounded-full bg-amber-500 shadow-sm" />
-              <span className="text-slate-900 font-bold">YELLOW = Partially Occupied</span>
-            </div>
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-rose-300">
-              <span className="w-3 h-3 rounded-full bg-rose-600 shadow-sm" />
-              <span className="text-slate-900 font-bold">RED = Full (100% Capacity)</span>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+            {HEATMAP_8_STEPS.map((step) => (
+              <div
+                key={step.pctLabel}
+                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center shadow-2xs ${step.bgClass}`}
+                style={{ backgroundColor: step.hex }}
+              >
+                <span className="text-xs">{step.pctLabel}</span>
+                <span className="text-[10px] uppercase font-sans font-extrabold opacity-90">{step.name}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -350,7 +336,8 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                       <svg viewBox="0 0 100 115" className="w-18 h-20 sm:w-26 sm:h-28 filter drop-shadow-sm">
                         <polygon
                           points="50,2 95,28 95,87 50,113 5,87 5,28"
-                          className={`transition-all duration-300 ${colorInfo.fill} ${
+                          fill={colorInfo.hex}
+                          className={`transition-all duration-300 ${
                             isSelected
                               ? 'stroke-slate-900 stroke-[5.5]'
                               : `${colorInfo.stroke} stroke-[2.5]`
@@ -390,7 +377,8 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                       <svg viewBox="0 0 100 115" className="w-18 h-20 sm:w-26 sm:h-28 filter drop-shadow-sm">
                         <polygon
                           points="50,2 95,28 95,87 50,113 5,87 5,28"
-                          className={`transition-all duration-300 ${colorInfo.fill} ${
+                          fill={colorInfo.hex}
+                          className={`transition-all duration-300 ${
                             isSelected
                               ? 'stroke-slate-900 stroke-[5.5]'
                               : `${colorInfo.stroke} stroke-[2.5]`
