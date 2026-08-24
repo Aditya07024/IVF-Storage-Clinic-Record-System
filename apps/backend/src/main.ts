@@ -578,6 +578,52 @@ app.get('/api/audit/logs', accessKeyGuard, jwtAuthGuard, async (req, res) => {
   }
 });
 
+// --- DEVELOPER SUPPORT TICKET ROUTES ---
+app.post('/api/support/ticket', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { ticketRef, name, email, category, priority, message } = req.body;
+    if (!message || !name) return res.status(400).json({ success: false, error: 'Name and message are required.' });
+
+    const refCode = ticketRef || `TICKET-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+    const log = await prisma.auditLog.create({
+      data: {
+        userId: req.user?.userId || 'SYSTEM',
+        userName: name || req.user?.name || 'Staff User',
+        action: 'SUPPORT_TICKET_SUBMITTED',
+        entityName: 'SupportTicket',
+        entityId: refCode,
+        newData: JSON.stringify({
+          ticketRef: refCode,
+          name,
+          email,
+          category,
+          priority,
+          message,
+          submittedAt: new Date().toISOString(),
+          status: 'RECEIVED & LOGGED',
+        }),
+      },
+    });
+
+    return res.json({ success: true, ticketRef: refCode, log });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/support/tickets', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+  try {
+    const tickets = await prisma.auditLog.findMany({
+      where: { action: 'SUPPORT_TICKET_SUBMITTED' },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+    return res.json({ success: true, tickets });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Global Error Handler (Hides internal stack traces from external hackers)
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('[Backend Error Log]', err);

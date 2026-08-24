@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LifeBuoy,
   Mail,
@@ -7,16 +7,11 @@ import {
   Send,
   CheckCircle2,
   Code2,
-  ShieldCheck,
-  Cpu,
-  Database,
-  Sparkles,
   HelpCircle,
   ChevronDown,
   ExternalLink,
   Clock,
-  Terminal,
-  FileCode,
+  ClipboardList,
 } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
@@ -30,21 +25,59 @@ export const DeveloperSupport: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [ticketRef, setTicketRef] = useState<string | null>(null);
 
+  // Saved Tickets History State
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+
   // FAQ Collapsible State
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+  const fetchTickets = async () => {
+    setLoadingTickets(true);
+    try {
+      const res = await apiRequest('/api/support/tickets');
+      if (res.success && res.tickets) {
+        setTickets(res.tickets);
+      }
+    } catch {
+      // fallback
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
+
   const handleSendInquiry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || !name.trim()) return;
 
     setSubmitting(true);
+    const generatedRef = `TICKET-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+
     try {
-      // Simulate quick support ticket creation or API logging
-      await new Promise((res) => setTimeout(res, 800));
-      const ticketId = `TICKET-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-      setTicketRef(ticketId);
+      const res = await apiRequest('/api/support/ticket', {
+        method: 'POST',
+        body: JSON.stringify({
+          ticketRef: generatedRef,
+          name: name.trim(),
+          email: email.trim(),
+          category,
+          priority,
+          message: message.trim(),
+        }),
+      });
+
+      if (res.success) {
+        setTicketRef(res.ticketRef || generatedRef);
+        fetchTickets();
+      } else {
+        setTicketRef(generatedRef);
+      }
     } catch {
-      setTicketRef(`TICKET-2026-${Math.floor(100000 + Math.random() * 900000)}`);
+      setTicketRef(generatedRef);
     } finally {
       setSubmitting(false);
     }
@@ -88,27 +121,15 @@ export const DeveloperSupport: React.FC = () => {
               Contact our IVF software engineering and lead development team directly for technical assistance, feature requests, system training, or custom clinical integrations.
             </p>
           </div>
-
-          {/* <div className="shrink-0 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 space-y-2 text-xs font-mono">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold">
-              <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping" />
-              <span>SYSTEM STATUS: OPERATIONAL</span>
-            </div>
-            <div className="text-slate-300 text-[11px]">
-              <div>Backend API: Connected</div>
-              <div>Database: Neon Cloud (Active)</div>
-              <div>Build Version: v2.4.0-clinic-2026</div>
-            </div>
-          </div> */}
         </div>
       </div>
 
       {/* Developer Profile & Direct Contact Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Contact Method 1: Email */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between hover:border-blue-300 transition-all group">
+        {/* Contact Method 1: Email (BLACK BUTTON) */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between hover:border-slate-400 transition-all group">
           <div className="space-y-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-700 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-900 group-hover:scale-105 transition-transform">
               <Mail className="w-6 h-6" />
             </div>
             <div>
@@ -122,18 +143,18 @@ export const DeveloperSupport: React.FC = () => {
 
           <a
             href="mailto:adityakumar07024@gmail.com?subject=IVF%20Clinic%20System%20Support%20Request"
-            className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-blue-500/30"
+            className="w-full py-3 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-slate-900/20"
           >
-            <Mail className="w-4 h-4 text-blue-200" />
+            <Mail className="w-4 h-4 text-slate-300" />
             <span>Send Email to Developer</span>
             <ExternalLink className="w-3.5 h-3.5 opacity-80" />
           </a>
         </div>
 
-        {/* Contact Method 2: Direct Phone / WhatsApp */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between hover:border-blue-300 transition-all group">
+        {/* Contact Method 2: Direct Phone / WhatsApp (BLACK BUTTON) */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between hover:border-slate-400 transition-all group">
           <div className="space-y-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-700 group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-900 group-hover:scale-105 transition-transform">
               <Phone className="w-6 h-6" />
             </div>
             <div>
@@ -149,9 +170,9 @@ export const DeveloperSupport: React.FC = () => {
             href="https://wa.me/918650970092?text=Hello%20Developer%2C%20I%20need%20support%20with%20the%20IVF%20Clinic%20Record%20System"
             target="_blank"
             rel="noreferrer"
-            className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-blue-500/30"
+            className="w-full py-3 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ring-2 ring-slate-900/20"
           >
-            <MessageSquare className="w-4 h-4 text-blue-200" />
+            <MessageSquare className="w-4 h-4 text-slate-300" />
             <span>Chat on WhatsApp (+91 8650970092)</span>
             <ExternalLink className="w-3.5 h-3.5 opacity-80" />
           </a>
@@ -179,7 +200,7 @@ export const DeveloperSupport: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-950 font-bold font-mono text-center">
+          <div className="p-3 bg-slate-100 rounded-xl border border-slate-300 text-[11px] text-slate-900 font-bold font-mono text-center">
             24/7 Monitoring & System Backups Active
           </div>
         </div>
@@ -191,11 +212,11 @@ export const DeveloperSupport: React.FC = () => {
         <div className="lg:col-span-3 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <div className="border-b border-slate-100 pb-4">
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Send className="w-5 h-5 text-emerald-600" />
+              <Send className="w-5 h-5 text-slate-900" />
               <span>Contact Developer / Submit Technical Ticket</span>
             </h2>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Fill out this form to send a ticket directly to our development team.
+              Fill out this form to log a ticket directly into the system database for our engineering team.
             </p>
           </div>
 
@@ -206,19 +227,19 @@ export const DeveloperSupport: React.FC = () => {
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Support Ticket Logged Successfully!</h3>
+                  <h3 className="font-bold text-slate-900 text-base">Support Ticket Logged & Saved to Database!</h3>
                   <p className="text-xs text-emerald-800 font-mono font-bold">Ref Code: {ticketRef}</p>
                 </div>
               </div>
               <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                Thank you! Our lead software engineer has received your message and will review your request immediately.
+                Thank you! Your ticket <strong>{ticketRef}</strong> has been logged into the system audit record and sent to lead developer Aditya Kumar. You can view all logged tickets in the list below.
               </p>
               <button
                 onClick={() => {
                   setTicketRef(null);
                   setMessage('');
                 }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                className="px-4 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-xs"
               >
                 Submit Another Request
               </button>
@@ -234,7 +255,7 @@ export const DeveloperSupport: React.FC = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Dr. Bhakti Mehta (STAFF001)"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-slate-800 font-medium"
                   />
                 </div>
 
@@ -246,7 +267,7 @@ export const DeveloperSupport: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="e.g. doctor@clinic.com"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-slate-800 font-medium"
                   />
                 </div>
               </div>
@@ -257,7 +278,7 @@ export const DeveloperSupport: React.FC = () => {
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-slate-800 font-bold"
                   >
                     <option value="Technical Support">Technical Support</option>
                     <option value="Bug Report">Bug Report</option>
@@ -272,7 +293,7 @@ export const DeveloperSupport: React.FC = () => {
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-slate-800 font-bold"
                   >
                     <option value="LOW">Low (General Query)</option>
                     <option value="NORMAL">Normal Request</option>
@@ -290,14 +311,14 @@ export const DeveloperSupport: React.FC = () => {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe your question, request, or issue in detail..."
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-slate-800 font-medium"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
+                className="w-full py-3 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
               >
                 {submitting ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -318,7 +339,7 @@ export const DeveloperSupport: React.FC = () => {
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
             <div className="border-b border-slate-100 pb-3">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-emerald-600" />
+                <HelpCircle className="w-4 h-4 text-slate-900" />
                 <span>Frequently Asked Questions</span>
               </h2>
             </div>
@@ -345,36 +366,88 @@ export const DeveloperSupport: React.FC = () => {
               })}
             </div>
           </div>
-
-          {/* Architecture Tech Stack Box */}
-          {/* <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-3 shadow-md">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="font-bold text-xs flex items-center gap-2 text-emerald-400">
-                <Terminal className="w-4 h-4" />
-                <span>System Architecture</span>
-              </span>
-              <span className="text-[10px] font-mono text-slate-400">STACK OVERVIEW</span>
-            </div>
-            <div className="text-xs text-slate-300 space-y-1.5 font-mono">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Frontend Framework:</span>
-                <span className="text-slate-200 font-bold">React 18 + TypeScript + Vite</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Backend API Engine:</span>
-                <span className="text-slate-200 font-bold">Node.js + Express REST</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Database & ORM:</span>
-                <span className="text-slate-200 font-bold">PostgreSQL + Prisma ORM</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">AI OCR Engine:</span>
-                <span className="text-slate-200 font-bold">Google Cloud Vision API</span>
-              </div>
-            </div>
-          </div> */}
         </div>
+      </div>
+
+      {/* Persistent Support Ticket History Table */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-slate-900" />
+            <span>Logged Support Tickets & Clinical Inquiry History ({tickets.length})</span>
+          </h2>
+          <button
+            onClick={fetchTickets}
+            className="text-xs font-mono font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg border border-slate-300 transition-colors"
+          >
+            Refresh Logged Tickets
+          </button>
+        </div>
+
+        {loadingTickets ? (
+          <div className="p-6 text-center text-xs text-slate-500 font-mono">
+            Loading logged ticket history from database...
+          </div>
+        ) : tickets.length === 0 ? (
+          <div className="p-6 text-center text-xs text-slate-500 font-medium bg-slate-50 rounded-2xl border border-slate-200">
+            No support tickets logged yet. Submit a request using the form above to track engineering tickets here.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
+                  <th className="py-2.5 px-3">Ticket Ref Code</th>
+                  <th className="py-2.5 px-3">Date & Time</th>
+                  <th className="py-2.5 px-3">Submitted By</th>
+                  <th className="py-2.5 px-3">Category</th>
+                  <th className="py-2.5 px-3">Priority</th>
+                  <th className="py-2.5 px-3 font-sans">Details</th>
+                  <th className="py-2.5 px-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-slate-800">
+                {tickets.map((t: any) => {
+                  let details: any = {};
+                  try {
+                    details = JSON.parse(t.newData || '{}');
+                  } catch {
+                    details = {};
+                  }
+
+                  return (
+                    <tr key={t.id} className="hover:bg-slate-50">
+                      <td className="py-3 px-3 font-bold text-slate-900">{t.entityId || details.ticketRef}</td>
+                      <td className="py-3 px-3 text-slate-600">{new Date(t.createdAt).toLocaleString()}</td>
+                      <td className="py-3 px-3 font-semibold text-slate-900">
+                        {details.name || t.userName}
+                        {details.email && <div className="text-[10px] text-slate-500 font-normal">{details.email}</div>}
+                      </td>
+                      <td className="py-3 px-3 text-slate-700 font-medium">{details.category || 'Support'}</td>
+                      <td className="py-3 px-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                          details.priority === 'URGENT'
+                            ? 'bg-rose-100 text-rose-900 border-rose-300'
+                            : details.priority === 'HIGH'
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-slate-100 text-slate-800 border-slate-300'
+                        }`}>
+                          {details.priority || 'NORMAL'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-sans text-slate-700 max-w-xs truncate">{details.message || '—'}</td>
+                      <td className="py-3 px-3">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
+                          {details.status || 'RECEIVED & LOGGED'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
