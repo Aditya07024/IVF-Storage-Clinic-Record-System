@@ -230,47 +230,62 @@ export class StorageService {
     };
   }
 
-  // Generate Straw ID: STR-000001 (Fast single query)
+  // Generate Straw ID: STR-000001 (Numeric Max Safe)
   private async generateNextStrawId(txClient?: any): Promise<string> {
     const db = txClient || prisma;
-    const count = await db.straw.count();
-    const lastStraw = await db.straw.findFirst({
-      orderBy: { createdAt: 'desc' },
+    const straws = await db.straw.findMany({
       select: { strawId: true },
     });
 
     let maxNum = 0;
-    if (lastStraw?.strawId) {
-      const match = lastStraw.strawId.match(/STR-(\d+)/);
+    for (const s of straws) {
+      const match = s.strawId?.match(/STR-(\d+)/);
       if (match) {
-        maxNum = parseInt(match[1], 10);
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
       }
     }
 
-    const nextNum = Math.max((isNaN(maxNum) ? 0 : maxNum) + 1, count + 1);
-    return `STR-${nextNum.toString().padStart(6, '0')}`;
+    const nextNum = Math.max(maxNum + 1, straws.length + 1);
+    let candidate = `STR-${nextNum.toString().padStart(6, '0')}`;
+
+    let attempts = 0;
+    while (await db.straw.findUnique({ where: { strawId: candidate } })) {
+      attempts++;
+      candidate = `STR-${(nextNum + attempts).toString().padStart(6, '0')}`;
+      if (attempts > 50) break;
+    }
+    return candidate;
   }
 
-  // Generate Batch ID: BATCH-2026-000001 (Fast single query)
+  // Generate Batch ID: BATCH-2026-000001 (Numeric Max Safe)
   private async generateNextBatchId(txClient?: any): Promise<string> {
     const db = txClient || prisma;
     const year = new Date().getFullYear();
-    const count = await db.storageBatch.count();
-    const lastBatch = await db.storageBatch.findFirst({
-      orderBy: { createdAt: 'desc' },
+    const prefix = `BATCH-${year}-`;
+    const batches = await db.storageBatch.findMany({
       select: { batchId: true },
     });
 
     let maxNum = 0;
-    if (lastBatch?.batchId) {
-      const match = lastBatch.batchId.match(/BATCH-\d{4}-(\d+)/) || lastBatch.batchId.match(/BATCH-(\d+)/);
+    for (const b of batches) {
+      const match = b.batchId?.match(/BATCH-\d{4}-(\d+)/) || b.batchId?.match(/BATCH-(\d+)/);
       if (match) {
-        maxNum = parseInt(match[1], 10);
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
       }
     }
 
-    const nextNum = Math.max((isNaN(maxNum) ? 0 : maxNum) + 1, count + 1);
-    return `BATCH-${year}-${nextNum.toString().padStart(6, '0')}`;
+    const nextNum = Math.max(maxNum + 1, batches.length + 1);
+    let candidate = `${prefix}${nextNum.toString().padStart(6, '0')}`;
+
+    let attempts = 0;
+    while (await db.storageBatch.findUnique({ where: { batchId: candidate } })) {
+      attempts++;
+      candidate = `${prefix}${(nextNum + attempts).toString().padStart(6, '0')}`;
+      if (attempts > 50) break;
+    }
+    return candidate;
   }
 
   // Assign Storage with PostgreSQL Row Transaction & Lock
@@ -284,6 +299,11 @@ export class StorageService {
     if (input.embryoCount > requiredStraws * 2) {
       throw new Error('Rule Violation: A straw can contain a maximum of 2 embryos.');
     }
+
+    // Pre-calculate Batch & Straw IDs to minimize transaction roundtrips and connection locks
+    const batchIdCode = await this.generateNextBatchId();
+    const baseStrawId = await this.generateNextStrawId();
+    const baseStrawNum = parseInt(baseStrawId.split('-').pop() || '1', 10);
 
     return prisma.$transaction(async (tx) => {
       // Check Viso Tube existence
@@ -304,19 +324,19 @@ export class StorageService {
 
       const storageDate = new Date(input.storageDate);
 
-      // Create Storage Batch entity with unique ID verification retry
-      let batchIdCode = await this.generateNextBatchId(tx);
+      // Verify batchId uniqueness in transaction
+      let finalBatchId = batchIdCode;
       let batchAttempts = 0;
-      while (await tx.storageBatch.findUnique({ where: { batchId: batchIdCode } })) {
+      while (await tx.storageBatch.findUnique({ where: { batchId: finalBatchId } })) {
         batchAttempts++;
-        const baseNum = parseInt(batchIdCode.split('-').pop() || '0', 10);
+        const baseNum = parseInt(finalBatchId.split('-').pop() || '0', 10);
         const nextNum = (isNaN(baseNum) ? 1 : baseNum) + batchAttempts;
-        batchIdCode = `BATCH-${storageDate.getFullYear()}-${nextNum.toString().padStart(6, '0')}`;
+        finalBatchId = `BATCH-${storageDate.getFullYear()}-${nextNum.toString().padStart(6, '0')}`;
       }
 
       const batch = await tx.storageBatch.create({
         data: {
-          batchId: batchIdCode,
+          batchId: finalBatchId,
           patientId: input.patientId,
           storageDate,
           totalEmbryos: input.embryoCount,
@@ -341,12 +361,11 @@ export class StorageService {
         const embryosInThisStraw = Math.min(2, remainingEmbryos);
         remainingEmbryos -= embryosInThisStraw;
 
-        let strawIdCode = await this.generateNextStrawId(tx);
+        let strawIdCode = `STR-${(baseStrawNum + i).toString().padStart(6, '0')}`;
         let strawAttempts = 0;
         while (await tx.straw.findUnique({ where: { strawId: strawIdCode } })) {
           strawAttempts++;
-          const baseNum = parseInt(strawIdCode.split('-').pop() || '0', 10);
-          const nextNum = (isNaN(baseNum) ? 1 : baseNum) + strawAttempts;
+          const nextNum = baseStrawNum + i + strawAttempts;
           strawIdCode = `STR-${nextNum.toString().padStart(6, '0')}`;
         }
 

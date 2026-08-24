@@ -17,30 +17,40 @@ export interface CreatePatientInput {
 }
 
 export class PatientService {
-  // Generate unique Patient ID: IVF-2026-000001
+  // Generate unique Patient ID: IVF-2026-000001 (Numeric Max Safe)
   async generateNextPatientId(): Promise<string> {
     const year = new Date().getFullYear();
     const prefix = `IVF-${year}-`;
 
-    const lastPatient = await prisma.patient.findFirst({
+    const patients = await prisma.patient.findMany({
       where: {
         patientId: { startsWith: prefix },
       },
-      orderBy: { patientId: 'desc' },
+      select: { patientId: true },
     });
 
-    let nextNumber = 1;
-    if (lastPatient) {
-      const parts = lastPatient.patientId.split('-');
-      if (parts.length === 3) {
-        const lastNum = parseInt(parts[2], 10);
-        if (!isNaN(lastNum)) {
-          nextNumber = lastNum + 1;
+    let maxNum = 0;
+    for (const p of patients) {
+      const parts = p.patientId.split('-');
+      if (parts.length >= 3) {
+        const num = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
         }
       }
     }
 
-    return `${prefix}${nextNumber.toString().padStart(6, '0')}`;
+    const nextNumber = Math.max(maxNum + 1, patients.length + 1);
+    let candidate = `${prefix}${nextNumber.toString().padStart(6, '0')}`;
+
+    let attempts = 0;
+    while (await prisma.patient.findUnique({ where: { patientId: candidate } })) {
+      attempts++;
+      candidate = `${prefix}${(nextNumber + attempts).toString().padStart(6, '0')}`;
+      if (attempts > 100) break;
+    }
+
+    return candidate;
   }
 
   async createPatient(input: CreatePatientInput, staffUserId: string, staffName: string) {
