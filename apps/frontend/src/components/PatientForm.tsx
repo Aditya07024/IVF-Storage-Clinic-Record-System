@@ -278,7 +278,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
   useEffect(() => {
     if (assignStorageEnabled && allocationMode === 'recommended') {
-      fetchRecommendation();
+      handleFindStorage();
     }
   }, [assignStorageEnabled, allocationMode, embryoCount, storageDate, selectedExistingPatient]);
 
