@@ -577,6 +577,8 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                       const capacityColor = getSpaceFillColor(occupiedCount, 10);
                       const isSelected = selectedTube?.id === tube.id;
 
+                      const textFillClass = (capacityColor.percentage > 60 && !isSelected) ? 'fill-white' : 'fill-slate-900';
+
                       return (
                         <g
                           key={tube.id}
@@ -585,17 +587,16 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                         >
                           <path
                             d={pathData}
-                            className={`transition-all duration-300 ${
-                              isSelected
-                                ? 'stroke-slate-900 stroke-[5] fill-emerald-200/90 shadow-md'
-                                : `${capacityColor.fill} ${tubeColor.stroke} stroke-[3.5] hover:scale-[1.02]`
-                            }`}
+                            fill={isSelected ? '#A7F3D0' : capacityColor.hex}
+                            stroke={isSelected ? '#0F172A' : tubeColor.dotHex}
+                            strokeWidth={isSelected ? '5' : '3.5'}
+                            className="transition-all duration-300 hover:scale-[1.02] cursor-pointer"
                           />
                           <text
                             x={tx}
                             y={ty - 6}
                             textAnchor="middle"
-                            className="font-mono text-xs font-black fill-slate-900 pointer-events-none select-none"
+                            className={`font-mono text-xs font-black ${textFillClass} pointer-events-none select-none`}
                           >
                             V{tube.tubeNumber.toString().padStart(2, '0')}
                           </text>
@@ -603,7 +604,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                             x={tx}
                             y={ty + 5}
                             textAnchor="middle"
-                            className="font-mono text-[9px] font-extrabold fill-slate-800 pointer-events-none select-none"
+                            className={`font-mono text-[9px] font-extrabold ${textFillClass} pointer-events-none select-none`}
                           >
                             {tubeColor.name}
                           </text>
@@ -611,7 +612,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                             x={tx}
                             y={ty + 16}
                             textAnchor="middle"
-                            className="font-mono text-[9px] font-extrabold fill-slate-700 pointer-events-none select-none"
+                            className={`font-mono text-[9px] font-extrabold ${textFillClass} pointer-events-none select-none`}
                           >
                             {occupiedCount}/10
                           </text>
