@@ -26,6 +26,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
       if (res.success) {
         localStorage.setItem('access_token', res.accessToken);
+        if (res.refreshToken) localStorage.setItem('refresh_token', res.refreshToken);
         onLoginSuccess(res.user);
       }
     } catch (err: any) {
@@ -49,6 +50,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
       if (res.success) {
         localStorage.setItem('access_token', res.accessToken);
+        if (res.refreshToken) localStorage.setItem('refresh_token', res.refreshToken);
         onLoginSuccess(res.user);
       }
     } catch (err: any) {

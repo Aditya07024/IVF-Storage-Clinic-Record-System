@@ -43,6 +43,7 @@ export const AppContent: React.FC = () => {
       }
     } catch {
       localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       setUser(null);
     } finally {
       setLoading(false);
@@ -56,6 +57,7 @@ export const AppContent: React.FC = () => {
       // ignore
     } finally {
       localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       setUser(null);
     }
   };

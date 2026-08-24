@@ -228,23 +228,60 @@ app.post('/api/auth/login', accessKeyGuard, authLoginLimiter, async (req, res) =
       httpOnly: true,
       sameSite: 'strict',
       secure: CONFIG.NODE_ENV === 'production',
-      maxAge: 15 * 60 * 1000, // 15 mins
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true,
       sameSite: 'strict',
       secure: CONFIG.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
     return res.json({
       success: true,
       user: result.user,
       accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     });
   } catch (err: any) {
     return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    if (!refreshToken) {
+      return res.status(401).json({ success: false, error: 'Refresh token missing.' });
+    }
+
+    const result = await authService.refreshAccessToken(refreshToken);
+
+    res.cookie('accessToken', result.accessToken, {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: CONFIG.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    });
+
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: CONFIG.NODE_ENV === 'production',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
+    return res.json({
+      success: true,
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+  } catch (err: any) {
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+    return res.status(401).json({ success: false, error: err.message || 'Invalid refresh token.' });
   }
 });
 

@@ -87,8 +87,8 @@ export class AuthService {
       role: user.role,
     };
 
-    const accessToken = jwt.sign(payload, CONFIG.JWT_ACCESS_SECRET, { expiresIn: (CONFIG.JWT_ACCESS_EXPIRATION as any) || '1h' });
-    const refreshToken = jwt.sign(payload, CONFIG.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+    const accessToken = jwt.sign(payload, CONFIG.JWT_ACCESS_SECRET, { expiresIn: (CONFIG.JWT_ACCESS_EXPIRATION as any) || '24h' });
+    const refreshToken = jwt.sign(payload, CONFIG.JWT_REFRESH_SECRET, { expiresIn: (CONFIG.JWT_REFRESH_EXPIRATION as any) || '30d' });
 
     // Log Audit Event
     await prisma.auditLog.create({
@@ -167,6 +167,35 @@ export class AuthService {
     } catch {
       throw new Error('Unauthorized refresh token.');
     }
+  }
+
+  async refreshAccessToken(refreshTokenInput: string) {
+    const payload = this.verifyRefreshToken(refreshTokenInput);
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) {
+      throw new Error('User record not found for refresh token.');
+    }
+
+    const newPayload: JwtPayload = {
+      userId: user.id,
+      staffId: user.staffId,
+      role: user.role,
+    };
+
+    const accessToken = jwt.sign(newPayload, CONFIG.JWT_ACCESS_SECRET, { expiresIn: (CONFIG.JWT_ACCESS_EXPIRATION as any) || '24h' });
+    const newRefreshToken = jwt.sign(newPayload, CONFIG.JWT_REFRESH_SECRET, { expiresIn: (CONFIG.JWT_REFRESH_EXPIRATION as any) || '30d' });
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: user.id,
+        staffId: user.staffId,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    };
   }
 
   // Admin Methods: Staff Account & Password Management

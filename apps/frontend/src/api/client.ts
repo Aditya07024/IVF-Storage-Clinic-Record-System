@@ -64,6 +64,29 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     headers,
   });
 
+  if (response.status === 401 && !(options as any)._isRetry) {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+        const refreshData = await refreshRes.json();
+        if (refreshRes.ok && refreshData.accessToken) {
+          localStorage.setItem('access_token', refreshData.accessToken);
+          if (refreshData.refreshToken) {
+            localStorage.setItem('refresh_token', refreshData.refreshToken);
+          }
+          return apiRequest(endpoint, { ...options, _isRetry: true } as any);
+        }
+      } catch (err) {
+        console.error('Silent token refresh failed:', err);
+      }
+    }
+  }
+
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
