@@ -7,7 +7,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 import { CONFIG, verifyAccessKey, validateConfig } from './common/config.js';
-import { connectPrisma } from './common/prisma.js';
+import { prisma, connectPrisma } from './common/prisma.js';
 import { authService } from './modules/auth/auth.service.js';
 import { patientService } from './modules/patient/patient.service.js';
 import { storageService } from './modules/storage/storage.service.js';
