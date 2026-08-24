@@ -125,9 +125,9 @@ export const BackgroundTaskProvider: React.FC<{ children: React.ReactNode }> = (
     <BackgroundTaskContext.Provider value={{ tasks, enqueueTask, dismissTask, retryTask }}>
       {children}
 
-      {/* TOP-LEFT BACKGROUND TASK QUEUE OVERLAY */}
+      {/* TOP-RIGHT BACKGROUND TASK QUEUE OVERLAY */}
       {tasks.length > 0 && (
-        <div className="fixed top-4 left-4 z-50 w-80 sm:w-96 space-y-2 pointer-events-none">
+        <div className="fixed top-4 right-4 z-50 w-80 sm:w-96 space-y-2 pointer-events-none flex flex-col items-end">
           {/* Header Count Badge if multiple tasks */}
           {tasks.length > 1 && (
             <div className="pointer-events-auto bg-slate-900/90 text-white text-[11px] font-mono font-bold px-3 py-1.5 rounded-full shadow-lg border border-slate-700 backdrop-blur-md flex items-center justify-between w-fit animate-in fade-in slide-in-from-top-2">
@@ -150,7 +150,7 @@ export const BackgroundTaskProvider: React.FC<{ children: React.ReactNode }> = (
             return (
               <div
                 key={task.id}
-                className={`pointer-events-auto rounded-2xl p-3.5 border shadow-2xl backdrop-blur-md transition-all duration-300 animate-in slide-in-from-left-5 ${
+                className={`w-full pointer-events-auto rounded-2xl p-3.5 border shadow-2xl backdrop-blur-md transition-all duration-300 animate-in slide-in-from-right-5 ${
                   isProcessing
                     ? 'bg-slate-900/95 text-white border-slate-700'
                     : isSuccess
