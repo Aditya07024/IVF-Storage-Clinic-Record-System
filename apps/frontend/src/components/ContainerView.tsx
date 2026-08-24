@@ -251,20 +251,28 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
       {/* SPACE LEFT CAPACITY & PHYSICAL BOUNDARY COLOR LEGEND BAR */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
         {/* 8-Step Extended Heatmap Scale Legend */}
-        <div className="space-y-2.5">
-          <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <Info className="w-4 h-4 text-emerald-600" />
-            <span>8-Step Physical Storage Heatmap Scale (0% to 100% Occupancy):</span>
+        <div className="space-y-2">
+          <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>8-Step Physical Heatmap Scale (0% to 100% Occupancy):</span>
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">Swipe or View Tiers</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+
+          {/* Sleek Visual Gradient Bar */}
+          <div className="h-2.5 w-full rounded-full border border-slate-300 shadow-2xs overflow-hidden bg-gradient-to-r from-white via-[#FFF176] via-[#FFB74D] via-[#FF5722] to-[#D32F2F]" />
+
+          {/* Compact Horizontal Scrollable Pills on Mobile / Grid on Desktop */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 sm:grid sm:grid-cols-4 lg:grid-cols-8 sm:gap-2">
             {HEATMAP_8_STEPS.map((step) => (
               <div
                 key={step.pctLabel}
-                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center shadow-2xs ${step.bgClass}`}
+                className={`px-2 py-1.5 rounded-xl border flex items-center justify-center gap-1 sm:flex-col sm:gap-0.5 text-center shrink-0 shadow-2xs ${step.bgClass}`}
                 style={{ backgroundColor: step.hex }}
               >
-                <span className="text-xs">{step.pctLabel}</span>
-                <span className="text-[10px] uppercase font-sans font-extrabold opacity-90">{step.name}</span>
+                <span className="text-[11px] font-mono font-black">{step.pctLabel}</span>
+                <span className="text-[9px] uppercase font-sans font-extrabold opacity-90 whitespace-nowrap">{step.name}</span>
               </div>
             ))}
           </div>
