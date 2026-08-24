@@ -92,7 +92,7 @@ export const AppContent: React.FC = () => {
         {activeTab === 'new-patient' && <PatientForm onSuccess={() => {}} />}
         {activeTab === 'patients' && <PatientDirectory />}
         {activeTab === 'container-view' && <ContainerView initialCanCode={selectedCanCode} />}
-        {activeTab === 'ocr' && (import.meta.env.VITE_ENABLE_OCR === 'true' || (!import.meta.env.PROD && import.meta.env.VITE_ENABLE_OCR !== 'false')) && <OcrVerification />}
+        {activeTab === 'ocr' && <OcrVerification />}
         {activeTab === 'thaw' && <ThawWorkflow />}
         {activeTab === 'logs' && <AuditLogs />}
         {activeTab === 'support' && <DeveloperSupport />}

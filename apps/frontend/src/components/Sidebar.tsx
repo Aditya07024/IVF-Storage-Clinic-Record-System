@@ -28,16 +28,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isOcrEnabled =
-    import.meta.env.VITE_ENABLE_OCR === 'true' ||
-    (!import.meta.env.PROD && import.meta.env.VITE_ENABLE_OCR !== 'false');
-
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'new-patient', label: 'New Patient', icon: UserPlus },
     { id: 'patients', label: 'Patient Directory', icon: Search },
     { id: 'container-view', label: 'Full Container View', icon: Layers },
-    ...(isOcrEnabled ? [{ id: 'ocr', label: 'OCR Verification', icon: FileScan }] : []),
+    { id: 'ocr', label: 'OCR Verification', icon: FileScan },
     { id: 'thaw', label: 'Thaw', icon: ThermometerSnowflake },
     { id: 'logs', label: 'Audit Logs', icon: ClipboardList },
     { id: 'support', label: 'Developer & Support', icon: LifeBuoy },
