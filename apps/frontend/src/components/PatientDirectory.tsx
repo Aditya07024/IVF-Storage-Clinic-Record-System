@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
+import { getStrawColorBadgeClass } from './PatientForm';
 
 export const PatientDirectory: React.FC = () => {
   const [queryInput, setQueryInput] = useState('');
@@ -500,8 +501,10 @@ export const PatientDirectory: React.FC = () => {
                               </span>
                             </div>
                             <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
-                              <span>Straw Color: {straw.color}</span>
-                              <span>{straw.embryos?.length || 0} Embryos</span>
+                              <span className={`px-2 py-0.5 rounded border text-[10px] ${getStrawColorBadgeClass(straw.color)}`}>
+                                Straw Color: {straw.color || 'Pink'}
+                              </span>
+                              <span className="font-mono font-bold text-slate-800">{straw.embryos?.length || 0} Embryos</span>
                             </div>
                           </div>
                         );

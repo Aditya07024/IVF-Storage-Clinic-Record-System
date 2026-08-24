@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ThermometerSnowflake, Search, CheckCircle2, ShieldAlert, AlertTriangle, Layers, MoveRight, User, Calendar, Phone, RefreshCw, MapPin } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
+import { getStrawColorBadgeClass } from './PatientForm';
 
 const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink', 2: 'Grey', 3: 'Red', 4: 'Black', 5: 'Green',
@@ -352,9 +353,11 @@ export const ThawWorkflow: React.FC = () => {
                                     </span>
                                   </div>
 
-                                  <div className="text-[11px] text-slate-500 flex items-center justify-between">
-                                    <span>Straw Color: <strong className="text-slate-800 font-semibold">{straw.color}</strong></span>
-                                    <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                  <div className="text-[11px] text-slate-500 flex items-center justify-between gap-2">
+                                    <span className={`px-2 py-0.5 rounded border text-[10px] ${getStrawColorBadgeClass(straw.color)}`}>
+                                      Straw Color: {straw.color || 'Pink'}
+                                    </span>
+                                    <span className="font-bold text-slate-800 font-mono text-[10px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                                       {straw.embryos?.length || 2} Embryos
                                     </span>
                                   </div>

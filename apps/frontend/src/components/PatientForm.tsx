@@ -42,6 +42,38 @@ export function getVisoTubeStyle(tubeStr?: string, locCode?: string) {
   return VISO_TUBE_STYLE_MAP[tubeNum] || VISO_TUBE_STYLE_MAP[1];
 }
 
+export function getStrawColorBadgeClass(colorName?: string): string {
+  const color = (colorName || 'Pink').toLowerCase().trim();
+  switch (color) {
+    case 'pink':
+      return 'bg-pink-100 text-pink-900 border-pink-300 font-bold';
+    case 'grey':
+    case 'gray':
+      return 'bg-slate-200 text-slate-900 border-slate-300 font-bold';
+    case 'red':
+      return 'bg-rose-100 text-rose-900 border-rose-300 font-bold';
+    case 'black':
+      return 'bg-slate-900 text-white border-slate-700 font-bold';
+    case 'green':
+      return 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold';
+    case 'rust':
+      return 'bg-amber-100 text-amber-950 border-amber-400 font-bold';
+    case 'blue':
+      return 'bg-blue-100 text-blue-900 border-blue-300 font-bold';
+    case 'purple':
+      return 'bg-purple-100 text-purple-900 border-purple-300 font-bold';
+    case 'yellow':
+      return 'bg-yellow-100 text-yellow-950 border-yellow-400 font-bold';
+    case 'orange':
+      return 'bg-orange-100 text-orange-950 border-orange-300 font-bold';
+    case 'skyblue':
+    case 'sky blue':
+      return 'bg-sky-100 text-sky-900 border-sky-300 font-bold';
+    default:
+      return 'bg-pink-100 text-pink-900 border-pink-300 font-bold';
+  }
+}
+
 function parseLocationCode(code: string) {
   if (!code) return { raw: '', formatted: '' };
   const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
@@ -620,8 +652,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   <div key={straw.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 shadow-xs">
                     <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                       <span className="font-mono font-bold text-xs text-slate-900">{straw.strawId}</span>
-                      <span className="text-[10px] font-bold font-mono bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300">
-                        {embryoCount} Embryos ({straw.color} Tag)
+                      <span className={`text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-md border ${getStrawColorBadgeClass(straw.color)}`}>
+                        {embryoCount} Embryos ({straw.color || 'Pink'} Tag)
                       </span>
                     </div>
 
