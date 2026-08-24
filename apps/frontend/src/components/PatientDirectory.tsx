@@ -3,6 +3,25 @@ import { Search, Printer, FileText, ChevronRight, ChevronDown, Layers, User, Cal
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { getStrawColorBadgeClass } from './PatientForm';
 
+const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
+  1: 'Pink', 2: 'Grey', 3: 'Red', 4: 'Black', 5: 'Green',
+  6: 'Rust', 7: 'Blue', 8: 'Purple', 9: 'Yellow', 10: 'Orange', 11: 'Skyblue',
+};
+
+function parseVisoTubeLocation(code?: string) {
+  if (!code) return 'Location Not Specified';
+  const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
+  if (!match) return code;
+  const canNum = match[1].padStart(2, '0');
+  const canisterNum = match[2].padStart(2, '0');
+  const levelNum = parseInt(match[3], 10);
+  const tubeNumInt = parseInt(match[5], 10);
+  const tubeNumPadded = match[5].padStart(2, '0');
+  const colorName = VISO_TUBE_COLOR_NAMES[tubeNumInt] || 'Standard';
+
+  return `Can ${canNum} • Canister ${canisterNum} • Level ${levelNum} • ${colorName} Viso Tube (V${tubeNumPadded})`;
+}
+
 export const PatientDirectory: React.FC = () => {
   const [queryInput, setQueryInput] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
@@ -681,64 +700,91 @@ export const PatientDirectory: React.FC = () => {
               </h3>
 
               {(() => {
-                const activeBatches = selectedPatient.batches?.filter((batch: any) =>
-                  batch.straws?.some((straw: any) => straw.status === 'OCCUPIED')
-                ) || [];
-
-                if (activeBatches.length === 0) {
+                const allBatches = selectedPatient.batches || [];
+                if (allBatches.length === 0) {
                   return (
                     <div className="text-xs text-slate-600 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center font-medium">
-                      0 Active Specimen Batches in Storage (All specimen have been thawed & withdrawn)
+                      0 Specimen Batches Recorded for this Patient
                     </div>
                   );
                 }
 
-                return activeBatches.map((batch: any) => {
+                return allBatches.map((batch: any) => {
                   const activeStraws = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
+                  const thawedStraws = batch.straws?.filter((s: any) => s.status === 'THAWED' || s.status === 'VACANT') || [];
+                  const allThawed = activeStraws.length === 0 && thawedStraws.length > 0;
 
                   return (
-                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-800 space-y-3">
+                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-3 shadow-2xs">
                       <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
-                        {/* <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span> */}
-                        <span className="text-slate-600 font-medium">
+                        <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span>
+                        <span className="text-slate-600 font-mono font-medium">
                           Stored on: {formatDateDDMMYYYY(batch.storageDate)}
                         </span>
                       </div>
 
-                      {/* Viso Tube Location Breakdown */}
+                      {allThawed && (
+                        <div className="text-xs text-slate-600 bg-amber-50 p-2.5 rounded-xl border border-amber-200 font-medium">
+                          All straws in this batch have already been thawed / withdrawn.
+                        </div>
+                      )}
+
+                      {/* Physical Location Breakdown */}
                       {(() => {
-                        const locCode = activeStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
-                        const formatted = locCode
-                          ? locCode.replace(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i, 'Can $1 • Canister $2 • Level $3 • Viso Tube $5')
-                          : 'Not Assigned';
+                        const locCode = batch.straws?.[0]?.visoTube?.locationCode || batch.visoTube?.locationCode || '';
                         return (
                           <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
                             <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
-                            <div className="text-slate-900 font-bold">{formatted}</div>
-                            {/* <div className="text-[10px] font-mono text-emerald-700 font-bold">
-                              System Ref: {locCode || 'Not Assigned'}
-                            </div> */}
+                            <div className="text-slate-900 font-bold">{parseVisoTubeLocation(locCode)}</div>
                           </div>
                         );
                       })()}
 
-                      {/* Straws List */}
-                      <div className="space-y-1.5">
-                        <div className="text-[11px] font-bold text-slate-700">Active Straws in this Batch:</div>
-                        {activeStraws.map((straw: any) => (
-                          <div key={straw.id} className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between">
-                            <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
-                              <span>Straw ID: {straw.strawId}</span>
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
-                                Color: {straw.color || 'Pink'}
+                      {/* Active Straws List */}
+                      {activeStraws.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] font-bold text-slate-700">Active Straws in this Batch ({activeStraws.length}):</div>
+                          {activeStraws.map((straw: any) => (
+                            <div key={straw.id} className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between">
+                              <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
+                                <span>Straw ID: {straw.strawId}</span>
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
+                                  Straw Color: {straw.color || 'Pink'}
+                                </span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
+                                ({straw.embryos?.length || 0} Embryos)
                               </span>
                             </div>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
-                              ({straw.embryos?.length || 0} Embryos)
-                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Thawed / Withdrawn Straws Archive List */}
+                      {thawedStraws.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-slate-200/80">
+                          <div className="text-[11px] font-bold text-slate-500 flex items-center justify-between">
+                            <span>THAWED / WITHDRAWN STRAWS ARCHIVE ({thawedStraws.length}):</span>
+                            <span className="text-[10px] text-slate-400 font-mono">(NON-SELECTABLE)</span>
                           </div>
-                        ))}
-                      </div>
+                          {thawedStraws.map((straw: any) => (
+                            <div key={straw.id} className="text-xs bg-slate-100 p-2.5 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1 opacity-85">
+                              <div className="font-mono text-slate-700 flex items-center gap-2">
+                                <span className="font-bold">{straw.strawId}</span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStrawColorBadgeClass(straw.color)}`}>
+                                  Straw Color: {straw.color || 'Pink'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px]">
+                                <span className="px-2 py-0.5 rounded font-bold bg-slate-200 text-slate-800 border border-slate-300">
+                                  THAWED / WITHDRAWN
+                                </span>
+                                <span className="font-mono text-slate-600 font-semibold">{parseVisoTubeLocation(straw.visoTube?.locationCode)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 });
