@@ -118,8 +118,8 @@
 - `REDIS_PORT`
 
 ## 13. Deployment
-- **Frontend**: Vercel
-- **Backend / Database / Redis**: Hostinger KVM 1 via Docker Compose (`docker-compose.yml`)
+- **Frontend**: Vercel / Netlify / Static Hosting
+- **Backend / Database**: Render / Direct Node.js on Hostinger KVM with Neon PostgreSQL
 - **Proxy**: Nginx + Cloudflare HTTPS SSL
 
 ## 14. Testing Performed
@@ -142,4 +142,4 @@
 
 ## 18. Recommended Next Steps
 - Connect production Google Cloud Vision service account key and Gemini API key in production `.env`.
-- Deploy Docker containers to Hostinger KVM and configure Cloudflare DNS.
+- Deploy Node backend service to Render or Hostinger KVM and configure Cloudflare DNS.
