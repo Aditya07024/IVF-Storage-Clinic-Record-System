@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, FileText, ChevronRight, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight } from 'lucide-react';
+import { Search, Printer, FileText, ChevronRight, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { getStrawColorBadgeClass } from './PatientForm';
 
@@ -19,6 +19,7 @@ export const PatientDirectory: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
+  const [showAuditLogs, setShowAuditLogs] = useState(true);
 
   // Quick Thaw Modal States
   const [quickThawPatient, setQuickThawPatient] = useState<any | null>(null);
@@ -779,74 +780,84 @@ export const PatientDirectory: React.FC = () => {
             {/* Patient Operational Audit Logs Section */}
             {selectedPatient.auditLogs && selectedPatient.auditLogs.length > 0 && (
               <div className="space-y-3 pt-4 border-t border-slate-200">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-emerald-600" />
+                <div
+                  onClick={() => setShowAuditLogs(!showAuditLogs)}
+                  className="flex items-center justify-between cursor-pointer group bg-slate-50 hover:bg-slate-100 p-3.5 rounded-2xl border border-slate-200 transition-all select-none shadow-2xs"
+                  title="Click to toggle Audit Logs visibility"
+                >
+                  <span className="flex items-center gap-2 font-bold text-sm text-slate-900 group-hover:text-emerald-700">
+                    <ShieldAlert className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>Patient Operational Audit Logs ({selectedPatient.auditLogs.length})</span>
                   </span>
-                  <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                    SYSTEM AUDIT LOGS
-                  </span>
-                </h3>
-                <div className="overflow-x-auto bg-slate-50 rounded-2xl border border-slate-200 p-3">
-                  <table className="w-full text-left text-xs font-mono">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
-                        <th className="py-2 px-3">Date & Time</th>
-                        <th className="py-2 px-3">Action Event</th>
-                        <th className="py-2 px-3">Staff / Doctor</th>
-                        <th className="py-2 px-3 font-sans">Operation Details</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 text-slate-800">
-                      {selectedPatient.auditLogs.map((log: any) => {
-                        let detailsObj: any = null;
-                        try {
-                          detailsObj = log.newData ? JSON.parse(log.newData) : null;
-                        } catch {
-                          detailsObj = null;
-                        }
-
-                        return (
-                          <tr key={log.id} className="hover:bg-white">
-                            <td className="py-2.5 px-3 text-slate-600 font-bold whitespace-nowrap">
-                              {new Date(log.createdAt).toLocaleString()}
-                            </td>
-                            <td className="py-2.5 px-3">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                log.action === 'EMBRYO_THAWED'
-                                  ? 'bg-rose-100 text-rose-900 border-rose-300'
-                                  : log.action === 'EMBRYO_STORAGE_ALLOCATED' || log.action === 'STORAGE_ALLOCATED'
-                                  ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
-                                  : log.action === 'OCR_VERIFIED'
-                                  ? 'bg-teal-100 text-teal-900 border-teal-300'
-                                  : 'bg-slate-200 text-slate-900 border-slate-300'
-                              }`}>
-                                {log.action}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 font-semibold text-slate-900">{log.userName || 'System Staff'}</td>
-                            <td className="py-2.5 px-3 font-sans text-slate-700">
-                              {detailsObj ? (
-                                <div className="space-y-0.5 text-[11px] font-mono">
-                                  {detailsObj.strawId && <div>Straw ID: <strong className="text-emerald-800">{detailsObj.strawId}</strong></div>}
-                                  {detailsObj.originalLocation && <div>Location: <strong>{detailsObj.originalLocation}</strong></div>}
-                                  {detailsObj.locationCode && <div>Location: <strong>{detailsObj.locationCode}</strong></div>}
-                                  {detailsObj.doctorNotes && <div className="text-slate-600 italic">Notes: "{detailsObj.doctorNotes}"</div>}
-                                  {!detailsObj.strawId && !detailsObj.locationCode && (
-                                    <div className="text-slate-600 truncate max-w-xs">{log.newData}</div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-slate-400">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                      {showAuditLogs ? 'HIDE LOGS' : 'VIEW LOGS'}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${showAuditLogs ? 'rotate-180' : ''}`} />
+                  </div>
                 </div>
+
+                {showAuditLogs && (
+                  <div className="overflow-x-auto bg-slate-50 rounded-2xl border border-slate-200 p-3 animate-in fade-in duration-200">
+                    <table className="w-full text-left text-xs font-mono">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
+                          <th className="py-2 px-3">Date & Time</th>
+                          <th className="py-2 px-3">Action Event</th>
+                          <th className="py-2 px-3">Staff / Doctor</th>
+                          <th className="py-2 px-3 font-sans">Operation Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800">
+                        {selectedPatient.auditLogs.map((log: any) => {
+                          let detailsObj: any = null;
+                          try {
+                            detailsObj = log.newData ? JSON.parse(log.newData) : null;
+                          } catch {
+                            detailsObj = null;
+                          }
+
+                          return (
+                            <tr key={log.id} className="hover:bg-white">
+                              <td className="py-2.5 px-3 text-slate-600 font-bold whitespace-nowrap">
+                                {new Date(log.createdAt).toLocaleString()}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  log.action === 'EMBRYO_THAWED'
+                                    ? 'bg-rose-100 text-rose-900 border-rose-300'
+                                    : log.action === 'EMBRYO_STORAGE_ALLOCATED' || log.action === 'STORAGE_ALLOCATED'
+                                    ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                                    : log.action === 'OCR_VERIFIED'
+                                    ? 'bg-teal-100 text-teal-900 border-teal-300'
+                                    : 'bg-slate-200 text-slate-900 border-slate-300'
+                                }`}>
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-slate-900">{log.userName || 'System Staff'}</td>
+                              <td className="py-2.5 px-3 font-sans text-slate-700">
+                                {detailsObj ? (
+                                  <div className="space-y-0.5 text-[11px] font-mono">
+                                    {detailsObj.strawId && <div>Straw ID: <strong className="text-emerald-800">{detailsObj.strawId}</strong></div>}
+                                    {detailsObj.originalLocation && <div>Location: <strong>{detailsObj.originalLocation}</strong></div>}
+                                    {detailsObj.locationCode && <div>Location: <strong>{detailsObj.locationCode}</strong></div>}
+                                    {detailsObj.doctorNotes && <div className="text-slate-600 italic">Notes: "{detailsObj.doctorNotes}"</div>}
+                                    {!detailsObj.strawId && !detailsObj.locationCode && (
+                                      <div className="text-slate-600 truncate max-w-xs">{log.newData}</div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
