@@ -166,7 +166,9 @@ export const PatientDirectory: React.FC = () => {
 
   const handlePrintPdf = (patientId: string) => {
     const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
-    const url = `${apiBase}/api/documents/patient/${patientId}/pdf`;
+    const accessKey = localStorage.getItem('site_access_key') || 'clinic2026';
+    const token = localStorage.getItem('access_token') || '';
+    const url = `${apiBase}/api/documents/patient/${patientId}/pdf?key=${encodeURIComponent(accessKey)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
     window.open(url, '_blank');
   };
 

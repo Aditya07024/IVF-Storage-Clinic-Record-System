@@ -852,7 +852,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             <div className="md:col-span-2 min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                 <span>Registration No (Unique Primary Key)</span>
-                <span className="text-[10px] text-emerald-700 font-mono font-bold">Mandatory Unique Identifier</span>
+                {/* <span className="text-[10px] text-emerald-700 font-mono font-bold">Mandatory Unique Identifier</span> */}
               </label>
               <input
                 type="text"
@@ -866,9 +866,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
                 }`}
               />
-              <p className="text-[11px] text-slate-500 font-medium mt-1">
+              {/* <p className="text-[11px] text-slate-500 font-medium mt-1">
                 Registration No is the unique primary key. Duplicate patient names are fully supported for separate accounts.
-              </p>
+              </p> */}
             </div>
 
             <div className="min-w-0 max-w-full">

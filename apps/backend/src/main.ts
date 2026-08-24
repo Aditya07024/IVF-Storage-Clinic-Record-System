@@ -182,7 +182,11 @@ interface AuthenticatedRequest extends Request {
 
 // Layer 1 Site Access Key Guard Middleware
 const accessKeyGuard = (req: Request, res: Response, next: NextFunction) => {
-  const providedKey = (req.headers['x-access-key'] as string) || req.cookies?.app_access_key;
+  const providedKey =
+    (req.headers['x-access-key'] as string) ||
+    (req.query.key as string) ||
+    (req.query.accessKey as string) ||
+    req.cookies?.app_access_key;
   if (!providedKey || !verifyAccessKey(providedKey)) {
     return res.status(403).json({ error: 'Access Denied: Invalid site access key hash.' });
   }
@@ -192,7 +196,10 @@ const accessKeyGuard = (req: Request, res: Response, next: NextFunction) => {
 // Layer 2 Staff JWT Authentication Guard Middleware
 const jwtAuthGuard = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : req.cookies?.accessToken;
+  const token =
+    authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.split(' ')[1]
+      : (req.query.token as string) || req.cookies?.accessToken;
 
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized: Missing staff login token.' });
