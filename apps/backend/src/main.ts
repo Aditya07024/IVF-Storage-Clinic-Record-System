@@ -195,8 +195,11 @@ const jwtAuthGuard = (req: AuthenticatedRequest, res: Response, next: NextFuncti
 };
 
 // --- AUTH ROUTES ---
-const handleAccessKeyVerification = (req: Request, res: Response) => {
-  const { accessKey } = req.body;
+const isRequestHttps = (req: express.Request) =>
+  Boolean(req.secure || req.headers['x-forwarded-proto'] === 'https');
+
+const handleAccessKeyVerification = (req: express.Request, res: express.Response) => {
+  const accessKey = req.body?.accessKey || req.headers['x-access-key'];
   if (!accessKey || !verifyAccessKey(accessKey)) {
     return res.status(403).json({ success: false, error: 'Invalid application access key.' });
   }
@@ -204,7 +207,7 @@ const handleAccessKeyVerification = (req: Request, res: Response) => {
   res.cookie('app_access_key', accessKey, {
     httpOnly: true,
     sameSite: 'strict',
-    secure: CONFIG.NODE_ENV === 'production',
+    secure: isRequestHttps(req),
   });
 
   return res.json({ success: true, message: 'Application access granted.' });
@@ -227,14 +230,14 @@ app.post('/api/auth/login', accessKeyGuard, authLoginLimiter, async (req, res) =
     res.cookie('accessToken', result.accessToken, {
       httpOnly: true,
       sameSite: 'strict',
-      secure: CONFIG.NODE_ENV === 'production',
+      secure: isRequestHttps(req),
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true,
       sameSite: 'strict',
-      secure: CONFIG.NODE_ENV === 'production',
+      secure: isRequestHttps(req),
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
@@ -261,14 +264,14 @@ app.post('/api/auth/refresh', async (req, res) => {
     res.cookie('accessToken', result.accessToken, {
       httpOnly: true,
       sameSite: 'strict',
-      secure: CONFIG.NODE_ENV === 'production',
+      secure: isRequestHttps(req),
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true,
       sameSite: 'strict',
-      secure: CONFIG.NODE_ENV === 'production',
+      secure: isRequestHttps(req),
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
