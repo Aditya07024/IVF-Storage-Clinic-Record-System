@@ -236,16 +236,16 @@ export const DeveloperSupport: React.FC = () => {
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Support Ticket Logged & Saved to Database!</h3>
-                  <p className="text-xs text-emerald-800 font-mono font-bold">Ref Code: {ticketRef}</p>
+                  <h3 className="font-bold text-slate-900 text-base">Thank You!</h3>
+                  {/* <p className="text-xs text-emerald-800 font-mono font-bold">Ref Code: {ticketRef}</p> */}
                 </div>
               </div>
               <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                Thank you! Your ticket <strong>{ticketRef}</strong> has been saved in the system audit database. We have also prepared an email with your typed details ready to send in Gmail.
+                The developer will contact you soon...
               </p>
               
               <div className="flex flex-wrap items-center gap-2 pt-2">
-                <a
+                {/* <a
                   href={`https://mail.google.com/mail/?view=cm&fs=1&to=adityakumar07024@gmail.com&su=${encodeURIComponent(`[IVF Support Request] ${category} - ${priority} (${ticketRef})`)}&body=${encodeURIComponent(`IVF Clinic Support Ticket Reference: ${ticketRef}\nSubmitted By: ${name} (${email})\nCategory: ${category}\nPriority: ${priority}\n\nMessage Details:\n${message}`)}`}
                   target="_blank"
                   rel="noreferrer"
@@ -254,7 +254,7 @@ export const DeveloperSupport: React.FC = () => {
                   <Mail className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Open Gmail with Typed Message</span>
                   <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                </a> */}
 
                 <a
                   href={`mailto:adityakumar07024@gmail.com?subject=${encodeURIComponent(`[IVF Support Request] ${category} - ${priority} (${ticketRef})`)}&body=${encodeURIComponent(`IVF Clinic Support Ticket Reference: ${ticketRef}\nSubmitted By: ${name} (${email})\nCategory: ${category}\nPriority: ${priority}\n\nMessage Details:\n${message}`)}`}
