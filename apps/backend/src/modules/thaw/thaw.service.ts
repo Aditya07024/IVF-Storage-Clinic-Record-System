@@ -96,7 +96,7 @@ export class ThawService {
         message: `Successfully thawed/warmed ${thawRecords.length} straw(s). Storage location status set to VACANT. Historical audit records preserved.`,
         thawRecords,
       };
-    });
+    }, { timeout: 25000, maxWait: 10000 });
   }
 
   async getPatientThawHistory(patientId: string) {

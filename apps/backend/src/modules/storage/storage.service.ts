@@ -528,7 +528,7 @@ export class StorageService {
       });
 
       return updatedStraw;
-    });
+    }, { timeout: 25000, maxWait: 10000 });
   }
 }
 

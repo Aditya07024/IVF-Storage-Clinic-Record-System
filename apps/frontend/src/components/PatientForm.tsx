@@ -113,7 +113,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
   // Thaw Modal States
   const [thawModalStraw, setThawModalStraw] = useState<any | null>(null);
-  const [thawDoctorNotes, setThawDoctorNotes] = useState<string>('Thaw executed directly from patient form.');
+  const [thawDoctorNotes, setThawDoctorNotes] = useState<string>();
   const [executingThaw, setExecutingThaw] = useState(false);
   const [thawSuccessMsg, setThawSuccessMsg] = useState<string | null>(null);
   const [saveSuccessDetails, setSaveSuccessDetails] = useState<any | null>(null);
@@ -706,7 +706,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       type="button"
                       onClick={() => {
                         setThawModalStraw(straw);
-                        setThawDoctorNotes(`Doctor requested direct thaw of straw ${straw.strawId} for ${selectedExistingPatient.fullName}.`);
+                        // setThawDoctorNotes();
                       }}
                       className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98"
                     >

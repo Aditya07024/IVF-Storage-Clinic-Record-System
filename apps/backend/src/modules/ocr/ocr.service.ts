@@ -453,7 +453,7 @@ ${rawText}`;
         message: 'OCR record verified successfully and saved to patient directory.',
         patient,
       };
-    });
+    }, { timeout: 25000, maxWait: 10000 });
   }
 
   /**
