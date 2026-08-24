@@ -277,10 +277,19 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   };
 
   useEffect(() => {
-    if (allocationMode === 'manual') {
-      fetchHierarchy();
+    if (assignStorageEnabled && allocationMode === 'recommended') {
+      fetchRecommendation();
     }
-  }, [allocationMode]);
+  }, [assignStorageEnabled, allocationMode, embryoCount, storageDate, selectedExistingPatient]);
+
+  useEffect(() => {
+    if (saveSuccessDetails) {
+      const timer = setTimeout(() => {
+        setSaveSuccessDetails(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [saveSuccessDetails]);
 
   // Keep straw colors array in sync with required straws count
   useEffect(() => {

@@ -52,10 +52,10 @@ export const BackgroundTaskProvider: React.FC<{ children: React.ReactNode }> = (
         taskItem.onSuccess(result);
       }
 
-      // Auto-dismiss successful tasks after 4 seconds
+      // Auto-dismiss successful tasks after 5 seconds automatically
       setTimeout(() => {
         setTasks((prev) => prev.filter((t) => t.id !== taskItem.id));
-      }, 4000);
+      }, 5000);
     } catch (err: any) {
       console.error('[Background Task Error]', err);
       const msg = err.message || 'Background task failed.';
@@ -76,6 +76,11 @@ export const BackgroundTaskProvider: React.FC<{ children: React.ReactNode }> = (
       if (taskItem.onError) {
         taskItem.onError(err);
       }
+
+      // Auto-dismiss error tasks after 5 seconds automatically as well
+      setTimeout(() => {
+        setTasks((prev) => prev.filter((t) => t.id !== taskItem.id));
+      }, 5000);
     }
   }, []);
 

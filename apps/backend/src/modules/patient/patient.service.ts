@@ -53,6 +53,7 @@ export class PatientService {
     return candidate;
   }
 
+  async createPatient(input: CreatePatientInput, staffUserId: string, staffName: string) {
     const isCustomId = Boolean(input.patientId && input.patientId.trim());
     let patientId = isCustomId ? input.patientId!.trim() : '';
 
