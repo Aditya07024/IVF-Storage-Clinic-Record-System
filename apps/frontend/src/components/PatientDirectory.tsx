@@ -569,12 +569,12 @@ export const PatientDirectory: React.FC = () => {
               <div>
                 <span className="text-xs font-mono font-bold text-emerald-700">{selectedPatient.patientId}</span>
                 <h2 className="text-xl font-bold text-slate-900">{selectedPatient.fullName}</h2>
-                <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                   <span className="text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                     Visit Date: {formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}
                   </span>
-                  <span>•</span>
-                  <span>Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}</span>
+                  {/* <span>•</span> */}
+                  <span>• Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -629,7 +629,7 @@ export const PatientDirectory: React.FC = () => {
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-slate-500 font-semibold block uppercase text-[10px]">Visit Date:</span>
-                <strong className="text-slate-900 font-mono">{formatDateDDMMYYYY(selectedPatient.visitDate)}</strong>
+                <strong className="text-emerald-800 font-mono font-bold">{formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}</strong>
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
@@ -733,7 +733,7 @@ export const PatientDirectory: React.FC = () => {
                               </span>
                             </div>
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
-                              OCCUPIED ({straw.embryos?.length || 0} Embryos)
+                              ({straw.embryos?.length || 0} Embryos)
                             </span>
                           </div>
                         ))}
