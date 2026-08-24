@@ -324,26 +324,38 @@ export class StorageService {
 
       const storageDate = new Date(input.storageDate);
 
-      // Verify batchId uniqueness in transaction
+      // Create Storage Batch entity with self-healing P2002 Unique Constraint retry
+      let batch: any = null;
       let finalBatchId = batchIdCode;
-      let batchAttempts = 0;
-      while (await tx.storageBatch.findUnique({ where: { batchId: finalBatchId } })) {
-        batchAttempts++;
-        const baseNum = parseInt(finalBatchId.split('-').pop() || '0', 10);
-        const nextNum = (isNaN(baseNum) ? 1 : baseNum) + batchAttempts;
-        finalBatchId = `BATCH-${storageDate.getFullYear()}-${nextNum.toString().padStart(6, '0')}`;
+      let batchAttemptCounter = 0;
+
+      while (!batch && batchAttemptCounter < 25) {
+        try {
+          batch = await tx.storageBatch.create({
+            data: {
+              batchId: finalBatchId,
+              patientId: input.patientId,
+              storageDate,
+              totalEmbryos: input.embryoCount,
+              visoTubeId: input.visoTubeId,
+              notes: input.notes,
+            },
+          });
+        } catch (err: any) {
+          if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
+            batchAttemptCounter++;
+            const baseNum = parseInt(finalBatchId.split('-').pop() || '0', 10);
+            const nextNum = (isNaN(baseNum) ? 1 : baseNum) + batchAttemptCounter;
+            finalBatchId = `BATCH-${storageDate.getFullYear()}-${nextNum.toString().padStart(6, '0')}`;
+          } else {
+            throw err;
+          }
+        }
       }
 
-      const batch = await tx.storageBatch.create({
-        data: {
-          batchId: finalBatchId,
-          patientId: input.patientId,
-          storageDate,
-          totalEmbryos: input.embryoCount,
-          visoTubeId: input.visoTubeId,
-          notes: input.notes,
-        },
-      });
+      if (!batch) {
+        throw new Error('Failed to create storage batch after retry attempts.');
+      }
 
       // Update patient's visitDate to latest storage date on record allocation
       await tx.patient.update({
@@ -361,26 +373,39 @@ export class StorageService {
         const embryosInThisStraw = Math.min(2, remainingEmbryos);
         remainingEmbryos -= embryosInThisStraw;
 
-        let strawIdCode = `STR-${(baseStrawNum + i).toString().padStart(6, '0')}`;
-        let strawAttempts = 0;
-        while (await tx.straw.findUnique({ where: { strawId: strawIdCode } })) {
-          strawAttempts++;
-          const nextNum = baseStrawNum + i + strawAttempts;
-          strawIdCode = `STR-${nextNum.toString().padStart(6, '0')}`;
-        }
-
         const color = input.strawColors[i] || 'Pink';
 
-        const straw = await tx.straw.create({
-          data: {
-            strawId: strawIdCode,
-            batchId: batch.id,
-            visoTubeId: input.visoTubeId,
-            color,
-            maxCapacity: 2,
-            status: 'OCCUPIED',
-          },
-        });
+        let straw: any = null;
+        let strawIdCode = `STR-${(baseStrawNum + i).toString().padStart(6, '0')}`;
+        let strawAttemptCounter = 0;
+
+        while (!straw && strawAttemptCounter < 25) {
+          try {
+            straw = await tx.straw.create({
+              data: {
+                strawId: strawIdCode,
+                batchId: batch.id,
+                visoTubeId: input.visoTubeId,
+                color,
+                maxCapacity: 2,
+                status: 'OCCUPIED',
+              },
+            });
+          } catch (err: any) {
+            if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
+              strawAttemptCounter++;
+              const currentNum = parseInt(strawIdCode.split('-').pop() || '0', 10);
+              const nextNum = (isNaN(currentNum) ? 1 : currentNum) + strawAttemptCounter;
+              strawIdCode = `STR-${nextNum.toString().padStart(6, '0')}`;
+            } else {
+              throw err;
+            }
+          }
+        }
+
+        if (!straw) {
+          throw new Error('Failed to create straw entity after retry attempts.');
+        }
 
         // Create Embryo entities inside straw
         for (let e = 1; e <= embryosInThisStraw; e++) {

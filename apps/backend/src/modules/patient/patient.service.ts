@@ -53,10 +53,10 @@ export class PatientService {
     return candidate;
   }
 
-  async createPatient(input: CreatePatientInput, staffUserId: string, staffName: string) {
-    let patientId = input.patientId && input.patientId.trim() ? input.patientId.trim() : '';
+    const isCustomId = Boolean(input.patientId && input.patientId.trim());
+    let patientId = isCustomId ? input.patientId!.trim() : '';
 
-    if (patientId) {
+    if (isCustomId) {
       const existing = await prisma.patient.findUnique({ where: { patientId } });
       if (existing) {
         throw new Error(`Patient Registration No / ID "${patientId}" already exists in system. Please enter a unique ID or search existing records.`);
@@ -65,23 +65,41 @@ export class PatientService {
       patientId = await this.generateNextPatientId();
     }
 
-    const patient = await prisma.patient.create({
-      data: {
-        patientId,
-        fullName: input.fullName.trim(),
-        partnerName: input.partnerName ? input.partnerName.trim() : null,
-        phone: input.phone ? input.phone.trim() : null,
-        dob: input.dob ? input.dob.trim() : null,
-        patientAge: input.patientAge ? input.patientAge.trim() : null,
-        partnerAge: input.partnerAge ? input.partnerAge.trim() : null,
-        doctorName: input.doctorName ? input.doctorName.trim() : null,
-        visitDate: input.visitDate ? new Date(input.visitDate) : null,
-        deDate: input.deDate ? new Date(input.deDate) : null,
-        freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
-        thawDate: input.thawDate ? new Date(input.thawDate) : null,
-        comments: input.comments ? input.comments.trim() : null,
-      },
-    });
+    let patient: any = null;
+    let createAttempts = 0;
+
+    while (!patient && createAttempts < 20) {
+      try {
+        patient = await prisma.patient.create({
+          data: {
+            patientId,
+            fullName: input.fullName.trim(),
+            partnerName: input.partnerName ? input.partnerName.trim() : null,
+            phone: input.phone ? input.phone.trim() : null,
+            dob: input.dob ? input.dob.trim() : null,
+            patientAge: input.patientAge ? input.patientAge.trim() : null,
+            partnerAge: input.partnerAge ? input.partnerAge.trim() : null,
+            doctorName: input.doctorName ? input.doctorName.trim() : null,
+            visitDate: input.visitDate ? new Date(input.visitDate) : null,
+            deDate: input.deDate ? new Date(input.deDate) : null,
+            freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
+            thawDate: input.thawDate ? new Date(input.thawDate) : null,
+            comments: input.comments ? input.comments.trim() : null,
+          },
+        });
+      } catch (err: any) {
+        if (!isCustomId && (err.code === 'P2002' || err.message?.includes('Unique constraint'))) {
+          createAttempts++;
+          patientId = await this.generateNextPatientId();
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    if (!patient) {
+      throw new Error('Failed to create patient after retry attempts.');
+    }
 
     // If initial comments exist, save as initial PatientNote
     if (input.comments && input.comments.trim().length > 0) {
