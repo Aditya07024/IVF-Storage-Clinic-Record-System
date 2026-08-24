@@ -590,7 +590,7 @@ export const PatientDirectory: React.FC = () => {
                 <span className="text-xs font-mono font-bold text-emerald-700">{selectedPatient.patientId}</span>
                 <h2 className="text-xl font-bold text-slate-900">{selectedPatient.fullName}</h2>
                 <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-                  <span className="text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                  <span className="text-emerald-800 bg-emerald-100 px-1.5 py-0 rounded border border-emerald-300">
                     Visit Date: {formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}
                   </span>
                   {/* <span>•</span> */}

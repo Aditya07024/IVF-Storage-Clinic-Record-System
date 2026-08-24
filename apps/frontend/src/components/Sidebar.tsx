@@ -12,9 +12,10 @@ import {
   Menu,
   X,
   ShieldCheck,
+  LifeBuoy,
 } from 'lucide-react';
 
-export type NavTab = 'dashboard' | 'new-patient' | 'patients' | 'container-view' | 'ocr' | 'thaw' | 'logs' | 'admin';
+export type NavTab = 'dashboard' | 'new-patient' | 'patients' | 'container-view' | 'ocr' | 'thaw' | 'logs' | 'support' | 'admin';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
     { id: 'ocr', label: 'OCR Verification', icon: FileScan },
     { id: 'thaw', label: 'Thaw', icon: ThermometerSnowflake },
     { id: 'logs', label: 'Audit Logs', icon: ClipboardList },
+    { id: 'support', label: 'Developer & Support', icon: LifeBuoy },
     ...(user?.role === 'ADMIN' ? [{ id: 'admin', label: 'Admin Credentials', icon: ShieldCheck }] : []),
   ];
 

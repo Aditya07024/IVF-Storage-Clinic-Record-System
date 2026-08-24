@@ -658,10 +658,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               <div className="flex items-center justify-between border-b border-emerald-100 pb-3">
                 <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
                   <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
-                  <span>Reloading updated physical cryo storage inventory...</span>
+                  <span>Loading updated physical cryo storage inventory...</span>
                 </div>
                 <span className="text-[10px] text-emerald-800 font-bold font-mono bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                  RELOADING DATA
+                  LOADING DATA
                 </span>
               </div>
               <div className="h-20 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex items-center justify-center text-xs text-emerald-800 font-mono font-bold">
@@ -702,9 +702,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 <Flame className="w-5 h-5 text-rose-600" />
                 <span>Active Stored Embryos ({activeStraws.length} Active Straws in Cryo Storage)</span>
               </div>
-              <span className="text-[10px] text-rose-800 font-bold font-mono bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
+              {/* <span className="text-[10px] text-rose-800 font-bold font-mono bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
                 Direct Thaw / Withdrawal Available Here
-              </span>
+              </span> */}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -9,6 +9,7 @@ import { ContainerView } from './components/ContainerView';
 import { OcrVerification } from './components/OcrVerification';
 import { ThawWorkflow } from './components/ThawWorkflow';
 import { AuditLogs } from './components/AuditLogs';
+import { DeveloperSupport } from './components/DeveloperSupport';
 import { AdminPanel } from './components/AdminPanel';
 import { apiRequest } from './api/client';
 
@@ -65,8 +66,8 @@ export const AppContent: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center text-emerald-600">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
+        <div className="flex items-center gap-3">
+          <span className="w-5 h-5 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
           <span className="text-sm font-medium">Initializing IVF Clinic System...</span>
         </div>
       </div>
@@ -94,6 +95,7 @@ export const AppContent: React.FC = () => {
         {activeTab === 'ocr' && <OcrVerification />}
         {activeTab === 'thaw' && <ThawWorkflow />}
         {activeTab === 'logs' && <AuditLogs />}
+        {activeTab === 'support' && <DeveloperSupport />}
         {activeTab === 'admin' && <AdminPanel />}
       </main>
     </div>
