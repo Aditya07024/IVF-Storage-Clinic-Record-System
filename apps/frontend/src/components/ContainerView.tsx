@@ -18,6 +18,7 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { apiRequest, clearApiCache } from '../api/client';
+import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
 export function parseLocationCode(code: string) {
@@ -73,6 +74,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
   const [canisterOccupancyMap, setCanisterOccupancyMap] = useState<Record<string, number>>({});
   const [levelOccupancyMap, setLevelOccupancyMap] = useState<Record<string, number>>({});
   const [refreshing, setRefreshing] = useState(false);
+  const { enqueueTask } = useBackgroundTask();
 
   const CLINIC_CANS = [1, 2, 3, 4, 5, 8, 10, 14];
 
@@ -878,24 +880,32 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                               {straw.status === 'OCCUPIED' && (
                                 <button
                                   type="button"
-                                  onClick={async () => {
-                                    if (!confirm(`Are you sure you want to thaw Straw ${straw.strawId}? This will liberate physical capacity.`)) return;
-                                    try {
-                                      const res = await apiRequest('/api/thaw', {
-                                        method: 'POST',
-                                        body: JSON.stringify({
-                                          strawIds: [straw.id],
-                                          doctorNotes: 'Thawed directly from Viso Tube Inspector modal',
-                                        }),
-                                      });
-                                      if (res.success) {
-                                        alert(res.message || 'Straw thawed successfully!');
-                                        setSelectedTube(null);
+                                  onClick={() => {
+                                    const targetStrawCode = straw.strawId;
+                                    const targetStrawId = straw.id;
+                                    const patientName = patient?.fullName || 'Patient Record';
+
+                                    // Close inspector modal immediately
+                                    setSelectedTube(null);
+
+                                    enqueueTask({
+                                      title: `Thawing Straw ${targetStrawCode}: ${patientName}`,
+                                      description: `Liberating physical storage capacity in ${selectedCanCode}`,
+                                      action: async () => {
+                                        const res = await apiRequest('/api/thaw', {
+                                          method: 'POST',
+                                          body: JSON.stringify({
+                                            strawIds: [targetStrawId],
+                                            doctorNotes: 'Thawed directly from Viso Tube Inspector modal',
+                                          }),
+                                        });
+                                        return res;
+                                      },
+                                      onSuccess: () => {
                                         fetchHierarchy();
-                                      }
-                                    } catch (err: any) {
-                                      alert('Thaw failed: ' + err.message);
-                                    }
+                                        fetchGlobalOccupancy();
+                                      },
+                                    });
                                   }}
                                   className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-full shadow-xs flex items-center gap-1 transition-all"
                                 >

@@ -206,38 +206,46 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   // Execute Direct Thaw from Patient Form
   const handleExecuteThaw = async () => {
     if (!thawModalStraw || !selectedExistingPatient) return;
-    setExecutingThaw(true);
-    setThawSuccessMsg(null);
-    try {
-      const res = await apiRequest('/api/thaw', {
-        method: 'POST',
-        body: JSON.stringify({
-          strawIds: [thawModalStraw.id],
-          doctorNotes: thawDoctorNotes,
-        }),
-      });
 
-      if (res.success) {
-        const strawCode = thawModalStraw.strawId;
-        setThawSuccessMsg(`Embryo Straw ${strawCode} successfully thawed & physical storage slot freed!`);
-        setThawModalStraw(null);
+    const strawCode = thawModalStraw.strawId;
+    const patientName = selectedExistingPatient.fullName;
+    const targetStrawId = thawModalStraw.id;
+    const targetNotes = thawDoctorNotes;
+    const targetPatientId = selectedExistingPatient.id;
 
-        // Show reloading loader while updating directory details
+    // Immediately close modal & reset fields so user can continue working
+    setThawModalStraw(null);
+    setThawDoctorNotes('');
+    setThawSuccessMsg(`Thaw operation queued in background for Straw ${strawCode} (${patientName})`);
+
+    enqueueTask({
+      title: `Thawing Straw ${strawCode}: ${patientName}`,
+      description: `Freeing storage slot & logging clinical doctor remarks`,
+      action: async () => {
+        const res = await apiRequest('/api/thaw', {
+          method: 'POST',
+          body: JSON.stringify({
+            strawIds: [targetStrawId],
+            doctorNotes: targetNotes || undefined,
+          }),
+        });
+        return res;
+      },
+      onSuccess: async () => {
         setReloadingPatientDetails(true);
         try {
-          const fullRes = await apiRequest(`/api/patients/${selectedExistingPatient.id}`);
+          const fullRes = await apiRequest(`/api/patients/${targetPatientId}`);
           if (fullRes.success && fullRes.patient) {
             setSelectedExistingPatient(fullRes.patient);
           }
         } finally {
           setReloadingPatientDetails(false);
         }
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to thaw straw.');
-    } finally {
-      setExecutingThaw(false);
-    }
+      },
+      onError: (err) => {
+        setError(err.message || 'Failed to thaw straw.');
+      },
+    });
   };
 
   // Clear Selected Existing Patient
