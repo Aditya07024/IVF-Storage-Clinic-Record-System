@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2 } from 'lucide-react';
+import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, ShieldCheck } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 export const OcrVerification: React.FC = () => {
@@ -337,8 +337,25 @@ export const OcrVerification: React.FC = () => {
         )}
       </div>
 
-      {/* Feature in Development Mode Notice Banner (Development Only) */}
-      {!import.meta.env.PROD && (
+      {/* Production vs Development Notice Banner */}
+      {import.meta.env.PROD ? (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-emerald-950 font-bold text-xs shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-200/80 rounded-xl flex items-center justify-center shrink-0 text-emerald-900 border border-emerald-300">
+              <ShieldCheck className="w-4 h-4 text-emerald-700" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-emerald-950">Feature Active in Production</div>
+              <div className="text-[11px] text-emerald-800 font-medium">
+                AI Vision OCR Document Scan & Record Verification Engine is fully active and operational in production.
+              </div>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-bold text-emerald-900 bg-emerald-200/80 px-2.5 py-1 rounded-full border border-emerald-400 shrink-0">
+            PRODUCTION READY
+          </span>
+        </div>
+      ) : (
         <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-center justify-between text-amber-950 font-bold text-xs shadow-xs animate-in fade-in">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-amber-200/80 rounded-xl flex items-center justify-center shrink-0 text-amber-900 border border-amber-300">
