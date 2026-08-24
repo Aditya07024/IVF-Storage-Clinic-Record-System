@@ -348,6 +348,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     e.preventDefault();
     setError(null);
 
+    if (formMode === 'new') {
+      if (!fullName.trim() || !patientAge.trim() || !partnerName.trim() || !partnerAge.trim() || !doctorName.trim() || !phone.trim()) {
+        setError('All 7 clinical fields (Registration No, Patient Name, Patient Age, Partner Name, Partner Age, Doctor Name, and Mobile Phone) are compulsory.');
+        return;
+      }
+    }
+
     const patientName = fullName.trim() || selectedExistingPatient?.fullName || 'Patient Record';
 
     // Capture current form inputs before clearing
@@ -851,8 +858,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-full">
             <div className="md:col-span-2 min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                <span>Registration No (Unique Primary Key)</span>
-                {/* <span className="text-[10px] text-emerald-700 font-mono font-bold">Mandatory Unique Identifier</span> */}
+                <span>Registration No (Unique Primary Key) <span className="text-rose-600 font-bold">*</span></span>
               </label>
               <input
                 type="text"
@@ -860,20 +866,18 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 onChange={(e) => setCustomPatientId(e.target.value)}
                 readOnly={!!selectedExistingPatient}
                 placeholder="e.g. IVF-2026-000001"
+                required
                 className={`w-full min-w-0 max-w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
                   selectedExistingPatient
                     ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
                     : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
                 }`}
               />
-              {/* <p className="text-[11px] text-slate-500 font-medium mt-1">
-                Registration No is the unique primary key. Duplicate patient names are fully supported for separate accounts.
-              </p> */}
             </div>
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Patient Full Name *
+                Patient Full Name <span className="text-rose-600 font-bold">*</span>
               </label>
               <input
                 type="text"
@@ -887,65 +891,70 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Patient Age
+                Patient Age <span className="text-rose-600 font-bold">*</span>
               </label>
               <input
                 type="text"
                 value={patientAge}
                 onChange={(e) => setPatientAge(e.target.value)}
                 placeholder="e.g. 32 Yrs"
+                required
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium block"
               />
             </div>
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Partner Name
+                Partner Name <span className="text-rose-600 font-bold">*</span>
               </label>
               <input
                 type="text"
                 value={partnerName}
                 onChange={(e) => setPartnerName(e.target.value)}
                 placeholder="e.g. Deepak Verma"
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block"
+                required
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block font-medium"
               />
             </div>
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Partner Age
+                Partner Age <span className="text-rose-600 font-bold">*</span>
               </label>
               <input
                 type="text"
                 value={partnerAge}
                 onChange={(e) => setPartnerAge(e.target.value)}
                 placeholder="e.g. 35 Yrs"
+                required
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium block"
               />
             </div>
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Doctor Name / Attending Physician
+                Doctor Name / Attending Physician <span className="text-rose-600 font-bold">*</span>
               </label>
               <input
                 type="text"
                 value={doctorName}
                 onChange={(e) => setDoctorName(e.target.value)}
                 placeholder="e.g. Dr. Ananya Sharma"
+                required
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
               />
             </div>
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Mobile Phone
+                Mobile Phone <span className="text-rose-600 font-bold">*</span>
               </label>
               <input
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. +91 98260 78901"
+                required
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
               />
             </div>
