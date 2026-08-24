@@ -102,10 +102,14 @@ export const AppContent: React.FC = () => {
   );
 };
 
+import { BackgroundTaskProvider } from './context/BackgroundTaskContext';
+
 export default function App() {
   return (
     <AccessGate>
-      <AppContent />
+      <BackgroundTaskProvider>
+        <AppContent />
+      </BackgroundTaskProvider>
     </AccessGate>
   );
 }

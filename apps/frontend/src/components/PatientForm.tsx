@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
+import { useBackgroundTask } from '../context/BackgroundTaskContext';
 
 export const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink',
@@ -322,89 +323,121 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     }
   };
 
+  const { enqueueTask } = useBackgroundTask();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
-    try {
-      let targetPatient = selectedExistingPatient;
+    const patientName = fullName.trim() || selectedExistingPatient?.fullName || 'Patient Record';
 
-      if (!targetPatient) {
-        // Create new patient record
-        const patientRes = await apiRequest('/api/patients', {
-          method: 'POST',
-          body: JSON.stringify({
-            patientId: customPatientId.trim() || undefined,
-            fullName,
-            partnerName: partnerName || undefined,
-            phone: phone || undefined,
-            patientAge: patientAge || undefined,
-            partnerAge: partnerAge || undefined,
-            doctorName: doctorName || undefined,
-            visitDate: visitDate || undefined,
-            deDate: deDate || undefined,
-            freezingDate: freezingDate || undefined,
-            thawDate: thawDate || undefined,
-            comments: comments || undefined,
-          }),
-        });
-        targetPatient = patientRes.patient;
-      } else {
-        // Optionally update existing patient fields if modified
-        await apiRequest(`/api/patients/${targetPatient.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            fullName: fullName.trim(),
-            partnerName: partnerName ? partnerName.trim() : undefined,
-            phone: phone ? phone.trim() : undefined,
-            patientAge: patientAge ? patientAge.trim() : undefined,
-            partnerAge: partnerAge ? partnerAge.trim() : undefined,
-            doctorName: doctorName ? doctorName.trim() : undefined,
-            freezingDate: freezingDate || undefined,
-            comments: comments ? comments.trim() : undefined,
-          }),
-        });
-      }
+    // Capture current form inputs before clearing
+    const payload = {
+      formMode,
+      selectedExistingPatient,
+      customPatientId: customPatientId.trim(),
+      fullName: fullName.trim(),
+      partnerName: partnerName.trim(),
+      phone: phone.trim(),
+      patientAge: patientAge.trim(),
+      partnerAge: partnerAge.trim(),
+      doctorName: doctorName.trim(),
+      visitDate,
+      deDate,
+      freezingDate,
+      thawDate,
+      comments: comments.trim(),
+      assignStorageEnabled,
+      selectedVisoTubeId,
+      selectedLocationCode,
+      storageDate,
+      embryoCount: Number(embryoCount),
+      strawColors: [...strawColors],
+    };
 
-      if (assignStorageEnabled && selectedVisoTubeId) {
-        await apiRequest('/api/storage/assign', {
-          method: 'POST',
-          body: JSON.stringify({
-            patientId: targetPatient.id,
-            storageDate,
-            embryoCount: Number(embryoCount),
-            visoTubeId: selectedVisoTubeId,
-            strawColors,
-            notes: comments || undefined,
-          }),
-        });
-      }
+    // Show immediate success confirmation & reset form so staff can immediately enter next patient!
+    setSaveSuccessDetails({
+      patientId: payload.customPatientId || (payload.selectedExistingPatient?.patientId) || 'SAVING IN BACKGROUND...',
+      fullName: patientName,
+      status: payload.assignStorageEnabled ? 'QUEUED (ALLOCATION & OCCUPIED)' : 'QUEUED (RECORD SAVING)',
+      embryoCount: payload.assignStorageEnabled ? payload.embryoCount : 0,
+      strawCount: payload.assignStorageEnabled ? payload.strawColors.length : 0,
+      location: payload.assignStorageEnabled ? payload.selectedLocationCode : null,
+      timestamp: new Date().toLocaleString(),
+    });
 
-      // Re-fetch updated patient details
-      const fullRes = await apiRequest(`/api/patients/${targetPatient.id}`);
-      const updatedPatient = fullRes.patient || targetPatient;
-
-      setSaveSuccessDetails({
-        patientId: updatedPatient.patientId,
-        fullName: updatedPatient.fullName,
-        status: assignStorageEnabled ? 'ALLOCATED & OCCUPIED' : 'RECORD UPDATED',
-        embryoCount: assignStorageEnabled ? Number(embryoCount) : 0,
-        strawCount: assignStorageEnabled ? strawColors.length : 0,
-        location: assignStorageEnabled ? selectedLocationCode : null,
-        timestamp: new Date().toLocaleString(),
-      });
-
-      if (formMode === 'existing') {
-        setSelectedExistingPatient(updatedPatient);
-      }
-
-      onSuccess(updatedPatient);
-    } catch (err: any) {
-      setError(err.message || 'Failed to save patient record.');
-    } finally {
-      setLoading(false);
+    if (formMode === 'new') {
+      handleClearSelectedExisting();
     }
+
+    // Queue task in top-left background queue stack
+    enqueueTask({
+      title: `Saving ${payload.formMode === 'new' ? 'New Patient' : 'Batch'}: ${patientName}`,
+      description: payload.assignStorageEnabled
+        ? `Allocating ${payload.embryoCount} Embryo(s) in Viso Tube`
+        : 'Saving Patient Demographics & Medical History',
+      action: async () => {
+        let targetPatient = payload.selectedExistingPatient;
+
+        if (!targetPatient) {
+          const patientRes = await apiRequest('/api/patients', {
+            method: 'POST',
+            body: JSON.stringify({
+              patientId: payload.customPatientId || undefined,
+              fullName: payload.fullName,
+              partnerName: payload.partnerName || undefined,
+              phone: payload.phone || undefined,
+              patientAge: payload.patientAge || undefined,
+              partnerAge: payload.partnerAge || undefined,
+              doctorName: payload.doctorName || undefined,
+              visitDate: payload.visitDate || undefined,
+              deDate: payload.deDate || undefined,
+              freezingDate: payload.freezingDate || undefined,
+              thawDate: payload.thawDate || undefined,
+              comments: payload.comments || undefined,
+            }),
+          });
+          targetPatient = patientRes.patient;
+        } else {
+          await apiRequest(`/api/patients/${targetPatient.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              fullName: payload.fullName,
+              partnerName: payload.partnerName || undefined,
+              phone: payload.phone || undefined,
+              patientAge: payload.patientAge || undefined,
+              partnerAge: payload.partnerAge || undefined,
+              doctorName: payload.doctorName || undefined,
+              freezingDate: payload.freezingDate || undefined,
+              comments: payload.comments || undefined,
+            }),
+          });
+        }
+
+        if (payload.assignStorageEnabled && payload.selectedVisoTubeId) {
+          await apiRequest('/api/storage/assign', {
+            method: 'POST',
+            body: JSON.stringify({
+              patientId: targetPatient.id,
+              storageDate: payload.storageDate,
+              embryoCount: payload.embryoCount,
+              visoTubeId: payload.selectedVisoTubeId,
+              strawColors: payload.strawColors,
+              notes: payload.comments || undefined,
+            }),
+          });
+        }
+
+        const fullRes = await apiRequest(`/api/patients/${targetPatient.id}`);
+        return fullRes.patient || targetPatient;
+      },
+      onSuccess: (updatedPatient) => {
+        onSuccess(updatedPatient);
+      },
+      onError: (err) => {
+        setError(err.message || 'Background save failed.');
+      },
+    });
   };
 
   return (
