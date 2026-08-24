@@ -592,8 +592,12 @@ async function startServer() {
   }
 
   await connectPrisma();
-  await storageService.seedHierarchyIfNeeded();
-  await authService.seedUsersIfNeeded();
+  try {
+    await storageService.seedHierarchyIfNeeded();
+    await authService.seedUsersIfNeeded();
+  } catch (err: any) {
+    console.warn('[Storage/Auth Seeding Warning] Startup database seeding deferred due to network latency:', err.message);
+  }
 
   app.listen(CONFIG.PORT, () => {
     console.log(`[IVF Hardened Backend] Security Shields Active on ${CONFIG.BACKEND_URL} (Port ${CONFIG.PORT})`);
