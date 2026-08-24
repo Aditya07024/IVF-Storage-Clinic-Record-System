@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
+import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
 
 const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
@@ -125,35 +126,42 @@ export const PatientDirectory: React.FC = () => {
     }
   };
 
+  const { enqueueTask } = useBackgroundTask();
+
   const handleExecuteQuickThaw = async () => {
     if (selectedStrawIds.length === 0) {
       alert('Please select at least one straw to thaw/warm.');
       return;
     }
 
-    setThawing(true);
-    try {
-      const res = await apiRequest('/api/thaw', {
-        method: 'POST',
-        body: JSON.stringify({
-          strawIds: selectedStrawIds,
-          doctorNotes: doctorNotes.trim() || undefined,
-        }),
-      });
+    const patientName = quickThawPatient?.fullName || selectedPatient?.fullName || 'Patient Record';
+    const targetStrawIds = [...selectedStrawIds];
+    const targetNotes = doctorNotes.trim();
+    const targetPatientId = selectedPatient?.id || quickThawPatient?.id;
 
-      if (res.success) {
-        alert(res.message || 'Thaw operation completed and physical capacity liberated!');
-        setQuickThawPatient(null);
-        setSelectedStrawIds([]);
-        setDoctorNotes('');
+    // Instantly close modal & reset selection state so staff work is never interrupted!
+    setQuickThawPatient(null);
+    setSelectedStrawIds([]);
+    setDoctorNotes('');
+
+    enqueueTask({
+      title: `Thawing ${targetStrawIds.length} Straw(s): ${patientName}`,
+      description: 'Freeing physical storage slot & logging clinical doctor notes',
+      action: async () => {
+        const res = await apiRequest('/api/thaw', {
+          method: 'POST',
+          body: JSON.stringify({
+            strawIds: targetStrawIds,
+            doctorNotes: targetNotes || undefined,
+          }),
+        });
+        return res;
+      },
+      onSuccess: () => {
         fetchPatients();
-        if (selectedPatient) handleSelectPatient(selectedPatient.id);
-      }
-    } catch (err: any) {
-      alert('Thaw failed: ' + err.message);
-    } finally {
-      setThawing(false);
-    }
+        if (targetPatientId) handleSelectPatient(targetPatientId);
+      },
+    });
   };
 
   const handlePrintPdf = (patientId: string) => {

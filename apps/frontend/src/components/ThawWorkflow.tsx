@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ThermometerSnowflake, Search, CheckCircle2, ShieldAlert, AlertTriangle, Layers, MoveRight, User, Calendar, Phone, RefreshCw, MapPin } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
+import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
 
 const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
@@ -127,39 +128,48 @@ export const ThawWorkflow: React.FC = () => {
     }
   };
 
+  const { enqueueTask } = useBackgroundTask();
+
   const handleExecuteThaw = async () => {
     if (selectedStrawIds.length === 0) {
       setError('Please select at least one straw to thaw/warm.');
       return;
     }
 
-    setThawing(true);
+    const patientName = patient?.fullName || 'Patient Record';
+    const targetStrawIds = [...selectedStrawIds];
+    const targetNotes = doctorNotes.trim();
+    const targetPatientId = patient?.id;
+
+    // Reset selection state immediately so staff work is never interrupted!
+    setSelectedStrawIds([]);
+    setDoctorNotes('');
     setError(null);
-    setSuccessMsg(null);
+    setSuccessMsg(`Thaw operation queued for ${targetStrawIds.length} straw(s) (${patientName})`);
 
-    try {
-      const res = await apiRequest('/api/thaw', {
-        method: 'POST',
-        body: JSON.stringify({
-          strawIds: selectedStrawIds,
-          doctorNotes: doctorNotes.trim() || undefined,
-        }),
-      });
-
-      if (res.success) {
-        setSuccessMsg(res.message);
-        setSelectedStrawIds([]);
-        setDoctorNotes('');
-        if (patient) {
-          await selectPatientRecord(patient.id);
+    enqueueTask({
+      title: `Thawing ${targetStrawIds.length} Straw(s): ${patientName}`,
+      description: 'Freeing physical storage slot & logging clinical doctor notes',
+      action: async () => {
+        const res = await apiRequest('/api/thaw', {
+          method: 'POST',
+          body: JSON.stringify({
+            strawIds: targetStrawIds,
+            doctorNotes: targetNotes || undefined,
+          }),
+        });
+        return res;
+      },
+      onSuccess: () => {
+        if (targetPatientId) {
+          selectPatientRecord(targetPatientId);
         }
-        await loadPatients(patientIdQuery);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Thaw/withdrawal operation failed.');
-    } finally {
-      setThawing(false);
-    }
+        loadPatients(patientIdQuery);
+      },
+      onError: (err) => {
+        setError(err.message || 'Thaw/withdrawal operation failed.');
+      },
+    });
   };
 
   return (
