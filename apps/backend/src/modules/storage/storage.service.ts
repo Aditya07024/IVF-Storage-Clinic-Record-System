@@ -230,32 +230,55 @@ export class StorageService {
     };
   }
 
-  // Generate Straw ID: STR-000001 (uses MAX existing ID, not count)
-  private async generateNextStrawId(): Promise<string> {
-    const lastStraw = await prisma.straw.findFirst({
-      orderBy: { strawId: 'desc' },
+  // Generate Straw ID: STR-000001 (uses MAX existing ID + transaction awareness)
+  private async generateNextStrawId(txClient?: any): Promise<string> {
+    const db = txClient || prisma;
+    const straws = await db.straw.findMany({
+      where: { strawId: { startsWith: 'STR-' } },
       select: { strawId: true },
     });
-    let nextNum = 1;
-    if (lastStraw?.strawId) {
-      const match = lastStraw.strawId.match(/STR-(\d+)/);
-      if (match) nextNum = parseInt(match[1], 10) + 1;
+
+    let maxNum = 0;
+    for (const s of straws) {
+      const match = s.strawId.match(/STR-(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
     }
+
+    const count = await db.straw.count();
+    const nextNum = Math.max(maxNum + 1, count + 1);
+
     return `STR-${nextNum.toString().padStart(6, '0')}`;
   }
 
-  // Generate Batch ID: BATCH-2026-000001 (uses MAX existing ID, not count)
-  private async generateNextBatchId(): Promise<string> {
+  // Generate Batch ID: BATCH-2026-000001 (uses MAX existing ID + transaction awareness)
+  private async generateNextBatchId(txClient?: any): Promise<string> {
+    const db = txClient || prisma;
     const year = new Date().getFullYear();
-    const lastBatch = await prisma.storageBatch.findFirst({
-      orderBy: { batchId: 'desc' },
+
+    const batches = await db.storageBatch.findMany({
+      where: { batchId: { startsWith: 'BATCH-' } },
       select: { batchId: true },
     });
-    let nextNum = 1;
-    if (lastBatch?.batchId) {
-      const match = lastBatch.batchId.match(/BATCH-\d{4}-(\d+)/);
-      if (match) nextNum = parseInt(match[1], 10) + 1;
+
+    let maxNum = 0;
+    for (const b of batches) {
+      const match = b.batchId.match(/BATCH-\d{4}-(\d+)/) || b.batchId.match(/BATCH-(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
     }
+
+    const count = await db.storageBatch.count();
+    const nextNum = Math.max(maxNum + 1, count + 1);
+
     return `BATCH-${year}-${nextNum.toString().padStart(6, '0')}`;
   }
 
@@ -290,8 +313,16 @@ export class StorageService {
 
       const storageDate = new Date(input.storageDate);
 
-      // Create Storage Batch entity
-      const batchIdCode = await this.generateNextBatchId();
+      // Create Storage Batch entity with unique ID verification retry
+      let batchIdCode = await this.generateNextBatchId(tx);
+      let batchAttempts = 0;
+      while (await tx.storageBatch.findUnique({ where: { batchId: batchIdCode } })) {
+        batchAttempts++;
+        const baseNum = parseInt(batchIdCode.split('-').pop() || '0', 10);
+        const nextNum = (isNaN(baseNum) ? 1 : baseNum) + batchAttempts;
+        batchIdCode = `BATCH-${storageDate.getFullYear()}-${nextNum.toString().padStart(6, '0')}`;
+      }
+
       const batch = await tx.storageBatch.create({
         data: {
           batchId: batchIdCode,
@@ -311,7 +342,15 @@ export class StorageService {
         const embryosInThisStraw = Math.min(2, remainingEmbryos);
         remainingEmbryos -= embryosInThisStraw;
 
-        const strawIdCode = await this.generateNextStrawId();
+        let strawIdCode = await this.generateNextStrawId(tx);
+        let strawAttempts = 0;
+        while (await tx.straw.findUnique({ where: { strawId: strawIdCode } })) {
+          strawAttempts++;
+          const baseNum = parseInt(strawIdCode.split('-').pop() || '0', 10);
+          const nextNum = (isNaN(baseNum) ? 1 : baseNum) + strawAttempts;
+          strawIdCode = `STR-${nextNum.toString().padStart(6, '0')}`;
+        }
+
         const color = input.strawColors[i] || 'Pink';
 
         const straw = await tx.straw.create({
