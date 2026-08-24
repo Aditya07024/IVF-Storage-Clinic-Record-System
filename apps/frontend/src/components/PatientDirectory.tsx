@@ -640,14 +640,16 @@ export const PatientDirectory: React.FC = () => {
             </div>
 
             {/* Clinical Comments & Doctor Remarks Card */}
-            <div className="p-4 bg-amber-50/80 rounded-2xl border border-amber-200 space-y-1 text-xs">
-              <span className="text-amber-950 font-bold uppercase text-[10px] tracking-wider block">
-                Clinical Comments & Doctor Remarks (egg yield, embryo grade quality, special instructions):
-              </span>
-              <p className="text-slate-800 font-mono text-xs whitespace-pre-wrap leading-relaxed">
-                {selectedPatient.comments && selectedPatient.comments.trim() ? selectedPatient.comments : 'No clinical comments recorded.'}
-              </p>
-            </div>
+            {selectedPatient.comments && selectedPatient.comments.trim().length > 0 && (
+              <div className="p-4 bg-amber-50/80 rounded-2xl border border-amber-200 space-y-1 text-xs">
+                <span className="text-amber-950 font-bold uppercase text-[10px] tracking-wider block">
+                  Clinical Comments & Doctor Remarks:
+                </span>
+                <p className="text-slate-800 font-mono text-xs whitespace-pre-wrap leading-relaxed">
+                  {selectedPatient.comments}
+                </p>
+              </div>
+            )}
 
             {/* Storage Batches Section */}
             <div className="space-y-3">
@@ -756,7 +758,7 @@ export const PatientDirectory: React.FC = () => {
                           <td className="py-2 px-3 font-bold text-emerald-800">{t.straw?.strawId || t.strawId}</td>
                           <td className="py-2 px-3 text-slate-600">{new Date(t.thawDate).toLocaleString()}</td>
                           <td className="py-2 px-3 font-semibold text-slate-900">{t.doctorName}</td>
-                          <td className="py-2 px-3 font-sans text-slate-700 italic">{t.doctorNotes || 'No notes recorded'}</td>
+                          <td className="py-2 px-3 font-sans text-slate-700">{t.doctorNotes || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

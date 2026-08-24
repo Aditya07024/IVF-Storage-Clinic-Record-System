@@ -442,7 +442,7 @@ export const ThawWorkflow: React.FC = () => {
                           <td className="py-2 px-3 font-mono font-bold text-slate-800">{h.straw?.strawId || h.strawId}</td>
                           <td className="py-2 px-3 text-slate-600">{new Date(h.thawDate).toLocaleString()}</td>
                           <td className="py-2 px-3 font-semibold text-slate-800">{h.doctorName}</td>
-                          <td className="py-2 px-3 text-slate-500 italic">{h.doctorNotes || 'No notes recorded'}</td>
+                          <td className="py-2 px-3 text-slate-500">{h.doctorNotes || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

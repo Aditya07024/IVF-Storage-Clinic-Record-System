@@ -779,7 +779,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   setFreezingDate(today);
                   setStorageDate(today);
                   setDeDate(today);
-                  setComments('Demo patient allocation test. Grade A 5AA blastocysts.');
+                  setComments('');
                 }}
                 className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs rounded-xl border border-amber-300 shadow-2xs transition-all active:scale-95 flex items-center gap-1.5"
                 title="Auto-fill sample patient data"

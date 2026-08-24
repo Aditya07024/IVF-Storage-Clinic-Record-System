@@ -361,7 +361,7 @@ export class StorageService {
             data: {
               strawId: straw.id,
               embryoNumber: e,
-              grade: `Grade-A (Day 5)`,
+              grade: '',
               status: 'FROZEN',
             },
           });
