@@ -453,7 +453,7 @@ export const ThawWorkflow: React.FC = () => {
           </div>
 
           {/* Right Column: Execution Form */}
-          <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-md space-y-4 self-start sticky bottom-2 sm:relative z-20">
+          <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 self-start">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <ThermometerSnowflake className="w-5 h-5 text-emerald-600" />
               <span>Confirm Thaw Operation</span>
