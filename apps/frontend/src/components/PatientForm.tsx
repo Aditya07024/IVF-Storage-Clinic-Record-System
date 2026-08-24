@@ -799,7 +799,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-full">
             <div className="md:col-span-2 min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Registration No / Patient ID
+                Registration No
               </label>
               <input
                 type="text"

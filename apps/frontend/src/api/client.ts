@@ -1,11 +1,24 @@
 const getApiBaseUrl = () => {
   const envUrl = (import.meta as any).env?.VITE_API_BASE_URL;
   if (envUrl) return envUrl;
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return 'http://localhost:4000';
+
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // Support localhost, 127.0.0.1, local IP addresses (192.168.x.x, 10.x.x.x, 172.x.x.x), and local domain aliases
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('172.') ||
+      hostname.endsWith('.local')
+    ) {
+      return `http://${hostname}:4000`;
+    }
+    return `${window.location.protocol}//${hostname}:4000`;
   }
-  // Production: frontend on Vercel, backend on Render
-  return 'https://ivf-storage-clinic-record-system.onrender.com';
+
+  return 'http://localhost:4000';
 };
 
 const API_BASE_URL = getApiBaseUrl();
