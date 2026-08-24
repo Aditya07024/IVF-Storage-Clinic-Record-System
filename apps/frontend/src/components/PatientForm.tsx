@@ -598,7 +598,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {activeStraws.map((straw: any) => {
                 const locCode = straw.visoTube?.locationCode || '';
-                const parsedLoc = locCode ? parseLocationCode(locCode).formatted : 'Location Not Specified / Loading';
+                const parsedLoc = locCode ? parseLocationCode(locCode).formatted : '';
                 const embryoCount = straw.embryos ? straw.embryos.length : 2;
 
                 return (
@@ -610,9 +610,21 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       </span>
                     </div>
 
-                    <div className="text-xs font-bold text-slate-800 font-mono bg-white p-2.5 rounded-xl border border-slate-200">
-                      {parsedLoc}
-                    </div>
+                    {locCode ? (
+                      <div className="text-xs font-bold text-slate-800 font-mono bg-white p-2.5 rounded-xl border border-slate-200">
+                        {parsedLoc}
+                      </div>
+                    ) : (
+                      <div className="text-xs font-mono font-bold text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200 flex items-center justify-between gap-2 animate-pulse">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3.5 h-3.5 border-2 border-amber-600/40 border-t-amber-600 rounded-full animate-spin shrink-0" />
+                          <span>Resolving physical storage location...</span>
+                        </div>
+                        <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">
+                          LOADING
+                        </span>
+                      </div>
+                    )}
 
                     <button
                       type="button"
@@ -1258,7 +1270,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </div>
               <div>
                 <strong className="text-slate-900">Location:</strong>{' '}
-                <span className="font-mono font-bold">{parseLocationCode(thawModalStraw.visoTube?.locationCode || '').formatted}</span>
+                {thawModalStraw.visoTube?.locationCode ? (
+                  <span className="font-mono font-bold">{parseLocationCode(thawModalStraw.visoTube.locationCode).formatted}</span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 font-mono text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 animate-pulse text-[11px] font-bold">
+                    <span className="w-3 h-3 border-2 border-amber-600/40 border-t-amber-600 rounded-full animate-spin shrink-0" />
+                    <span>Resolving Physical Storage Location...</span>
+                  </span>
+                )}
               </div>
             </div>
 
