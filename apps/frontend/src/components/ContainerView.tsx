@@ -72,6 +72,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
   const [canOccupancyMap, setCanOccupancyMap] = useState<Record<string, number>>({});
   const [canisterOccupancyMap, setCanisterOccupancyMap] = useState<Record<string, number>>({});
   const [levelOccupancyMap, setLevelOccupancyMap] = useState<Record<string, number>>({});
+  const [refreshing, setRefreshing] = useState(false);
 
   const CLINIC_CANS = [1, 2, 3, 4, 5, 8, 10, 14];
 
@@ -199,8 +200,6 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
       stepName: step.name,
     };
   };
-
-  const [refreshing, setRefreshing] = useState(false);
 
   const handleRefreshStorage = async () => {
     setRefreshing(true);
