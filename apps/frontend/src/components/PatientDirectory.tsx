@@ -38,7 +38,7 @@ export const PatientDirectory: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
-  const [showAuditLogs, setShowAuditLogs] = useState(true);
+  const [showAuditLogs, setShowAuditLogs] = useState(false);
 
   // Quick Thaw Modal States
   const [quickThawPatient, setQuickThawPatient] = useState<any | null>(null);
