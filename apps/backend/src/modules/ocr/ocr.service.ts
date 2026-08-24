@@ -174,6 +174,9 @@ export class OcrService {
     patientId?: string;
     fullName: string;
     partnerName?: string;
+    patientAge?: string;
+    partnerAge?: string;
+    doctorName?: string;
     visitDate?: string;
     deDate?: string;
     freezingDate?: string;
@@ -189,12 +192,16 @@ Extract fields from the raw printed/handwritten document text below with high pr
 Rules:
 - DO NOT invent or hallucinate missing data. If a field is not present in text, return null.
 - Extract "patientId" / Registration No (e.g. IVF-2026-000007 or REGISTRATION NO / PATIENT ID if present).
+- Extract "patientAge", "partnerAge", "doctorName" if present.
 - Parse all dates into YYYY-MM-DD format (convert DD/MM/YYYY, DD-MMM-YYYY, etc.).
 - Output ONLY valid JSON matching this exact schema:
 {
   "patientId": "string or null",
   "fullName": "string or null",
   "partnerName": "string or null",
+  "patientAge": "string or null",
+  "partnerAge": "string or null",
+  "doctorName": "string or null",
   "visitDate": "YYYY-MM-DD or null",
   "deDate": "YYYY-MM-DD or null",
   "freezingDate": "YYYY-MM-DD or null",
@@ -218,6 +225,9 @@ ${rawText}`;
               patientId: parsed.patientId || undefined,
               fullName: parsed.fullName || '',
               partnerName: parsed.partnerName || '',
+              patientAge: parsed.patientAge || '',
+              partnerAge: parsed.partnerAge || '',
+              doctorName: parsed.doctorName || '',
               visitDate: parsed.visitDate || '',
               deDate: parsed.deDate || '',
               freezingDate: parsed.freezingDate || '',
@@ -232,16 +242,20 @@ ${rawText}`;
       }
     }
 
-    // Pattern matching fallback (clean empty defaults, no hardcoded mock names)
+    // Pattern matching fallback
     const patientIdMatch = rawText.match(/(?:REGISTRATION\s*NO|PATIENT\s*ID|ID)[:\s]*([A-Z0-9-]+)/i);
     const fullNameMatch = rawText.match(/(?:PATIENT\s*NAME|NAME)[:\s]*([A-Za-z\s]+)/i);
     const partnerNameMatch = rawText.match(/(?:PARTNER\s*NAME|HUSBAND|SPOUSE)[:\s]*([A-Za-z\s]+)/i);
+    const doctorNameMatch = rawText.match(/(?:DOCTOR\s*NAME|DOCTOR|DR)[:\s]*([A-Za-z\s.]+)/i);
     const freezingDateMatch = rawText.match(/(?:FREEZING|STORAGE)\s*DATE[:\s]*(\d{4}-\d{2}-\d{2}|\d{2}[\/.-]\d{2}[\/.-]\d{4})/i);
 
     return {
       patientId: patientIdMatch ? patientIdMatch[1].trim() : undefined,
       fullName: fullNameMatch ? fullNameMatch[1].trim() : '',
       partnerName: partnerNameMatch ? partnerNameMatch[1].trim() : '',
+      patientAge: '',
+      partnerAge: '',
+      doctorName: doctorNameMatch ? doctorNameMatch[1].trim() : '',
       visitDate: '',
       deDate: '',
       freezingDate: freezingDateMatch ? freezingDateMatch[1].trim() : '',
@@ -343,6 +357,9 @@ ${rawText}`;
             patientId: targetPatientId || undefined,
             fullName: input.fullName,
             partnerName: input.partnerName,
+            patientAge: input.patientAge,
+            partnerAge: input.partnerAge,
+            doctorName: input.doctorName,
             visitDate: input.visitDate ? new Date(input.visitDate) : undefined,
             deDate: input.deDate ? new Date(input.deDate) : undefined,
             freezingDate: input.freezingDate ? new Date(input.freezingDate) : undefined,
@@ -358,6 +375,9 @@ ${rawText}`;
             data: {
               fullName: input.fullName,
               partnerName: input.partnerName,
+              patientAge: input.patientAge,
+              partnerAge: input.partnerAge,
+              doctorName: input.doctorName,
               visitDate: input.visitDate ? new Date(input.visitDate) : undefined,
               deDate: input.deDate ? new Date(input.deDate) : undefined,
               freezingDate: input.freezingDate ? new Date(input.freezingDate) : undefined,
@@ -371,6 +391,9 @@ ${rawText}`;
               patientId: targetPatientId,
               fullName: input.fullName,
               partnerName: input.partnerName,
+              patientAge: input.patientAge,
+              partnerAge: input.partnerAge,
+              doctorName: input.doctorName,
               visitDate: input.visitDate ? new Date(input.visitDate) : null,
               deDate: input.deDate ? new Date(input.deDate) : null,
               freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
@@ -389,6 +412,9 @@ ${rawText}`;
             patientId: pId,
             fullName: input.fullName,
             partnerName: input.partnerName,
+            patientAge: input.patientAge,
+            partnerAge: input.partnerAge,
+            doctorName: input.doctorName,
             visitDate: input.visitDate ? new Date(input.visitDate) : null,
             deDate: input.deDate ? new Date(input.deDate) : null,
             freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,

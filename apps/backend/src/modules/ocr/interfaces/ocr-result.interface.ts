@@ -10,6 +10,9 @@ export interface VerifyOcrInput {
   patientId?: string;
   fullName: string;
   partnerName?: string;
+  patientAge?: string;
+  partnerAge?: string;
+  doctorName?: string;
   visitDate?: string;
   deDate?: string;
   freezingDate?: string;

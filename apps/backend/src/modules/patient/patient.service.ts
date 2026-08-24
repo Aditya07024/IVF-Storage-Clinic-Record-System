@@ -6,6 +6,9 @@ export interface CreatePatientInput {
   partnerName?: string;
   phone?: string;
   dob?: string;
+  patientAge?: string;
+  partnerAge?: string;
+  doctorName?: string;
   visitDate?: Date | string;
   deDate?: Date | string;
   freezingDate?: Date | string;
@@ -59,6 +62,9 @@ export class PatientService {
         partnerName: input.partnerName ? input.partnerName.trim() : null,
         phone: input.phone ? input.phone.trim() : null,
         dob: input.dob ? input.dob.trim() : null,
+        patientAge: input.patientAge ? input.patientAge.trim() : null,
+        partnerAge: input.partnerAge ? input.partnerAge.trim() : null,
+        doctorName: input.doctorName ? input.doctorName.trim() : null,
         visitDate: input.visitDate ? new Date(input.visitDate) : null,
         deDate: input.deDate ? new Date(input.deDate) : null,
         freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
@@ -107,6 +113,9 @@ export class PatientService {
         partnerName: input.partnerName !== undefined ? input.partnerName.trim() : existing.partnerName,
         phone: input.phone !== undefined ? (input.phone ? input.phone.trim() : null) : existing.phone,
         dob: input.dob !== undefined ? (input.dob ? input.dob.trim() : null) : existing.dob,
+        patientAge: input.patientAge !== undefined ? (input.patientAge ? input.patientAge.trim() : null) : existing.patientAge,
+        partnerAge: input.partnerAge !== undefined ? (input.partnerAge ? input.partnerAge.trim() : null) : existing.partnerAge,
+        doctorName: input.doctorName !== undefined ? (input.doctorName ? input.doctorName.trim() : null) : existing.doctorName,
         visitDate: input.visitDate !== undefined ? (input.visitDate ? new Date(input.visitDate) : null) : existing.visitDate,
         deDate: input.deDate !== undefined ? (input.deDate ? new Date(input.deDate) : null) : existing.deDate,
         freezingDate: input.freezingDate !== undefined ? (input.freezingDate ? new Date(input.freezingDate) : null) : existing.freezingDate,

@@ -29,6 +29,9 @@ model Patient {
   partnerName  String?
   phone        String?
   dob          String?
+  patientAge   String?
+  partnerAge   String?
+  doctorName   String?
   visitDate    DateTime?
   deDate       DateTime?
   freezingDate DateTime?

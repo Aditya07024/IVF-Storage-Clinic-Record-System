@@ -91,6 +91,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [fullName, setFullName] = useState('');
   const [partnerName, setPartnerName] = useState('');
   const [phone, setPhone] = useState('');
+  const [patientAge, setPatientAge] = useState('');
+  const [partnerAge, setPartnerAge] = useState('');
+  const [doctorName, setDoctorName] = useState('');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [deDate, setDeDate] = useState('');
   const [freezingDate, setFreezingDate] = useState(new Date().toISOString().split('T')[0]);
@@ -145,6 +148,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setFullName(p.fullName || '');
     setPartnerName(p.partnerName || '');
     setPhone(p.phone || '');
+    setPatientAge(p.patientAge || '');
+    setPartnerAge(p.partnerAge || '');
+    setDoctorName(p.doctorName || '');
     setFreezingDate(new Date().toISOString().split('T')[0]);
     setStorageDate(new Date().toISOString().split('T')[0]);
     setExistingSearchResults([]);
@@ -199,6 +205,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setFullName('');
     setPartnerName('');
     setPhone('');
+    setPatientAge('');
+    setPartnerAge('');
+    setDoctorName('');
     setExistingSearchQuery('');
   };
 
@@ -289,6 +298,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             fullName,
             partnerName: partnerName || undefined,
             phone: phone || undefined,
+            patientAge: patientAge || undefined,
+            partnerAge: partnerAge || undefined,
+            doctorName: doctorName || undefined,
             visitDate: visitDate || undefined,
             deDate: deDate || undefined,
             freezingDate: freezingDate || undefined,
@@ -305,6 +317,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             fullName: fullName.trim(),
             partnerName: partnerName ? partnerName.trim() : undefined,
             phone: phone ? phone.trim() : undefined,
+            patientAge: patientAge ? patientAge.trim() : undefined,
+            partnerAge: partnerAge ? partnerAge.trim() : undefined,
+            doctorName: doctorName ? doctorName.trim() : undefined,
             freezingDate: freezingDate || undefined,
             comments: comments ? comments.trim() : undefined,
           }),
@@ -583,7 +598,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {activeStraws.map((straw: any) => {
                 const locCode = straw.visoTube?.locationCode || '';
-                const parsedLoc = locCode ? parseLocationCode(locCode).formatted : 'Location Not Specified';
+                const parsedLoc = locCode ? parseLocationCode(locCode).formatted : 'Location Not Specified / Loading';
                 const embryoCount = straw.embryos ? straw.embryos.length : 2;
 
                 return (
@@ -632,6 +647,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   setFullName('Sunita Verma');
                   setPartnerName('Deepak Verma');
                   setPhone('+91 98260 78901');
+                  setPatientAge('32 Yrs');
+                  setPartnerAge('35 Yrs');
+                  setDoctorName('Dr. Ananya Sharma');
                   const today = new Date().toISOString().split('T')[0];
                   setVisitDate(today);
                   setFreezingDate(today);
@@ -681,9 +699,22 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Eleanor Vance"
+                placeholder="e.g. Sunita Verma"
                 required
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
+              />
+            </div>
+
+            <div className="min-w-0 max-w-full">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Patient Age
+              </label>
+              <input
+                type="text"
+                value={patientAge}
+                onChange={(e) => setPatientAge(e.target.value)}
+                placeholder="e.g. 32 Yrs"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium block"
               />
             </div>
 
@@ -695,8 +726,34 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 type="text"
                 value={partnerName}
                 onChange={(e) => setPartnerName(e.target.value)}
-                placeholder="e.g. Thomas Vance"
+                placeholder="e.g. Deepak Verma"
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block"
+              />
+            </div>
+
+            <div className="min-w-0 max-w-full">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Partner Age
+              </label>
+              <input
+                type="text"
+                value={partnerAge}
+                onChange={(e) => setPartnerAge(e.target.value)}
+                placeholder="e.g. 35 Yrs"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium block"
+              />
+            </div>
+
+            <div className="min-w-0 max-w-full">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Doctor Name / Attending Physician
+              </label>
+              <input
+                type="text"
+                value={doctorName}
+                onChange={(e) => setDoctorName(e.target.value)}
+                placeholder="e.g. Dr. Ananya Sharma"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
               />
             </div>
 
@@ -708,7 +765,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g. +1 555 0192"
+                placeholder="e.g. +91 98260 78901"
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
               />
             </div>

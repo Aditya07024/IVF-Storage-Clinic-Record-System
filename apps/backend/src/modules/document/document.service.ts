@@ -51,7 +51,9 @@ export class DocumentService {
       doc.fontSize(10).fillColor('#334155');
       doc.text(`Patient ID: ${patient.patientId}`);
       doc.text(`Full Name: ${patient.fullName}`);
-      doc.text(`Partner Name: ${patient.partnerName || 'N/A'}`);
+      doc.text(`Patient Age: ${patient.patientAge || 'N/A'}`);
+      doc.text(`Partner Name: ${patient.partnerName || 'N/A'} ${patient.partnerAge ? `(Age: ${patient.partnerAge})` : ''}`);
+      doc.text(`Attending Doctor: ${patient.doctorName || 'N/A'}`);
       doc.text(`Visit Date: ${patient.visitDate ? new Date(patient.visitDate).toLocaleDateString() : 'N/A'}`);
       doc.text(`DE Date: ${patient.deDate ? new Date(patient.deDate).toLocaleDateString() : 'N/A'}`);
       doc.text(`Freezing Date: ${patient.freezingDate ? new Date(patient.freezingDate).toLocaleDateString() : 'N/A'}`);

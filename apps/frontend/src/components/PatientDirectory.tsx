@@ -258,8 +258,19 @@ export const PatientDirectory: React.FC = () => {
                     >
                       <td className="px-6 py-4 font-mono font-bold text-emerald-700">{p.patientId}</td>
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-900">{p.fullName}</div>
-                        {p.partnerName && <div className="text-xs text-slate-500">Partner: {p.partnerName}</div>}
+                        <div className="font-semibold text-slate-900">
+                          {p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}
+                        </div>
+                        {p.partnerName && (
+                          <div className="text-xs text-slate-500">
+                            Partner: {p.partnerName} {p.partnerAge ? `(${p.partnerAge})` : ''}
+                          </div>
+                        )}
+                        {p.doctorName && (
+                          <div className="text-xs text-emerald-800 font-bold">
+                            Doctor: {p.doctorName}
+                          </div>
+                        )}
                         {isDuplicateName && (
                           <div className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 mt-1 inline-flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3 text-amber-700" />
@@ -510,10 +521,25 @@ export const PatientDirectory: React.FC = () => {
             </div>
 
             {/* Patient Metadata Grid */}
-            <div className="grid grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-slate-500 font-semibold block uppercase text-[10px]">Registration No (Patient ID):</span>
                 <strong className="text-emerald-800 font-mono text-sm">{selectedPatient.patientId}</strong>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Patient Age:</span>
+                <strong className="text-slate-900 font-medium">{selectedPatient.patientAge || 'N/A'}</strong>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Partner Name & Age:</span>
+                <strong className="text-slate-900">{selectedPatient.partnerName || 'N/A'} {selectedPatient.partnerAge ? `(${selectedPatient.partnerAge})` : ''}</strong>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Doctor Name / Physician:</span>
+                <strong className="text-slate-900 font-bold">{selectedPatient.doctorName || 'N/A'}</strong>
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
@@ -521,11 +547,6 @@ export const PatientDirectory: React.FC = () => {
                 <strong className="text-slate-900 font-mono text-sm">
                   {formatDateDDMMYYYY(selectedPatient.freezingDate)}
                 </strong>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Partner Name:</span>
-                <strong className="text-slate-900">{selectedPatient.partnerName || 'N/A'}</strong>
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">

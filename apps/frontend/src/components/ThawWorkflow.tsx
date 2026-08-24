@@ -8,7 +8,7 @@ const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
 };
 
 function parseLocationCode(code: string) {
-  if (!code) return { formatted: 'Location Not Specified' };
+  if (!code) return { formatted: 'Location Not Specified / Loading' };
   const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
   if (!match) return { formatted: code };
   const canNum = match[1].padStart(2, '0');

@@ -11,6 +11,9 @@ export const OcrVerification: React.FC = () => {
   const [patientId, setPatientId] = useState('');
   const [fullName, setFullName] = useState('');
   const [partnerName, setPartnerName] = useState('');
+  const [patientAge, setPatientAge] = useState('');
+  const [partnerAge, setPartnerAge] = useState('');
+  const [doctorName, setDoctorName] = useState('');
   const [visitDate, setVisitDate] = useState('');
   const [deDate, setDeDate] = useState('');
   const [freezingDate, setFreezingDate] = useState('');
@@ -101,42 +104,41 @@ export const OcrVerification: React.FC = () => {
       }
     }
 
-    const padding = 24;
-    minX = Math.max(0, minX - padding);
-    minY = Math.max(0, minY - padding);
-    maxX = Math.min(width, maxX + padding);
-    maxY = Math.min(height, maxY + padding);
+    if (!foundTextOrEdge || maxX <= minX || maxY <= minY) {
+      return sourceCanvas;
+    }
 
-    const cropWidth = maxX - minX;
-    const cropHeight = maxY - minY;
+    // Add 15px margin to avoid cropping real text
+    const padding = 15;
+    const cropX = Math.max(0, minX - padding);
+    const cropY = Math.max(0, minY - padding);
+    const cropW = Math.min(width - cropX, (maxX - minX) + padding * 2);
+    const cropH = Math.min(height - cropY, (maxY - minY) + padding * 2);
 
-    if (foundTextOrEdge && cropWidth > 150 && cropHeight > 150 && (cropWidth < width * 0.98 || cropHeight < height * 0.98)) {
-      const croppedCanvas = document.createElement('canvas');
-      croppedCanvas.width = cropWidth;
-      croppedCanvas.height = cropHeight;
-      const croppedCtx = croppedCanvas.getContext('2d');
-      if (croppedCtx) {
-        croppedCtx.drawImage(sourceCanvas, minX, minY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-        return croppedCanvas;
-      }
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = cropW;
+    croppedCanvas.height = cropH;
+    const croppedCtx = croppedCanvas.getContext('2d');
+    if (croppedCtx) {
+      croppedCtx.drawImage(sourceCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+      return croppedCanvas;
     }
 
     return sourceCanvas;
   };
 
   const captureCameraPhoto = () => {
-    if (!videoRef.current) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth || 1280;
-    canvas.height = videoRef.current.videoHeight || 720;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-
-      let finalCanvas = canvas;
-      if (adobeCamEnabled) {
-        finalCanvas = autoCropDocumentBorders(canvas);
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth || 1280;
+      canvas.height = videoRef.current.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       }
+
+      // If Adobe Cam enabled, auto-detect document edges & crop blank margins
+      const finalCanvas = adobeCamEnabled ? autoCropDocumentBorders(canvas) : canvas;
 
       finalCanvas.toBlob((blob) => {
         if (blob) {
@@ -173,6 +175,9 @@ export const OcrVerification: React.FC = () => {
     setPatientId(json.patientId || record.patientId || '');
     setFullName(json.fullName || '');
     setPartnerName(json.partnerName || '');
+    setPatientAge(json.patientAge || '');
+    setPartnerAge(json.partnerAge || '');
+    setDoctorName(json.doctorName || '');
     setVisitDate(json.visitDate || '');
     setDeDate(json.deDate || '');
     setFreezingDate(json.freezingDate || '');
@@ -236,6 +241,9 @@ export const OcrVerification: React.FC = () => {
           patientId: patientId.trim() || undefined,
           fullName: fullName.trim(),
           partnerName: partnerName.trim() || undefined,
+          patientAge: patientAge.trim() || undefined,
+          partnerAge: partnerAge.trim() || undefined,
+          doctorName: doctorName.trim() || undefined,
           visitDate: visitDate || undefined,
           deDate: deDate || undefined,
           freezingDate: freezingDate || undefined,
@@ -523,7 +531,7 @@ export const OcrVerification: React.FC = () => {
             </div>
 
             <form onSubmit={handleVerify} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-700">Registration No (Patient ID)</label>
                   <input
@@ -546,9 +554,20 @@ export const OcrVerification: React.FC = () => {
                     placeholder="Full Name"
                   />
                 </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Patient Age</label>
+                  <input
+                    type="text"
+                    value={patientAge}
+                    onChange={(e) => setPatientAge(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
+                    placeholder="e.g. 32 Yrs"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-700">Partner Name</label>
                   <input
@@ -561,16 +580,38 @@ export const OcrVerification: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Frozen Embryos Count</label>
+                  <label className="font-semibold text-slate-700">Partner Age</label>
                   <input
-                    type="number"
-                    min="0"
-                    value={embryoCount}
-                    onChange={(e) => setEmbryoCount(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
-                    placeholder="e.g. 4"
+                    type="text"
+                    value={partnerAge}
+                    onChange={(e) => setPartnerAge(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
+                    placeholder="e.g. 35 Yrs"
                   />
                 </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Doctor Name</label>
+                  <input
+                    type="text"
+                    value={doctorName}
+                    onChange={(e) => setDoctorName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                    placeholder="e.g. Dr. Ananya Sharma"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-700">Frozen Embryos Count</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={embryoCount}
+                  onChange={(e) => setEmbryoCount(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                  placeholder="e.g. 4"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
