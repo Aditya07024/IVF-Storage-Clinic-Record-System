@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, X, RefreshCw, Layers } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, X, RefreshCw, Layers, Copy, Check, Mail, Send } from 'lucide-react';
 import { clearApiCache } from '../api/client';
 
 export interface BackgroundTask {
@@ -31,6 +31,32 @@ const BackgroundTaskContext = createContext<BackgroundTaskContextType | undefine
 
 export const BackgroundTaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tasks, setTasks] = useState<BackgroundTask[]>([]);
+  const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
+
+  const handleCopyError = (errMsg?: string, taskId?: string) => {
+    if (!errMsg) return;
+    navigator.clipboard.writeText(errMsg);
+    if (taskId) {
+      setCopiedTaskId(taskId);
+      setTimeout(() => setCopiedTaskId(null), 2500);
+    }
+  };
+
+  const handleMailDeveloper = (task: BackgroundTask) => {
+    const recipient = 'adityakumar07024@gmail.com';
+    const subject = encodeURIComponent(`[IVF Clinic Record System Error] ${task.title}`);
+    const body = encodeURIComponent(
+      `Hello Developer,\n\nAn operation encountered an error in the IVF Clinic System:\n\nTask: ${task.title}\nDescription: ${task.description || 'N/A'}\nTime: ${new Date(task.createdAt).toLocaleString()}\n\nExact Error Trace:\n${task.errorMessage || 'No message'}\n\nPlease review this issue.\n\nThank you!`
+    );
+
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${recipient}&su=${subject}&body=${body}`;
+    const mailtoUrl = `mailto:${recipient}?subject=${subject}&body=${body}`;
+
+    const win = window.open(gmailUrl, '_blank');
+    if (!win) {
+      window.location.href = mailtoUrl;
+    }
+  };
 
   const dismissTask = useCallback((id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
@@ -198,9 +224,40 @@ export const BackgroundTaskProvider: React.FC<{ children: React.ReactNode }> = (
                         <p className="text-[11px] text-slate-300 truncate font-medium">{task.description}</p>
                       )}
                       {isError && task.errorMessage && (
-                        <p className="text-[11px] text-rose-300 font-mono font-semibold break-words mt-1">
-                          Error: {task.errorMessage}
-                        </p>
+                        <div className="space-y-2 mt-1">
+                          <p className="text-[11px] text-rose-300 font-mono font-semibold break-words">
+                            Error: {task.errorMessage}
+                          </p>
+
+                          <div className="flex items-center gap-2 pt-1 border-t border-rose-800/40">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyError(task.errorMessage, task.id)}
+                              className="flex items-center gap-1.5 px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-bold transition-all border border-white/20 shadow-xs"
+                            >
+                              {copiedTaskId === task.id ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                  <span className="text-emerald-300">Copied!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3 text-slate-300" />
+                                  <span>Copy Error</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleMailDeveloper(task)}
+                              className="flex items-center gap-1.5 px-2 py-1 bg-slate-900 hover:bg-black text-white rounded-lg text-[10px] font-bold transition-all border border-slate-700 shadow-xs"
+                            >
+                              <Mail className="w-3 h-3 text-sky-400" />
+                              <span>Email Developer</span>
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
