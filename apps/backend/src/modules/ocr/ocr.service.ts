@@ -22,6 +22,34 @@ export class OcrService {
   constructor() {
     this.initVisionClient();
     this.initGeminiClient();
+    this.purgeDiskStorage();
+  }
+
+  /**
+   * Purges local disk image files to stay 100% text-only and preserve Render free tier / 5GB disk space
+   */
+  public purgeDiskStorage() {
+    try {
+      const uploadDir = path.resolve(CONFIG.STORAGE_LOCAL_DIR);
+      if (fs.existsSync(uploadDir)) {
+        const files = fs.readdirSync(uploadDir);
+        let count = 0;
+        for (const file of files) {
+          try {
+            const fullPath = path.join(uploadDir, file);
+            if (fs.statSync(fullPath).isFile()) {
+              fs.unlinkSync(fullPath);
+              count++;
+            }
+          } catch (e) {}
+        }
+        if (count > 0) {
+          console.log(`[OcrService] Render 5GB Disk Guard: Purged ${count} image file(s) from local storage. Database operates in 100% text-only mode.`);
+        }
+      }
+    } catch (err: any) {
+      console.warn('[OcrService] Disk purge notice:', err.message || err);
+    }
   }
 
   private initVisionClient() {
@@ -310,6 +338,13 @@ ${rawText}`;
         status: 'PENDING',
       },
     });
+
+    // 6. Immediately purge local image file to keep storage 100% text-only for Render 5GB limit
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (e) {}
 
     return {
       ocrRecordId: record.id,
