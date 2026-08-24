@@ -154,7 +154,11 @@ export class PatientService {
         },
         thawRecords: {
           orderBy: { thawDate: 'desc' },
-          include: { straw: { select: { strawId: true } } },
+          include: {
+            straw: {
+              include: { embryos: true, visoTube: true },
+            },
+          },
         },
         ocrRecords: { orderBy: { createdAt: 'desc' } },
       },

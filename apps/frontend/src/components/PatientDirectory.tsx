@@ -680,7 +680,7 @@ export const PatientDirectory: React.FC = () => {
               </div>
             )}
 
-            {/* Storage Batches Section */}
+            {/* Active Storage Batches Section */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -700,19 +700,20 @@ export const PatientDirectory: React.FC = () => {
               </h3>
 
               {(() => {
-                const allBatches = selectedPatient.batches || [];
-                if (allBatches.length === 0) {
+                const activeBatches = selectedPatient.batches?.filter((batch: any) =>
+                  batch.straws?.some((straw: any) => straw.status === 'OCCUPIED')
+                ) || [];
+
+                if (activeBatches.length === 0) {
                   return (
                     <div className="text-xs text-slate-600 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center font-medium">
-                      0 Specimen Batches Recorded for this Patient
+                      0 Active Specimen Batches in Storage (All specimen have been thawed & withdrawn)
                     </div>
                   );
                 }
 
-                return allBatches.map((batch: any) => {
+                return activeBatches.map((batch: any) => {
                   const activeStraws = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
-                  const thawedStraws = batch.straws?.filter((s: any) => s.status === 'THAWED' || s.status === 'VACANT') || [];
-                  const allThawed = activeStraws.length === 0 && thawedStraws.length > 0;
 
                   return (
                     <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-3 shadow-2xs">
@@ -723,15 +724,9 @@ export const PatientDirectory: React.FC = () => {
                         </span>
                       </div>
 
-                      {allThawed && (
-                        <div className="text-xs text-slate-600 bg-amber-50 p-2.5 rounded-xl border border-amber-200 font-medium">
-                          All straws in this batch have already been thawed / withdrawn.
-                        </div>
-                      )}
-
                       {/* Physical Location Breakdown */}
                       {(() => {
-                        const locCode = batch.straws?.[0]?.visoTube?.locationCode || batch.visoTube?.locationCode || '';
+                        const locCode = activeStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
                         return (
                           <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
                             <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
@@ -741,50 +736,22 @@ export const PatientDirectory: React.FC = () => {
                       })()}
 
                       {/* Active Straws List */}
-                      {activeStraws.length > 0 && (
-                        <div className="space-y-1.5">
-                          <div className="text-[11px] font-bold text-slate-700">Active Straws in this Batch ({activeStraws.length}):</div>
-                          {activeStraws.map((straw: any) => (
-                            <div key={straw.id} className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between">
-                              <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
-                                <span>Straw ID: {straw.strawId}</span>
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
-                                  Straw Color: {straw.color || 'Pink'}
-                                </span>
-                              </div>
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
-                                ({straw.embryos?.length || 0} Embryos)
+                      <div className="space-y-1.5">
+                        <div className="text-[11px] font-bold text-slate-700">Active Straws in this Batch ({activeStraws.length}):</div>
+                        {activeStraws.map((straw: any) => (
+                          <div key={straw.id} className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between">
+                            <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
+                              <span>Straw ID: {straw.strawId}</span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
+                                Straw Color: {straw.color || 'Pink'}
                               </span>
                             </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Thawed / Withdrawn Straws Archive List */}
-                      {thawedStraws.length > 0 && (
-                        <div className="space-y-1.5 pt-2 border-t border-slate-200/80">
-                          <div className="text-[11px] font-bold text-slate-500 flex items-center justify-between">
-                            <span>THAWED / WITHDRAWN STRAWS ARCHIVE ({thawedStraws.length}):</span>
-                            <span className="text-[10px] text-slate-400 font-mono">(NON-SELECTABLE)</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
+                              ({straw.embryos?.length || 0} Embryos)
+                            </span>
                           </div>
-                          {thawedStraws.map((straw: any) => (
-                            <div key={straw.id} className="text-xs bg-slate-100 p-2.5 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1 opacity-85">
-                              <div className="font-mono text-slate-700 flex items-center gap-2">
-                                <span className="font-bold">{straw.strawId}</span>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStrawColorBadgeClass(straw.color)}`}>
-                                  Straw Color: {straw.color || 'Pink'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-[10px]">
-                                <span className="px-2 py-0.5 rounded font-bold bg-slate-200 text-slate-800 border border-slate-300">
-                                  THAWED / WITHDRAWN
-                                </span>
-                                <span className="font-mono text-slate-600 font-semibold">{parseVisoTubeLocation(straw.visoTube?.locationCode)}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                        ))}
+                      </div>
                     </div>
                   );
                 });
@@ -794,27 +761,45 @@ export const PatientDirectory: React.FC = () => {
             {/* Thaw / Withdrawal Clinical History Section */}
             {selectedPatient.thawRecords && selectedPatient.thawRecords.length > 0 && (
               <div className="space-y-3 pt-4 border-t border-slate-200">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <ThermometerSnowflake className="w-4 h-4 text-rose-600" />
-                  <span>Thaw & Withdrawal Clinical History ({selectedPatient.thawRecords.length})</span>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <ThermometerSnowflake className="w-4 h-4 text-rose-600" />
+                    <span>Thaw & Withdrawal Clinical History ({selectedPatient.thawRecords.length})</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-rose-800 bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300">
+                    WITHDRAWN RECORDS
+                  </span>
                 </h3>
                 <div className="overflow-x-auto bg-slate-50 rounded-2xl border border-slate-200 p-3">
                   <table className="w-full text-left text-xs font-mono">
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
-                        <th className="py-2 px-3">Straw ID</th>
+                        <th className="py-2 px-3">Straw ID & Color</th>
                         <th className="py-2 px-3">Thaw Date & Time</th>
                         <th className="py-2 px-3">Executing Doctor / Staff</th>
+                        <th className="py-2 px-3">Freed Storage Location</th>
                         <th className="py-2 px-3 font-sans">Clinical Doctor Notes</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 text-slate-800">
                       {selectedPatient.thawRecords.map((t: any) => (
                         <tr key={t.id} className="hover:bg-white">
-                          <td className="py-2 px-3 font-bold text-emerald-800">{t.straw?.strawId || t.strawId}</td>
-                          <td className="py-2 px-3 text-slate-600">{new Date(t.thawDate).toLocaleString()}</td>
-                          <td className="py-2 px-3 font-semibold text-slate-900">{t.doctorName}</td>
-                          <td className="py-2 px-3 font-sans text-slate-700">{t.doctorNotes || '—'}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">
+                            <div className="flex items-center gap-1.5">
+                              <span>{t.straw?.strawId || t.strawId}</span>
+                              {t.straw?.color && (
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStrawColorBadgeClass(t.straw.color)}`}>
+                                  {t.straw.color}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600 font-bold">{new Date(t.thawDate).toLocaleString()}</td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">{t.doctorName}</td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-slate-700">
+                            {parseVisoTubeLocation(t.straw?.visoTube?.locationCode)}
+                          </td>
+                          <td className="py-2.5 px-3 font-sans text-slate-700">{t.doctorNotes || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
