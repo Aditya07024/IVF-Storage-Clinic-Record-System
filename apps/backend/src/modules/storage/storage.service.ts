@@ -325,6 +325,14 @@ export class StorageService {
         },
       });
 
+      // Update patient's visitDate to latest storage date on record allocation
+      await tx.patient.update({
+        where: { id: input.patientId },
+        data: {
+          visitDate: storageDate,
+        },
+      });
+
       // Distribute embryos into straws (max 2 per straw)
       let remainingEmbryos = input.embryoCount;
       const createdStraws = [];

@@ -353,9 +353,14 @@ export const PatientDirectory: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-1.5 py-1 rounded-xl text-xs font-bold font-mono border ${isDuplicateName ? 'bg-amber-100 text-amber-950 border-amber-400' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
-                          Freezing Date: <br></br>{freezingDateStr}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`px-2 py-1 rounded-xl text-xs font-bold font-mono border ${isDuplicateName ? 'bg-amber-100 text-amber-950 border-amber-400' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
+                            Freezing: {freezingDateStr}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold font-mono bg-slate-100 text-slate-800 border border-slate-300">
+                            Visit Date: {formatDateDDMMYYYY(p.visitDate || p.createdAt)}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-slate-700 font-mono text-xs font-semibold">
                         {p.phone ? p.phone : '—'}
@@ -564,8 +569,12 @@ export const PatientDirectory: React.FC = () => {
               <div>
                 <span className="text-xs font-mono font-bold text-emerald-700">{selectedPatient.patientId}</span>
                 <h2 className="text-xl font-bold text-slate-900">{selectedPatient.fullName}</h2>
-                <div className="text-xs text-slate-600 font-mono font-bold mt-1">
-                  Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}
+                <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                  <span className="text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    Visit Date: {formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}
+                  </span>
+                  <span>•</span>
+                  <span>Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
