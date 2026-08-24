@@ -419,6 +419,14 @@ app.put('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: Authentic
   } catch (err: any) {
     return res.status(400).json({ success: false, error: err.message });
   }
+app.delete('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await patientService.deletePatient(req.params.id, req.user!.userId, req.user!.name || req.user!.staffId);
+    serverCache.clear();
+    return res.json({ success: true, ...result });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
 });
 
 app.post('/api/patients/:id/notes', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {

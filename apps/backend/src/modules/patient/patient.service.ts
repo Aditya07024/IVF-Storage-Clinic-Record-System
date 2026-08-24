@@ -169,6 +169,36 @@ export class PatientService {
     return updated;
   }
 
+  async deletePatient(id: string, staffUserId: string, staffName: string) {
+    const patient = await prisma.patient.findUnique({
+      where: { id },
+      include: { batches: { include: { straws: true } } },
+    });
+    if (!patient) throw new Error('Patient record not found.');
+
+    await prisma.thawRecord.deleteMany({ where: { patientId: id } });
+    for (const batch of patient.batches) {
+      await prisma.straw.deleteMany({ where: { batchId: batch.id } });
+    }
+    await prisma.storageBatch.deleteMany({ where: { patientId: id } });
+    await prisma.patientNote.deleteMany({ where: { patientId: id } });
+    await prisma.ocrRecord.deleteMany({ where: { patientId: id } });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: staffUserId,
+        userName: staffName,
+        action: 'PATIENT_DELETED',
+        entityName: 'Patient',
+        entityId: patient.patientId,
+        oldData: JSON.stringify({ fullName: patient.fullName, patientId: patient.patientId }),
+      },
+    });
+
+    await prisma.patient.delete({ where: { id } });
+    return { success: true, message: `Patient ${patient.fullName} (${patient.patientId}) deleted successfully.` };
+  }
+
   async getPatientById(id: string) {
     const patient = await prisma.patient.findUnique({
       where: { id },

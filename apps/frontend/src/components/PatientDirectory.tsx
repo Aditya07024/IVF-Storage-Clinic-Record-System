@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, FileText, ChevronRight, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight } from 'lucide-react';
+import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2 } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
@@ -71,7 +71,7 @@ export const PatientDirectory: React.FC = () => {
 
     try {
       const res = await apiRequest(
-        `/api/patients?q=${encodeURIComponent(activeQuery)}&freezingDate=${encodeURIComponent(freezingDateFilter)}&sortBy=${sortBy}&sortOrder=${sortOrder}&page=${page}&limit=10`
+        `/api/patients?q=${encodeURIComponent(activeQuery)}&freezingDate=${encodeURIComponent(freezingDateFilter)}&sortBy=${sortBy}&sortOrder=${sortOrder}&page=${page}&limit=20`
       );
       clearInterval(progressInterval);
       setLoadingProgress(100);
@@ -170,6 +170,22 @@ export const PatientDirectory: React.FC = () => {
     const token = localStorage.getItem('access_token') || '';
     const url = `${apiBase}/api/documents/patient/${patientId}/pdf?key=${encodeURIComponent(accessKey)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
     window.open(url, '_blank');
+  };
+
+  const handleDeletePatient = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete patient "${name}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const res = await apiRequest(`/api/patients/${id}`, { method: 'DELETE' });
+      if (res.success) {
+        fetchPatients();
+      } else {
+        alert(res.error || 'Failed to delete patient record.');
+      }
+    } catch (err: any) {
+      alert('Error deleting patient record: ' + (err as any).message);
+    }
   };
 
   return (
@@ -460,6 +476,18 @@ export const PatientDirectory: React.FC = () => {
                           <Printer className="w-3.5 h-3.5" />
                           <span>Print</span>
                         </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePatient(p.id, p.fullName);
+                          }}
+                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl border border-rose-200 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs active:scale-95"
+                          title="Permanently delete patient record"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Delete</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -467,6 +495,39 @@ export const PatientDirectory: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* 20 Patients Per Slot Pagination Bar & Load More Controls */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="text-xs text-slate-600 font-medium">
+          Showing <span className="font-mono font-bold text-slate-900">{patients.length > 0 ? (page - 1) * 20 + 1 : 0}</span> to{' '}
+          <span className="font-mono font-bold text-slate-900">{Math.min(page * 20, total)}</span> of{' '}
+          <span className="font-mono font-bold text-emerald-700">{total}</span> Total Patient Records (20 per slot)
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            disabled={page <= 1 || loading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 active:scale-95"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Previous 20</span>
+          </button>
+
+          <span className="text-xs font-mono font-bold text-slate-700 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+            Page {page} of {Math.ceil(total / 20) || 1}
+          </span>
+
+          <button
+            disabled={page * 20 >= total || loading}
+            onClick={() => setPage((p) => p + 1)}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 active:scale-95"
+          >
+            <span>Next 20 Patients</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
