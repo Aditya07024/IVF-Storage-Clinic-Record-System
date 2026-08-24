@@ -115,6 +115,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [thawModalStraw, setThawModalStraw] = useState<any | null>(null);
   const [thawDoctorNotes, setThawDoctorNotes] = useState<string>();
   const [executingThaw, setExecutingThaw] = useState(false);
+  const [reloadingPatientDetails, setReloadingPatientDetails] = useState(false);
   const [thawSuccessMsg, setThawSuccessMsg] = useState<string | null>(null);
   const [saveSuccessDetails, setSaveSuccessDetails] = useState<any | null>(null);
 
@@ -188,7 +189,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setExistingSearchResults([]);
     setThawSuccessMsg(null);
 
-    // Fetch full patient data with batches & straws for Thaw options
+    setReloadingPatientDetails(true);
     try {
       const res = await apiRequest(`/api/patients/${p.id}`);
       if (res.success && res.patient) {
@@ -196,6 +197,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       }
     } catch (err: any) {
       console.error('Failed to load patient detail batches:', err);
+    } finally {
+      setReloadingPatientDetails(false);
     }
   };
 
@@ -214,13 +217,19 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       });
 
       if (res.success) {
-        setThawSuccessMsg(`Embryo Straw ${thawModalStraw.strawId} successfully thawed & physical storage slot freed!`);
+        const strawCode = thawModalStraw.strawId;
+        setThawSuccessMsg(`Embryo Straw ${strawCode} successfully thawed & physical storage slot freed!`);
         setThawModalStraw(null);
 
-        // Refresh patient details to update active straws list
-        const fullRes = await apiRequest(`/api/patients/${selectedExistingPatient.id}`);
-        if (fullRes.success && fullRes.patient) {
-          setSelectedExistingPatient(fullRes.patient);
+        // Show reloading loader while updating directory details
+        setReloadingPatientDetails(true);
+        try {
+          const fullRes = await apiRequest(`/api/patients/${selectedExistingPatient.id}`);
+          if (fullRes.success && fullRes.patient) {
+            setSelectedExistingPatient(fullRes.patient);
+          }
+        } finally {
+          setReloadingPatientDetails(false);
         }
       }
     } catch (err: any) {
@@ -627,14 +636,41 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       )}
 
       {thawSuccessMsg && (
-        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center gap-3 text-emerald-950 text-xs font-bold shadow-xs">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>{thawSuccessMsg}</span>
+        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-emerald-950 text-xs font-bold shadow-xs">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{thawSuccessMsg}</span>
+          </div>
+          {reloadingPatientDetails && (
+            <div className="flex items-center gap-2 text-emerald-900 font-mono text-[11px] bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 animate-pulse shrink-0">
+              <span className="w-3.5 h-3.5 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
+              <span>Refreshing Cryo Directory...</span>
+            </div>
+          )}
         </div>
       )}
 
       {/* ACTIVE STORED EMBRYOS & DIRECT THAW PANEL FOR EXISTING PATIENT */}
       {selectedExistingPatient && (() => {
+        if (reloadingPatientDetails) {
+          return (
+            <div className="bg-white p-5 rounded-3xl border border-emerald-200 shadow-sm space-y-3 animate-pulse">
+              <div className="flex items-center justify-between border-b border-emerald-100 pb-3">
+                <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+                  <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
+                  <span>Reloading updated physical cryo storage inventory...</span>
+                </div>
+                <span className="text-[10px] text-emerald-800 font-bold font-mono bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                  RELOADING DATA
+                </span>
+              </div>
+              <div className="h-20 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex items-center justify-center text-xs text-emerald-800 font-mono font-bold">
+                Fetching updated active specimen records...
+              </div>
+            </div>
+          );
+        }
+
         const activeStraws: any[] = [];
         if (selectedExistingPatient.batches) {
           selectedExistingPatient.batches.forEach((b: any) => {
