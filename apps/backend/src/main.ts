@@ -171,7 +171,7 @@ app.get('/uploads/:key', (req, res) => {
 });
 
 // Custom Authenticated Request Interface
-interface AuthenticatedRequest extends Request {
+interface AuthenticatedRequest extends express.Request {
   user?: {
     userId: string;
     staffId: string;
@@ -327,12 +327,12 @@ const adminRoleGuard = (req: AuthenticatedRequest, res: Response, next: NextFunc
   next();
 };
 
-app.get('/api/auth/me', accessKeyGuard, jwtAuthGuard, (req: AuthenticatedRequest, res) => {
+app.get('/api/auth/me', accessKeyGuard, jwtAuthGuard, (req: AuthenticatedRequest, res: Response) => {
   return res.json({ success: true, user: req.user });
 });
 
 // --- ADMIN STAFF & PASSWORD MANAGEMENT ROUTES ---
-app.get('/api/admin/users', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res) => {
+app.get('/api/admin/users', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const users = await authService.getAllUsers();
     return res.json({ success: true, users });
@@ -341,7 +341,7 @@ app.get('/api/admin/users', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async 
   }
 });
 
-app.post('/api/admin/users', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res) => {
+app.post('/api/admin/users', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { staffId, name, email, password, role } = req.body;
     if (!staffId || !name || !password) {
@@ -354,7 +354,7 @@ app.post('/api/admin/users', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async
   }
 });
 
-app.put('/api/admin/users/:id/password', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res) => {
+app.put('/api/admin/users/:id/password', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { newPassword } = req.body;
     if (!newPassword) {
@@ -367,7 +367,7 @@ app.put('/api/admin/users/:id/password', accessKeyGuard, jwtAuthGuard, adminRole
   }
 });
 
-app.delete('/api/admin/users/:id', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res) => {
+app.delete('/api/admin/users/:id', accessKeyGuard, jwtAuthGuard, adminRoleGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await authService.deleteUser(req.params.id, req.user?.userId);
     return res.json(result);
@@ -377,7 +377,7 @@ app.delete('/api/admin/users/:id', accessKeyGuard, jwtAuthGuard, adminRoleGuard,
 });
 
 // --- PATIENT ROUTES ---
-app.get('/api/patients', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.get('/api/patients', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const query = (req.query.q as string) || '';
     const page = parseInt((req.query.page as string) || '1', 10);
@@ -393,7 +393,7 @@ app.get('/api/patients', accessKeyGuard, jwtAuthGuard, async (req, res) => {
   }
 });
 
-app.get('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.get('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const patient = await patientService.getPatientById(req.params.id);
     if (!patient) return res.status(404).json({ success: false, error: 'Patient not found.' });
@@ -403,7 +403,7 @@ app.get('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req, res) => {
   }
 });
 
-app.post('/api/patients', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+app.post('/api/patients', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const patient = await patientService.createPatient(req.body, req.user!.userId, req.user!.name || req.user!.staffId);
     return res.json({ success: true, patient });
@@ -412,7 +412,7 @@ app.post('/api/patients', accessKeyGuard, jwtAuthGuard, async (req: Authenticate
   }
 });
 
-app.put('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+app.put('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const patient = await patientService.updatePatient(req.params.id, req.body, req.user!.userId, req.user!.name || req.user!.staffId);
     return res.json({ success: true, patient });
@@ -421,7 +421,7 @@ app.put('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: Authentic
   }
 });
 
-app.post('/api/patients/:id/notes', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+app.post('/api/patients/:id/notes', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { noteText } = req.body;
     const note = await patientService.addNote(req.params.id, noteText, req.user!.userId, req.user!.name || req.user!.staffId);
@@ -432,7 +432,7 @@ app.post('/api/patients/:id/notes', accessKeyGuard, jwtAuthGuard, async (req: Au
 });
 
 // --- STORAGE ROUTES ---
-app.get('/api/storage/hierarchy', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.get('/api/storage/hierarchy', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const canCode = (req.query.canCode as string) || 'all';
     const cacheKey = `storage_hierarchy_${canCode}`;
@@ -447,7 +447,7 @@ app.get('/api/storage/hierarchy', accessKeyGuard, jwtAuthGuard, async (req, res)
   }
 });
 
-app.post('/api/storage/find-empty', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.post('/api/storage/find-empty', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const { patientId, storageDate, embryoCount } = req.body;
     const recommendation = await storageService.findAvailableStorage(patientId, storageDate, embryoCount);
@@ -457,7 +457,7 @@ app.post('/api/storage/find-empty', accessKeyGuard, jwtAuthGuard, async (req, re
   }
 });
 
-app.post('/api/storage/assign', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+app.post('/api/storage/assign', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await storageService.assignStorage(req.body, req.user!.userId, req.user!.name || req.user!.staffId);
     serverCache.clear(); // Invalidate cache on new straw placement
@@ -467,7 +467,7 @@ app.post('/api/storage/assign', accessKeyGuard, jwtAuthGuard, async (req: Authen
   }
 });
 
-app.post('/api/storage/move', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+app.post('/api/storage/move', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { strawId, targetVisoTubeId, reason } = req.body;
     const result = await storageService.moveStraw(strawId, targetVisoTubeId, req.user!.userId, req.user!.name || req.user!.staffId, reason);
@@ -479,7 +479,7 @@ app.post('/api/storage/move', accessKeyGuard, jwtAuthGuard, async (req: Authenti
 });
 
 // --- THAW / WITHDRAWAL ROUTES ---
-app.post('/api/thaw', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+app.post('/api/thaw', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { strawIds, doctorNotes } = req.body;
     const result = await thawService.thawStraws({
@@ -495,7 +495,7 @@ app.post('/api/thaw', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedReq
   }
 });
 
-app.get('/api/thaw/history/:patientId', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.get('/api/thaw/history/:patientId', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const history = await thawService.getPatientThawHistory(req.params.patientId);
     return res.json({ success: true, history });
@@ -505,7 +505,7 @@ app.get('/api/thaw/history/:patientId', accessKeyGuard, jwtAuthGuard, async (req
 });
 
 // --- OCR ROUTES ---
-app.post('/api/ocr/extract', accessKeyGuard, jwtAuthGuard, uploadSingle('image'), async (req, res) => {
+app.post('/api/ocr/extract', accessKeyGuard, jwtAuthGuard, uploadSingle('image'), async (req: Request, res: Response) => {
   try {
     const file = req.file || (req.files && (req.files as any)[0]);
     if (!file) return res.status(400).json({ success: false, error: 'No image file uploaded.' });
@@ -522,7 +522,7 @@ app.post('/api/ocr/extract', accessKeyGuard, jwtAuthGuard, uploadSingle('image')
   }
 });
 
-app.post('/api/ocr/upload', accessKeyGuard, jwtAuthGuard, uploadSingle('image'), async (req, res) => {
+app.post('/api/ocr/upload', accessKeyGuard, jwtAuthGuard, uploadSingle('image'), async (req: Request, res: Response) => {
   try {
     const file = req.file || (req.files && (req.files as any)[0]);
     if (!file) return res.status(400).json({ success: false, error: 'No image file uploaded.' });
@@ -535,7 +535,7 @@ app.post('/api/ocr/upload', accessKeyGuard, jwtAuthGuard, uploadSingle('image'),
   }
 });
 
-app.get('/api/ocr/pending', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.get('/api/ocr/pending', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const records = await ocrService.getPendingVerifications();
     return res.json({ success: true, records });
@@ -544,7 +544,7 @@ app.get('/api/ocr/pending', accessKeyGuard, jwtAuthGuard, async (req, res) => {
   }
 });
 
-app.post('/api/ocr/verify', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+app.post('/api/ocr/verify', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await ocrService.verifyOcr(req.body, req.user!.userId, req.user!.name || req.user!.staffId);
     return res.json({ success: true, ...result });
@@ -553,7 +553,7 @@ app.post('/api/ocr/verify', accessKeyGuard, jwtAuthGuard, async (req: Authentica
   }
 });
 
-app.post('/api/ocr/discard', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+app.post('/api/ocr/discard', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { ocrRecordId } = req.body;
     if (!ocrRecordId) return res.status(400).json({ success: false, error: 'ocrRecordId is required.' });
@@ -565,7 +565,7 @@ app.post('/api/ocr/discard', accessKeyGuard, jwtAuthGuard, async (req: Authentic
 });
 
 // --- DOCUMENT PDF ROUTES ---
-app.get('/api/documents/patient/:id/pdf', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.get('/api/documents/patient/:id/pdf', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const pdfBuffer = await documentService.generatePatientPdf(req.params.id);
     res.setHeader('Content-Type', 'application/pdf');
@@ -577,7 +577,7 @@ app.get('/api/documents/patient/:id/pdf', accessKeyGuard, jwtAuthGuard, async (r
 });
 
 // --- DASHBOARD ROUTE ---
-app.get('/api/dashboard', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.get('/api/dashboard', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const cacheKey = 'dashboard_metrics';
     const cached = serverCache.get(cacheKey);
@@ -592,7 +592,7 @@ app.get('/api/dashboard', accessKeyGuard, jwtAuthGuard, async (req, res) => {
 });
 
 // --- AUDIT LOGS ROUTE ---
-app.get('/api/audit/logs', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.get('/api/audit/logs', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const page = parseInt((req.query.page as string) || '1', 10);
     const limit = parseInt((req.query.limit as string) || '20', 10);
@@ -607,7 +607,7 @@ app.get('/api/audit/logs', accessKeyGuard, jwtAuthGuard, async (req, res) => {
 });
 
 // --- DEVELOPER SUPPORT TICKET ROUTES ---
-app.post('/api/support/ticket', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res) => {
+app.post('/api/support/ticket', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { ticketRef, name, email, category, priority, message } = req.body;
     if (!message || !name) return res.status(400).json({ success: false, error: 'Name and message are required.' });
@@ -639,7 +639,7 @@ app.post('/api/support/ticket', accessKeyGuard, jwtAuthGuard, async (req: Authen
   }
 });
 
-app.get('/api/support/tickets', accessKeyGuard, jwtAuthGuard, async (req, res) => {
+app.get('/api/support/tickets', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {
     const tickets = await prisma.auditLog.findMany({
       where: { action: 'SUPPORT_TICKET_SUBMITTED' },
