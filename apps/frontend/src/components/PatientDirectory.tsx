@@ -574,7 +574,7 @@ export const PatientDirectory: React.FC = () => {
                     Visit Date: {formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}
                   </span>
                   {/* <span>•</span> */}
-                  <span>• Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}</span>
+                  <span>Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -696,9 +696,9 @@ export const PatientDirectory: React.FC = () => {
                   const activeStraws = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
 
                   return (
-                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-800 space-y-3">
                       <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
-                        <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span>
+                        {/* <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span> */}
                         <span className="text-slate-600 font-medium">
                           Stored on: {formatDateDDMMYYYY(batch.storageDate)}
                         </span>
@@ -714,9 +714,9 @@ export const PatientDirectory: React.FC = () => {
                           <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
                             <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
                             <div className="text-slate-900 font-bold">{formatted}</div>
-                            <div className="text-[10px] font-mono text-emerald-700 font-bold">
+                            {/* <div className="text-[10px] font-mono text-emerald-700 font-bold">
                               System Ref: {locCode || 'Not Assigned'}
-                            </div>
+                            </div> */}
                           </div>
                         );
                       })()}
@@ -728,8 +728,8 @@ export const PatientDirectory: React.FC = () => {
                           <div key={straw.id} className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between">
                             <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
                               <span>Straw ID: {straw.strawId}</span>
-                              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded border border-slate-200">
-                                Color: {straw.color}
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
+                                Color: {straw.color || 'Pink'}
                               </span>
                             </div>
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
