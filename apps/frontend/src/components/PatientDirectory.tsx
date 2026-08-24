@@ -776,6 +776,80 @@ export const PatientDirectory: React.FC = () => {
               </div>
             )}
 
+            {/* Patient Operational Audit Logs Section */}
+            {selectedPatient.auditLogs && selectedPatient.auditLogs.length > 0 && (
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-emerald-600" />
+                    <span>Patient Operational Audit Logs ({selectedPatient.auditLogs.length})</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    SYSTEM AUDIT LOGS
+                  </span>
+                </h3>
+                <div className="overflow-x-auto bg-slate-50 rounded-2xl border border-slate-200 p-3">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
+                        <th className="py-2 px-3">Date & Time</th>
+                        <th className="py-2 px-3">Action Event</th>
+                        <th className="py-2 px-3">Staff / Doctor</th>
+                        <th className="py-2 px-3 font-sans">Operation Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-slate-800">
+                      {selectedPatient.auditLogs.map((log: any) => {
+                        let detailsObj: any = null;
+                        try {
+                          detailsObj = log.newData ? JSON.parse(log.newData) : null;
+                        } catch {
+                          detailsObj = null;
+                        }
+
+                        return (
+                          <tr key={log.id} className="hover:bg-white">
+                            <td className="py-2.5 px-3 text-slate-600 font-bold whitespace-nowrap">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                log.action === 'EMBRYO_THAWED'
+                                  ? 'bg-rose-100 text-rose-900 border-rose-300'
+                                  : log.action === 'EMBRYO_STORAGE_ALLOCATED' || log.action === 'STORAGE_ALLOCATED'
+                                  ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                                  : log.action === 'OCR_VERIFIED'
+                                  ? 'bg-teal-100 text-teal-900 border-teal-300'
+                                  : 'bg-slate-200 text-slate-900 border-slate-300'
+                              }`}>
+                                {log.action}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-900">{log.userName || 'System Staff'}</td>
+                            <td className="py-2.5 px-3 font-sans text-slate-700">
+                              {detailsObj ? (
+                                <div className="space-y-0.5 text-[11px] font-mono">
+                                  {detailsObj.strawId && <div>Straw ID: <strong className="text-emerald-800">{detailsObj.strawId}</strong></div>}
+                                  {detailsObj.originalLocation && <div>Location: <strong>{detailsObj.originalLocation}</strong></div>}
+                                  {detailsObj.locationCode && <div>Location: <strong>{detailsObj.locationCode}</strong></div>}
+                                  {detailsObj.doctorNotes && <div className="text-slate-600 italic">Notes: "{detailsObj.doctorNotes}"</div>}
+                                  {!detailsObj.strawId && !detailsObj.locationCode && (
+                                    <div className="text-slate-600 truncate max-w-xs">{log.newData}</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Uploaded Documents & OCR Scans History */}
             {selectedPatient.ocrRecords && selectedPatient.ocrRecords.length > 0 && (
               <div className="space-y-3 pt-4 border-t border-slate-200">

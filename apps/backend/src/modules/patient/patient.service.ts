@@ -141,7 +141,7 @@ export class PatientService {
   }
 
   async getPatientById(id: string) {
-    return prisma.patient.findUnique({
+    const patient = await prisma.patient.findUnique({
       where: { id },
       include: {
         notes: { orderBy: { createdAt: 'desc' } },
@@ -159,6 +159,26 @@ export class PatientService {
         ocrRecords: { orderBy: { createdAt: 'desc' } },
       },
     });
+
+    if (!patient) return null;
+
+    // Fetch Audit Logs relevant to this patient
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        OR: [
+          { entityId: patient.id },
+          { newData: { contains: patient.id } },
+          { newData: { contains: patient.patientId } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return {
+      ...patient,
+      auditLogs,
+    };
   }
 
   async searchPatients(
