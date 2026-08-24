@@ -329,11 +329,26 @@ export const OcrVerification: React.FC = () => {
             onChange={(e) => setAdobeCamEnabled(e.target.checked)}
             className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
           />
-          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <Crop className="w-4 h-4 text-emerald-600" />
-            <span>Adobe Cam Auto Edge Crop Mode</span>
-          </span>
+          <span className="text-xs font-bold text-slate-800">✨ Adobe Cam Mode</span>
         </label>
+      </div>
+
+      {/* Feature in Development Mode Notice Banner */}
+      <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-center justify-between text-amber-950 font-bold text-xs shadow-xs animate-in fade-in">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-amber-200/80 rounded-xl flex items-center justify-center shrink-0 text-amber-900 border border-amber-300">
+            <Sparkles className="w-4 h-4 animate-spin" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-amber-950">Feature in Development Mode</div>
+            <div className="text-[11px] text-amber-800 font-medium">
+              This feature is in development mode (AI Vision OCR Document Scan & Record Auto-Fill is under active preview & refinement).
+            </div>
+          </div>
+        </div>
+        <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-200/80 px-2.5 py-1 rounded-full border border-amber-400 shrink-0">
+          DEV PREVIEW MODE
+        </span>
       </div>
 
       {error && (
