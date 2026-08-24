@@ -103,7 +103,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   // Storage Allocation State
   const [assignStorageEnabled, setAssignStorageEnabled] = useState(false);
   const [allocationMode, setAllocationMode] = useState<'recommended' | 'manual'>('recommended');
-  const [embryoCount, setEmbryoCount] = useState(2);
+  const [embryoCount, setEmbryoCount] = useState(1);
   const [storageDate, setStorageDate] = useState(new Date().toISOString().split('T')[0]);
   const [recommendation, setRecommendation] = useState<any>(null);
   const [selectedVisoTubeId, setSelectedVisoTubeId] = useState<string>('');
@@ -536,9 +536,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </div>
               <div className="text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                 <span>Reg No: {selectedExistingPatient.patientId}</span>
-                <span>•</span>
-                <span>Total Batches Recorded: {selectedExistingPatient.batches?.length || 0}</span>
-                {(() => {
+                {/* <span>•</span> */}
+                {/* <span>Total Batches Recorded: {selectedExistingPatient.batches?.length || 0}</span> */}
+                {/* {(() => {
                   const activeBatches = selectedExistingPatient.batches?.filter((b: any) =>
                     b.straws?.some((s: any) => s.status === 'OCCUPIED')
                   ).length || 0;
@@ -550,7 +550,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       {activeBatches} Active Batch(es) • {activeStraws} Active Straw(s) in Storage
                     </span>
                   );
-                })()}
+                })()} */}
               </div>
             </div>
           </div>

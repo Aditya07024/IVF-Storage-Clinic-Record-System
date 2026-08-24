@@ -353,7 +353,7 @@ export const ThawWorkflow: React.FC = () => {
                                   </div>
 
                                   <div className="text-[11px] text-slate-500 flex items-center justify-between">
-                                    <span>Tag Color: <strong className="text-slate-800 font-semibold">{straw.color}</strong></span>
+                                    <span>Straw Color: <strong className="text-slate-800 font-semibold">{straw.color}</strong></span>
                                     <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                       {straw.embryos?.length || 2} Embryos
                                     </span>

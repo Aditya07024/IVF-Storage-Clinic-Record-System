@@ -500,7 +500,7 @@ export const PatientDirectory: React.FC = () => {
                               </span>
                             </div>
                             <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
-                              <span>Tag Color: {straw.color}</span>
+                              <span>Straw Color: {straw.color}</span>
                               <span>{straw.embryos?.length || 0} Embryos</span>
                             </div>
                           </div>
