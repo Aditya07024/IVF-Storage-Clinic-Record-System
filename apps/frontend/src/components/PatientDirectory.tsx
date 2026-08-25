@@ -948,25 +948,25 @@ export const PatientDirectory: React.FC = () => {
                 </div>
               </div>
 
-              {/* Right Column: 2x2 Quad Grid Action Buttons */}
-              <div className="grid grid-cols-2 gap-2 shrink-0 w-full sm:w-auto p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
+              {/* Right Column: Compact 2x2 Quad Grid Action Buttons */}
+              <div className="grid grid-cols-2 gap-1.5 shrink-0 w-full sm:w-auto p-1 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
                 {/* Quadrant 1: Thaw Specimen */}
                 {selectedPatient.batches?.some((b: any) =>
                   b.straws?.some((s: any) => s.status === 'OCCUPIED')
                 ) ? (
                   <button
                     onClick={() => openQuickThawModal(selectedPatient.id)}
-                    className="w-full h-10 px-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 whitespace-nowrap"
+                    className="w-full h-8 px-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 active:scale-95 whitespace-nowrap"
                   >
-                    <ThermometerSnowflake className="w-3.5 h-3.5" />
-                    <span>Thaw Specimen</span>
+                    <ThermometerSnowflake className="w-3 h-3" />
+                    <span>Thaw</span>
                   </button>
                 ) : (
                   <button
                     disabled
-                    className="w-full h-10 px-3 bg-slate-200/80 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed opacity-60 flex items-center justify-center gap-1.5 whitespace-nowrap border border-slate-300/50"
+                    className="w-full h-8 px-2.5 bg-slate-200/80 text-slate-400 font-bold text-[11px] rounded-lg cursor-not-allowed opacity-60 flex items-center justify-center gap-1 whitespace-nowrap border border-slate-300/40"
                   >
-                    <ThermometerSnowflake className="w-3.5 h-3.5 text-slate-400" />
+                    <ThermometerSnowflake className="w-3 h-3 text-slate-400" />
                     <span>All Thawed</span>
                   </button>
                 )}
@@ -974,25 +974,25 @@ export const PatientDirectory: React.FC = () => {
                 {/* Quadrant 2: Edit Details */}
                 <button
                   onClick={() => openEditPatientModal(selectedPatient)}
-                  className="w-full h-10 px-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95"
+                  className="w-full h-8 px-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95"
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit Details</span>
+                  <Edit3 className="w-3 h-3" />
+                  <span>Edit</span>
                 </button>
 
                 {/* Quadrant 3: Print PDF */}
                 <button
                   onClick={() => handlePrintPdf(selectedPatient.id)}
-                  className="w-full h-10 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95"
+                  className="w-full h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95"
                 >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print PDF</span>
+                  <Printer className="w-3 h-3" />
+                  <span>Print</span>
                 </button>
 
                 {/* Quadrant 4: Close */}
                 <button
                   onClick={() => setSelectedPatient(null)}
-                  className="w-full h-10 px-3 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-xs rounded-xl transition-all whitespace-nowrap text-center active:scale-95"
+                  className="w-full h-8 px-2.5 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-[11px] rounded-lg transition-all whitespace-nowrap text-center active:scale-95"
                 >
                   Close
                 </button>
