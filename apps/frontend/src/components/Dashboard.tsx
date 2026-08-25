@@ -244,40 +244,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           })}
         </div>
       </div>
-
-      {/* Recent Activity Feed */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-emerald-600" />
-            <span>Recent Staff Operations</span>
-          </h2>
-          <button
-            onClick={() => onNavigate('logs')}
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-800"
-          >
-            View Full Audit Logs
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {recentActivity.map((log: any) => (
-            <div key={log.id} className="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 text-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <div>
-                  <span className="font-bold text-slate-900">{log.user?.name || log.userId}</span>
-                  <span className="text-emerald-700 font-mono font-bold ml-2">[{log.action}]</span>
-                  <div className="text-slate-500 text-[11px] mt-0.5">{log.entityName} ID: {log.entityId || 'N/A'}</div>
-                </div>
-              </div>
-              <div className="text-slate-500 font-mono text-[11px]">
-                {new Date(log.createdAt).toLocaleString()}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

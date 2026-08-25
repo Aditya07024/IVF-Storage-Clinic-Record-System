@@ -3,7 +3,7 @@ import { prisma, withDbRetry } from '../../common/prisma.js';
 export class DashboardService {
   async getDashboardMetrics() {
     return withDbRetry(async () => {
-      const [cans, totalPatients, pendingOcrCount, recentLogs] = await Promise.all([
+      const [cans, totalPatients, pendingOcrCount] = await Promise.all([
         prisma.can.findMany({
           orderBy: { code: 'asc' },
           include: {
@@ -28,13 +28,6 @@ export class DashboardService {
         }),
         prisma.patient.count(),
         prisma.ocrRecord.count({ where: { status: 'PENDING' } }),
-        prisma.auditLog.findMany({
-          take: 10,
-          orderBy: { createdAt: 'desc' },
-          include: {
-            user: { select: { name: true, staffId: true } },
-          },
-        }),
       ]);
 
     let globalTotalVisoTubes = 0;
@@ -93,7 +86,7 @@ export class DashboardService {
           pendingOcrCount,
         },
         canStats,
-        recentActivity: recentLogs,
+        recentActivity: [],
       };
     });
   }
