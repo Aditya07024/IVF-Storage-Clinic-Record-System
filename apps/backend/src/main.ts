@@ -219,6 +219,44 @@ const jwtAuthGuard = (req: AuthenticatedRequest, res: Response, next: NextFuncti
   }
 };
 
+// --- PUBLIC HEALTH CHECK & EXTERNAL CRON KEEP-ALIVE ENDPOINTS ---
+const handleHealthCheck = async (_req: express.Request, res: express.Response) => {
+  const startTime = Date.now();
+  let dbStatus = 'healthy';
+  let dbLatencyMs = 0;
+
+  try {
+    const dbStart = Date.now();
+    await prisma.$queryRaw`SELECT 1`;
+    dbLatencyMs = Date.now() - dbStart;
+  } catch (err: any) {
+    dbStatus = `unhealthy: ${err.message}`;
+  }
+
+  const isHealthy = dbStatus === 'healthy';
+  const statusCode = isHealthy ? 200 : 503;
+
+  return res.status(statusCode).json({
+    status: isHealthy ? 'ok' : 'error',
+    health: isHealthy ? 'healthy' : 'degraded',
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    database: {
+      status: dbStatus,
+      latencyMs: dbLatencyMs,
+    },
+    service: 'IVF-Storage-Clinic-Record-System',
+    responseLatencyMs: Date.now() - startTime,
+  });
+};
+
+app.get('/health', handleHealthCheck);
+app.get('/api/health', handleHealthCheck);
+app.get('/ping', handleHealthCheck);
+app.get('/api/ping', handleHealthCheck);
+app.head('/health', handleHealthCheck);
+app.head('/api/health', handleHealthCheck);
+
 // --- AUTH ROUTES ---
 const isRequestHttps = (req: express.Request) =>
   Boolean(req.secure || req.headers['x-forwarded-proto'] === 'https');
@@ -419,11 +457,12 @@ app.put('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: Authentic
   } catch (err: any) {
     return res.status(400).json({ success: false, error: err.message });
   }
+});
 app.delete('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await patientService.deletePatient(req.params.id, req.user!.userId, req.user!.name || req.user!.staffId);
     serverCache.clear();
-    return res.json({ success: true, ...result });
+    return res.json(result);
   } catch (err: any) {
     return res.status(400).json({ success: false, error: err.message });
   }
