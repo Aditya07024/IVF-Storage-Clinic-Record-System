@@ -752,8 +752,8 @@ export const PatientDirectory: React.FC = () => {
 
       {/* Edit Patient Details Modal */}
       {editingPatient && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y">
+          <div className="w-full max-w-2xl bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 overflow-x-auto overflow-y-auto max-h-[92vh] min-w-0">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700">
