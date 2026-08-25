@@ -631,7 +631,7 @@ export const PatientDirectory: React.FC = () => {
 
       {/* 1-Click Quick Thaw Modal */}
       {quickThawPatient && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
           <div className="w-full h-full sm:h-auto max-h-[100dvh] sm:max-h-[90vh] max-w-2xl bg-white p-5 sm:p-6 rounded-t-3xl sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl space-y-4 sm:space-y-6 text-slate-900 overflow-y-auto flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-3">
@@ -752,7 +752,7 @@ export const PatientDirectory: React.FC = () => {
 
       {/* Edit Patient Details Modal */}
       {editingPatient && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="w-full max-w-2xl bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 overflow-y-auto max-h-[90vh]">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-3">
