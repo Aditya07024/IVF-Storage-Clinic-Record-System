@@ -63,6 +63,17 @@ export const PatientDirectory: React.FC = () => {
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccessMsg, setEditSuccessMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (selectedPatient || editingPatient || quickThawPatient) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedPatient, editingPatient, quickThawPatient]);
+
   const openEditPatientModal = (patient: any) => {
     setEditingPatient(patient);
     setEditPatientId(patient.patientId || '');
