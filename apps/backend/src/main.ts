@@ -250,12 +250,7 @@ const handleHealthCheck = async (_req: express.Request, res: express.Response) =
   });
 };
 
-app.get('/health', handleHealthCheck);
 app.get('/api/health', handleHealthCheck);
-app.get('/ping', handleHealthCheck);
-app.get('/api/ping', handleHealthCheck);
-app.head('/health', handleHealthCheck);
-app.head('/api/health', handleHealthCheck);
 
 // --- AUTH ROUTES ---
 const isRequestHttps = (req: express.Request) =>
