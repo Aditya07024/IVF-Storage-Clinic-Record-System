@@ -90,47 +90,48 @@ export class StorageService {
           data: { code: canCode, name: canName },
         });
 
-        // 10 Canisters per Can (1 to 10)
-        for (let c = 1; c <= 10; c++) {
-          const canisterNumStr = c.toString().padStart(2, '0');
-          const canister = await prisma.canister.create({
-            data: {
-              canId: can.id,
-              canisterNumber: c,
-            },
+        // 10 Canisters per Can
+        const canistersData = Array.from({ length: 10 }, (_, i) => ({
+          canId: can.id,
+          canisterNumber: i + 1,
+        }));
+        await prisma.canister.createMany({ data: canistersData });
+        const createdCanisters = await prisma.canister.findMany({ where: { canId: can.id } });
+
+        for (const canister of createdCanisters) {
+          const canisterNumStr = canister.canisterNumber.toString().padStart(2, '0');
+
+          // 2 Levels per Canister
+          const levelsData = [1, 2].map((l) => ({
+            canisterId: canister.id,
+            levelNumber: l,
+          }));
+          await prisma.level.createMany({ data: levelsData });
+          const createdLevels = await prisma.level.findMany({ where: { canisterId: canister.id } });
+
+          const gobletsData = createdLevels.map((lvl) => ({
+            levelId: lvl.id,
+            gobletNumber: 1,
+          }));
+          await prisma.goblet.createMany({ data: gobletsData });
+          const createdGoblets = await prisma.goblet.findMany({
+            where: { levelId: { in: createdLevels.map((l) => l.id) } },
+            include: { level: true },
           });
 
-          // 2 Levels per Canister (Level 1 Bottom, Level 2 Top)
-          for (let l = 1; l <= 2; l++) {
-            const level = await prisma.level.create({
-              data: {
-                canisterId: canister.id,
-                levelNumber: l,
-              },
-            });
-
-            // 1 Goblet per Level
-            const goblet = await prisma.goblet.create({
-              data: {
-                levelId: level.id,
-                gobletNumber: 1,
-              },
-            });
-
-            // 11 Viso Tubes per Goblet (V01 to V11)
+          const tubeBatchData = [];
+          for (const goblet of createdGoblets) {
             for (let v = 1; v <= 11; v++) {
               const tubeNumStr = v.toString().padStart(2, '0');
-              const locCode = `${canCode}-CANISTER${canisterNumStr}-L${l}-G01-V${tubeNumStr}`;
-
-              await prisma.visoTube.create({
-                data: {
-                  gobletId: goblet.id,
-                  tubeNumber: v,
-                  locationCode: locCode,
-                },
+              const locCode = `${canCode}-CANISTER${canisterNumStr}-L${goblet.level.levelNumber}-G01-V${tubeNumStr}`;
+              tubeBatchData.push({
+                gobletId: goblet.id,
+                tubeNumber: v,
+                locationCode: locCode,
               });
             }
           }
+          await prisma.visoTube.createMany({ data: tubeBatchData, skipDuplicates: true });
         }
       }
       console.log('[Storage] Storage hierarchy seeding completed for non-sequential Cans.');
