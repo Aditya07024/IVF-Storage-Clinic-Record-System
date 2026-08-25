@@ -79,4 +79,37 @@ describe('IVF System Core Business Rules Suite', () => {
     expect(vacant).toBe(10);
     expect((occupied / totalVisoTubeCapacity) * 100).toBe(0); // 0% liberated
   });
+
+  it('Rule 7: Optimal Storage Location Recommendation Space Calculation', () => {
+    // Test Embryo-to-Straw calculation (Max 2 embryos per straw)
+    expect(Math.ceil(1 / 2)).toBe(1); // 1 embryo  -> 1 straw
+    expect(Math.ceil(2 / 2)).toBe(1); // 2 embryos -> 1 straw
+    expect(Math.ceil(3 / 2)).toBe(2); // 3 embryos -> 2 straws
+    expect(Math.ceil(4 / 2)).toBe(2); // 4 embryos -> 2 straws
+    expect(Math.ceil(5 / 2)).toBe(3); // 5 embryos -> 3 straws
+
+    // Test VisoTube space fit calculation (Max 10 straws per VisoTube)
+    const MAX_VISO_TUBE_CAPACITY = 10;
+
+    // Tube A: 9 occupied straws -> 1 vacant slot
+    const tubeA_occupied = 9;
+    const tubeA_vacant = MAX_VISO_TUBE_CAPACITY - tubeA_occupied;
+    expect(tubeA_vacant).toBe(1);
+
+    // Tube B: 4 occupied straws -> 6 vacant slots
+    const tubeB_occupied = 4;
+    const tubeB_vacant = MAX_VISO_TUBE_CAPACITY - tubeB_occupied;
+    expect(tubeB_vacant).toBe(6);
+
+    // If patient needs to store 3 embryos -> requires 2 straws
+    const requiredForPatient = Math.ceil(3 / 2); // 2 straws
+
+    // Tube A (1 vacant slot) CANNOT fit 2 straws
+    const tubeAFits = tubeA_vacant >= requiredForPatient;
+    expect(tubeAFits).toBe(false);
+
+    // Tube B (6 vacant slots) CAN fit 2 straws cleanly
+    const tubeBFits = tubeB_vacant >= requiredForPatient;
+    expect(tubeBFits).toBe(true);
+  });
 });

@@ -187,9 +187,9 @@ export class StorageService {
       }
     }
 
-    // Search all Viso Tubes with occupied straw counts
+    // Search all Viso Tubes with occupied straw counts ordered sequentially
     const visoTubes = await prisma.visoTube.findMany({
-      take: 50,
+      orderBy: { locationCode: 'asc' },
       include: {
         straws: {
           where: { status: 'OCCUPIED' },
