@@ -881,30 +881,28 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:col-span-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                      Visit Date
-                    </label>
-                    <input
-                      type="date"
-                      value={editVisitDate}
-                      onChange={(e) => setEditVisitDate(e.target.value)}
-                      className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Visit Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editVisitDate}
+                    onChange={(e) => setEditVisitDate(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                      Freezing Date
-                    </label>
-                    <input
-                      type="date"
-                      value={editFreezingDate}
-                      onChange={(e) => setEditFreezingDate(e.target.value)}
-                      className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Freezing Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editFreezingDate}
+                    onChange={(e) => setEditFreezingDate(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
                 </div>
 
                 <div className="sm:col-span-2">
@@ -959,12 +957,12 @@ export const PatientDirectory: React.FC = () => {
               <div className="flex-1 min-w-0 space-y-1">
                 <span className="text-xs font-mono font-bold text-emerald-700 block">{selectedPatient.patientId}</span>
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">{selectedPatient.fullName}</h2>
-                <div className="text-[11px] sm:text-xs text-slate-600 font-mono font-bold grid grid-cols-2 gap-1.5 sm:flex sm:flex-row sm:items-center sm:gap-x-2.5 mt-1">
-                  <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 text-center truncate">
-                    Visit: {formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}
+                <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-1.5 sm:gap-x-2.5 mt-1">
+                  <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 w-fit">
+                    Visit Date: {formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}
                   </span>
-                  <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-center truncate">
-                    Freezing: {formatDateDDMMYYYY(selectedPatient.freezingDate)}
+                  <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 w-fit">
+                    Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}
                   </span>
                 </div>
               </div>

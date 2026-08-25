@@ -974,7 +974,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
               <div className="min-w-0 max-w-full">
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Freezing Date *
+                  New Embryo Freezing Date *
                 </label>
                 <input
                   type="date"
