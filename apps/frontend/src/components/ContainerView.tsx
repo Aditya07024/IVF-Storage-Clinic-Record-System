@@ -74,6 +74,8 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
   const [canisterOccupancyMap, setCanisterOccupancyMap] = useState<Record<string, number>>({});
   const [levelOccupancyMap, setLevelOccupancyMap] = useState<Record<string, number>>({});
   const [refreshing, setRefreshing] = useState(false);
+  const { enqueueTask } = useBackgroundTask();
+
   useEffect(() => {
     if (selectedTube) {
       document.body.style.overflow = 'hidden';
@@ -969,11 +971,11 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                             </div>
 
                             {/* Notes if available */}
-                            {straw.batch?.notes && (
+                            {/* {straw.batch?.notes && (
                               <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs text-amber-900 font-medium">
                                 <strong>Clinical Notes:</strong> {straw.batch.notes}
                               </div>
-                            )}
+                            )} */}
                           </div>
                         );
                       })}
