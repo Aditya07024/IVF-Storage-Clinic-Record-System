@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import brandLogo from '../assets/image.png';
 import { KeyRound, ShieldAlert, CheckCircle2, Lock } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
@@ -54,8 +55,8 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
 
       <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl relative z-10 border border-slate-200">
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-4 border border-emerald-500/20 text-emerald-600">
-            <Lock className="w-8 h-8" />
+          <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center mb-4 shadow-sm overflow-hidden p-1">
+            <img src={brandLogo} alt="IVF Clinic Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Security Access Gate</h1>
           <p className="text-sm text-slate-500 mt-2">

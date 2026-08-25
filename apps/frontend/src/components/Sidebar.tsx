@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import brandLogo from '../assets/image.png';
 import {
   LayoutDashboard,
   UserPlus,
@@ -73,8 +74,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
       {/* ========================================================================= */}
       <header className="lg:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-tr from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-emerald-600/20">
-            <Dna className="w-5 h-5 animate-pulse" />
+          <div className="w-10 h-10 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center shadow-xs overflow-hidden">
+            <img src={brandLogo} alt="IVF Logo" className="w-8 h-8 object-contain" />
           </div>
           <div>
             <h1 className="font-bold text-slate-900 text-sm leading-tight">IVF Storage</h1>
@@ -100,16 +101,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
           <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Mobile Popup Header with 5s Auto-Close Banner */}
             <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Dna className="w-5 h-5 text-emerald-200" />
+              <div className="flex items-center gap-2.5">
+                <img src={brandLogo} alt="IVF Logo" className="w-6 h-6 object-contain rounded bg-white/90 p-0.5" />
                 <span className="font-bold text-sm">Navigation Menu</span>
               </div>
 
               <div className="flex items-center gap-2">
-                {/* <span className="text-[10px] font-mono bg-emerald-800/80 px-2 py-0.5 rounded text-emerald-100 font-bold flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-emerald-300 animate-spin" />
-                  <span>Auto-close in 5s</span>
-                </span> */}
                 <button
                   onClick={closeMobileMenu}
                   className="p-1 text-white/80 hover:text-white rounded-lg hover:bg-white/10"
@@ -120,7 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
             </div>
 
             {/* Mobile Nav Links */}
-            <nav className="p-4 space-y-2 overflow-y-auto flex-1">
+            <nav className="p-4 space-y-1.5 overflow-y-auto flex-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -169,8 +166,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
         <div>
           {/* Brand Header */}
           <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-tr from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-emerald-600/20">
-              <Dna className="w-6 h-6 animate-pulse" />
+            <div className="w-11 h-11 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center shadow-xs overflow-hidden p-1">
+              <img src={brandLogo} alt="IVF Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="font-bold text-slate-900 tracking-wide text-base leading-tight">IVF Storage</h1>
