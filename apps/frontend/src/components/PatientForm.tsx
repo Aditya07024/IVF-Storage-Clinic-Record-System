@@ -959,31 +959,33 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Visit Date
-              </label>
-              <input
-                type="date"
-                value={visitDate}
-                onChange={(e) => setVisitDate(e.target.value)}
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono block"
-              />
-            </div>
+            <div className="grid grid-cols-2 gap-3 md:col-span-2 min-w-0 max-w-full">
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Visit Date
+                </label>
+                <input
+                  type="date"
+                  value={visitDate}
+                  onChange={(e) => setVisitDate(e.target.value)}
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono block"
+                />
+              </div>
 
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                New Embryo Freezing Date *
-              </label>
-              <input
-                type="date"
-                value={freezingDate}
-                onChange={(e) => {
-                  setFreezingDate(e.target.value);
-                  setStorageDate(e.target.value);
-                }}
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block"
-              />
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Freezing Date *
+                </label>
+                <input
+                  type="date"
+                  value={freezingDate}
+                  onChange={(e) => {
+                    setFreezingDate(e.target.value);
+                    setStorageDate(e.target.value);
+                  }}
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block"
+                />
+              </div>
             </div>
 
             <div className="min-w-0 max-w-full">
