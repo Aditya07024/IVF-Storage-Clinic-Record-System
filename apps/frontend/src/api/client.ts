@@ -69,10 +69,22 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
 
   const token = localStorage.getItem('access_token') || '';
 
+  let reqBody = options.body;
+  const isFormData = typeof FormData !== 'undefined' && reqBody instanceof FormData;
+  const isBlob = typeof Blob !== 'undefined' && (reqBody instanceof Blob || reqBody instanceof ArrayBuffer);
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
+
+  if (!isFormData && !isBlob) {
+    if (!headers['Content-Type'] && !headers['content-type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (reqBody && typeof reqBody === 'object' && !(reqBody instanceof String)) {
+      reqBody = JSON.stringify(reqBody);
+    }
+  }
 
   if (accessKey) {
     headers['x-access-key'] = accessKey;
@@ -92,6 +104,7 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     try {
       response = await fetch(url, {
         ...options,
+        body: reqBody,
         headers,
       });
       fetchError = null;

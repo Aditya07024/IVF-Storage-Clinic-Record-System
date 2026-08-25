@@ -111,6 +111,17 @@ app.use(cookieParser());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
+// Gracefully handle invalid JSON body parse errors
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid request payload provided.',
+    });
+  }
+  next(err);
+});
+
 // 5. Multer File Upload Security & Strict MIME Filter (15MB Limit)
 const upload = multer({
   storage: multer.memoryStorage(),
