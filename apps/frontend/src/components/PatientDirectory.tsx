@@ -752,15 +752,16 @@ export const PatientDirectory: React.FC = () => {
 
       {/* Edit Patient Details Modal */}
       {editingPatient && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y">
-          <div className="w-full max-w-2xl bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 overflow-x-auto overflow-y-auto max-h-[92vh] min-w-0">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+          <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl text-slate-900 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden min-w-0">
+            {/* FIXED HEADER */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white z-10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700">
-                  <Edit3 className="w-6 h-6" />
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 shrink-0">
+                  <Edit3 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Edit Patient Medical Records</h2>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Edit Patient Medical Records</h2>
                   <p className="text-xs text-slate-500 font-mono font-bold">
                     Editing Record ID: {editingPatient.patientId}
                   </p>
@@ -774,21 +775,22 @@ export const PatientDirectory: React.FC = () => {
               </button>
             </div>
 
-            {editError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span>{editError}</span>
-              </div>
-            )}
+            {/* SCROLLABLE MIDDLE BODY */}
+            <form onSubmit={handleSavePatientEdit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 min-w-0">
+              {editError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{editError}</span>
+                </div>
+              )}
 
-            {editSuccessMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
-                <Check className="w-4 h-4 shrink-0 text-emerald-600" />
-                <span>{editSuccessMsg}</span>
-              </div>
-            )}
+              {editSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
+                  <Check className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <span>{editSuccessMsg}</span>
+                </div>
+              )}
 
-            <form onSubmit={handleSavePatientEdit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
@@ -881,28 +883,30 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Visit Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editVisitDate}
-                    onChange={(e) => setEditVisitDate(e.target.value)}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
+                <div className="grid grid-cols-2 gap-3 sm:col-span-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Visit Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editVisitDate}
+                      onChange={(e) => setEditVisitDate(e.target.value)}
+                      className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Freezing Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editFreezingDate}
-                    onChange={(e) => setEditFreezingDate(e.target.value)}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Freezing Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editFreezingDate}
+                      onChange={(e) => setEditFreezingDate(e.target.value)}
+                      className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2">
@@ -919,7 +923,8 @@ export const PatientDirectory: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              {/* FIXED FOOTER BUTTONS */}
+              <div className="sticky bottom-0 bg-white pt-3 pb-1 border-t border-slate-100 flex items-center justify-between z-10 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditingPatient(null)}
