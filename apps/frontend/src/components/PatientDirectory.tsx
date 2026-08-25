@@ -126,6 +126,25 @@ export const PatientDirectory: React.FC = () => {
     }
   };
 
+  // Prevent background page scrolling when ANY modal or detail drawer is open
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(selectedPatient || quickThawPatient || editingPatient);
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+      document.documentElement.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [selectedPatient, quickThawPatient, editingPatient]);
+
   useEffect(() => {
     fetchPatients();
   }, [activeQuery, freezingDateFilter, sortBy, sortOrder, page]);
@@ -931,14 +950,14 @@ export const PatientDirectory: React.FC = () => {
 
       {/* Detail Drawer Modal */}
       {selectedPatient && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex justify-end">
-          <div className="w-full max-w-2xl bg-white h-full border-l border-slate-200 p-6 overflow-y-auto space-y-6 shadow-2xl">
-            <div className="flex flex-row items-start justify-between gap-3 border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex justify-end overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white min-h-screen sm:min-h-0 sm:h-full border-l border-slate-200 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
               {/* Left Column: Patient Details & Dates */}
               <div className="flex-1 min-w-0 space-y-1">
                 <span className="text-xs font-mono font-bold text-emerald-700 block">{selectedPatient.patientId}</span>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight truncate">{selectedPatient.fullName}</h2>
-                <div className="text-xs text-slate-600 font-mono font-bold flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-x-2.5 mt-1">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">{selectedPatient.fullName}</h2>
+                <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-1.5 sm:gap-x-2.5 mt-1">
                   <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 w-fit">
                     Visit Date: {formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}
                   </span>
@@ -949,7 +968,7 @@ export const PatientDirectory: React.FC = () => {
               </div>
 
               {/* Right Column: Compact 2x2 Quad Grid Action Buttons */}
-              <div className="grid grid-cols-2 gap-1.5 shrink-0 w-full sm:w-auto p-1 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="grid grid-cols-2 gap-1.5 shrink-0 w-full sm:w-56 p-1 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
                 {/* Quadrant 1: Thaw Specimen */}
                 {selectedPatient.batches?.some((b: any) =>
                   b.straws?.some((s: any) => s.status === 'OCCUPIED')
