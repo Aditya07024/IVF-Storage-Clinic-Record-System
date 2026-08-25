@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2 } from 'lucide-react';
+import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
@@ -46,6 +46,85 @@ export const PatientDirectory: React.FC = () => {
   const [selectedStrawIds, setSelectedStrawIds] = useState<string[]>([]);
   const [doctorNotes, setDoctorNotes] = useState('');
   const [thawing, setThawing] = useState(false);
+
+  // Edit Patient Modal States
+  const [editingPatient, setEditingPatient] = useState<any | null>(null);
+  const [editPatientId, setEditPatientId] = useState('');
+  const [editFullName, setEditFullName] = useState('');
+  const [editPatientAge, setEditPatientAge] = useState('');
+  const [editPartnerName, setEditPartnerName] = useState('');
+  const [editPartnerAge, setEditPartnerAge] = useState('');
+  const [editDoctorName, setEditDoctorName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editComments, setEditComments] = useState('');
+  const [editFreezingDate, setEditFreezingDate] = useState('');
+  const [editVisitDate, setEditVisitDate] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccessMsg, setEditSuccessMsg] = useState<string | null>(null);
+
+  const openEditPatientModal = (patient: any) => {
+    setEditingPatient(patient);
+    setEditPatientId(patient.patientId || '');
+    setEditFullName(patient.fullName || '');
+    setEditPatientAge(patient.patientAge || '');
+    setEditPartnerName(patient.partnerName || '');
+    setEditPartnerAge(patient.partnerAge || '');
+    setEditDoctorName(patient.doctorName || '');
+    setEditPhone(patient.phone || '');
+    setEditComments(patient.comments || '');
+    setEditFreezingDate(patient.freezingDate ? new Date(patient.freezingDate).toISOString().split('T')[0] : '');
+    setEditVisitDate(patient.visitDate ? new Date(patient.visitDate).toISOString().split('T')[0] : '');
+    setEditError(null);
+    setEditSuccessMsg(null);
+  };
+
+  const handleSavePatientEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPatient) return;
+    setSavingEdit(true);
+    setEditError(null);
+    setEditSuccessMsg(null);
+
+    try {
+      const payload = {
+        patientId: editPatientId.trim(),
+        fullName: editFullName.trim(),
+        patientAge: editPatientAge.trim(),
+        partnerName: editPartnerName.trim(),
+        partnerAge: editPartnerAge.trim(),
+        doctorName: editDoctorName.trim(),
+        phone: editPhone.trim(),
+        comments: editComments.trim(),
+        freezingDate: editFreezingDate ? editFreezingDate : null,
+        visitDate: editVisitDate ? editVisitDate : null,
+      };
+
+      const res = await apiRequest(`/api/patients/${editingPatient.id}`, {
+        method: 'PUT',
+        body: payload,
+      });
+
+      if (res.success) {
+        setEditSuccessMsg('Patient details updated successfully!');
+        await fetchPatients();
+        const updatedDetails = await apiRequest(`/api/patients/${editingPatient.id}`);
+        if (updatedDetails.success && updatedDetails.patient) {
+          setSelectedPatient(updatedDetails.patient);
+        }
+        setTimeout(() => {
+          setEditingPatient(null);
+          setEditSuccessMsg(null);
+        }, 1200);
+      } else {
+        setEditError(res.error || 'Failed to update patient record.');
+      }
+    } catch (err: any) {
+      setEditError(err.message || 'An error occurred while saving changes.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     fetchPatients();
@@ -652,6 +731,204 @@ export const PatientDirectory: React.FC = () => {
         </div>
       )}
 
+      {/* Edit Patient Details Modal */}
+      {editingPatient && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-2xl space-y-4 text-slate-900 overflow-y-auto max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700">
+                  <Edit3 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Edit Patient Medical Records</h2>
+                  <p className="text-xs text-slate-500 font-mono font-bold">
+                    Editing Record ID: {editingPatient.patientId}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingPatient(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            {editSuccessMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
+                <Check className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>{editSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSavePatientEdit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Registration No (Unique Primary Key) <span className="text-rose-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientId}
+                    onChange={(e) => setEditPatientId(e.target.value)}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Patient Full Name <span className="text-rose-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Patient Age <span className="text-rose-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientAge}
+                    onChange={(e) => setEditPatientAge(e.target.value)}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Partner Name <span className="text-rose-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editPartnerName}
+                    onChange={(e) => setEditPartnerName(e.target.value)}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Partner Age <span className="text-rose-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editPartnerAge}
+                    onChange={(e) => setEditPartnerAge(e.target.value)}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Doctor Name / Attending Physician <span className="text-rose-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editDoctorName}
+                    onChange={(e) => setEditDoctorName(e.target.value)}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Mobile Phone <span className="text-rose-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Visit Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editVisitDate}
+                    onChange={(e) => setEditVisitDate(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Freezing Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editFreezingDate}
+                    onChange={(e) => setEditFreezingDate(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Clinical Comments & Doctor Remarks
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editComments}
+                    onChange={(e) => setEditComments(e.target.value)}
+                    placeholder="Enter any additional clinical notes or comments..."
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-amber-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingPatient(null)}
+                  className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
+                >
+                  {savingEdit ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Detail Drawer Modal */}
       {selectedPatient && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex justify-end">
@@ -684,6 +961,13 @@ export const PatientDirectory: React.FC = () => {
                     <span>Thaw Specimen</span>
                   </button>
                 )}
+                <button
+                  onClick={() => openEditPatientModal(selectedPatient)}
+                  className="w-full sm:w-auto px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit Details</span>
+                </button>
                 <button
                   onClick={() => handlePrintPdf(selectedPatient.id)}
                   className="w-full sm:w-auto px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
