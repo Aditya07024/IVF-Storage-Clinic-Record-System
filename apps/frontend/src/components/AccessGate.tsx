@@ -7,6 +7,8 @@ interface AccessGateProps {
   children: React.ReactNode;
 }
 
+const WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000; // 7 Days in Milliseconds
+
 export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
   const [accessKey, setAccessKey] = useState('');
   const [isGranted, setIsGranted] = useState(false);
@@ -15,11 +17,33 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
 
   useEffect(() => {
     const stored = localStorage.getItem('app_access_key');
-    if (stored) {
+    const storedTime = localStorage.getItem('app_access_key_timestamp');
+
+    if (stored && storedTime) {
+      const elapsed = Date.now() - parseInt(storedTime, 10);
+      if (elapsed < WEEK_IN_MS) {
+        setAccessKey(stored);
+        setIsGranted(true);
+      } else {
+        // Expire key after 7 days automatically
+        localStorage.removeItem('app_access_key');
+        localStorage.removeItem('app_access_key_timestamp');
+        setIsGranted(false);
+      }
+    } else if (stored && !storedTime) {
+      // Legacy fallback: timestamp it now
+      localStorage.setItem('app_access_key_timestamp', Date.now().toString());
       setAccessKey(stored);
       setIsGranted(true);
     }
   }, []);
+
+  const grantAccess = (key: string) => {
+    localStorage.setItem('app_access_key', key);
+    localStorage.setItem('app_access_key_timestamp', Date.now().toString());
+    setAccessKey(key);
+    setIsGranted(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +57,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
       });
 
       if (res.success) {
-        localStorage.setItem('app_access_key', accessKey.trim());
-        setIsGranted(true);
+        grantAccess(accessKey.trim());
       }
     } catch (err: any) {
       setError(err.message || 'Invalid application access key.');
@@ -79,8 +102,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
                     body: JSON.stringify({ accessKey: 'clinic2026' }),
                   });
                   if (res.success) {
-                    localStorage.setItem('app_access_key', 'clinic2026');
-                    setIsGranted(true);
+                    grantAccess('clinic2026');
                   }
                 } catch (err: any) {
                   setError(err.message || 'Demo access key failed.');

@@ -54,7 +54,19 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     clearApiCache();
   }
 
-  const accessKey = localStorage.getItem('app_access_key') || '';
+  let accessKey = localStorage.getItem('app_access_key') || '';
+  const accessKeyTime = localStorage.getItem('app_access_key_timestamp');
+
+  // Auto-expire Access Key once a week (7 days in ms)
+  if (accessKey && accessKeyTime) {
+    const elapsed = Date.now() - parseInt(accessKeyTime, 10);
+    if (elapsed > 7 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem('app_access_key');
+      localStorage.removeItem('app_access_key_timestamp');
+      accessKey = '';
+    }
+  }
+
   const token = localStorage.getItem('access_token') || '';
 
   const headers: Record<string, string> = {
