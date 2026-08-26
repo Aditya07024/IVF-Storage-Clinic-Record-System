@@ -121,7 +121,9 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     throw new Error(fetchError?.message || 'Network connection interrupted. Retrying automatically...');
   }
 
-  if (response.status === 401 && !(options as any)._isRetry) {
+  const isAuthEndpoint = endpoint.includes('/api/auth/login') || endpoint.includes('/api/auth/refresh') || endpoint.includes('/api/auth/me');
+
+  if (response.status === 401 && !(options as any)._isRetry && !isAuthEndpoint) {
     const refreshToken = localStorage.getItem('refresh_token');
     if (refreshToken) {
       try {
@@ -137,10 +139,17 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
             localStorage.setItem('refresh_token', refreshData.refreshToken);
           }
           return apiRequest(endpoint, { ...options, _isRetry: true } as any);
+        } else {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
         }
       } catch (err) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         console.error('Silent token refresh failed:', err);
       }
+    } else {
+      localStorage.removeItem('access_token');
     }
   }
 
