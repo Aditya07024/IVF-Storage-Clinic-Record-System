@@ -20,6 +20,9 @@ import { serverCache } from './common/cache.js';
 
 const app = express();
 
+// Trust reverse proxy headers (Render, Cloudflare, AWS, Heroku) for accurate IP rate limiting
+app.set('trust proxy', 1);
+
 // =========================================================================
 // ENTERPRISE BACKEND API SECURITY HARDENING
 // =========================================================================
