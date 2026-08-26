@@ -1,15 +1,17 @@
 import { PrismaClient } from '@prisma/client';
-import { CONFIG } from './config.js';
+import { CONFIG, cleanDatabaseUrl } from './config.js';
 
-const dbUrl = process.env.DATABASE_URL || CONFIG.DATABASE_URL;
+const dbUrl = cleanDatabaseUrl(process.env.DATABASE_URL || CONFIG.DATABASE_URL);
 
-export const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: dbUrl,
-    },
-  },
-});
+export const prisma = dbUrl
+  ? new PrismaClient({
+      datasources: {
+        db: {
+          url: dbUrl,
+        },
+      },
+    })
+  : new PrismaClient();
 
 export async function connectPrisma() {
   for (let attempt = 1; attempt <= 8; attempt++) {

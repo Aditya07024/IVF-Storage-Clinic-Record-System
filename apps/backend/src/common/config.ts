@@ -4,12 +4,23 @@ import dotenv from 'dotenv';
 dotenv.config({ path: process.env.NODE_ENV === 'test' ? '.env.test' : '../../.env' });
 dotenv.config(); // fallback
 
+export function cleanDatabaseUrl(url: string | undefined): string {
+  if (!url || !url.trim()) return '';
+  let cleaned = url.trim();
+  cleaned = cleaned.replace(/^["']|["']$/g, '');
+  cleaned = cleaned.replace(/[\?&]channel_binding=[^&]+/gi, '');
+  if (!cleaned.includes('sslmode=')) {
+    cleaned += cleaned.includes('?') ? '&sslmode=require' : '?sslmode=require';
+  }
+  return cleaned;
+}
+
 export const CONFIG = {
   PORT: process.env.PORT || 4000,
   NODE_ENV: process.env.NODE_ENV || 'development',
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
   BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:4000',
-  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_Tf3zUwtr2hiQ@ep-restless-shape-ax97lwqc.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require',
+  DATABASE_URL: cleanDatabaseUrl(process.env.DATABASE_URL),
   
   // Site Access Key Hash (Default 'clinic2026')
   APP_ACCESS_KEY_HASH: process.env.APP_ACCESS_KEY_HASH || 'ec189984c5b36432f04401eb55b916a4801153d10b627bc4cc590382e27d1aa8',
