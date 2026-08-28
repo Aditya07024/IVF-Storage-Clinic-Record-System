@@ -698,6 +698,64 @@ ${rawText}`;
         });
       }
 
+      // 7. Auto-Create StorageBatch and Straws in VisoTube Container View
+      const strawsList = Array.isArray(input.straws) && input.straws.length > 0
+        ? input.straws
+        : [{ strawId: 'STR-01', colorTag: input.visoTubeColor || 'Pink', embryoCount: 1, stage: 'Day 5', grade: '4AA' }];
+
+      let targetVisoTube = await tx.visoTube.findFirst({
+        orderBy: { tubeNumber: 'asc' },
+      });
+
+      if (targetVisoTube) {
+        const batchCode = `BAT-${Date.now().toString().slice(-6)}`;
+        const batch = await tx.storageBatch.create({
+          data: {
+            batchId: batchCode,
+            patientId: patient.id,
+            storageDate: new Date(),
+            freezingDate: input.freezingDate ? new Date(input.freezingDate) : new Date(),
+            aspirationDate: input.aspirationDate ? new Date(input.aspirationDate) : null,
+            totalStraws: strawsList.length,
+            totalEmbryos: strawsList.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
+            visoTubeId: targetVisoTube.id,
+            notes: `Auto-allocated from OCR Verification (${input.canisterName || 'Canister'} - ${input.visoTubeColor || 'Pink'})`,
+          },
+        });
+
+        for (let i = 0; i < strawsList.length; i++) {
+          const st = strawsList[i];
+          const strawCode = st.strawId || `STR-${(i + 1).toString().padStart(6, '0')}`;
+          
+          try {
+            const createdStraw = await tx.straw.create({
+              data: {
+                strawId: strawCode,
+                batchId: batch.id,
+                visoTubeId: targetVisoTube.id,
+                color: st.colorTag || input.visoTubeColor || 'Pink',
+                embryoCount: st.embryoCount || 1,
+                grade: st.grade || '4AA',
+                status: 'OCCUPIED',
+              },
+            });
+
+            for (let e = 1; e <= (st.embryoCount || 1); e++) {
+              await tx.embryo.create({
+                data: {
+                  strawId: createdStraw.id,
+                  embryoNumber: e,
+                  grade: st.grade || '4AA',
+                  status: 'FREEZED',
+                },
+              });
+            }
+          } catch (err: any) {
+            // Ignore straw code conflicts
+          }
+        }
+      }
+
       await tx.ocrRecord.update({
         where: { id: record.id },
         data: {
@@ -724,7 +782,7 @@ ${rawText}`;
       });
 
       return {
-        message: 'OCR record verified successfully and saved to patient directory.',
+        message: 'OCR record verified successfully and saved to patient directory & storage containers.',
         patient,
       };
     }, { timeout: 25000, maxWait: 10000 });

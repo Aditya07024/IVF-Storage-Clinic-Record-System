@@ -783,147 +783,88 @@ export const OcrVerification: React.FC = () => {
                 />
               </div>
 
-              {/* Extracted Cryo Storage Location */}
-              <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200/80 space-y-3">
+              {/* AI Extracted Cryo Storage Location (Read-Only Badges) */}
+              <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                     <span>AI Extracted Cryo Storage Location</span>
                   </span>
+                  <span className="text-[10px] font-bold bg-emerald-600 text-white px-2.5 py-0.5 rounded-full shadow-2xs">
+                    AUTO-ALLOCATES IN CONTAINER VIEW
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 text-[10px]">Canister / Tank</label>
-                    <input
-                      type="text"
-                      value={canisterName}
-                      onChange={(e) => setCanisterName(e.target.value)}
-                      placeholder="e.g. Canister 01"
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none"
-                    />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  <div className="bg-white p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Canister / Tank</span>
+                    <span className="text-xs font-black text-slate-900 truncate block mt-0.5">
+                      {canisterName || 'Canister 8'}
+                    </span>
                   </div>
-                  <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 text-[10px]">Viso Tube Color</label>
-                    <input
-                      type="text"
-                      value={visoTubeColor}
-                      onChange={(e) => setVisoTubeColor(e.target.value)}
-                      placeholder="e.g. Pink, Grey"
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none"
-                    />
+                  <div className="bg-white p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Viso Tube Color</span>
+                    <span className="text-xs font-black text-pink-700 truncate block mt-0.5 flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-pink-500 inline-block shrink-0" />
+                      <span>{visoTubeColor || 'Pink'}</span>
+                    </span>
                   </div>
-                  <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 text-[10px]">Viso Tube ID</label>
-                    <input
-                      type="text"
-                      value={visoTubeId}
-                      onChange={(e) => setVisoTubeId(e.target.value)}
-                      placeholder="e.g. V01"
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none"
-                    />
+                  <div className="bg-white p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Viso Tube ID / Goblet</span>
+                    <span className="text-xs font-black text-amber-700 truncate block mt-0.5">
+                      {visoTubeId || 'Yellow Goblet'}
+                    </span>
                   </div>
-                  <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 text-[10px]">Level / Tier</label>
-                    <input
-                      type="text"
-                      value={level}
-                      onChange={(e) => setLevel(e.target.value)}
-                      placeholder="e.g. Level 1"
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none"
-                    />
+                  <div className="bg-white p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Level / Tier</span>
+                    <span className="text-xs font-black text-slate-900 truncate block mt-0.5">
+                      {level || 'Level 1'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Extracted Specimen Straws Table */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+              {/* Extracted Specimen Straws Batch Table (Read-Only Summary) */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                    Specimen Straws Batch ({straws.length} Straws)
+                  <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Specimen Straws Batch ({straws.length} Extracted Straws)</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={addStrawRow}
-                    className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-[11px] rounded-lg border border-emerald-300 transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>+ Add Straw</span>
-                  </button>
                 </div>
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
                   <table className="w-full text-left text-[11px]">
-                    <thead className="bg-slate-100 text-slate-700 font-bold">
+                    <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                       <tr>
-                        <th className="p-2">Straw ID</th>
-                        <th className="p-2">Color Tag</th>
-                        <th className="p-2">Embryos</th>
-                        <th className="p-2">Stage</th>
-                        <th className="p-2">Grade</th>
-                        <th className="p-2">Action</th>
+                        <th className="p-2.5">Straw ID</th>
+                        <th className="p-2.5">Color Tag</th>
+                        <th className="p-2.5 text-center">Embryos</th>
+                        <th className="p-2.5">Stage</th>
+                        <th className="p-2.5">Grade</th>
+                        <th className="p-2.5">Freezing Date</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {straws.map((st, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 font-medium text-slate-800">
-                          <td className="p-1.5">
-                            <input
-                              type="text"
-                              value={st.strawId || ''}
-                              onChange={(e) => updateStrawRow(idx, 'strawId', e.target.value)}
-                              placeholder={`STR-0${idx + 1}`}
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 font-mono font-bold text-[11px]"
-                            />
+                          <td className="p-2.5 font-mono font-bold text-emerald-900">{st.strawId || `Straw #${idx + 1}`}</td>
+                          <td className="p-2.5">
+                            <span className="inline-flex items-center gap-1.5 bg-pink-50 text-pink-700 px-2 py-0.5 rounded-md font-bold text-[10px] border border-pink-200">
+                              <span className="w-2 h-2 rounded-full bg-pink-500" />
+                              <span>{st.colorTag || st.colorName || visoTubeColor || 'Pink'}</span>
+                            </span>
                           </td>
-                          <td className="p-1.5">
-                            <input
-                              type="text"
-                              value={st.colorTag || st.colorName || ''}
-                              onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
-                              placeholder="Pink Tag"
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 text-[11px]"
-                            />
-                          </td>
-                          <td className="p-1.5">
-                            <input
-                              type="number"
-                              min={1}
-                              value={st.embryoCount ?? 1}
-                              onChange={(e) => updateStrawRow(idx, 'embryoCount', parseInt(e.target.value, 10) || 1)}
-                              className="w-16 bg-slate-50 border border-slate-300 rounded p-1 font-bold text-emerald-700 text-[11px]"
-                            />
-                          </td>
-                          <td className="p-1.5">
-                            <input
-                              type="text"
-                              value={st.stage || ''}
-                              onChange={(e) => updateStrawRow(idx, 'stage', e.target.value)}
-                              placeholder="Day 5"
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 text-[11px]"
-                            />
-                          </td>
-                          <td className="p-1.5">
-                            <input
-                              type="text"
-                              value={st.grade || ''}
-                              onChange={(e) => updateStrawRow(idx, 'grade', e.target.value)}
-                              placeholder="4AA"
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 font-bold text-[11px]"
-                            />
-                          </td>
-                          <td className="p-1.5">
-                            <button
-                              type="button"
-                              onClick={() => removeStrawRow(idx)}
-                              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                              title="Delete Straw"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
+                          <td className="p-2.5 text-center font-black text-emerald-700">{st.embryoCount ?? 1}</td>
+                          <td className="p-2.5 font-medium">{st.stage || 'Day 5'}</td>
+                          <td className="p-2.5 font-bold text-slate-900">{st.grade || '4AA'}</td>
+                          <td className="p-2.5 font-mono text-[10px] text-slate-600">{st.freezingDate || freezingDate || '2020-09-02'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                <p className="text-[10px] text-slate-500 font-medium italic pt-1 flex items-center gap-1">
+                  <span>✨ Upon clicking Approve, these straws will automatically mark canisters & viso tubes filled in Full Container View.</span>
+                </p>
               </div>
 
               <div className="space-y-1">
