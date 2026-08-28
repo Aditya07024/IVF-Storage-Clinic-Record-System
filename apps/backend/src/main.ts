@@ -550,11 +550,14 @@ app.post('/api/patients/:id/photo', accessKeyGuard, jwtAuthGuard, (req: Request,
 
     const photoUrl = `/uploads/${filename}`;
 
+    const staffUserId = req.user?.userId || '00000000-0000-0000-0000-000000000000';
+    const staffName = req.user?.name || req.user?.staffId || 'ADMIN001';
+
     const patient = await patientService.updatePatient(
       req.params.id,
       { photoUrl },
-      req.user!.userId,
-      req.user!.name || req.user!.staffId
+      staffUserId,
+      staffName
     );
     serverCache.clear();
     return res.json({ success: true, photoUrl, patient });

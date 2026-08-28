@@ -138,13 +138,18 @@ export class PatientService {
   }
 
   async updatePatient(id: string, input: Partial<CreatePatientInput>, staffUserId: string, staffName: string) {
-    const existing = await prisma.patient.findUnique({ where: { id } });
+    const existing = await prisma.patient.findFirst({
+      where: {
+        OR: [{ id }, { patientId: id }],
+      },
+    });
+
     if (!existing) {
       throw new Error('Patient record not found.');
     }
 
     const updated = await prisma.patient.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
         fullName: input.fullName !== undefined ? input.fullName.trim() : existing.fullName,
         partnerName: input.partnerName !== undefined ? input.partnerName.trim() : existing.partnerName,
