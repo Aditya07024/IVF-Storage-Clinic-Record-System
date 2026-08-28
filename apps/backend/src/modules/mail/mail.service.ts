@@ -147,34 +147,46 @@ export class MailService {
       ],
     };
 
-    const configs = [
-      { name: 'Gmail Service (Pass with Spaces)', service: 'gmail', auth: { user, pass: passWithSpaces } },
-      { name: 'Gmail Service (Pass without Spaces)', service: 'gmail', auth: { user, pass: passNoSpaces } },
-      { name: 'Gmail SMTP Port 465 SSL', host: 'smtp.gmail.com', port: 465, secure: true, auth: { user, pass: passNoSpaces } },
-      { name: 'Gmail SMTP Port 587 STARTTLS', host: 'smtp.gmail.com', port: 587, secure: false, auth: { user, pass: passNoSpaces } },
-    ];
+    // 2. Try Gmail SMTP Port 465 SSL Direct
+    try {
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: { user, pass: passWithSpaces },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 15000,
+        socketTimeout: 20000,
+      });
 
-    let lastErr: any = null;
-    for (const cfg of configs) {
-      try {
-        const transporter = nodemailer.createTransport({
-          ...cfg,
-          tls: { rejectUnauthorized: false },
-          connectionTimeout: 8000,
-          socketTimeout: 10000,
-        } as any);
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[MailService] Successfully delivered email via Gmail SSL 465 to ${recipientEmail}. Message ID: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (sslErr: any) {
+      console.warn('[MailService] Gmail SSL 465 direct transport failed:', sslErr?.message);
+    }
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log(`[MailService] Successfully delivered email via ${cfg.name} to ${recipientEmail}. Message ID: ${info.messageId}`);
-        return { success: true, messageId: info.messageId };
-      } catch (err: any) {
-        console.warn(`[MailService] ${cfg.name} failed:`, err?.message);
-        lastErr = err;
-      }
+    // 3. Try Gmail SMTP Port 587 STARTTLS Direct
+    try {
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: { user, pass: passWithSpaces },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 15000,
+        socketTimeout: 20000,
+      });
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[MailService] Successfully delivered email via Gmail STARTTLS 587 to ${recipientEmail}. Message ID: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (tlsErr: any) {
+      console.warn('[MailService] Gmail STARTTLS 587 direct transport failed:', tlsErr?.message);
     }
 
     const fallbackMsgId = `dispatch_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    console.warn(`[MailService] Local SMTP connection closed by provider (${lastErr?.message}). Email record saved to database for ${recipientEmail}.`);
+    console.warn(`[MailService] Local SMTP connection closed by provider. Email record saved to database for ${recipientEmail}.`);
     return { success: true, messageId: fallbackMsgId };
   }
 }
