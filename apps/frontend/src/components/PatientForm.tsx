@@ -1101,96 +1101,60 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             {/* PATIENT PHOTO UPLOADER BOX */}
             {!selectedExistingPatient && (
               <div className="md:col-span-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
-                <div className="relative shrink-0">
+                <div
+                  className="relative group shrink-0 cursor-pointer"
+                  onClick={() => {
+                    if (photoFile) {
+                      setCropModalFile(photoFile);
+                    } else if (photoPreviewUrl) {
+                      fetch(photoPreviewUrl)
+                        .then((res) => res.blob())
+                        .then((blob) => {
+                          const file = new File([blob], 'patient-photo.jpg', { type: 'image/jpeg' });
+                          setCropModalFile(file);
+                        })
+                        .catch((err) => console.error('Error fetching photo for crop:', err));
+                    } else {
+                      document.getElementById('patient-form-photo-input')?.click();
+                    }
+                  }}
+                  title="Click/Tap photo to Crop, Rotate, or Change Image"
+                >
                   {photoPreviewUrl ? (
-                    <img
-                      src={photoPreviewUrl}
-                      alt="Patient Preview"
-                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md"
-                    />
+                    <div className="relative">
+                      <img
+                        src={photoPreviewUrl}
+                        alt="Patient Preview"
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md transition-transform active:scale-95"
+                      />
+                      <div className="absolute inset-0 bg-slate-950/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="w-5 h-5 text-white" />
+                      </div>
+                    </div>
                   ) : (
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 font-bold text-xs">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 font-bold text-xs hover:border-emerald-500 hover:text-emerald-600 transition-all active:scale-95 shadow-2xs">
                       <Camera className="w-6 h-6 text-slate-400" />
-                      <span className="text-[9px] text-slate-500 mt-0.5">No Photo</span>
+                      <span className="text-[9px] text-slate-500 mt-0.5 font-semibold">Tap for Photo</span>
                     </div>
                   )}
+
+                  <input
+                    id="patient-form-photo-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
                 </div>
 
-                <div className="flex-1 space-y-1 text-center sm:text-left min-w-0">
+                <div className="flex-1 space-y-0.5 text-center sm:text-left min-w-0">
                   <div className="font-bold text-slate-800 text-xs sm:text-sm flex items-center justify-center sm:justify-start gap-1.5">
                     <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Patient Photo</span>
+                    <span>Patient Profile Photo</span>
                   </div>
-                  
-
-                  <div className="pt-1 flex items-center justify-center sm:justify-start gap-2">
-                    <label className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95">
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>{photoPreviewUrl ? '📷 Edit Picture' : '📷 Click to Add Patient Photo'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handlePhotoSelect}
-                      />
-                    </label>
-
-                    {photoPreviewUrl && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (photoFile) {
-                              setCropModalFile(photoFile);
-                            } else if (photoPreviewUrl) {
-                              fetch(photoPreviewUrl)
-                                .then((res) => res.blob())
-                                .then((blob) => {
-                                  const file = new File([blob], 'patient-photo.jpg', { type: 'image/jpeg' });
-                                  setCropModalFile(file);
-                                })
-                                .catch((err) => console.error('Error fetching photo for crop:', err));
-                            }
-                          }}
-                          className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-emerald-300 shadow-2xs active:scale-95 transition-all cursor-pointer"
-                        >
-                          <Crop className="w-4 h-4 text-emerald-700" />
-                          <span>✂️ Crop & Rotate Studio</span>
-                        </button>
-
-                        {photoFile && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                const { file: rFile, dataUrl } = await rotateImageFile(photoFile, 90);
-                                setPhotoFile(rFile);
-                                setPhotoPreviewUrl(dataUrl);
-                              } catch (e) {
-                                console.error('Failed to rotate photo:', e);
-                              }
-                            }}
-                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center gap-1 border border-slate-300 active:scale-95 shadow-2xs cursor-pointer"
-                            title="Rotate Right 90°"
-                          >
-                            <RotateCw className="w-3.5 h-3.5 text-slate-700" />
-                            <span>Rotate ↻</span>
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPhotoFile(null);
-                            setPhotoPreviewUrl(null);
-                          }}
-                          className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
-                        >
-                          Remove Photo
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {photoPreviewUrl ? 'Tap photo to crop 1:1, rotate 90°, or change image' : 'Tap photo icon to select or capture patient picture'}
+                  </p>
                 </div>
               </div>
             )}
