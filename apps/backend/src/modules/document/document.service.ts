@@ -301,7 +301,7 @@ export class DocumentService {
       // ==========================================
       // 3. FREEZING OR THAWING REPORT SECTION CARDS (SEPARATED BY FREEZING DATE / BATCH)
       // ==========================================
-      const reportHeaderY = 190;
+      const reportHeaderY = 184;
       const pillBg = isThaw ? '#fef2f2' : '#f0fdf4';
       const pillBorder = isThaw ? '#dc2626' : '#047857';
       const pillText = isThaw ? '#dc2626' : '#047857';
@@ -310,7 +310,7 @@ export class DocumentService {
 
       // Helper function for seamless multi-page layout flow
       const ensureSpace = (neededHeight: number) => {
-        if (currentSectionY + neededHeight > 710) {
+        if (currentSectionY + neededHeight > 745) {
           doc.addPage();
           currentSectionY = 36;
           doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#065f46')
@@ -380,7 +380,7 @@ export class DocumentService {
         const batchStage = batch.embryoStage || (activeReportType === 'DAY5' ? 'Day 5' : activeReportType === 'DAY3' ? 'Day 3' : 'Day 0');
 
         // Check page break before Pill Header & Details Card
-        const requiredBatchHeight = (bHasPgt && !isThaw) ? 150 : 120;
+        const requiredBatchHeight = (bHasPgt && !isThaw) ? 140 : 110;
         ensureSpace(requiredBatchHeight);
 
         // Section Pill Header
@@ -390,32 +390,32 @@ export class DocumentService {
 
         const pillWidth = isThaw ? 165 : (batchesToRender.length > 1 ? 210 : 155);
 
-        doc.rect(30, currentSectionY, pillWidth, 24).lineWidth(1.25).fillAndStroke(pillBg, pillBorder);
+        doc.rect(30, currentSectionY, pillWidth, 22).lineWidth(1.25).fillAndStroke(pillBg, pillBorder);
         doc
           .fillColor(pillText)
-          .fontSize(10)
+          .fontSize(9.5)
           .font('Helvetica-Bold')
-          .text(pillTitle, 40, currentSectionY + 6);
+          .text(pillTitle, 40, currentSectionY + 5);
 
-        currentSectionY += 30;
+        currentSectionY += 26;
 
         // PGT-A Warning Card Element Border per Batch
         if (bHasPgt && !isThaw) {
-          doc.rect(30, currentSectionY, 535, 28).lineWidth(1.25).fillAndStroke('#eff6ff', '#2563eb');
-          doc.rect(30, currentSectionY, 5, 28).fill('#2563eb');
+          doc.rect(30, currentSectionY, 535, 26).lineWidth(1.25).fillAndStroke('#eff6ff', '#2563eb');
+          doc.rect(30, currentSectionY, 5, 26).fill('#2563eb');
           doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#1e40af');
           doc.text(
             "Embryo / Oocyte: Prior to freezing, embryos underwent biopsy for PGT- A. So please refer to PGT-A report to select 'normal' embryos for FET",
             44,
-            currentSectionY + 8,
+            currentSectionY + 7,
             { width: 510 }
           );
-          currentSectionY += 34;
+          currentSectionY += 30;
         }
 
         // Element Border Outline around Freezing/Thaw Details Card
         const reportBoxY = currentSectionY;
-        const reportBoxHeight = 88;
+        const reportBoxHeight = 82;
         const boxAccentColor = isThaw ? '#dc2626' : '#0284c7';
         const boxBorderColor = isThaw ? '#dc2626' : '#047857';
 
@@ -424,10 +424,10 @@ export class DocumentService {
 
         // Grid Dividers inside Details Card
         doc.strokeColor('#cbd5e1').lineWidth(0.75).moveTo(300, reportBoxY + 4).lineTo(300, reportBoxY + reportBoxHeight - 4).stroke();
-        doc.strokeColor('#f1f5f9').lineWidth(0.5).moveTo(42, reportBoxY + 30).lineTo(558, reportBoxY + 30).stroke();
-        doc.strokeColor('#f1f5f9').lineWidth(0.5).moveTo(42, reportBoxY + 58).lineTo(558, reportBoxY + 58).stroke();
+        doc.strokeColor('#f1f5f9').lineWidth(0.5).moveTo(42, reportBoxY + 28).lineTo(558, reportBoxY + 28).stroke();
+        doc.strokeColor('#f1f5f9').lineWidth(0.5).moveTo(42, reportBoxY + 54).lineTo(558, reportBoxY + 54).stroke();
 
-        doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#0f172a');
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#0f172a');
 
         // Format Number String (e.g. 5BL- 4 Straws (1+1+2+1))
         const stageUpper = (batchStage || '').toUpperCase();
@@ -447,48 +447,48 @@ export class DocumentService {
           const thawedSummaryStr = `${bTotalStrawsCount > 0 ? bTotalStrawsCount : 1} Straw(s) Thawed (${bTotalSpecimens > 0 ? bTotalSpecimens : 1} Specimen)`;
 
           // Left Column
-          doc.font('Helvetica-Bold').text('Thawed Specimen: ', 44, reportBoxY + 10, { continued: true });
+          doc.font('Helvetica-Bold').text('Thawed Specimen: ', 44, reportBoxY + 9, { continued: true });
           doc.font('Helvetica').fillColor('#0369a1').text(thawedSummaryStr);
 
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Post-Thaw Status: ', 44, reportBoxY + 38, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Post-Thaw Status: ', 44, reportBoxY + 35, { continued: true });
           doc.font('Helvetica-Bold').fillColor('#dc2626').text('100% Viable / Survived Thaw');
 
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Intended Treatment: ', 44, reportBoxY + 66, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Intended Treatment: ', 44, reportBoxY + 61, { continued: true });
           doc.font('Helvetica').fillColor('#047857').text('Frozen Embryo Transfer (FET)');
 
           // Right Column
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Thawing Method: ', 312, reportBoxY + 10, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Thawing Method: ', 312, reportBoxY + 9, { continued: true });
           doc.font('Helvetica').fillColor('#dc2626').text('Vitrification Thaw');
 
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Date of Thaw: ', 312, reportBoxY + 38, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Date of Thaw: ', 312, reportBoxY + 35, { continued: true });
           doc.font('Helvetica-Bold').fillColor('#dc2626').text(latestThawDateStr);
         } else {
           // Left Column
-          doc.font('Helvetica-Bold').text('Number: ', 44, reportBoxY + 10, { continued: true });
+          doc.font('Helvetica-Bold').text('Number: ', 44, reportBoxY + 9, { continued: true });
           doc.font('Helvetica').fillColor('#0369a1').text(numberStr);
 
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Developmental Stage: ', 44, reportBoxY + 38, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Developmental Stage: ', 44, reportBoxY + 35, { continued: true });
           doc.font('Helvetica-Bold').fillColor('#047857').text(batchStage);
 
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Embryo Score*: ', 44, reportBoxY + 66, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Embryo Score*: ', 44, reportBoxY + 61, { continued: true });
           doc.font('Helvetica').fillColor('#047857').text(formattedScores);
 
           // Right Column
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Freezing Method: ', 312, reportBoxY + 10, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Freezing Method: ', 312, reportBoxY + 9, { continued: true });
           doc.font('Helvetica').fillColor('#0284c7').text('Vitrification');
 
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Embryos frozen till: ', 312, reportBoxY + 38, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Embryos frozen till: ', 312, reportBoxY + 35, { continued: true });
           doc.font('Helvetica-Bold').fillColor('#047857').text(batchExpiryStr);
         }
 
-        currentSectionY += reportBoxHeight + 14;
+        currentSectionY += reportBoxHeight + 10;
       });
 
       // ==========================================
       // 4. CONTRACT & EXPIRY NOTICE CARD (OUTLINED BORDER)
       // ==========================================
-      const noticeBoxHeight = 56;
-      ensureSpace(noticeBoxHeight + 10);
+      const noticeBoxHeight = 46;
+      ensureSpace(noticeBoxHeight + 8);
       const noticeBoxY = currentSectionY;
       const contractNoticeText = isThaw
         ? 'Following the thawing procedure, viable embryos are prepared for immediate clinical transfer (FET) or ICSI. All post-thaw recovery parameters are documented in the patient medical record.'
@@ -512,151 +512,151 @@ export class DocumentService {
 
       doc
         .fillColor(advisoryText)
-        .fontSize(9.5)
+        .fontSize(9)
         .font('Helvetica')
         .text(
           contractNoticeText,
-          46,
-          noticeBoxY + 9,
-          { width: 505, align: 'left', lineGap: 3 }
+          44,
+          noticeBoxY + 7,
+          { width: 510, align: 'left', lineGap: 2.5 }
         );
 
-      currentSectionY = noticeBoxY + noticeBoxHeight + 14;
+      currentSectionY = noticeBoxY + noticeBoxHeight + 10;
 
       // ==========================================
       // 5. CLINICAL DISCLAIMER NOTE & GRADING FOOTNOTE (OUTLINED BORDER)
       // ==========================================
-      const disclaimerNeededHeight = isThaw ? 65 : (activeReportType === 'DAY3' ? 140 : activeReportType === 'DAY5' ? 115 : 65);
+      const disclaimerNeededHeight = isThaw ? 55 : (activeReportType === 'DAY3' ? 125 : activeReportType === 'DAY5' ? 100 : 55);
       ensureSpace(disclaimerNeededHeight);
 
       const disclaimerStartY = currentSectionY;
-      doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#0f172a').text('Note:', 30, disclaimerStartY);
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#0f172a').text('Note:', 30, disclaimerStartY);
 
-      let disclaimerTextY = disclaimerStartY + 16;
+      let disclaimerTextY = disclaimerStartY + 14;
 
       if (isThaw) {
         doc
           .font('Helvetica')
           .fillColor('#475569')
-          .fontSize(9)
+          .fontSize(8.5)
           .text(
             'Only those embryos/oocytes which survive the thawing procedure and are confirmed to be of viable, good quality are selected for embryo transfer (FET) or ICSI.',
             30,
             disclaimerTextY,
-            { width: 535, align: 'left', lineGap: 3 }
+            { width: 535, align: 'left', lineGap: 2 }
           );
 
         doc
           .text(
             'Arrested, degenerate, or non-viable specimens following thaw are documented and discarded in accordance with standard laboratory clinical protocols.',
             30,
-            disclaimerTextY + 24,
-            { width: 535, align: 'left', lineGap: 3 }
+            disclaimerTextY + 20,
+            { width: 535, align: 'left', lineGap: 2 }
           );
 
-        currentSectionY = disclaimerTextY + 50;
+        currentSectionY = disclaimerTextY + 42;
       } else if (activeReportType === 'DAY5') {
         doc
           .font('Helvetica')
           .fillColor('#475569')
-          .fontSize(9)
+          .fontSize(8.5)
           .text(
             'Embryos may not survive the freezing thawing procedure, which means upon thawing you may not have any viable embryos left for transfer.',
             30,
             disclaimerTextY,
-            { width: 535, align: 'left', lineGap: 3 }
+            { width: 535, align: 'left', lineGap: 2 }
           );
 
         doc
           .text(
             'Only those embryos, which survive and will be considered to be of good quality, shall be transferred. The remaining poor quality, arrested, or damaged embryos will be discarded.',
             30,
-            disclaimerTextY + 24,
-            { width: 535, align: 'left', lineGap: 3 }
+            disclaimerTextY + 20,
+            { width: 535, align: 'left', lineGap: 2 }
           );
 
         // Day 5 Blastocyst Grading Key Container with Element Border Outline
-        const gradeBoxY = disclaimerTextY + 58;
-        doc.rect(30, gradeBoxY, 535, 44).lineWidth(1.25).fillAndStroke('#f8fafc', '#047857');
-        doc.rect(30, gradeBoxY, 5, 44).fill('#047857');
-        doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f172a').text('Blastocyst Grading Key (*):', 42, gradeBoxY + 8);
+        const gradeBoxY = disclaimerTextY + 48;
+        doc.rect(30, gradeBoxY, 535, 40).lineWidth(1.25).fillAndStroke('#f8fafc', '#047857');
+        doc.rect(30, gradeBoxY, 5, 40).fill('#047857');
+        doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f172a').text('Blastocyst Grading Key (*):', 42, gradeBoxY + 7);
         doc.fontSize(8).font('Helvetica').fillColor('#334155');
-        doc.text('Expansion: 3 - Blastocyst  |  4 - Expanding Blastocyst  |  5 - Hatching Blastocyst', 165, gradeBoxY + 8, { width: 390 });
-        doc.text('ICM (Inner Cell Mass): A - Good, B - Average, C - Poor   |   TE (Trophectoderm): A - Good, B - Average, C - Poor', 42, gradeBoxY + 25, { width: 510 });
+        doc.text('Expansion: 3 - Blastocyst  |  4 - Expanding Blastocyst  |  5 - Hatching Blastocyst', 165, gradeBoxY + 7, { width: 390 });
+        doc.text('ICM (Inner Cell Mass): A - Good, B - Average, C - Poor   |   TE (Trophectoderm): A - Good, B - Average, C - Poor', 42, gradeBoxY + 22, { width: 510 });
 
-        currentSectionY = gradeBoxY + 54;
+        currentSectionY = gradeBoxY + 48;
       } else if (activeReportType === 'DAY3') {
         doc
           .font('Helvetica')
           .fillColor('#475569')
-          .fontSize(9)
+          .fontSize(8.5)
           .text(
             'Embryos may not survive the freezing thawing procedure, which means upon thawing you may not have any viable embryos left for transfer.',
             30,
             disclaimerTextY,
-            { width: 535, align: 'left', lineGap: 3 }
+            { width: 535, align: 'left', lineGap: 2 }
           );
 
         doc
           .text(
             'Only those embryos, which survive and will be considered to be of good quality, shall be transferred. The remaining poor quality, arrested, or damaged embryos will be discarded.',
             30,
-            disclaimerTextY + 24,
-            { width: 535, align: 'left', lineGap: 3 }
+            disclaimerTextY + 20,
+            { width: 535, align: 'left', lineGap: 2 }
           );
 
         // Day 3 Cleavage Grading Key Container with Element Border Outline
-        const gradeBoxY = disclaimerTextY + 58;
-        doc.rect(30, gradeBoxY, 535, 68).lineWidth(1.25).fillAndStroke('#f8fafc', '#047857');
-        doc.rect(30, gradeBoxY, 5, 68).fill('#047857');
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#0f172a').text('Day 3 Grading Key (*):', 42, gradeBoxY + 8);
-        doc.fontSize(8.5).font('Helvetica').fillColor('#334155');
-        doc.text('Grade 4 (good): >= 8C with equal blastomeres & no fragmentation', 150, gradeBoxY + 8, { width: 405 });
-        doc.text('Grade 4: >= 6C with slightly unequal blastomeres or <= 10% fragmentation', 150, gradeBoxY + 22, { width: 405 });
-        doc.text('Grade 3: >= 6C with unequal blastomeres or 10-30% fragmentation', 150, gradeBoxY + 36, { width: 405 });
-        doc.text('Grade 2: >= 5C with unequal blastomeres and >30% fragmentation', 150, gradeBoxY + 50, { width: 405 });
+        const gradeBoxY = disclaimerTextY + 48;
+        doc.rect(30, gradeBoxY, 535, 60).lineWidth(1.25).fillAndStroke('#f8fafc', '#047857');
+        doc.rect(30, gradeBoxY, 5, 60).fill('#047857');
+        doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f172a').text('Day 3 Grading Key (*):', 42, gradeBoxY + 7);
+        doc.fontSize(8).font('Helvetica').fillColor('#334155');
+        doc.text('Grade 4 (good): >= 8C with equal blastomeres & no fragmentation', 150, gradeBoxY + 7, { width: 405 });
+        doc.text('Grade 4: >= 6C with slightly unequal blastomeres or <= 10% fragmentation', 150, gradeBoxY + 19, { width: 405 });
+        doc.text('Grade 3: >= 6C with unequal blastomeres or 10-30% fragmentation', 150, gradeBoxY + 31, { width: 405 });
+        doc.text('Grade 2: >= 5C with unequal blastomeres and >30% fragmentation', 150, gradeBoxY + 43, { width: 405 });
 
-        currentSectionY = gradeBoxY + 78;
+        currentSectionY = gradeBoxY + 68;
       } else {
         doc
           .font('Helvetica')
           .fillColor('#475569')
-          .fontSize(9)
+          .fontSize(8.5)
           .text(
             'Embryos/ Oocytes may not survive the freezing thawing procedure, which means upon thawing you may not have any viable embryos/ oocytes left for transfer/ICSI.',
             30,
             disclaimerTextY,
-            { width: 535, align: 'left', lineGap: 3 }
+            { width: 535, align: 'left', lineGap: 2 }
           );
 
         doc
           .text(
             'Only those embryos/Oocytes, which survive and will be considered to be of good quality, shall be transferred. The remaining poor quality, arrested, or damaged embryos/oocytes will be discarded.',
             30,
-            disclaimerTextY + 24,
-            { width: 535, align: 'left', lineGap: 3 }
+            disclaimerTextY + 20,
+            { width: 535, align: 'left', lineGap: 2 }
           );
 
-        currentSectionY = disclaimerTextY + 50;
+        currentSectionY = disclaimerTextY + 42;
       }
 
       // ==========================================
       // 5.5 CLINICAL SIGNATURE BLOCK
       // ==========================================
-      ensureSpace(50);
-      const sigY = currentSectionY + 6;
+      ensureSpace(40);
+      const sigY = currentSectionY + 4;
       doc.strokeColor('#cbd5e1').lineWidth(0.75).dash(3, { space: 3 });
-      doc.moveTo(40, sigY + 20).lineTo(220, sigY + 20).stroke();
-      doc.moveTo(345, sigY + 20).lineTo(525, sigY + 20).stroke();
+      doc.moveTo(40, sigY + 18).lineTo(220, sigY + 18).stroke();
+      doc.moveTo(345, sigY + 18).lineTo(525, sigY + 18).stroke();
       doc.undash();
 
       doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f172a');
-      doc.text('Consultant Embryologist', 40, sigY + 23, { width: 180, align: 'center' });
-      doc.text('Director / IVF Specialist', 345, sigY + 23, { width: 180, align: 'center' });
+      doc.text('Consultant Embryologist', 40, sigY + 20, { width: 180, align: 'center' });
+      doc.text('Director / IVF Specialist', 345, sigY + 20, { width: 180, align: 'center' });
 
       doc.fontSize(7.5).font('Helvetica').fillColor('#64748b');
-      doc.text('Sir Ganga Ram Hospital', 40, sigY + 35, { width: 180, align: 'center' });
-      doc.text('Sir Ganga Ram Hospital', 345, sigY + 35, { width: 180, align: 'center' });
+      doc.text('Sir Ganga Ram Hospital', 40, sigY + 31, { width: 180, align: 'center' });
+      doc.text('Sir Ganga Ram Hospital', 345, sigY + 31, { width: 180, align: 'center' });
 
       // ==========================================
       // 6. CLINICAL REPORT FOOTER & VERIFICATION BADGE ON EVERY PAGE
