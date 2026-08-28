@@ -15,10 +15,13 @@ const getApiBaseUrl = () => {
     ) {
       return `http://${hostname}:4000`;
     }
-    return `${window.location.protocol}//${hostname}:4000`;
+    if (hostname.includes('vercel.app')) {
+      return 'https://ivf-storage-clinic-record-system-7qne.onrender.com';
+    }
+    return `${window.location.protocol}//${hostname}`;
   }
 
-  return 'http://localhost:4000';
+  return 'https://ivf-storage-clinic-record-system-7qne.onrender.com';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -196,6 +199,11 @@ export function getImageUrl(pathUrl: string | null | undefined): string {
     return pathUrl;
   }
   const base = getApiBaseUrl().replace(/\/$/, '');
-  const clean = pathUrl.startsWith('/') ? pathUrl : `/${pathUrl}`;
-  return `${base}${clean}`;
+  let cleanPath = pathUrl;
+  if (!cleanPath.startsWith('/uploads/') && !cleanPath.startsWith('uploads/')) {
+    cleanPath = cleanPath.startsWith('/') ? `/uploads${cleanPath}` : `/uploads/${cleanPath}`;
+  } else if (!cleanPath.startsWith('/')) {
+    cleanPath = `/${cleanPath}`;
+  }
+  return `${base}${cleanPath}`;
 }

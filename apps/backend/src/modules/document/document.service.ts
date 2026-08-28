@@ -256,32 +256,36 @@ export class DocumentService {
         doc.font('Helvetica').fillColor('#334155').text(freezeDateStr);
       }
 
-      // Render Patient Photo if uploaded
-      let photoLocalPath: string | null = null;
+      // Render Patient Photo if uploaded (Supports Data URI & local disk path)
+      let photoInputBuffer: Buffer | string | null = null;
       if (patient.photoUrl) {
-        const basename = path.basename(patient.photoUrl);
-        const checkPaths = [
-          path.join(path.resolve(CONFIG.STORAGE_LOCAL_DIR), basename),
-          path.join(process.cwd(), 'uploads', basename),
-          `/var/www/ivf/uploads/${basename}`,
-        ];
-        for (const p of checkPaths) {
-          if (fs.existsSync(p)) {
-            photoLocalPath = p;
-            break;
+        if (patient.photoUrl.startsWith('data:image/')) {
+          photoInputBuffer = Buffer.from(patient.photoUrl.split(',')[1], 'base64');
+        } else {
+          const basename = path.basename(patient.photoUrl);
+          const checkPaths = [
+            path.join(path.resolve(CONFIG.STORAGE_LOCAL_DIR), basename),
+            path.join(process.cwd(), 'uploads', basename),
+            `/var/www/ivf/uploads/${basename}`,
+          ];
+          for (const p of checkPaths) {
+            if (fs.existsSync(p)) {
+              photoInputBuffer = p;
+              break;
+            }
           }
         }
       }
 
-      if (photoLocalPath) {
+      if (photoInputBuffer) {
         try {
           const pWidth = 60;
           const pHeight = 72;
           const pX = 492;
           const pY = demoStartY + 8;
 
-          // Convert photo to clean baseline JPEG Buffer using Sharp (handles WebP, PNG, HEIC, Progressive JPG)
-          const jpegBuffer = await sharp(photoLocalPath)
+          // Convert photo to clean baseline JPEG Buffer using Sharp (handles WebP, PNG, HEIC, Base64)
+          const jpegBuffer = await sharp(photoInputBuffer)
             .resize(240, 288, { fit: 'cover' })
             .jpeg({ quality: 90 })
             .toBuffer();

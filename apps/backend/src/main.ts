@@ -537,18 +537,28 @@ app.post('/api/patients/:id/photo', accessKeyGuard, jwtAuthGuard, (req: Request,
     const filename = `patient_photo_${req.params.id}_${Date.now()}.jpg`;
     const targetPath = path.join(uploadDirectory, filename);
 
-    // Resilient Sharp conversion with fallback to raw file write
+    // Resilient Sharp conversion to JPEG buffer
+    let jpegBuffer: Buffer;
     try {
-      await sharp(file.buffer)
+      jpegBuffer = await sharp(file.buffer)
         .resize(400, 480, { fit: 'cover' })
-        .jpeg({ quality: 92, progressive: false })
-        .toFile(targetPath);
+        .jpeg({ quality: 85, progressive: false })
+        .toBuffer();
     } catch (sharpErr) {
       console.warn('Sharp image conversion fallback activated:', sharpErr);
-      fs.writeFileSync(targetPath, file.buffer);
+      jpegBuffer = file.buffer;
     }
 
-    const photoUrl = `/uploads/${filename}`;
+    // Save copy to local uploads disk
+    try {
+      fs.writeFileSync(targetPath, jpegBuffer);
+    } catch (fsErr) {
+      console.warn('Disk save warning:', fsErr);
+    }
+
+    // Generate base64 Data URI for 100% permanent cross-platform image rendering
+    const mimeType = file.mimetype && file.mimetype.startsWith('image/') ? file.mimetype : 'image/jpeg';
+    const photoUrl = `data:${mimeType};base64,${jpegBuffer.toString('base64')}`;
 
     const staffUserId = req.user?.userId || '00000000-0000-0000-0000-000000000000';
     const staffName = req.user?.name || req.user?.staffId || 'ADMIN001';
