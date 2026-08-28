@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2 } from 'lucide-react';
+import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw } from 'lucide-react';
 import { apiRequest } from '../api/client';
 import { DateInputDDMMYYYY } from './PatientForm';
+import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 
 export const OcrVerification: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -135,16 +136,10 @@ export const OcrVerification: React.FC = () => {
 
   const captureCameraPhoto = () => {
     if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth || 1280;
-      canvas.height = videoRef.current.videoHeight || 720;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      }
+      const rawCanvas = captureUprightCanvasFromVideo(videoRef.current);
 
       // If Adobe Cam enabled, auto-detect document edges & crop blank margins
-      const finalCanvas = adobeCamEnabled ? autoCropDocumentBorders(canvas) : canvas;
+      const finalCanvas = adobeCamEnabled ? autoCropDocumentBorders(rawCanvas) : rawCanvas;
 
       finalCanvas.toBlob((blob) => {
         if (blob) {
@@ -158,6 +153,17 @@ export const OcrVerification: React.FC = () => {
           );
         }
       }, 'image/jpeg', 0.92);
+    }
+  };
+
+  const handleRotateImage = async (angle: number) => {
+    if (!file) return;
+    try {
+      const { file: rotatedFile } = await rotateImageFile(file, angle);
+      setFile(rotatedFile);
+      setSuccessMsg(`Photo rotated ${angle > 0 ? '90° Right ↻' : '90° Left ↺'}!`);
+    } catch (err: any) {
+      console.error('Image rotation error:', err);
     }
   };
 
@@ -424,9 +430,32 @@ export const OcrVerification: React.FC = () => {
               className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-700 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-800"
             />
             {file && (
-              <div className="text-[11px] font-bold text-emerald-700 mt-1.5 flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Selected Photo: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-2 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Selected Photo: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleRotateImage(-90)}
+                    className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-bold text-[11px] rounded-lg border border-slate-300 flex items-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                    title="Rotate Left 90°"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-700" />
+                    <span>Rotate ↺</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRotateImage(90)}
+                    className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-bold text-[11px] rounded-lg border border-slate-300 flex items-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                    title="Rotate Right 90°"
+                  >
+                    <RotateCw className="w-3.5 h-3.5 text-slate-700" />
+                    <span>Rotate ↻</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

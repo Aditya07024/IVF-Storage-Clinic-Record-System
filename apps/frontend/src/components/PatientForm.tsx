@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User } from 'lucide-react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
+import { rotateImageFile } from '../utils/imageUtils';
 
 export const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink',
@@ -1137,16 +1138,38 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     </label>
 
                     {photoPreviewUrl && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPhotoFile(null);
-                          setPhotoPreviewUrl(null);
-                        }}
-                        className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all"
-                      >
-                        Remove Photo
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {photoFile && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const { file: rFile, dataUrl } = await rotateImageFile(photoFile, 90);
+                                setPhotoFile(rFile);
+                                setPhotoPreviewUrl(dataUrl);
+                              } catch (e) {
+                                console.error('Failed to rotate photo:', e);
+                              }
+                            }}
+                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center gap-1 border border-slate-300 active:scale-95 shadow-2xs cursor-pointer"
+                            title="Rotate Right 90°"
+                          >
+                            <RotateCw className="w-3.5 h-3.5 text-slate-700" />
+                            <span>Rotate ↻</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPhotoFile(null);
+                            setPhotoPreviewUrl(null);
+                          }}
+                          className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                        >
+                          Remove Photo
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
