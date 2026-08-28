@@ -1,6 +1,6 @@
 export interface OcrExtractionResult {
   text: string;
-  provider: 'google-vision' | 'mock';
+  provider: 'google-vision' | 'google-vision-rest' | 'gemini-vision' | 'mock';
   status: 'success' | 'failed';
   error?: string;
 }

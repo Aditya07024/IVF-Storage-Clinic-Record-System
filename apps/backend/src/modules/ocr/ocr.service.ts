@@ -79,6 +79,11 @@ export class OcrService {
           process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
         }
 
+        const apiKey = CONFIG.GOOGLE_VISION_API_KEY || process.env.GOOGLE_VISION_API_KEY;
+        if (apiKey) {
+          options.apiKey = apiKey;
+        }
+
         if (CONFIG.GOOGLE_CLOUD_PROJECT_ID) {
           options.projectId = CONFIG.GOOGLE_CLOUD_PROJECT_ID;
         }
@@ -98,9 +103,68 @@ export class OcrService {
   }
 
   private initGeminiClient() {
-    if (CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'mock_gemini_key') {
-      this.genAI = new GoogleGenerativeAI(CONFIG.GEMINI_API_KEY);
+    const key = CONFIG.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (key && key !== 'mock_gemini_key') {
+      this.genAI = new GoogleGenerativeAI(key);
+      console.log('[OcrService] Google Gemini AI client initialized securely.');
     }
+  }
+
+  private async extractVisionViaRest(fileBuffer: Buffer): Promise<string> {
+    const apiKey = CONFIG.GOOGLE_VISION_API_KEY || process.env.GOOGLE_VISION_API_KEY;
+    if (!apiKey) return '';
+
+    try {
+      const base64Image = fileBuffer.toString('base64');
+      const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [
+            {
+              image: { content: base64Image },
+              features: [{ type: 'DOCUMENT_TEXT_DETECTION' }, { type: 'TEXT_DETECTION' }],
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        return '';
+      }
+
+      const data: any = await response.json();
+      const fullText = data.responses?.[0]?.fullTextAnnotation?.text || data.responses?.[0]?.textAnnotations?.[0]?.description || '';
+      return fullText;
+    } catch (e: any) {
+      return '';
+    }
+  }
+
+  private async extractVisionViaGemini(fileBuffer: Buffer, mimeType: string): Promise<string> {
+    if (!this.genAI) return '';
+    const candidateModels = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+    const base64Image = fileBuffer.toString('base64');
+
+    for (const modelName of candidateModels) {
+      try {
+        const model = this.genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent([
+          'Read and transcribe all printed and handwritten text in this medical document image accurately. Return only the extracted text.',
+          {
+            inlineData: {
+              data: base64Image,
+              mimeType: mimeType || 'image/jpeg',
+            },
+          },
+        ]);
+        const txt = result.response.text();
+        if (txt && txt.trim()) return txt.trim();
+      } catch (err: any) {
+        // try next model candidate
+      }
+    }
+    return '';
   }
 
   /**
@@ -142,60 +206,58 @@ export class OcrService {
       };
     }
 
-    // 3. Google Cloud Vision API Extraction
+    // 3. Try Google Cloud Vision Client
     if (!this.visionClient) {
-      // Re-try client init in case credentials were set dynamically
       this.initVisionClient();
     }
 
-    if (!this.visionClient) {
-      throw new Error('Google Cloud Vision client is not configured or credentials file is missing.');
+    if (this.visionClient) {
+      try {
+        console.log(`[OcrService] Sending document '${filename || 'image'}' (${fileBuffer.length} bytes, ${mimeType}) to Google Cloud Vision API...`);
+        const [result] = await this.visionClient.documentTextDetection({
+          image: { content: fileBuffer },
+        });
+
+        const fullTextAnnotation = result.fullTextAnnotation;
+        const textAnnotations = result.textAnnotations;
+        const text = fullTextAnnotation?.text || textAnnotations?.[0]?.description || '';
+
+        if (text.trim()) {
+          console.log(`[OcrService] Google Cloud Vision successfully extracted ${text.length} characters of OCR text.`);
+          return {
+            text,
+            provider: 'google-vision',
+            status: 'success',
+          };
+        }
+      } catch (err: any) {
+        console.warn('[OcrService] Google Vision client notice, trying REST API / Gemini fallback:', err.message || err);
+      }
     }
 
-    try {
-      console.log(`[OcrService] Sending document '${filename || 'image'}' (${fileBuffer.length} bytes, ${mimeType}) to Google Cloud Vision API...`);
-
-      const [result] = await this.visionClient.documentTextDetection({
-        image: { content: fileBuffer },
-      });
-
-      const fullTextAnnotation = result.fullTextAnnotation;
-      const textAnnotations = result.textAnnotations;
-
-      const text = fullTextAnnotation?.text || textAnnotations?.[0]?.description || '';
-
-      if (!text.trim()) {
-        console.warn(`[OcrService] Google Vision completed but returned 0 text characters for '${filename || 'document'}'.`);
-        return {
-          text: '',
-          provider: 'google-vision',
-          status: 'success',
-        };
-      }
-
-      console.log(`[OcrService] Google Cloud Vision successfully extracted ${text.length} characters of OCR text.`);
+    // 4. Try Google Cloud Vision REST API Fallback
+    const restText = await this.extractVisionViaRest(fileBuffer);
+    if (restText.trim()) {
+      console.log(`[OcrService] Google Cloud Vision REST API extracted ${restText.length} characters of OCR text.`);
       return {
-        text,
-        provider: 'google-vision',
+        text: restText,
+        provider: 'google-vision-rest',
         status: 'success',
       };
-    } catch (err: any) {
-      console.error('[OcrService] Google Cloud Vision API error:', err.message || err);
-
-      // Safe error mapping to prevent exposing API keys / internal paths
-      let userFriendlyError = 'Unable to process the image. Please try again.';
-      const errMsg = (err.message || '').toLowerCase();
-
-      if (errMsg.includes('api key') || errMsg.includes('credential') || errMsg.includes('permission')) {
-        userFriendlyError = 'Google Vision authentication or permission error. Check server log configuration.';
-      } else if (errMsg.includes('quota') || errMsg.includes('rate limit')) {
-        userFriendlyError = 'Google Vision API rate limit or quota exceeded.';
-      } else if (errMsg.includes('bad image') || errMsg.includes('format')) {
-        userFriendlyError = 'Invalid or corrupt image format provided.';
-      }
-
-      throw new Error(userFriendlyError);
     }
+
+    // 5. Try Gemini Multimodal Direct Image Extraction Fallback
+    const geminiText = await this.extractVisionViaGemini(fileBuffer, mimeType);
+    if (geminiText.trim()) {
+      console.log(`[OcrService] Gemini Multimodal Vision extracted ${geminiText.length} characters of OCR text.`);
+      return {
+        text: geminiText,
+        provider: 'gemini-vision',
+        status: 'success',
+      };
+    }
+
+    throw new Error('Google Cloud Vision & Gemini API error: Unable to extract text from document. Please verify image clarity or API keys.');
   }
 
   /**

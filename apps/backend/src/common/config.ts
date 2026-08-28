@@ -35,6 +35,7 @@ export const CONFIG = {
   ENABLE_DISK_PURGE: process.env.ENABLE_DISK_PURGE || 'false',
   
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  GOOGLE_VISION_API_KEY: process.env.GOOGLE_VISION_API_KEY || '',
   GOOGLE_CLOUD_PROJECT_ID: process.env.GOOGLE_CLOUD_PROJECT_ID || '',
   GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '',
   OCR_PROVIDER: process.env.OCR_PROVIDER || 'google',
