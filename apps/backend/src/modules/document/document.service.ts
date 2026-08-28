@@ -640,23 +640,7 @@ export class DocumentService {
         currentSectionY = disclaimerTextY + 42;
       }
 
-      // ==========================================
-      // 5.5 CLINICAL SIGNATURE BLOCK
-      // ==========================================
-      ensureSpace(40);
-      const sigY = currentSectionY + 4;
-      doc.strokeColor('#cbd5e1').lineWidth(0.75).dash(3, { space: 3 });
-      doc.moveTo(40, sigY + 18).lineTo(220, sigY + 18).stroke();
-      doc.moveTo(345, sigY + 18).lineTo(525, sigY + 18).stroke();
-      doc.undash();
 
-      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f172a');
-      doc.text('Consultant Embryologist', 40, sigY + 20, { width: 180, align: 'center' });
-      doc.text('Director / IVF Specialist', 345, sigY + 20, { width: 180, align: 'center' });
-
-      doc.fontSize(7.5).font('Helvetica').fillColor('#64748b');
-      doc.text('Sir Ganga Ram Hospital', 40, sigY + 31, { width: 180, align: 'center' });
-      doc.text('Sir Ganga Ram Hospital', 345, sigY + 31, { width: 180, align: 'center' });
 
       // ==========================================
       // 6. CLINICAL REPORT FOOTER & VERIFICATION BADGE ON EVERY PAGE
