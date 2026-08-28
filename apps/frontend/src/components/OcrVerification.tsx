@@ -831,17 +831,17 @@ export const OcrVerification: React.FC = () => {
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-pink-700 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Color --</option>
-                      <option value="Pink">🌸 V01: Pink</option>
-                      <option value="Grey">🩶 V02: Grey</option>
-                      <option value="Red">🔴 V03: Red</option>
-                      <option value="Black">🖤 V04: Black</option>
-                      <option value="Green">🟢 V05: Green</option>
-                      <option value="Rust">🤎 V06: Rust</option>
-                      <option value="Blue">🔵 V07: Blue</option>
-                      <option value="Purple">🟣 V08: Purple</option>
-                      <option value="Yellow">🟡 V09: Yellow</option>
-                      <option value="Orange">🟠 V10: Orange</option>
-                      <option value="Skyblue">🩵 V11: Skyblue</option>
+                      <option value="Pink">V01: Pink</option>
+                      <option value="Grey">V02: Grey</option>
+                      <option value="Red">V03: Red</option>
+                      <option value="Black">V04: Black</option>
+                      <option value="Green">V05: Green</option>
+                      <option value="Rust">V06: Rust</option>
+                      <option value="Blue">V07: Blue</option>
+                      <option value="Purple">V08: Purple</option>
+                      <option value="Yellow">V09: Yellow</option>
+                      <option value="Orange">V10: Orange</option>
+                      <option value="Skyblue">V11: Skyblue</option>
                       {visoTubeColor && !['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].includes(visoTubeColor) && (
                         <option value={visoTubeColor}>{visoTubeColor} (Detected)</option>
                       )}
