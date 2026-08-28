@@ -793,6 +793,7 @@ app.post('/api/documents/send-email', accessKeyGuard, jwtAuthGuard, async (req: 
       pdfBuffer,
       customSubject: subject,
       customMessage,
+      authToken: req.headers.authorization,
     });
 
     // Create permanent EmailLog record

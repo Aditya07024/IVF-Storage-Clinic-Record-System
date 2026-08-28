@@ -8,6 +8,7 @@ export interface SendReportEmailInput {
   pdfBuffer: Buffer;
   customSubject?: string;
   customMessage?: string;
+  authToken?: string;
 }
 
 export class MailService {
@@ -33,7 +34,7 @@ export class MailService {
   }
 
   async sendPatientReportEmail(input: SendReportEmailInput): Promise<{ success: boolean; messageId: string }> {
-    const { recipientEmail, patientName, patientId, pdfBuffer, customSubject, customMessage } = input;
+    const { recipientEmail, patientName, patientId, pdfBuffer, customSubject, customMessage, authToken } = input;
 
     if (!recipientEmail || !recipientEmail.trim()) {
       throw new Error('Recipient email address is required.');
@@ -44,7 +45,6 @@ export class MailService {
     const user = (process.env.SMTP_USER || CONFIG.SMTP_USER || 'srghivfcryo@gmail.com').trim();
     const rawPass = process.env.SMTP_PASS || CONFIG.SMTP_PASS || 'vzba dnde aubt akas';
     const passWithSpaces = rawPass.trim();
-    const passNoSpaces = rawPass.replace(/["'\s]/g, '').trim();
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -155,8 +155,8 @@ export class MailService {
         secure: true,
         auth: { user, pass: passWithSpaces },
         tls: { rejectUnauthorized: false },
-        connectionTimeout: 15000,
-        socketTimeout: 20000,
+        connectionTimeout: 10000,
+        socketTimeout: 12000,
       });
 
       const info = await transporter.sendMail(mailOptions);
@@ -189,12 +189,17 @@ export class MailService {
     if (!process.env.IS_HOSTINGER_VPS) {
       try {
         console.log('[MailService] Cloud SMTP timeout on Render. Relaying via Hostinger Dedicated VPS (http://200.234.42.142)...');
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'x-access-key': 'clinic2026',
+        };
+        if (authToken) {
+          headers['Authorization'] = authToken;
+        }
+
         const vpsResponse = await fetch('http://200.234.42.142/api/documents/send-email', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-access-key': 'clinic2026',
-          },
+          headers,
           body: JSON.stringify({
             patientId,
             recipientEmail,
@@ -210,15 +215,16 @@ export class MailService {
             console.log(`[MailService] Successfully delivered email via Hostinger VPS Relay to ${recipientEmail}! Message ID: ${msgId}`);
             return { success: true, messageId: msgId };
           }
+        } else {
+          const errData: any = await vpsResponse.json().catch(() => ({}));
+          console.warn('[MailService] Hostinger VPS relay rejected with status', vpsResponse.status, errData);
         }
       } catch (vpsErr: any) {
         console.warn('[MailService] Hostinger VPS relay failed:', vpsErr?.message);
       }
     }
 
-    const fallbackMsgId = `dispatch_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    console.warn(`[MailService] Local SMTP connection closed by provider. Email record saved to database for ${recipientEmail}.`);
-    return { success: true, messageId: fallbackMsgId };
+    throw new Error(`Failed to send email to ${recipientEmail}: Gmail SMTP connection timeout. Please check server internet connectivity or add RESEND_API_KEY.`);
   }
 }
 
