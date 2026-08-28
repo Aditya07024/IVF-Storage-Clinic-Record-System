@@ -66,6 +66,13 @@ STORAGE_PROVIDER=local
 STORAGE_LOCAL_DIR=${PROJECT_DIR}/uploads
 ENABLE_DISK_PURGE=false
 OCR_PROVIDER=google
+IS_HOSTINGER_VPS=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=srghivfcryo@gmail.com
+SMTP_PASS=grwq ezyt ivgb bisn
+SMTP_FROM="SRGH IVF Cryo Bank" <srghivfcryo@gmail.com>
 EOT
 
 cp ${PROJECT_DIR}/apps/backend/.env ${PROJECT_DIR}/.env

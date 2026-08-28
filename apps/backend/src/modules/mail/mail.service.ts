@@ -174,8 +174,8 @@ export class MailService {
         secure: false,
         auth: { user, pass: passWithSpaces },
         tls: { rejectUnauthorized: false },
-        connectionTimeout: 15000,
-        socketTimeout: 20000,
+        connectionTimeout: 10000,
+        socketTimeout: 12000,
       });
 
       const info = await transporter.sendMail(mailOptions);
@@ -183,6 +183,37 @@ export class MailService {
       return { success: true, messageId: info.messageId };
     } catch (tlsErr: any) {
       console.warn('[MailService] Gmail STARTTLS 587 direct transport failed:', tlsErr?.message);
+    }
+
+    // 4. Relay via Hostinger VPS Dedicated Server IP (http://200.234.42.142) if running on Render
+    if (!process.env.IS_HOSTINGER_VPS) {
+      try {
+        console.log('[MailService] Cloud SMTP timeout on Render. Relaying via Hostinger Dedicated VPS (http://200.234.42.142)...');
+        const vpsResponse = await fetch('http://200.234.42.142/api/documents/send-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-access-key': 'clinic2026',
+          },
+          body: JSON.stringify({
+            patientId,
+            recipientEmail,
+            customSubject,
+            customMessage,
+          }),
+        });
+
+        if (vpsResponse.ok) {
+          const vpsData: any = await vpsResponse.json();
+          if (vpsData.success) {
+            const msgId = vpsData.emailLog?.messageId || vpsData.messageId || `vps_${Date.now()}`;
+            console.log(`[MailService] Successfully delivered email via Hostinger VPS Relay to ${recipientEmail}! Message ID: ${msgId}`);
+            return { success: true, messageId: msgId };
+          }
+        }
+      } catch (vpsErr: any) {
+        console.warn('[MailService] Hostinger VPS relay failed:', vpsErr?.message);
+      }
     }
 
     const fallbackMsgId = `dispatch_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
