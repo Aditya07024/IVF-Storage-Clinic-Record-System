@@ -4,6 +4,7 @@ import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { rotateImageFile } from '../utils/imageUtils';
+import { ImageCropRotateModal } from './ImageCropRotateModal';
 
 export const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink',
@@ -279,16 +280,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [comments, setComments] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [cropModalFile, setCropModalFile] = useState<File | null>(null);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setCropModalFile(file);
     }
   };
 
@@ -1985,6 +1982,18 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         isOpen={!!reportMailPatient}
         onClose={() => setReportMailPatient(null)}
         patient={reportMailPatient}
+      />
+
+      {/* Adjust Patient Profile Picture Modal */}
+      <ImageCropRotateModal
+        isOpen={Boolean(cropModalFile)}
+        imageFile={cropModalFile}
+        title="Adjust & Rotate Patient Profile Picture"
+        onClose={() => setCropModalFile(null)}
+        onConfirm={(processedFile, dataUrl) => {
+          setPhotoFile(processedFile);
+          setPhotoPreviewUrl(dataUrl);
+        }}
       />
     </div>
   );

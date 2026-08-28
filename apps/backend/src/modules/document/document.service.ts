@@ -314,7 +314,7 @@ export class DocumentService {
           doc.addPage();
           currentSectionY = 36;
           doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#065f46')
-            .text(`SRGH IVF CRYO BANK  |  Patient: ${patient.fullName} (${patient.patientId}) — CONTINUED`, 30, currentSectionY);
+            .text(`SRGH IVF CRYO BANK  |  Patient: ${patient.fullName} (${patient.patientId})`, 30, currentSectionY);
           currentSectionY += 14;
           doc.strokeColor('#cbd5e1').lineWidth(0.5).moveTo(30, currentSectionY).lineTo(565, currentSectionY).stroke();
           currentSectionY += 14;

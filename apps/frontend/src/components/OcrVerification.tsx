@@ -3,9 +3,11 @@ import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkl
 import { apiRequest } from '../api/client';
 import { DateInputDDMMYYYY } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
+import { ImageCropRotateModal } from './ImageCropRotateModal';
 
 export const OcrVerification: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
+  const [cropModalFile, setCropModalFile] = useState<File | null>(null);
   const [pendingRecords, setPendingRecords] = useState<any[]>([]);
   const [activeRecord, setActiveRecord] = useState<any | null>(null);
 
@@ -144,13 +146,8 @@ export const OcrVerification: React.FC = () => {
       finalCanvas.toBlob((blob) => {
         if (blob) {
           const photoFile = new File([blob], `adobe-scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
-          setFile(photoFile);
           stopLiveCamera();
-          setSuccessMsg(
-            adobeCamEnabled
-              ? '✨ Document paper edges detected & blank background cropped automatically (Adobe Cam Mode)! Click "Process OCR & AI".'
-              : 'Photo captured successfully! Click "Process OCR & AI".'
-          );
+          setCropModalFile(photoFile);
         }
       }, 'image/jpeg', 0.92);
     }

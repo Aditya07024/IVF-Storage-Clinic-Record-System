@@ -4,6 +4,7 @@ import { apiRequest, formatDateDDMMYYYY, getImageUrl } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
+import { ImageCropRotateModal } from './ImageCropRotateModal';
 
 const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink', 2: 'Grey', 3: 'Red', 4: 'Black', 5: 'Green',
@@ -44,6 +45,7 @@ export const PatientDirectory: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [showAuditLogs, setShowAuditLogs] = useState(false);
   const [reportMailPatient, setReportMailPatient] = useState<any | null>(null);
+  const [cropModalFile, setCropModalFile] = useState<{ patientId: string; file: File } | null>(null);
 
   useEffect(() => {
     apiRequest('/api/auth/me')
@@ -1167,7 +1169,9 @@ export const PatientDirectory: React.FC = () => {
                       disabled={uploadingPhoto}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleUploadPatientPhoto(selectedPatient.id, file);
+                        if (file && selectedPatient) {
+                          setCropModalFile({ patientId: selectedPatient.id, file });
+                        }
                       }}
                     />
                   </label>
@@ -1808,6 +1812,20 @@ export const PatientDirectory: React.FC = () => {
         isOpen={!!reportMailPatient}
         onClose={() => setReportMailPatient(null)}
         patient={reportMailPatient}
+      />
+
+      {/* Adjust Patient Profile Picture Modal */}
+      <ImageCropRotateModal
+        isOpen={Boolean(cropModalFile)}
+        imageFile={cropModalFile?.file || null}
+        title="Adjust & Rotate Patient Profile Picture"
+        onClose={() => setCropModalFile(null)}
+        onConfirm={(processedFile) => {
+          if (cropModalFile) {
+            handleUploadPatientPhoto(cropModalFile.patientId, processedFile);
+            setCropModalFile(null);
+          }
+        }}
       />
     </div>
   );
