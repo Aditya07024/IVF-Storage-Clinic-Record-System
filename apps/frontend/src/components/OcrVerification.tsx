@@ -28,6 +28,7 @@ export const OcrVerification: React.FC = () => {
   const [freezingDate, setFreezingDate] = useState('');
   const [thawDate, setThawDate] = useState('');
   const [embryoCount, setEmbryoCount] = useState('');
+  const [tankName, setTankName] = useState('CAN-01');
   const [canisterName, setCanisterName] = useState('');
   const [visoTubeColor, setVisoTubeColor] = useState('');
   const [visoTubeId, setVisoTubeId] = useState('');
@@ -840,9 +841,29 @@ export const OcrVerification: React.FC = () => {
                   </span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {/* Canister / Tank Select */}
+                  {/* Field 1: Cryotank / Can Overview */}
                   <div className="space-y-0.5">
-                    <label className="font-bold text-slate-700 text-[9px] uppercase">Canister / Tank</label>
+                    <label className="font-bold text-slate-700 text-[9px] uppercase">Tank / Cryotank</label>
+                    <select
+                      value={tankName}
+                      onChange={(e) => setTankName(e.target.value)}
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
+                    >
+                      <option value="CAN-01">CAN-01 (Tank 1)</option>
+                      <option value="CAN-02">CAN-02 (Tank 2)</option>
+                      <option value="CAN-03">CAN-03 (Tank 3)</option>
+                      <option value="CAN-04">CAN-04 (Tank 4)</option>
+                      <option value="CAN-05">CAN-05 (Tank 5)</option>
+                      <option value="CAN-08">CAN-08 (Tank 8)</option>
+                      <option value="CAN-10">CAN-10 (Tank 10)</option>
+                      <option value="CAN-11">CAN-11 (Tank 11)</option>
+                      <option value="CAN-14">CAN-14 (Tank 14)</option>
+                    </select>
+                  </div>
+
+                  {/* Field 2: Canister No */}
+                  <div className="space-y-0.5">
+                    <label className="font-bold text-slate-700 text-[9px] uppercase">Canister No</label>
                     <select
                       value={canisterName}
                       onChange={(e) => setCanisterName(e.target.value)}
@@ -859,20 +880,32 @@ export const OcrVerification: React.FC = () => {
                       <option value="C07">C07 (Canister 07)</option>
                       <option value="C09">C09 (Canister 09)</option>
                       <option value="C10">C10 (Canister 10)</option>
-                      {canisterName && ![
-                        'C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'C07', 'C08', 'C09', 'C10'
-                      ].includes(canisterName) && (
-                        <option value={canisterName}>{canisterName} (Detected)</option>
-                      )}
                     </select>
                   </div>
 
-                  {/* Viso Tube Color Select (11 Physical Colors) */}
+                  {/* Field 3: Level / Tier */}
                   <div className="space-y-0.5">
-                    <label className="font-bold text-slate-700 text-[9px] uppercase">Viso Tube Color</label>
+                    <label className="font-bold text-slate-700 text-[9px] uppercase">Level / Tier</label>
+                    <select
+                      value={level}
+                      onChange={(e) => setLevel(e.target.value)}
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
+                    >
+                      <option value="">-- Select Level --</option>
+                      <option value="Level 1">Level 1 (Bottom)</option>
+                      <option value="Level 2">Level 2 (Top)</option>
+                    </select>
+                  </div>
+
+                  {/* Field 4: Viso Tube / Goblet Color (11 Physical Colors) */}
+                  <div className="space-y-0.5">
+                    <label className="font-bold text-slate-700 text-[9px] uppercase">Viso Tube / Goblet Color</label>
                     <select
                       value={visoTubeColor}
-                      onChange={(e) => setVisoTubeColor(e.target.value)}
+                      onChange={(e) => {
+                        setVisoTubeColor(e.target.value);
+                        setVisoTubeId(e.target.value);
+                      }}
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-pink-700 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Color --</option>
@@ -887,51 +920,6 @@ export const OcrVerification: React.FC = () => {
                       <option value="Yellow">V09: Yellow</option>
                       <option value="Orange">V10: Orange</option>
                       <option value="Skyblue">V11: Skyblue</option>
-                      {visoTubeColor && !['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].includes(visoTubeColor) && (
-                        <option value={visoTubeColor}>{visoTubeColor} (Detected)</option>
-                      )}
-                    </select>
-                  </div>
-
-                  {/* Viso Tube ID / Goblet Select */}
-                  <div className="space-y-0.5">
-                    <label className="font-bold text-slate-700 text-[9px] uppercase">Viso Tube ID / Goblet</label>
-                    <select
-                      value={visoTubeId}
-                      onChange={(e) => setVisoTubeId(e.target.value)}
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-amber-700 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
-                    >
-                      <option value="">-- Select Goblet / ID --</option>
-                      <option value="V09">V09: Yellow Goblet</option>
-                      <option value="V01">V01: Pink Goblet</option>
-                      <option value="V05">V05: Green Goblet</option>
-                      <option value="V07">V07: Blue Goblet</option>
-                      <option value="V03">V03: Red Goblet</option>
-                      <option value="V02">V02: Grey Goblet</option>
-                      <option value="V04">V04: Black Goblet</option>
-                      <option value="V08">V08: Purple Goblet</option>
-                      <option value="V10">V10: Orange Goblet</option>
-                      <option value="V11">V11: Skyblue Goblet</option>
-                      {visoTubeId && !['V01', 'V02', 'V03', 'V04', 'V05', 'V06', 'V07', 'V08', 'V09', 'V10', 'V11'].includes(visoTubeId) && (
-                        <option value={visoTubeId}>{visoTubeId} (Detected)</option>
-                      )}
-                    </select>
-                  </div>
-
-                  {/* Level / Tier Select */}
-                  <div className="space-y-0.5">
-                    <label className="font-bold text-slate-700 text-[9px] uppercase">Level / Tier</label>
-                    <select
-                      value={level}
-                      onChange={(e) => setLevel(e.target.value)}
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
-                    >
-                      <option value="">-- Select Level --</option>
-                      <option value="Level 1">Level 1 (Bottom)</option>
-                      <option value="Level 2">Level 2 (Top)</option>
-                      {level && !['Level 1', 'Level 2'].includes(level) && (
-                        <option value={level}>{level} (Detected)</option>
-                      )}
                     </select>
                   </div>
                 </div>
