@@ -356,7 +356,7 @@ export const ImageCropRotateModal: React.FC<ImageCropRotateModalProps> = ({
             </div>
 
             {/* Zoom Controls */}
-            <div className="flex items-center gap-1 shrink-0 bg-white p-1 rounded-xl border border-slate-300 shadow-2xs">
+            {/* <div className="flex items-center gap-1 shrink-0 bg-white p-1 rounded-xl border border-slate-300 shadow-2xs">
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.max(0.5, z - 0.15))}
@@ -376,7 +376,7 @@ export const ImageCropRotateModal: React.FC<ImageCropRotateModalProps> = ({
               >
                 <ZoomIn className="w-3.5 h-3.5 text-slate-700" />
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
 
