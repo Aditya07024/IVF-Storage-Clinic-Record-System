@@ -484,7 +484,7 @@ ${rawText}`;
       visoTubeId: tubeMatch ? tubeMatch[1].trim() : 'Yellow Goblet',
       level: levelMatch ? `Level ${levelMatch[1].trim()}` : 'Level 1',
       straws,
-      comments: 'Handwritten IVF Cryo Storage Note - Analyzed by Gemini AI',
+      comments: '',
     };
   }
 
