@@ -287,6 +287,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     if (file) {
       setCropModalFile(file);
     }
+    e.target.value = '';
   };
 
   // Storage Allocation State

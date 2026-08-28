@@ -1168,6 +1168,7 @@ export const PatientDirectory: React.FC = () => {
                         if (file && selectedPatient) {
                           setCropModalFile({ patientId: selectedPatient.id, file });
                         }
+                        e.target.value = '';
                       }}
                     />
                   </label>

@@ -423,7 +423,17 @@ export const OcrVerification: React.FC = () => {
             <input
               type="file"
               accept="image/*,.pdf"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                const selected = e.target.files?.[0];
+                if (selected) {
+                  if (selected.type.startsWith('image/')) {
+                    setCropModalFile(selected);
+                  } else {
+                    setFile(selected);
+                  }
+                }
+                e.target.value = '';
+              }}
               className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-700 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-800"
             />
             {file && (
@@ -809,6 +819,18 @@ export const OcrVerification: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Crop & Rotate Image Studio Modal */}
+      <ImageCropRotateModal
+        isOpen={Boolean(cropModalFile)}
+        imageFile={cropModalFile}
+        title="Adjust & Rotate Document Scan Photo"
+        onClose={() => setCropModalFile(null)}
+        onConfirm={(processedFile) => {
+          setFile(processedFile);
+          setSuccessMsg('Photo adjusted & confirmed! Click "Process OCR & AI" to analyze.');
+        }}
+      />
     </div>
   );
 };
