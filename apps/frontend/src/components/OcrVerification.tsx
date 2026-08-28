@@ -11,6 +11,22 @@ export const OcrVerification: React.FC = () => {
   const [pendingRecords, setPendingRecords] = useState<any[]>([]);
   const [activeRecord, setActiveRecord] = useState<any | null>(null);
 
+  const getVisoColorStyle = (color: string) => {
+    const c = color.toLowerCase();
+    if (c.includes('pink')) return 'bg-pink-100 border-pink-400 text-pink-900';
+    if (c.includes('grey') || c.includes('gray')) return 'bg-slate-200 border-slate-400 text-slate-900';
+    if (c.includes('red')) return 'bg-red-100 border-red-500 text-red-900';
+    if (c.includes('black')) return 'bg-slate-900 border-slate-950 text-white';
+    if (c.includes('green')) return 'bg-emerald-100 border-emerald-500 text-emerald-900';
+    if (c.includes('rust')) return 'bg-amber-100 border-amber-700 text-amber-950';
+    if (c.includes('blue') && !c.includes('sky')) return 'bg-blue-100 border-blue-500 text-blue-900';
+    if (c.includes('purple')) return 'bg-purple-100 border-purple-500 text-purple-900';
+    if (c.includes('yellow')) return 'bg-yellow-100 border-yellow-400 text-yellow-950';
+    if (c.includes('orange')) return 'bg-orange-100 border-orange-500 text-orange-950';
+    if (c.includes('sky')) return 'bg-sky-100 border-sky-400 text-sky-950';
+    return 'bg-white border-emerald-300 text-slate-900';
+  };
+
   // Verification Form Fields
   const [patientId, setPatientId] = useState('');
   const [fullName, setFullName] = useState('');
@@ -906,20 +922,20 @@ export const OcrVerification: React.FC = () => {
                         setVisoTubeColor(e.target.value);
                         setVisoTubeId(e.target.value);
                       }}
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-pink-700 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
+                      className={`w-full border rounded-lg p-1.5 font-bold text-[11px] focus:outline-none shadow-2xs cursor-pointer transition-all ${getVisoColorStyle(visoTubeColor)}`}
                     >
-                      <option value="">-- Select Color --</option>
-                      <option value="Pink">V01: Pink</option>
-                      <option value="Grey">V02: Grey</option>
-                      <option value="Red">V03: Red</option>
-                      <option value="Black">V04: Black</option>
-                      <option value="Green">V05: Green</option>
-                      <option value="Rust">V06: Rust</option>
-                      <option value="Blue">V07: Blue</option>
-                      <option value="Purple">V08: Purple</option>
-                      <option value="Yellow">V09: Yellow</option>
-                      <option value="Orange">V10: Orange</option>
-                      <option value="Skyblue">V11: Skyblue</option>
+                      <option value="" className="bg-white text-slate-900 font-bold">-- Select Color --</option>
+                      <option value="Pink" className="bg-pink-100 text-pink-900 font-bold">V01: Pink</option>
+                      <option value="Grey" className="bg-slate-200 text-slate-900 font-bold">V02: Grey</option>
+                      <option value="Red" className="bg-red-100 text-red-900 font-bold">V03: Red</option>
+                      <option value="Black" className="bg-slate-900 text-white font-bold">V04: Black</option>
+                      <option value="Green" className="bg-emerald-100 text-emerald-900 font-bold">V05: Green</option>
+                      <option value="Rust" className="bg-amber-100 text-amber-950 font-bold">V06: Rust</option>
+                      <option value="Blue" className="bg-blue-100 text-blue-900 font-bold">V07: Blue</option>
+                      <option value="Purple" className="bg-purple-100 text-purple-900 font-bold">V08: Purple</option>
+                      <option value="Yellow" className="bg-yellow-100 text-yellow-950 font-bold">V09: Yellow</option>
+                      <option value="Orange" className="bg-orange-100 text-orange-950 font-bold">V10: Orange</option>
+                      <option value="Skyblue" className="bg-sky-100 text-sky-950 font-bold">V11: Skyblue</option>
                     </select>
                   </div>
                 </div>
