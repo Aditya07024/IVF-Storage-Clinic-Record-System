@@ -147,30 +147,80 @@ export class MailService {
       ],
     };
 
-    // 0. Try Gmail OAuth2 API (Port 443 HTTPS token exchange)
-    const gmailClientId = process.env.GMAIL_CLIENT_ID || CONFIG.GMAIL_CLIENT_ID;
-    const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET || CONFIG.GMAIL_CLIENT_SECRET;
-    const gmailRefreshToken = process.env.GMAIL_REFRESH_TOKEN || CONFIG.GMAIL_REFRESH_TOKEN;
+    // 0. Primary: Gmail REST API (Port 443 HTTPS - Google Cloud Console OAuth2)
+    const gmailClientId = (process.env.GMAIL_CLIENT_ID || CONFIG.GMAIL_CLIENT_ID || '').replace(/"/g, '').trim();
+    const gmailClientSecret = (process.env.GMAIL_CLIENT_SECRET || CONFIG.GMAIL_CLIENT_SECRET || '').replace(/"/g, '').trim();
+    const gmailRefreshToken = (process.env.GMAIL_REFRESH_TOKEN || CONFIG.GMAIL_REFRESH_TOKEN || '').replace(/"/g, '').trim();
 
     if (gmailClientId && gmailClientSecret && gmailRefreshToken) {
       try {
-        console.log('[MailService] Attempting delivery via Gmail OAuth2 API...');
-        const oauthTransporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            type: 'OAuth2',
-            user: user,
-            clientId: gmailClientId.trim(),
-            clientSecret: gmailClientSecret.trim(),
-            refreshToken: gmailRefreshToken.trim(),
-          },
+        console.log('[MailService] Sending email via official Gmail REST API (Port 443 HTTPS)...');
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: gmailClientId,
+            client_secret: gmailClientSecret,
+            refresh_token: gmailRefreshToken,
+            grant_type: 'refresh_token',
+          }),
         });
 
-        const info = await oauthTransporter.sendMail(mailOptions);
-        console.log(`[MailService] Email delivered successfully via Gmail OAuth2 API to ${recipientEmail}! ID: ${info.messageId}`);
-        return { success: true, messageId: info.messageId };
-      } catch (oauthErr: any) {
-        console.warn('[MailService] Gmail OAuth2 API failed:', oauthErr?.message);
+        const tokenData: any = await tokenRes.json();
+        if (tokenRes.ok && tokenData.access_token) {
+          const accessToken = tokenData.access_token;
+          const boundary = `====_Boundary_${Date.now()}_====`;
+          const pdfFilename = `IVF_Patient_Cryo_Report_${patientId}.pdf`;
+
+          const mimeParts = [
+            `From: "SRGH IVF Cryo Bank" <${user}>`,
+            `To: ${recipientEmail.trim()}`,
+            `Subject: ${subject}`,
+            `MIME-Version: 1.0`,
+            `Content-Type: multipart/mixed; boundary="${boundary}"`,
+            ``,
+            `--${boundary}`,
+            `Content-Type: text/html; charset="UTF-8"`,
+            ``,
+            htmlContent,
+            ``,
+            `--${boundary}`,
+            `Content-Type: application/pdf; name="${pdfFilename}"`,
+            `Content-Disposition: attachment; filename="${pdfFilename}"`,
+            `Content-Transfer-Encoding: base64`,
+            ``,
+            pdfBuffer.toString('base64'),
+            ``,
+            `--${boundary}--`,
+          ].join('\r\n');
+
+          const rawEncoded = Buffer.from(mimeParts)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+
+          const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ raw: rawEncoded }),
+          });
+
+          const sendData: any = await sendRes.json();
+          if (sendRes.ok && sendData.id) {
+            console.log(`[MailService] Successfully delivered email to ${recipientEmail} via Gmail REST API! Message ID: ${sendData.id}`);
+            return { success: true, messageId: sendData.id };
+          } else {
+            console.warn('[MailService] Gmail REST API error response:', sendData);
+          }
+        } else {
+          console.warn('[MailService] Gmail OAuth2 token refresh failed:', tokenData);
+        }
+      } catch (gmailApiErr: any) {
+        console.warn('[MailService] Gmail REST API failed:', gmailApiErr?.message);
       }
     }
 
