@@ -270,22 +270,45 @@ export class OcrService {
     patientAge?: string;
     partnerAge?: string;
     doctorName?: string;
+    phone?: string;
+    partnerPhone?: string;
+    email?: string;
+    partnerEmail?: string;
+    dob?: string;
+    partnerDob?: string;
     visitDate?: string;
     deDate?: string;
+    aspirationDate?: string;
     freezingDate?: string;
     thawDate?: string;
     embryoCount?: number;
+    canisterName?: string;
+    visoTubeColor?: string;
+    visoTubeId?: string;
+    level?: string;
+    straws?: Array<{
+      strawId?: string;
+      colorTag?: string;
+      embryoCount?: number;
+      grade?: string;
+      stage?: string;
+      pgtTested?: boolean;
+      aspirationDate?: string;
+      freezingDate?: string;
+    }>;
     comments?: string;
   }> {
     if (this.genAI && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'mock_gemini_key') {
       const candidateModels = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-1.5-flash', 'gemini-pro'];
       const prompt = `You are an expert medical OCR data extraction assistant for an IVF & Cryo Storage Clinic.
-Extract fields from the raw printed/handwritten document text below with high precision.
+Extract all patient demographics, contact details, cryo storage location (Canister, Viso Tube color/ID, Level), and straw specimen records from the raw printed/handwritten document text below with high precision.
 
 Rules:
 - DO NOT invent or hallucinate missing data. If a field is not present in text, return null.
 - Extract "patientId" / Registration No (e.g. IVF-2026-000007 or REGISTRATION NO / PATIENT ID if present).
-- Extract "patientAge", "partnerAge", "doctorName" if present.
+- Extract patient & partner names, ages, phone numbers, email addresses, doctor name.
+- Extract cryo storage location fields: "canisterName" (e.g. Canister 01, Can 02), "visoTubeColor" (e.g. Pink, Grey, Red, Black, Green), "visoTubeId" (e.g. V01), "level".
+- Extract all straw records into the "straws" array: each straw object containing "strawId", "colorTag", "embryoCount", "grade" (e.g. 4AA), "stage" (e.g. Day 3, Day 5, Oocyte, Semen), "pgtTested" (boolean), "aspirationDate", "freezingDate".
 - Parse all dates into YYYY-MM-DD format (convert DD/MM/YYYY, DD-MMM-YYYY, etc.).
 - Output ONLY valid JSON matching this exact schema:
 {
@@ -295,11 +318,32 @@ Rules:
   "patientAge": "string or null",
   "partnerAge": "string or null",
   "doctorName": "string or null",
-  "visitDate": "YYYY-MM-DD or null",
-  "deDate": "YYYY-MM-DD or null",
+  "phone": "string or null",
+  "partnerPhone": "string or null",
+  "email": "string or null",
+  "partnerEmail": "string or null",
+  "dob": "YYYY-MM-DD or null",
+  "partnerDob": "YYYY-MM-DD or null",
+  "aspirationDate": "YYYY-MM-DD or null",
   "freezingDate": "YYYY-MM-DD or null",
   "thawDate": "YYYY-MM-DD or null",
   "embryoCount": number or null,
+  "canisterName": "string or null",
+  "visoTubeColor": "string or null",
+  "visoTubeId": "string or null",
+  "level": "string or null",
+  "straws": [
+    {
+      "strawId": "string or null",
+      "colorTag": "string or null",
+      "embryoCount": number or null,
+      "grade": "string or null",
+      "stage": "string or null",
+      "pgtTested": boolean or null,
+      "aspirationDate": "YYYY-MM-DD or null",
+      "freezingDate": "YYYY-MM-DD or null"
+    }
+  ],
   "comments": "string or null"
 }
 
@@ -321,11 +365,23 @@ ${rawText}`;
               patientAge: parsed.patientAge || '',
               partnerAge: parsed.partnerAge || '',
               doctorName: parsed.doctorName || '',
+              phone: parsed.phone || '',
+              partnerPhone: parsed.partnerPhone || '',
+              email: parsed.email || '',
+              partnerEmail: parsed.partnerEmail || '',
+              dob: parsed.dob || '',
+              partnerDob: parsed.partnerDob || '',
               visitDate: parsed.visitDate || '',
               deDate: parsed.deDate || '',
+              aspirationDate: parsed.aspirationDate || '',
               freezingDate: parsed.freezingDate || '',
               thawDate: parsed.thawDate || '',
               embryoCount: parsed.embryoCount || undefined,
+              canisterName: parsed.canisterName || '',
+              visoTubeColor: parsed.visoTubeColor || '',
+              visoTubeId: parsed.visoTubeId || '',
+              level: parsed.level || '',
+              straws: Array.isArray(parsed.straws) ? parsed.straws : [],
               comments: parsed.comments || '',
             };
           }

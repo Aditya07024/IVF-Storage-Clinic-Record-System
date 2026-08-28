@@ -28,6 +28,11 @@ export const OcrVerification: React.FC = () => {
   const [freezingDate, setFreezingDate] = useState('');
   const [thawDate, setThawDate] = useState('');
   const [embryoCount, setEmbryoCount] = useState('');
+  const [canisterName, setCanisterName] = useState('');
+  const [visoTubeColor, setVisoTubeColor] = useState('');
+  const [visoTubeId, setVisoTubeId] = useState('');
+  const [level, setLevel] = useState('');
+  const [straws, setStraws] = useState<any[]>([]);
   const [comments, setComments] = useState('');
 
   const [uploading, setUploading] = useState(false);
@@ -197,6 +202,11 @@ export const OcrVerification: React.FC = () => {
     setFreezingDate(json.freezingDate || '');
     setThawDate(json.thawDate || '');
     setEmbryoCount(json.embryoCount ? String(json.embryoCount) : '');
+    setCanisterName(json.canisterName || '');
+    setVisoTubeColor(json.visoTubeColor || '');
+    setVisoTubeId(json.visoTubeId || '');
+    setLevel(json.level || '');
+    setStraws(Array.isArray(json.straws) ? json.straws : []);
     setComments(json.comments || '');
   };
 
@@ -270,6 +280,11 @@ export const OcrVerification: React.FC = () => {
           visitDate: visitDate || undefined,
           freezingDate: freezingDate || undefined,
           thawDate: thawDate || undefined,
+          canisterName: canisterName.trim() || undefined,
+          visoTubeColor: visoTubeColor.trim() || undefined,
+          visoTubeId: visoTubeId.trim() || undefined,
+          level: level.trim() || undefined,
+          straws: straws.length > 0 ? straws : undefined,
           comments: comments.trim() || undefined,
         }),
       });
@@ -725,6 +740,95 @@ export const OcrVerification: React.FC = () => {
                   onChange={(val) => setVisitDate(val)}
                 />
               </div>
+
+              {/* Extracted Cryo Storage Location */}
+              <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>AI Extracted Cryo Storage Location</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-700 text-[10px]">Canister / Tank</label>
+                    <input
+                      type="text"
+                      value={canisterName}
+                      onChange={(e) => setCanisterName(e.target.value)}
+                      placeholder="e.g. Canister 01"
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-700 text-[10px]">Viso Tube Color</label>
+                    <input
+                      type="text"
+                      value={visoTubeColor}
+                      onChange={(e) => setVisoTubeColor(e.target.value)}
+                      placeholder="e.g. Pink, Grey"
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-700 text-[10px]">Viso Tube ID</label>
+                    <input
+                      type="text"
+                      value={visoTubeId}
+                      onChange={(e) => setVisoTubeId(e.target.value)}
+                      placeholder="e.g. V01"
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-700 text-[10px]">Level / Tier</label>
+                    <input
+                      type="text"
+                      value={level}
+                      onChange={(e) => setLevel(e.target.value)}
+                      placeholder="e.g. Level 1"
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Extracted Specimen Straws Table */}
+              {straws.length > 0 && (
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                      Extracted Specimen Straws ({straws.length} Straws)
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-slate-100 text-slate-700 font-bold">
+                        <tr>
+                          <th className="p-2">Straw ID</th>
+                          <th className="p-2">Color Tag</th>
+                          <th className="p-2">Embryos</th>
+                          <th className="p-2">Stage</th>
+                          <th className="p-2">Grade</th>
+                          <th className="p-2">Freezing Dt</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {straws.map((st, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 font-medium text-slate-800">
+                            <td className="p-2 font-mono font-bold">{st.strawId || `STR-${idx + 1}`}</td>
+                            <td className="p-2">{st.colorTag || st.colorName || '-'}</td>
+                            <td className="p-2 font-bold text-emerald-700">{st.embryoCount ?? 1}</td>
+                            <td className="p-2">{st.stage || 'Day 5'}</td>
+                            <td className="p-2 font-bold">{st.grade || '4AA'}</td>
+                            <td className="p-2 font-mono text-[10px]">{st.freezingDate || freezingDate || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="font-semibold text-slate-700">Clinical Comments / Verification Notes</label>

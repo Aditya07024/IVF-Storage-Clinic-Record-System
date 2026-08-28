@@ -22,5 +22,19 @@ export interface VerifyOcrInput {
   aspirationDate?: string;
   freezingDate?: string;
   thawDate?: string;
+  canisterName?: string;
+  visoTubeColor?: string;
+  visoTubeId?: string;
+  level?: string;
+  straws?: Array<{
+    strawId?: string;
+    colorTag?: string;
+    embryoCount?: number;
+    grade?: string;
+    stage?: string;
+    pgtTested?: boolean;
+    aspirationDate?: string;
+    freezingDate?: string;
+  }>;
   comments?: string;
 }
