@@ -308,6 +308,19 @@ export class DocumentService {
 
       let currentSectionY = reportHeaderY;
 
+      // Helper function for seamless multi-page layout flow
+      const ensureSpace = (neededHeight: number) => {
+        if (currentSectionY + neededHeight > 730) {
+          doc.addPage();
+          currentSectionY = 36;
+          doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#065f46')
+            .text(`SRGH IVF CRYO BANK  |  Patient: ${patient.fullName} (${patient.patientId}) — CONTINUED`, 30, currentSectionY);
+          currentSectionY += 14;
+          doc.strokeColor('#cbd5e1').lineWidth(0.5).moveTo(30, currentSectionY).lineTo(565, currentSectionY).stroke();
+          currentSectionY += 14;
+        }
+      };
+
       const batchesToRender: any[] = patient.batches.length > 0 ? patient.batches : [{
         id: 'default',
         storageDate: patient.freezingDate || new Date(),
@@ -365,6 +378,10 @@ export class DocumentService {
         }
 
         const batchStage = batch.embryoStage || (activeReportType === 'DAY5' ? 'Day 5' : activeReportType === 'DAY3' ? 'Day 3' : 'Day 0');
+
+        // Check page break before Pill Header & Details Card
+        const requiredBatchHeight = (bHasPgt && !isThaw) ? 150 : 120;
+        ensureSpace(requiredBatchHeight);
 
         // Section Pill Header
         const pillTitle = isThaw
@@ -470,6 +487,7 @@ export class DocumentService {
       // ==========================================
       // 4. CONTRACT & EXPIRY NOTICE CARD (OUTLINED BORDER)
       // ==========================================
+      ensureSpace(65);
       const noticeBoxY = currentSectionY + 4;
       const contractNoticeText = isThaw
         ? 'Following the thawing procedure, viable embryos are prepared for immediate clinical transfer (FET) or ICSI. All post-thaw recovery parameters are documented in the patient medical record.'
@@ -505,6 +523,7 @@ export class DocumentService {
       // ==========================================
       // 5. CLINICAL DISCLAIMER NOTE & GRADING FOOTNOTE (OUTLINED BORDER)
       // ==========================================
+      ensureSpace(110);
       const disclaimerStartY = noticeBoxY + 68;
       doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#0f172a').text('Note:', 30, disclaimerStartY);
 
@@ -609,32 +628,30 @@ export class DocumentService {
       }
 
       // ==========================================
-      // 6. CLINICAL REPORT FOOTER & VERIFICATION BADGE (OUTLINED BORDER)
+      // 6. CLINICAL REPORT FOOTER & VERIFICATION BADGE ON EVERY PAGE
       // ==========================================
-      const footerY = 765;
-
-      // Single Clean Divider Rule
-      doc.strokeColor('#cbd5e1').lineWidth(0.75).moveTo(30, footerY).lineTo(565, footerY).stroke();
-
-      doc.fontSize(8.5).font('Helvetica').fillColor('#64748b');
-      doc.text('Center of IVF and Human Reproduction, Sir Ganga Ram Hospital, New Delhi', 30, footerY + 8);
-      doc.text(`Report Generated: ${new Date().toLocaleDateString('en-GB')}`, 30, footerY + 20);
-
-      // Verified Clinical Report Badge Bottom Right with Element Border Outline
-      const verBorderColor = isThaw ? '#dc2626' : '#047857';
-      const verTextColor = isThaw ? '#dc2626' : '#047857';
-      const verBgColor = isThaw ? '#fef2f2' : '#f0fdf4';
-
-      doc.rect(425, footerY + 6, 140, 22).lineWidth(1.25).fillAndStroke(verBgColor, verBorderColor);
-      doc.fillColor(verTextColor).fontSize(8).font('Helvetica-Bold').text('VERIFIED CLINICAL REPORT', 425, footerY + 13, { width: 140, align: 'center' });
-
-      // Add page numbers if report spans multiple pages
       const range = doc.bufferedPageRange();
       for (let i = range.start; i < range.start + range.count; i++) {
         doc.switchToPage(i);
-        if (range.count > 1) {
-          doc.fontSize(8).font('Helvetica').fillColor('#94a3b8').text(`Page ${i + 1} of ${range.count}`, 30, 810, { align: 'center' });
-        }
+
+        const footerY = 765;
+        // Divider Rule
+        doc.strokeColor('#cbd5e1').lineWidth(0.75).moveTo(30, footerY).lineTo(565, footerY).stroke();
+
+        doc.fontSize(8.5).font('Helvetica').fillColor('#64748b');
+        doc.text('Center of IVF and Human Reproduction, Sir Ganga Ram Hospital, New Delhi', 30, footerY + 8);
+        doc.text(`Report Generated: ${new Date().toLocaleDateString('en-GB')}`, 30, footerY + 20);
+
+        // Verified Clinical Report Badge Bottom Right
+        const verBorderColor = isThaw ? '#dc2626' : '#047857';
+        const verTextColor = isThaw ? '#dc2626' : '#047857';
+        const verBgColor = isThaw ? '#fef2f2' : '#f0fdf4';
+
+        doc.rect(425, footerY + 6, 140, 22).lineWidth(1.25).fillAndStroke(verBgColor, verBorderColor);
+        doc.fillColor(verTextColor).fontSize(8).font('Helvetica-Bold').text('VERIFIED CLINICAL REPORT', 425, footerY + 13, { width: 140, align: 'center' });
+
+        // Page X of Y page numbering
+        doc.fontSize(8).font('Helvetica').fillColor('#64748b').text(`Page ${i + 1} of ${range.count}`, 30, 810, { align: 'center' });
       }
 
       doc.end();

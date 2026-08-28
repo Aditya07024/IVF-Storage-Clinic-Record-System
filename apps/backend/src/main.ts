@@ -854,7 +854,7 @@ app.post('/api/documents/send-email', accessKeyGuard, jwtAuthGuard, async (req: 
       console.error('Failed to log failed email delivery:', logErr);
     }
 
-    return res.status(500).json({ success: false, error: err.message || 'Failed to deliver email.' });
+    return res.status(400).json({ success: false, error: err.message || 'Failed to deliver email.' });
   }
 });
 

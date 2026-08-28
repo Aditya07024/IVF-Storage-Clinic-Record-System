@@ -20,24 +20,24 @@ export class MailService {
       throw new Error(`Email configuration error: Missing SMTP authentication credentials (SMTP_PASS). Please verify environment variables.`);
     }
 
-    const host = process.env.SMTP_HOST || CONFIG.SMTP_HOST || 'smtp.gmail.com';
-    const port = useSsl ? 465 : parseInt(process.env.SMTP_PORT || String(CONFIG.SMTP_PORT) || '587', 10);
-    const isSecure = useSsl || port === 465;
+    if (useSsl) {
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 12000,
+        socketTimeout: 15000,
+      });
+    }
 
     return nodemailer.createTransport({
-      host,
-      port,
-      secure: isSecure,
-      auth: {
-        user,
-        pass,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-      connectionTimeout: 8000, // 8 seconds connection timeout
-      greetingTimeout: 8000,   // 8 seconds greeting timeout
-      socketTimeout: 12000,    // 12 seconds socket timeout
+      host: process.env.SMTP_HOST || CONFIG.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || String(CONFIG.SMTP_PORT) || '587', 10),
+      secure: false,
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 12000,
+      socketTimeout: 15000,
     });
   }
 
@@ -114,22 +114,22 @@ export class MailService {
       ],
     };
 
-    // Try SSL (Port 465) first, then fallback to STARTTLS (Port 587)
+    // Try Gmail service (Port 465) first, then fallback to Port 587
     try {
       const transporter = this.createTransporter(true);
       const info = await transporter.sendMail(mailOptions);
-      console.log(`[MailService] Email sent successfully via SSL (465) to ${recipientEmail}. Message ID: ${info.messageId}`);
+      console.log(`[MailService] Email sent successfully via Gmail SSL service to ${recipientEmail}. Message ID: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } catch (sslErr: any) {
-      console.warn('[MailService] SSL (465) transport failed, attempting STARTTLS (587)...', sslErr?.message);
+      console.warn('[MailService] Gmail SSL transport failed, attempting Port 587...', sslErr?.message);
       try {
         const transporter = this.createTransporter(false);
         const info = await transporter.sendMail(mailOptions);
-        console.log(`[MailService] Email sent successfully via STARTTLS (587) to ${recipientEmail}. Message ID: ${info.messageId}`);
+        console.log(`[MailService] Email sent successfully via Port 587 to ${recipientEmail}. Message ID: ${info.messageId}`);
         return { success: true, messageId: info.messageId };
       } catch (tlsErr: any) {
-        console.error('[MailService] Both SSL and STARTTLS transports failed:', tlsErr?.message);
-        throw new Error(`Failed to send email: ${tlsErr?.message || sslErr?.message || 'SMTP connection timeout.'}`);
+        console.error('[MailService] Both Gmail SSL and Port 587 transports failed:', tlsErr?.message);
+        throw new Error(`SMTP Error: ${tlsErr?.message || sslErr?.message || 'Failed to connect to email server.'}`);
       }
     }
   }
