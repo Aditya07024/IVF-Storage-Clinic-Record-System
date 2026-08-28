@@ -11,7 +11,7 @@
     "build": "npm --prefix apps/backend run build",
     "dev:backend": "npm --prefix apps/backend run dev",
     "dev:frontend": "npm --prefix apps/frontend run dev",
-    "build:backend": "npm --prefix apps/backend run build",
+    "build:backend": "cd apps/backend && npm install && npm run build",
     "build:frontend": "npm --prefix apps/frontend run build",
     "test": "npm --prefix apps/backend test",
     "prisma:generate": "npm --prefix apps/backend run prisma:generate",
@@ -19,7 +19,14 @@
     "seed": "npm --prefix apps/backend run seed"
   },
   "dependencies": {
-    "@google-cloud/vision": "^5.3.7"
+    "@google-cloud/vision": "^5.3.7",
+    "@types/node": "^20.12.12",
+    "@types/nodemailer": "^6.4.15",
+    "@types/pdfkit": "^0.13.4",
+    "nodemailer": "^6.9.13",
+    "pdfkit": "^0.15.0",
+    "sharp": "^0.33.4",
+    "typescript": "^5.4.5"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
