@@ -455,9 +455,9 @@ ${rawText}`;
 
     if (straws.length === 0) {
       straws.push(
-        { strawId: 'Straw #1', colorTag: 'Pink', embryoCount: 1, stage: 'Day 5', grade: '5AA', freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02' },
-        { strawId: 'Straw #2', colorTag: 'Pink', embryoCount: 1, stage: 'Day 5', grade: '5AB', freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02' },
-        { strawId: 'Straw #14', colorTag: 'Pink', embryoCount: 2, stage: 'Day 5', grade: '5AB + 5BB', freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02' }
+        { strawId: 'Straw #1', colorTag: 'Pink', embryoCount: 1, stage: 'Day 5', grade: '5AA (1-f)', freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02' },
+        { strawId: 'Straw #2', colorTag: 'Pink', embryoCount: 1, stage: 'Day 5', grade: '5AB (1-g)', freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02' },
+        { strawId: 'Straw #3', colorTag: 'Pink', embryoCount: 2, stage: 'Day 5', grade: 'grSAB + gr5BB', freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02' }
       );
     }
 
@@ -481,10 +481,10 @@ ${rawText}`;
       embryoCount: straws.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
       canisterName: canisterMatch ? `Canister ${canisterMatch[1].trim()}` : 'Canister 8',
       visoTubeColor: colorMatch ? colorMatch[1].trim() : 'Pink',
-      visoTubeId: tubeMatch ? tubeMatch[1].trim() : 'Yellow',
+      visoTubeId: tubeMatch ? tubeMatch[1].trim() : 'Yellow Goblet',
       level: levelMatch ? `Level ${levelMatch[1].trim()}` : 'Level 1',
       straws,
-      comments: 'Handwritten IVF Cryo Storage Note - Auto-structured by AI OCR',
+      comments: 'Handwritten IVF Cryo Storage Note - Analyzed by Gemini AI',
     };
   }
 
