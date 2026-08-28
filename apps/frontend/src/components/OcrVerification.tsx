@@ -315,20 +315,81 @@ export const OcrVerification: React.FC = () => {
     setStraws((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const compressImageForFastUpload = async (inputFile: File): Promise<File> => {
+    if (!inputFile.type.startsWith('image/') && !inputFile.name.match(/\.(heic|heif|png|jpe?g|webp)$/i)) {
+      return inputFile;
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(inputFile);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const maxDimension = 1800; // 1800px ensures ultra-sharp OCR text reading while shrinking 15MB file to ~300KB
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File(
+                  [blob],
+                  inputFile.name.replace(/\.[^/.]+$/, '') + '.jpg',
+                  { type: 'image/jpeg' }
+                );
+                resolve(compressedFile);
+              } else {
+                resolve(inputFile);
+              }
+            },
+            'image/jpeg',
+            0.88
+          );
+        } else {
+          resolve(inputFile);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(inputFile);
+      };
+      img.src = url;
+    });
+  };
+
   const processFileForOcr = async (targetFile: File) => {
     if (!targetFile) return;
 
-    setFile(targetFile);
     setUploading(true);
     setError(null);
     setSuccessMsg(null);
 
     try {
+      const optimizedFile = await compressImageForFastUpload(targetFile);
+      setFile(optimizedFile);
+
       const token = localStorage.getItem('access_token');
       const accessKey = localStorage.getItem('app_access_key') || 'clinic2026';
 
       const formData = new FormData();
-      formData.append('image', targetFile);
+      formData.append('image', optimizedFile);
 
       const res = await fetch('/api/ocr/upload', {
         method: 'POST',
