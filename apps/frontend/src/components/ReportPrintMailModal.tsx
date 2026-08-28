@@ -103,9 +103,21 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
       setReportType(autoType);
       const initialReportName = getReportTypeName(autoType);
       setCustomSubject(`[${initialReportName}] Official IVF Specimen Storage Report - ${patient.fullName} (${patient.patientId})`);
-      fetchEmailLogs(patient.id);
     }
   }, [patient]);
+
+  useEffect(() => {
+    if (isOpen && patient?.id) {
+      fetchEmailLogs(patient.id);
+
+      // Auto-poll email status logs every 3 seconds while popup modal is open
+      const interval = setInterval(() => {
+        fetchEmailLogs(patient.id);
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }
+  }, [isOpen, patient?.id]);
 
   if (!isOpen || !patient) return null;
 
@@ -415,15 +427,36 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
             <div className="max-h-36 overflow-y-auto space-y-2 pr-1">
               {emailLogs.map((log) => {
                 const reportName = getReportTypeName(log.subject);
+                const status = (log.status || '').toUpperCase();
+
                 return (
                   <div key={log.id} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
-                          log.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
-                        }`}>
-                          {log.status === 'DELIVERED' ? '✓ SENT & DELIVERED' : '✕ FAILED'}
-                        </span>
+                        {status === 'DELIVERED' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span>✓ SENT & DELIVERED</span>
+                          </span>
+                        )}
+                        {status === 'QUEUED' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                            <RefreshCw className="w-3 h-3 text-amber-600 animate-spin shrink-0" />
+                            <span>⏳ QUEUED (2-MIN ANTI-SPAM)</span>
+                          </span>
+                        )}
+                        {status === 'SENDING' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-blue-100 text-blue-900 border border-blue-300 flex items-center gap-1">
+                            <RefreshCw className="w-3 h-3 text-blue-600 animate-spin shrink-0" />
+                            <span>⚡ SENDING NOW...</span>
+                          </span>
+                        )}
+                        {status === 'FAILED' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-rose-100 text-rose-900 border border-rose-300 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                            <span>✕ FAILED</span>
+                          </span>
+                        )}
                         <span className="font-mono text-slate-800 font-bold">{log.recipientEmail}</span>
                         <span className="text-[10px] font-bold font-mono text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 shadow-2xs">
                           📄 {reportName}
