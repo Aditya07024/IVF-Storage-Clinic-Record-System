@@ -214,10 +214,55 @@ export const OcrVerification: React.FC = () => {
     setFreezingDate(json.freezingDate || '');
     setThawDate(json.thawDate || '');
     setEmbryoCount(json.embryoCount ? String(json.embryoCount) : '');
-    setCanisterName(json.canisterName || '');
-    setVisoTubeColor(json.visoTubeColor || '');
-    setVisoTubeId(json.visoTubeId || '');
-    setLevel(json.level || '');
+
+    // Normalize Canister Name against exact physical clinic inventory
+    let can = (json.canisterName || '').trim();
+    if (can.match(/8|C08|cayo/i)) can = 'C08';
+    else if (can.match(/1|C01/i)) can = 'C01';
+    else if (can.match(/2|C02/i)) can = 'C02';
+    else if (can.match(/3|C03/i)) can = 'C03';
+    else if (can.match(/4|C04/i)) can = 'C04';
+    else if (can.match(/5|C05/i)) can = 'C05';
+    else if (can.match(/6|C06/i)) can = 'C06';
+    else if (can.match(/7|C07/i)) can = 'C07';
+    else if (can.match(/9|C09/i)) can = 'C09';
+    else if (can.match(/10|C10/i)) can = 'C10';
+    setCanisterName(can || 'C08');
+
+    // Normalize Viso Tube Color (11 Physical Colors)
+    let col = (json.visoTubeColor || '').trim();
+    if (col.match(/pink/i)) col = 'Pink';
+    else if (col.match(/grey|gray/i)) col = 'Grey';
+    else if (col.match(/red/i)) col = 'Red';
+    else if (col.match(/black/i)) col = 'Black';
+    else if (col.match(/green/i)) col = 'Green';
+    else if (col.match(/rust/i)) col = 'Rust';
+    else if (col.match(/blue/i)) col = 'Blue';
+    else if (col.match(/purple/i)) col = 'Purple';
+    else if (col.match(/yellow/i)) col = 'Yellow';
+    else if (col.match(/orange/i)) col = 'Orange';
+    else if (col.match(/sky/i)) col = 'Skyblue';
+    setVisoTubeColor(col || 'Pink');
+
+    // Normalize Viso Tube ID / Goblet
+    let gob = (json.visoTubeId || '').trim();
+    if (gob.match(/yellow/i)) gob = 'V09';
+    else if (gob.match(/pink/i)) gob = 'V01';
+    else if (gob.match(/green/i)) gob = 'V05';
+    else if (gob.match(/blue/i)) gob = 'V07';
+    else if (gob.match(/red/i)) gob = 'V03';
+    else if (gob.match(/grey|gray/i)) gob = 'V02';
+    else if (gob.match(/black/i)) gob = 'V04';
+    else if (gob.match(/purple/i)) gob = 'V08';
+    else if (gob.match(/orange/i)) gob = 'V10';
+    else if (gob.match(/sky/i)) gob = 'V11';
+    setVisoTubeId(gob || 'V09');
+
+    // Normalize Level / Tier
+    let lvl = (json.level || '').trim();
+    if (lvl.match(/1|bottom|I/i)) lvl = 'Level 1';
+    else if (lvl.match(/2|top|II/i)) lvl = 'Level 2';
+    setLevel(lvl || 'Level 1');
 
     const initialStraws = Array.isArray(json.straws) && json.straws.length > 0
       ? json.straws
@@ -804,7 +849,7 @@ export const OcrVerification: React.FC = () => {
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Canister --</option>
-                      <option value="Canister 8">C08 (Canister 08 - CAN-01)</option>
+                      <option value="C08">C08 (Canister 08)</option>
                       <option value="C01">C01 (Canister 01)</option>
                       <option value="C02">C02 (Canister 02)</option>
                       <option value="C03">C03 (Canister 03)</option>
@@ -815,7 +860,7 @@ export const OcrVerification: React.FC = () => {
                       <option value="C09">C09 (Canister 09)</option>
                       <option value="C10">C10 (Canister 10)</option>
                       {canisterName && ![
-                        'Canister 8', 'C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'C07', 'C08', 'C09', 'C10'
+                        'C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'C07', 'C08', 'C09', 'C10'
                       ].includes(canisterName) && (
                         <option value={canisterName}>{canisterName} (Detected)</option>
                       )}
@@ -857,17 +902,17 @@ export const OcrVerification: React.FC = () => {
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-amber-700 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Goblet / ID --</option>
-                      <option value="Yellow Goblet">V09: Yellow Goblet</option>
-                      <option value="Pink Goblet">V01: Pink Goblet</option>
-                      <option value="Green Goblet">V05: Green Goblet</option>
-                      <option value="Blue Goblet">V07: Blue Goblet</option>
-                      <option value="Red Goblet">V03: Red Goblet</option>
-                      <option value="Grey Goblet">V02: Grey Goblet</option>
-                      <option value="Black Goblet">V04: Black Goblet</option>
-                      <option value="Purple Goblet">V08: Purple Goblet</option>
-                      <option value="Orange Goblet">V10: Orange Goblet</option>
-                      <option value="Skyblue Goblet">V11: Skyblue Goblet</option>
-                      {visoTubeId && !['Yellow Goblet', 'Pink Goblet', 'Green Goblet', 'Blue Goblet', 'Red Goblet', 'Grey Goblet', 'Black Goblet', 'Purple Goblet', 'Orange Goblet', 'Skyblue Goblet'].includes(visoTubeId) && (
+                      <option value="V09">V09: Yellow Goblet</option>
+                      <option value="V01">V01: Pink Goblet</option>
+                      <option value="V05">V05: Green Goblet</option>
+                      <option value="V07">V07: Blue Goblet</option>
+                      <option value="V03">V03: Red Goblet</option>
+                      <option value="V02">V02: Grey Goblet</option>
+                      <option value="V04">V04: Black Goblet</option>
+                      <option value="V08">V08: Purple Goblet</option>
+                      <option value="V10">V10: Orange Goblet</option>
+                      <option value="V11">V11: Skyblue Goblet</option>
+                      {visoTubeId && !['V01', 'V02', 'V03', 'V04', 'V05', 'V06', 'V07', 'V08', 'V09', 'V10', 'V11'].includes(visoTubeId) && (
                         <option value={visoTubeId}>{visoTubeId} (Detected)</option>
                       )}
                     </select>
