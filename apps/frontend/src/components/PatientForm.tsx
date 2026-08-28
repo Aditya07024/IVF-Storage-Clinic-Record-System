@@ -661,16 +661,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         if (payload.photoFile && targetPatient) {
           const formData = new FormData();
           formData.append('photo', payload.photoFile);
-          const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
-          const accessKey = localStorage.getItem('access_key') || 'clinic2026';
-          const accessToken = localStorage.getItem('access_token') || '';
-
-          await fetch(`${apiBase}/api/patients/${targetPatient.id}/photo`, {
+          await apiRequest(`/api/patients/${targetPatient.id}/photo`, {
             method: 'POST',
-            headers: {
-              'x-access-key': accessKey,
-              'Authorization': `Bearer ${accessToken}`,
-            },
             body: formData,
           });
         }

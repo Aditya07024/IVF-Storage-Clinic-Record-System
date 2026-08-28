@@ -513,12 +513,23 @@ app.put('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: Authentic
   }
 });
 
-app.post('/api/patients/:id/photo', accessKeyGuard, jwtAuthGuard, uploadSingle('photo'), async (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/patients/:id/photo', accessKeyGuard, jwtAuthGuard, (req: Request, res: Response, next: NextFunction) => {
+  upload.any()(req, res, (err: any) => {
+    if (err) {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ success: false, error: 'Photo size exceeds maximum limit of 15MB.' });
+      }
+      return res.status(400).json({ success: false, error: err?.message || 'File upload error.' });
+    }
+    next();
+  });
+}, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const file = req.file || (req.files && (req.files as any)[0]);
-    if (!file) return res.status(400).json({ success: false, error: 'No photo image uploaded.' });
+    const files = (req as any).files || [];
+    const file = req.file || files[0];
+    if (!file) return res.status(400).json({ success: false, error: 'No photo image file received.' });
 
-    const uploadDirectory = path.resolve(CONFIG.STORAGE_LOCAL_DIR);
+    const uploadDirectory = path.resolve(CONFIG.STORAGE_LOCAL_DIR || './uploads');
     if (!fs.existsSync(uploadDirectory)) {
       fs.mkdirSync(uploadDirectory, { recursive: true });
     }
@@ -526,19 +537,30 @@ app.post('/api/patients/:id/photo', accessKeyGuard, jwtAuthGuard, uploadSingle('
     const filename = `patient_photo_${req.params.id}_${Date.now()}.jpg`;
     const targetPath = path.join(uploadDirectory, filename);
 
-    // Standardize uploaded image to baseline JPEG using Sharp
-    await sharp(file.buffer)
-      .resize(400, 480, { fit: 'cover' })
-      .jpeg({ quality: 92, progressive: false })
-      .toFile(targetPath);
+    // Resilient Sharp conversion with fallback to raw file write
+    try {
+      await sharp(file.buffer)
+        .resize(400, 480, { fit: 'cover' })
+        .jpeg({ quality: 92, progressive: false })
+        .toFile(targetPath);
+    } catch (sharpErr) {
+      console.warn('Sharp image conversion fallback activated:', sharpErr);
+      fs.writeFileSync(targetPath, file.buffer);
+    }
 
     const photoUrl = `/uploads/${filename}`;
 
-    const patient = await patientService.updatePatient(req.params.id, { photoUrl }, req.user!.userId, req.user!.name || req.user!.staffId);
+    const patient = await patientService.updatePatient(
+      req.params.id,
+      { photoUrl },
+      req.user!.userId,
+      req.user!.name || req.user!.staffId
+    );
     serverCache.clear();
     return res.json({ success: true, photoUrl, patient });
   } catch (err: any) {
-    return res.status(400).json({ success: false, error: err.message });
+    console.error('Patient photo upload error:', err);
+    return res.status(400).json({ success: false, error: err?.message || 'Failed to update patient photo.' });
   }
 });
 app.delete('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {

@@ -161,20 +161,11 @@ export const PatientDirectory: React.FC = () => {
       const formData = new FormData();
       formData.append('photo', file);
 
-      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
-      const accessKey = localStorage.getItem('access_key') || 'clinic2026';
-      const accessToken = localStorage.getItem('access_token') || '';
-
-      const res = await fetch(`${apiBase}/api/patients/${patientId}/photo`, {
+      const json = await apiRequest(`/api/patients/${patientId}/photo`, {
         method: 'POST',
-        headers: {
-          'x-access-key': accessKey,
-          'Authorization': `Bearer ${accessToken}`,
-        },
         body: formData,
       });
 
-      const json = await res.json();
       if (json.success) {
         if (selectedPatient && selectedPatient.id === patientId) {
           setSelectedPatient({ ...selectedPatient, photoUrl: json.photoUrl });
