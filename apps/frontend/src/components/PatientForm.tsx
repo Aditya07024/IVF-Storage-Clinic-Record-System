@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar } from 'lucide-react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
+import { ReportPrintMailModal } from './ReportPrintMailModal';
 
 export const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink',
@@ -272,9 +273,23 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [doctorName, setDoctorName] = useState('');
   const [aspirationDate, setAspirationDate] = useState(new Date().toISOString().split('T')[0]);
   const [freezingDate, setFreezingDate] = useState(new Date().toISOString().split('T')[0]);
-  const [embryoStage, setEmbryoStage] = useState('Day 5 Blastocyst');
+  const [embryoStage, setEmbryoStage] = useState('Day 5');
   const [thawDate, setThawDate] = useState('');
   const [comments, setComments] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Storage Allocation State
   const [assignStorageEnabled, setAssignStorageEnabled] = useState(false);
@@ -304,6 +319,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [searchingStorage, setSearchingStorage] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reportMailPatient, setReportMailPatient] = useState<any | null>(null);
 
   // Handle Existing Patient Search
   const handleSearchExisting = async (q: string) => {
@@ -559,6 +575,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       embryoStage,
       thawDate,
       comments: comments.trim(),
+      photoFile,
       assignStorageEnabled,
       selectedVisoTubeId,
       selectedLocationCode,
@@ -567,6 +584,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       strawItems: [...strawItems],
       totalEmbryosCount,
     };
+
+    // Reset photo state
+    setPhotoFile(null);
+    setPhotoPreviewUrl(null);
 
     // Show immediate success confirmation & reset form so staff can immediately enter next patient!
     setSaveSuccessDetails({
@@ -634,6 +655,23 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               freezingDate: payload.freezingDate || undefined,
               comments: payload.comments || undefined,
             }),
+          });
+        }
+
+        if (payload.photoFile && targetPatient) {
+          const formData = new FormData();
+          formData.append('photo', payload.photoFile);
+          const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
+          const accessKey = localStorage.getItem('access_key') || 'clinic2026';
+          const accessToken = localStorage.getItem('access_token') || '';
+
+          await fetch(`${apiBase}/api/patients/${targetPatient.id}/photo`, {
+            method: 'POST',
+            headers: {
+              'x-access-key': accessKey,
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            body: formData,
           });
         }
 
@@ -1037,7 +1075,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   setPartnerAge('35 Yrs');
                   setDoctorName('Dr. Ananya Sharma');
                   const today = new Date().toISOString().split('T')[0];
-                  setVisitDate(today);
+                  setAspirationDate(today);
                   setFreezingDate(today);
                   setStorageDate(today);
                   setComments('');
@@ -1050,14 +1088,79 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </button>
 
               {selectedExistingPatient && (
-                <span className="text-[10px] sm:text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                  EXISTING PATIENT RECORD
-                </span>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setReportMailPatient(selectedExistingPatient)}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 flex items-center gap-1.5"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Print / Send Email Report</span>
+                  </button>
+                  <span className="text-[10px] sm:text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    EXISTING PATIENT RECORD
+                  </span>
+                </>
               )}
             </div>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-full">
+            {/* PATIENT PHOTO UPLOADER BOX */}
+            {!selectedExistingPatient && (
+              <div className="md:col-span-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
+                <div className="relative shrink-0">
+                  {photoPreviewUrl ? (
+                    <img
+                      src={photoPreviewUrl}
+                      alt="Patient Preview"
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 font-bold text-xs">
+                      <Camera className="w-6 h-6 text-slate-400" />
+                      <span className="text-[9px] text-slate-500 mt-0.5">No Photo</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-1 text-center sm:text-left min-w-0">
+                  <div className="font-bold text-slate-800 text-xs sm:text-sm flex items-center justify-center sm:justify-start gap-1.5">
+                    <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Patient Photo</span>
+                  </div>
+                  
+
+                  <div className="pt-1 flex items-center justify-center sm:justify-start gap-2">
+                    <label className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{photoPreviewUrl ? 'Change Photo' : '📷 Click to Add Patient Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePhotoSelect}
+                      />
+                    </label>
+
+                    {photoPreviewUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoFile(null);
+                          setPhotoPreviewUrl(null);
+                        }}
+                        className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all"
+                      >
+                        Remove Photo
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="md:col-span-2 min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                 <span>Registration No (Unique Primary Key) <span className="text-rose-600 font-bold">*</span></span>
@@ -1303,12 +1406,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       onChange={(e) => setEmbryoStage(e.target.value)}
                       className="w-full bg-white border border-slate-300 rounded-xl px-3 h-11 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
                     >
-                      <option value="Day 5 Blastocyst">Day 5 Blastocyst</option>
-                      <option value="Day 6 Blastocyst">Day 6 Blastocyst</option>
-                      <option value="Day 3 Cleavage">Day 3 Cleavage (8-cell)</option>
-                      <option value="Day 2 Cleavage">Day 2 Cleavage (4-cell)</option>
-                      <option value="Oocyte MII">Oocyte MII (Mature Egg)</option>
-                      <option value="Pronuclear PN">Pronuclear PN (Zygote)</option>
+                      <option value="Day 0">Day 0</option>
+                      <option value="Day 2">Day 2</option>
+                      <option value="Day 3">Day 3</option>
+                      <option value="Day 5">Day 5</option>
+                      <option value="Day 6">Day 6</option>
+                      <option value="Day 5/6">Day 5/6</option>
                     </select>
                   </div>
 
@@ -1861,6 +1964,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           </div>
         </div>
       )}
+
+      {/* Print / Send Email Report Modal */}
+      <ReportPrintMailModal
+        isOpen={!!reportMailPatient}
+        onClose={() => setReportMailPatient(null)}
+        patient={reportMailPatient}
+      />
     </div>
   );
 };

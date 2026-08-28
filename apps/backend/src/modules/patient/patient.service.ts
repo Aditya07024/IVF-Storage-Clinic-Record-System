@@ -17,6 +17,7 @@ export interface CreatePatientInput {
   freezingDate?: Date | string;
   thawDate?: Date | string;
   comments?: string;
+  photoUrl?: string;
 }
 
 export class PatientService {
@@ -92,6 +93,7 @@ export class PatientService {
             freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
             thawDate: input.thawDate ? new Date(input.thawDate) : null,
             comments: input.comments ? input.comments.trim() : null,
+            photoUrl: input.photoUrl ? input.photoUrl.trim() : null,
           },
         });
       } catch (err: any) {
@@ -159,6 +161,7 @@ export class PatientService {
         freezingDate: input.freezingDate !== undefined ? (input.freezingDate ? new Date(input.freezingDate) : null) : existing.freezingDate,
         thawDate: input.thawDate !== undefined ? (input.thawDate ? new Date(input.thawDate) : null) : existing.thawDate,
         comments: input.comments !== undefined ? input.comments.trim() : existing.comments,
+        photoUrl: input.photoUrl !== undefined ? (input.photoUrl ? input.photoUrl.trim() : null) : existing.photoUrl,
       },
     });
 
@@ -192,6 +195,7 @@ export class PatientService {
     await prisma.storageBatch.deleteMany({ where: { patientId: id } });
     await prisma.patientNote.deleteMany({ where: { patientId: id } });
     await prisma.ocrRecord.deleteMany({ where: { patientId: id } });
+    await prisma.emailLog.deleteMany({ where: { patientId: id } });
 
     await prisma.auditLog.create({
       data: {
@@ -229,6 +233,7 @@ export class PatientService {
           },
         },
         ocrRecords: { orderBy: { createdAt: 'desc' } },
+        emailLogs: { orderBy: { sentAt: 'desc' } },
       },
     });
 

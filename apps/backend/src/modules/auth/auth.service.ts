@@ -109,6 +109,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        canPrintMail: user.role === 'ADMIN' ? true : user.canPrintMail,
       },
       accessToken,
       refreshToken,
@@ -208,13 +209,14 @@ export class AuthService {
         email: true,
         name: true,
         role: true,
+        canPrintMail: true,
         createdAt: true,
         updatedAt: true,
       },
     });
   }
 
-  async createUser(input: { staffId: string; name: string; email?: string; password: string; role?: string }, adminUserId?: string) {
+  async createUser(input: { staffId: string; name: string; email?: string; password: string; role?: string; canPrintMail?: boolean }, adminUserId?: string) {
     const sId = input.staffId.trim().toUpperCase();
     const existingStaffId = await prisma.user.findUnique({ where: { staffId: sId } });
     if (existingStaffId) {
@@ -235,6 +237,7 @@ export class AuthService {
         email,
         passwordHash,
         role: input.role || 'STAFF',
+        canPrintMail: input.canPrintMail !== undefined ? Boolean(input.canPrintMail) : true,
       },
       select: {
         id: true,
@@ -242,6 +245,7 @@ export class AuthService {
         email: true,
         name: true,
         role: true,
+        canPrintMail: true,
         createdAt: true,
       },
     });
@@ -260,6 +264,41 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async updateUserPermissions(targetUserId: string, canPrintMail: boolean, role?: string, adminUserId?: string) {
+    const user = await prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!user) throw new Error('Staff account not found.');
+
+    const updatedUser = await prisma.user.update({
+      where: { id: targetUserId },
+      data: {
+        canPrintMail: Boolean(canPrintMail),
+        ...(role ? { role } : {}),
+      },
+      select: {
+        id: true,
+        staffId: true,
+        name: true,
+        role: true,
+        canPrintMail: true,
+      },
+    });
+
+    if (adminUserId) {
+      await prisma.auditLog.create({
+        data: {
+          userId: adminUserId,
+          userName: 'Admin',
+          action: 'ADMIN_UPDATE_USER_PERMISSIONS',
+          entityName: 'User',
+          entityId: targetUserId,
+          newData: `Updated print/mail permissions for ${updatedUser.staffId} to canPrintMail: ${updatedUser.canPrintMail}`,
+        },
+      });
+    }
+
+    return updatedUser;
   }
 
   async resetPassword(targetUserId: string, newPassword: string, adminUserId?: string) {

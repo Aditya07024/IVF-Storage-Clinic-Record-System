@@ -647,6 +647,62 @@ export class StorageService {
       return updatedStraw;
     }, { timeout: 25000, maxWait: 10000 });
   }
+
+  // Update Freezed Straw Details (Straw ID, Tag Color, Grade, Embryo Count, PGT, Comments)
+  async updateStrawDetails(
+    strawId: string,
+    data: {
+      strawCustomId?: string;
+      color?: string;
+      grade?: string;
+      embryoCount?: number;
+      isPgt?: boolean;
+      comments?: string;
+    },
+    staffUserId: string,
+    staffName: string
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const straw = await tx.straw.findUnique({
+        where: { id: strawId },
+        include: { batch: true },
+      });
+
+      if (!straw) {
+        throw new Error('Straw not found.');
+      }
+
+      const updatePayload: any = {};
+      if (data.strawCustomId !== undefined) updatePayload.strawId = data.strawCustomId.trim();
+      if (data.color !== undefined) updatePayload.color = data.color.trim();
+      if (data.grade !== undefined) updatePayload.grade = data.grade.trim();
+      if (data.embryoCount !== undefined && !isNaN(Number(data.embryoCount))) {
+        updatePayload.embryoCount = Number(data.embryoCount);
+      }
+      if (data.isPgt !== undefined) updatePayload.isPgt = Boolean(data.isPgt);
+      if (data.comments !== undefined) updatePayload.comments = data.comments.trim();
+
+      const updatedStraw = await tx.straw.update({
+        where: { id: strawId },
+        data: updatePayload,
+      });
+
+      // Audit Log for Straw Modification
+      await tx.auditLog.create({
+        data: {
+          userId: staffUserId,
+          userName: staffName,
+          action: 'STRAW_UPDATED',
+          entityName: 'Straw',
+          entityId: straw.id,
+          oldData: JSON.stringify({ strawId: straw.strawId, color: straw.color, grade: straw.grade, embryoCount: straw.embryoCount, isPgt: straw.isPgt, comments: straw.comments }),
+          newData: JSON.stringify(updatePayload),
+        },
+      });
+
+      return updatedStraw;
+    }, { timeout: 20000, maxWait: 10000 });
+  }
 }
 
 export const storageService = new StorageService();

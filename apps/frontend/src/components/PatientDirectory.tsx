@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check } from 'lucide-react';
+import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
+import { ReportPrintMailModal } from './ReportPrintMailModal';
 
 const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink', 2: 'Grey', 3: 'Red', 4: 'Black', 5: 'Green',
@@ -16,21 +17,23 @@ function parseVisoTubeLocation(code?: string) {
   const canNum = match[1].padStart(2, '0');
   const canisterNum = match[2].padStart(2, '0');
   const levelNum = parseInt(match[3], 10);
+  const levelName = levelNum === 1 ? 'Level 1 (Bottom)' : levelNum === 2 ? 'Level 2 (Top)' : `Level ${levelNum}`;
   const tubeNumInt = parseInt(match[5], 10);
   const tubeNumPadded = match[5].padStart(2, '0');
-  const colorName = VISO_TUBE_COLOR_NAMES[tubeNumInt] || 'Standard';
+  const tubeColor = VISO_TUBE_COLOR_NAMES[tubeNumInt] || 'Standard';
 
-  return `Can ${canNum} • Canister ${canisterNum} • Level ${levelNum} • ${colorName} Viso Tube (V${tubeNumPadded})`;
+  return `Can ${canNum} • Canister ${canisterNum} • ${levelName} • ${tubeColor} Viso Tube (V${tubeNumPadded})`;
 }
 
 export const PatientDirectory: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [patients, setPatients] = useState<any[]>([]);
   const [queryInput, setQueryInput] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const [freezingDateFilter, setFreezingDateFilter] = useState('');
   const [sortBy, setSortBy] = useState('freezingDate');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-
-  const [patients, setPatients] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -40,6 +43,17 @@ export const PatientDirectory: React.FC = () => {
 
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [showAuditLogs, setShowAuditLogs] = useState(false);
+  const [reportMailPatient, setReportMailPatient] = useState<any | null>(null);
+
+  useEffect(() => {
+    apiRequest('/api/auth/me')
+      .then((res) => {
+        if (res.success && res.user) setCurrentUser(res.user);
+      })
+      .catch(() => {});
+  }, []);
+
+  const canPrintMail = !currentUser || currentUser.role === 'ADMIN' || currentUser.canPrintMail !== false;
 
   // Quick Thaw Modal States
   const [quickThawPatient, setQuickThawPatient] = useState<any | null>(null);
@@ -68,8 +82,19 @@ export const PatientDirectory: React.FC = () => {
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccessMsg, setEditSuccessMsg] = useState<string | null>(null);
 
+  // Edit Straw Modal States
+  const [editingStraw, setEditingStraw] = useState<any | null>(null);
+  const [editStrawCustomId, setEditStrawCustomId] = useState('');
+  const [editStrawColor, setEditStrawColor] = useState('Pink');
+  const [editStrawGrade, setEditStrawGrade] = useState('');
+  const [editStrawEmbryoCount, setEditStrawEmbryoCount] = useState(1);
+  const [editStrawIsPgt, setEditStrawIsPgt] = useState(false);
+  const [editStrawComments, setEditStrawComments] = useState('');
+  const [savingStrawEdit, setSavingStrawEdit] = useState(false);
+  const [editStrawError, setEditStrawError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (selectedPatient || editingPatient || quickThawPatient) {
+    if (selectedPatient || editingPatient || quickThawPatient || editingStraw) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -77,7 +102,93 @@ export const PatientDirectory: React.FC = () => {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [selectedPatient, editingPatient, quickThawPatient]);
+  }, [selectedPatient, editingPatient, quickThawPatient, editingStraw]);
+
+  const openEditStrawModal = (straw: any) => {
+    setEditingStraw(straw);
+    setEditStrawCustomId(straw.strawId || '');
+    setEditStrawColor(straw.color || 'Pink');
+    setEditStrawGrade(straw.grade || '');
+    setEditStrawEmbryoCount(straw.embryoCount || straw.embryos?.length || 1);
+    setEditStrawIsPgt(Boolean(straw.isPgt));
+    setEditStrawComments(straw.comments || '');
+    setEditStrawError(null);
+  };
+
+  const handleSaveStrawEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStraw) return;
+    setSavingStrawEdit(true);
+    setEditStrawError(null);
+
+    try {
+      const res = await apiRequest(`/api/storage/straws/${editingStraw.id}`, {
+        method: 'PUT',
+        body: {
+          strawCustomId: editStrawCustomId.trim(),
+          color: editStrawColor,
+          grade: editStrawGrade.trim(),
+          embryoCount: editStrawEmbryoCount,
+          isPgt: editStrawIsPgt,
+          comments: editStrawComments.trim(),
+        },
+      });
+
+      if (res.success) {
+        await fetchPatients();
+        if (selectedPatient) {
+          const updated = await apiRequest(`/api/patients/${selectedPatient.id}`);
+          if (updated.success && updated.patient) {
+            setSelectedPatient(updated.patient);
+          }
+        }
+        setEditingStraw(null);
+      } else {
+        setEditStrawError(res.error || 'Failed to update straw properties.');
+      }
+    } catch (err: any) {
+      setEditStrawError(err.message || 'Network error while updating straw properties.');
+    } finally {
+      setSavingStrawEdit(false);
+    }
+  };
+
+  const handleUploadPatientPhoto = async (patientId: string, file: File) => {
+    setUploadingPhoto(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
+      const accessKey = localStorage.getItem('access_key') || 'clinic2026';
+      const accessToken = localStorage.getItem('access_token') || '';
+
+      const res = await fetch(`${apiBase}/api/patients/${patientId}/photo`, {
+        method: 'POST',
+        headers: {
+          'x-access-key': accessKey,
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        if (selectedPatient && selectedPatient.id === patientId) {
+          setSelectedPatient({ ...selectedPatient, photoUrl: json.photoUrl });
+        }
+        fetchPatients();
+      } else {
+        setError(json.error || 'Failed to upload patient photo.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error uploading patient photo.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const openEditPatientModal = (patient: any) => {
     setEditingPatient(patient);
@@ -502,19 +613,30 @@ export const PatientDirectory: React.FC = () => {
                         <span>{p.patientId}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-900">
-                          {p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}
+                        <div className="flex items-center gap-3">
+                          {p.photoUrl && (
+                            <img
+                              src={p.photoUrl}
+                              alt={p.fullName}
+                              className="w-10 h-10 rounded-xl object-cover border-2 border-emerald-500 shadow-2xs shrink-0"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-semibold text-slate-900">
+                              {p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}
+                            </div>
+                            {p.partnerName && (
+                              <div className="text-xs text-slate-500">
+                                Partner: {p.partnerName} {p.partnerAge ? `(${p.partnerAge})` : ''}
+                              </div>
+                            )}
+                            {p.doctorName && (
+                              <div className="text-xs text-emerald-800 font-bold">
+                                Doctor: {p.doctorName}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        {p.partnerName && (
-                          <div className="text-xs text-slate-500">
-                            Partner: {p.partnerName} {p.partnerAge ? `(${p.partnerAge})` : ''}
-                          </div>
-                        )}
-                        {p.doctorName && (
-                          <div className="text-xs text-emerald-800 font-bold">
-                            Doctor: {p.doctorName}
-                          </div>
-                        )}
                         {isDuplicateName && (
                           <div className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 mt-1 inline-flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3 text-amber-700" />
@@ -523,14 +645,9 @@ export const PatientDirectory: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          <span className={`px-2 py-1 rounded-xl text-xs font-bold font-mono border ${isDuplicateName ? 'bg-amber-100 text-amber-950 border-amber-400' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
-                            Freezing: {freezingDateStr}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold font-mono bg-slate-100 text-slate-800 border border-slate-300">
-                            Visit Date: {formatDateDDMMYYYY(p.visitDate || p.createdAt)}
-                          </span>
-                        </div>
+                        <span className={`px-2.5 py-1 rounded-xl text-xs font-bold font-mono border inline-block ${isDuplicateName ? 'bg-amber-100 text-amber-950 border-amber-400' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
+                          {freezingDateStr}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-slate-700 font-mono text-xs font-semibold">
                         {p.phone ? p.phone : '—'}
@@ -590,16 +707,29 @@ export const PatientDirectory: React.FC = () => {
                           );
                         })()}
 
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePrintPdf(p.id);
-                          }}
-                          className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>Print</span>
-                        </button>
+                        {canPrintMail ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportMailPatient(p);
+                            }}
+                            className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 transition-all inline-flex items-center gap-1 text-xs font-bold shadow-xs active:scale-95"
+                            title="Print or Send Email Report"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Print / Mail</span>
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-2 bg-slate-100 text-slate-400 rounded-xl border border-slate-200 cursor-not-allowed inline-flex items-center gap-1 text-xs font-bold opacity-60"
+                            title="Printing & Emailing reports requires Admin permission"
+                          >
+                            <Lock className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Print / Mail</span>
+                          </button>
+                        )}
 
                         <button
                           onClick={(e) => {
@@ -693,7 +823,7 @@ export const PatientDirectory: React.FC = () => {
                 quickThawPatient.batches?.map((batch: any) => (
                   <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
-                      <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span>
+                      {/* <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span> */}
                       <span className="text-slate-600 font-mono">Stored: {new Date(batch.storageDate).toISOString().split('T')[0]}</span>
                     </div>
 
@@ -959,30 +1089,16 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:col-span-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                      Visit Date
-                    </label>
-                    <input
-                      type="date"
-                      value={editVisitDate}
-                      onChange={(e) => setEditVisitDate(e.target.value)}
-                      className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                      Freezing Date
-                    </label>
-                    <input
-                      type="date"
-                      value={editFreezingDate}
-                      onChange={(e) => setEditFreezingDate(e.target.value)}
-                      className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Freezing Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editFreezingDate}
+                    onChange={(e) => setEditFreezingDate(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
                 </div>
 
                 <div className="sm:col-span-2">
@@ -1034,17 +1150,46 @@ export const PatientDirectory: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex justify-end overflow-y-auto">
           <div className="w-full max-w-2xl bg-white min-h-screen sm:min-h-0 sm:h-full border-l border-slate-200 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
-              {/* Left Column: Patient Details & Dates */}
-              <div className="flex-1 min-w-0 space-y-1">
-                <span className="text-xs font-mono font-bold text-emerald-700 block">{selectedPatient.patientId}</span>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">{selectedPatient.fullName}</h2>
-                <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-1.5 sm:gap-x-2.5 mt-1">
-                  <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 w-fit">
-                    Visit Date: {formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}
-                  </span>
-                  <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 w-fit">
-                    Freezing Date: {formatDateDDMMYYYY(selectedPatient.freezingDate)}
-                  </span>
+              {/* Left Column: Patient Photo & Demographics */}
+              <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                <div className="relative group shrink-0">
+                  {selectedPatient.photoUrl ? (
+                    <img
+                      src={selectedPatient.photoUrl}
+                      alt={selectedPatient.fullName}
+                      className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl object-cover border-2 border-emerald-500 shadow-md"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 font-bold text-xs">
+                      <User className="w-7 h-7 text-slate-400" />
+                      <span className="text-[9px] text-slate-500 mt-0.5">No Photo</span>
+                    </div>
+                  )}
+
+                  <label className="absolute inset-0 bg-slate-950/75 rounded-2xl flex flex-col items-center justify-center text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-lg backdrop-blur-xs text-center p-1">
+                    <Camera className="w-4 h-4 mb-0.5" />
+                    <span>{uploadingPhoto ? 'Uploading...' : 'Change Photo'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingPhoto}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadPatientPhoto(selectedPatient.id, file);
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <div className="flex-1 min-w-0 space-y-1">
+                  <span className="text-xs font-mono font-bold text-emerald-700 block">{selectedPatient.patientId}</span>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight truncate">{selectedPatient.fullName}</h2>
+                  <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-1.5 sm:gap-x-2.5 mt-1">
+                    <span className="text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit">
+                      {formatDateDDMMYYYY(selectedPatient.freezingDate)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1080,14 +1225,26 @@ export const PatientDirectory: React.FC = () => {
                   <span>Edit</span>
                 </button>
 
-                {/* Quadrant 3: Print PDF */}
-                <button
-                  onClick={() => handlePrintPdf(selectedPatient.id)}
-                  className="w-full h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95"
-                >
-                  <Printer className="w-3 h-3" />
-                  <span>Print</span>
-                </button>
+                {/* Quadrant 3: Print / Mail Report */}
+                {canPrintMail ? (
+                  <button
+                    onClick={() => setReportMailPatient(selectedPatient)}
+                    className="w-full h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95"
+                    title="Print or Send Email Report"
+                  >
+                    <Mail className="w-3 h-3" />
+                    <span>Print / Mail</span>
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="w-full h-8 px-2.5 bg-slate-200 text-slate-400 font-bold text-[11px] rounded-lg cursor-not-allowed opacity-70 flex items-center justify-center gap-1 whitespace-nowrap border border-slate-300/40"
+                    title="Printing & Emailing reports requires Admin permission"
+                  >
+                    <Lock className="w-3 h-3 text-slate-400" />
+                    <span>Print / Mail</span>
+                  </button>
+                )}
 
                 {/* Quadrant 4: Close */}
                 <button
@@ -1139,13 +1296,8 @@ export const PatientDirectory: React.FC = () => {
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Visit Date:</span>
-                <strong className="text-emerald-800 font-mono font-bold">{formatDateDDMMYYYY(selectedPatient.visitDate || selectedPatient.createdAt)}</strong>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-slate-500 font-semibold block uppercase text-[10px]">Freezing Date:</span>
-                <strong className="text-slate-900 font-mono">{formatDateDDMMYYYY(selectedPatient.freezingDate)}</strong>
+                <strong className="text-emerald-800 font-mono font-bold">{formatDateDDMMYYYY(selectedPatient.freezingDate)}</strong>
               </div>
             </div>
 
@@ -1199,7 +1351,7 @@ export const PatientDirectory: React.FC = () => {
                   return (
                     <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-3 shadow-2xs">
                       <div className="flex flex-wrap items-center justify-between text-xs border-b border-slate-200 pb-2 gap-2">
-                        <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span>
+                        {/* <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span> */}
                         <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700">
                           {batch.aspirationDate && (
                             <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 font-bold">
@@ -1263,6 +1415,17 @@ export const PatientDirectory: React.FC = () => {
                                   "{straw.comments}"
                                 </span>
                               )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditStrawModal(straw);
+                                }}
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg border border-amber-300 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs active:scale-95 ml-1"
+                                title="Edit Freezed Straw Properties (Grade, ID, Tag Color, PGT, Count)"
+                              >
+                                <Edit3 className="w-3 h-3 text-amber-700" />
+                                <span>Edit Straw</span>
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -1407,6 +1570,61 @@ export const PatientDirectory: React.FC = () => {
               </div>
             )}
 
+            {/* Email Delivery Audit Logs Section */}
+            {/* {selectedPatient.emailLogs && selectedPatient.emailLogs.length > 0 && (
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-emerald-600" />
+                    <span>Email Delivery History Log ({selectedPatient.emailLogs.length})</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    SMTP AUDIT TRAIL
+                  </span>
+                </h3>
+                <div className="overflow-x-auto bg-slate-50 rounded-2xl border border-slate-200 p-3">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
+                        <th className="py-2 px-3">Status</th>
+                        <th className="py-2 px-3">Recipient Email</th>
+                        <th className="py-2 px-3">Sent Timestamp</th>
+                        <th className="py-2 px-3">SMTP Message ID / Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-slate-800">
+                      {selectedPatient.emailLogs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-white">
+                          <td className="py-2.5 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              log.status === 'DELIVERED'
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : 'bg-rose-100 text-rose-800 border-rose-300'
+                            }`}>
+                              {log.status === 'DELIVERED' ? '✓ SENT & DELIVERED' : '✕ FAILED'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">{log.recipientEmail}</td>
+                          <td className="py-2.5 px-3 text-slate-600 font-bold whitespace-nowrap">
+                            {new Date(log.sentAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600 text-[11px]">
+                            {log.messageId ? (
+                              <span className="font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                {log.messageId}
+                              </span>
+                            ) : (
+                              <span className="text-rose-600 font-medium">{log.errorMessage || 'Failed'}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )} */}
+
             {/* Uploaded Documents & OCR Scans History */}
             {selectedPatient.ocrRecords && selectedPatient.ocrRecords.length > 0 && (
               <div className="space-y-3 pt-4 border-t border-slate-200">
@@ -1445,6 +1663,161 @@ export const PatientDirectory: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Freezed Straw Modal */}
+      {editingStraw && (
+        <div className="fixed inset-0 z-[110] bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center text-amber-800">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Edit Frozen Straw Properties</h2>
+                  <p className="text-xs text-slate-500 font-mono">
+                    Straw ID: <span className="font-bold text-amber-900">{editingStraw.strawId}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingStraw(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStrawEdit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+              {editStrawError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{editStrawError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Straw Custom ID / Code <span className="text-rose-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editStrawCustomId}
+                  onChange={(e) => setEditStrawCustomId(e.target.value)}
+                  required
+                  className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Straw Tag Color <span className="text-rose-600">*</span>
+                  </label>
+                  <select
+                    value={editStrawColor}
+                    onChange={(e) => setEditStrawColor(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  >
+                    {['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].map((col) => (
+                      <option key={col} value={col}>{col} Tag</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Grade / Score
+                  </label>
+                  <input
+                    type="text"
+                    value={editStrawGrade}
+                    onChange={(e) => setEditStrawGrade(e.target.value)}
+                    placeholder="e.g. 4aa, 8c, Good"
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 items-center">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Embryo Count in Straw <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={editStrawEmbryoCount}
+                    onChange={(e) => setEditStrawEmbryoCount(parseInt(e.target.value, 10) || 1)}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={editStrawIsPgt}
+                      onChange={(e) => setEditStrawIsPgt(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-xs font-bold text-purple-900 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
+                      PGT Biopsy Tested
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Straw Remarks / Notes
+                </label>
+                <textarea
+                  rows={2}
+                  value={editStrawComments}
+                  onChange={(e) => setEditStrawComments(e.target.value)}
+                  placeholder="Enter any additional straw observations or comments..."
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 font-medium focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingStraw(null)}
+                  className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={savingStrawEdit}
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 disabled:opacity-50 transition-all active:scale-95"
+                >
+                  {savingStrawEdit ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Save Straw Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Print / Send Email Report Modal */}
+      <ReportPrintMailModal
+        isOpen={!!reportMailPatient}
+        onClose={() => setReportMailPatient(null)}
+        patient={reportMailPatient}
+      />
     </div>
   );
 };

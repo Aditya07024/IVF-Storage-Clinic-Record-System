@@ -135,6 +135,27 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleTogglePrintMailPermission = async (targetUser: any) => {
+    if (targetUser.role === 'ADMIN') return;
+    const newCanPrint = !(targetUser.canPrintMail !== false);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await apiRequest(`/api/admin/users/${targetUser.id}/permissions`, {
+        method: 'PUT',
+        body: JSON.stringify({ canPrintMail: newCanPrint }),
+      });
+
+      if (res.success) {
+        setSuccessMsg(`Print/Mail access updated for ${targetUser.staffId} (${targetUser.name}) to ${newCanPrint ? 'ALLOWED' : 'RESTRICTED'}`);
+        fetchUsers();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to update staff permissions.');
+    }
+  };
+
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
     let pass = '';
@@ -210,14 +231,14 @@ export const AdminPanel: React.FC = () => {
                 <th className="px-4 sm:px-6 py-3.5">Staff ID</th>
                 <th className="px-4 sm:px-6 py-3.5">Full Name & Email</th>
                 <th className="px-4 sm:px-6 py-3.5">System Role</th>
-                <th className="px-4 sm:px-6 py-3.5">Created Date</th>
+                <th className="px-4 sm:px-6 py-3.5">Print / Mail Access</th>
                 <th className="px-4 sm:px-6 py-3.5 text-right">Credential Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                     <div className="flex items-center justify-center gap-2 text-emerald-600 font-bold">
                       <span className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
                       <span>Loading staff credentials directory...</span>
@@ -226,64 +247,86 @@ export const AdminPanel: React.FC = () => {
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500 text-xs font-medium">
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500 text-xs font-medium">
                     No staff accounts found. Click "Assign New Staff ID & Password" above to create one.
                   </td>
                 </tr>
               ) : (
-                users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 sm:px-6 py-4 font-mono font-bold text-slate-900">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span>{u.staffId}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <div className="font-bold text-slate-900">{u.name}</div>
-                      <div className="text-xs text-slate-500 font-mono">{u.email}</div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-mono border ${
-                          u.role === 'ADMIN'
-                            ? 'bg-purple-100 text-purple-900 border-purple-300'
-                            : 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                        }`}
-                      >
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 text-xs font-mono text-slate-600">
-                      {new Date(u.createdAt).toISOString().split('T')[0]}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => {
-                            setResetTargetUser(u);
-                            setResetPasswordVal(generateRandomPassword());
-                          }}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 flex items-center gap-1.5 shadow-2xs transition-all"
-                          title="Reset Password"
+                users.map((u) => {
+                  const canPrint = u.role === 'ADMIN' || u.canPrintMail !== false;
+                  return (
+                    <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 sm:px-6 py-4 font-mono font-bold text-slate-900">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span>{u.staffId}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4">
+                        <div className="font-bold text-slate-900">{u.name}</div>
+                        <div className="text-xs text-slate-500 font-mono">{u.email}</div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-mono border ${
+                            u.role === 'ADMIN'
+                              ? 'bg-purple-100 text-purple-900 border-purple-300'
+                              : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                          }`}
                         >
-                          <Lock className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Reset Password</span>
-                        </button>
-
-                        {u.staffId !== 'ADMIN001' && (
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4">
+                        {u.role === 'ADMIN' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-300">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            <span>ALWAYS ALLOWED (ADMIN)</span>
+                          </span>
+                        ) : (
                           <button
-                            onClick={() => handleDeleteUser(u)}
-                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                            title="Delete Staff Account"
+                            type="button"
+                            onClick={() => handleTogglePrintMailPermission(u)}
+                            className={`px-3 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 shadow-2xs active:scale-95 ${
+                              canPrint
+                                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300'
+                                : 'bg-rose-50 hover:bg-rose-100 text-rose-900 border-rose-300'
+                            }`}
+                            title="Click to toggle Print & Mail permission for this staff member"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <span className={`w-2 h-2 rounded-full ${canPrint ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <span>{canPrint ? 'ALLOWED (CLICK TO RESTRICT)' : 'RESTRICTED (CLICK TO ALLOW)'}</span>
                           </button>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setResetTargetUser(u);
+                              setResetPasswordVal(generateRandomPassword());
+                            }}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 flex items-center gap-1.5 shadow-2xs transition-all"
+                            title="Reset Password"
+                          >
+                            <Lock className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Reset Password</span>
+                          </button>
+
+                          {u.staffId !== 'ADMIN001' && (
+                            <button
+                              onClick={() => handleDeleteUser(u)}
+                              className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                              title="Delete Staff Account"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

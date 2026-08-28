@@ -38,6 +38,14 @@ export const CONFIG = {
   GOOGLE_CLOUD_PROJECT_ID: process.env.GOOGLE_CLOUD_PROJECT_ID || '',
   GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '',
   OCR_PROVIDER: process.env.OCR_PROVIDER || 'google',
+
+  // SMTP Email Settings
+  SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
+  SMTP_SECURE: process.env.SMTP_SECURE === 'true',
+  SMTP_USER: (process.env.SMTP_USER || 'srghivfcryo@gmail.com').trim(),
+  SMTP_PASS: (process.env.SMTP_PASS || '').replace(/["'\s]/g, '').trim(),
+  SMTP_FROM: process.env.SMTP_FROM || '"SRGH IVF Cryo Bank" <srghivfcryo@gmail.com>',
 };
 
 export function validateConfig(): { valid: boolean; errors: string[] } {

@@ -14,6 +14,7 @@ model User {
   passwordHash String
   name         String
   role         String        @default("STAFF")
+  canPrintMail Boolean       @default(true)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   PatientNote  PatientNote[]
@@ -40,6 +41,7 @@ model Patient {
   freezingDate   DateTime?
   thawDate       DateTime?
   comments       String?
+  photoUrl       String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -47,6 +49,7 @@ model Patient {
   notes        PatientNote[]
   thawRecords  ThawRecord[]
   ocrRecords   OcrRecord[]
+  emailLogs    EmailLog[]
 
   @@index([patientId])
   @@index([fullName])
@@ -249,4 +252,21 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([entityName])
+}
+
+model EmailLog {
+  id             String   @id @default(uuid())
+  patientId      String
+  recipientEmail String
+  subject        String
+  senderEmail    String   @default("srghivfcryo@gmail.com")
+  status         String   @default("DELIVERED")
+  messageId      String?
+  errorMessage   String?
+  sentAt         DateTime @default(now())
+
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([sentAt])
 }
