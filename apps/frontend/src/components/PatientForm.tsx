@@ -1136,7 +1136,28 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     </label>
 
                     {photoPreviewUrl && (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (photoFile) {
+                              setCropModalFile(photoFile);
+                            } else if (photoPreviewUrl) {
+                              fetch(photoPreviewUrl)
+                                .then((res) => res.blob())
+                                .then((blob) => {
+                                  const file = new File([blob], 'patient-photo.jpg', { type: 'image/jpeg' });
+                                  setCropModalFile(file);
+                                })
+                                .catch((err) => console.error('Error fetching photo for crop:', err));
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-emerald-300 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                        >
+                          <Crop className="w-4 h-4 text-emerald-700" />
+                          <span>✂️ Crop & Rotate Studio</span>
+                        </button>
+
                         {photoFile && (
                           <button
                             type="button"
