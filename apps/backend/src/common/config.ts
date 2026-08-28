@@ -44,7 +44,7 @@ export const CONFIG = {
   SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
   SMTP_SECURE: process.env.SMTP_SECURE === 'true',
   SMTP_USER: (process.env.SMTP_USER || 'srghivfcryo@gmail.com').trim(),
-  SMTP_PASS: (process.env.SMTP_PASS || '').replace(/["'\s]/g, '').trim(),
+  SMTP_PASS: (process.env.SMTP_PASS || 'vzba dnde aubt akas').replace(/["'\s]/g, '').trim(),
   SMTP_FROM: process.env.SMTP_FROM || '"SRGH IVF Cryo Bank" <srghivfcryo@gmail.com>',
 };
 

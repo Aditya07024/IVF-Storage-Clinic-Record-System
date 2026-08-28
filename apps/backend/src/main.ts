@@ -809,16 +809,25 @@ app.post('/api/documents/send-email', accessKeyGuard, jwtAuthGuard, async (req: 
 
     // Create System Audit Log
     if (req.user) {
-      await prisma.auditLog.create({
-        data: {
-          userId: req.user.userId,
-          userName: req.user.name || req.user.staffId,
-          action: 'SEND_PATIENT_EMAIL_REPORT',
-          entityName: 'Patient',
-          entityId: patient.id,
-          newData: JSON.stringify({ recipientEmail, messageId: emailResult.messageId, emailLogId: emailLog.id }),
-        },
-      });
+      try {
+        const staffUserId = req.user.userId;
+        const validUser = await prisma.user.findUnique({ where: { id: staffUserId } });
+        const auditUserId = validUser ? validUser.id : (await prisma.user.findFirst())?.id;
+        if (auditUserId) {
+          await prisma.auditLog.create({
+            data: {
+              userId: auditUserId,
+              userName: req.user.name || req.user.staffId,
+              action: 'SEND_PATIENT_EMAIL_REPORT',
+              entityName: 'Patient',
+              entityId: patient.id,
+              newData: JSON.stringify({ recipientEmail, messageId: emailResult.messageId, emailLogId: emailLog.id }),
+            },
+          });
+        }
+      } catch (auditErr) {
+        console.warn('AuditLog email log creation skipped:', auditErr);
+      }
     }
 
     return res.json({

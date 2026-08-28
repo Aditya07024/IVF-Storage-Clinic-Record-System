@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Printer, Mail, Send, X, CheckCircle2, AlertCircle, RefreshCw, FileText, Sparkles, ShieldCheck, History } from 'lucide-react';
-import { apiRequest } from '../api/client';
+import { apiRequest, getApiBaseUrl } from '../api/client';
 
 interface ReportPrintMailModalProps {
   isOpen: boolean;
@@ -110,9 +110,10 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
   if (!isOpen || !patient) return null;
 
   const handlePrintPdf = () => {
+    const apiBase = getApiBaseUrl().replace(/\/$/, '');
     const accessKey = localStorage.getItem('app_access_key') || 'clinic2026';
-    const token = localStorage.getItem('accessToken') || '';
-    const pdfUrl = `/api/documents/patient/${patient.id}/pdf?reportType=${reportType}&key=${encodeURIComponent(accessKey)}&token=${encodeURIComponent(token)}`;
+    const token = localStorage.getItem('access_token') || localStorage.getItem('accessToken') || '';
+    const pdfUrl = `${apiBase}/api/documents/patient/${patient.id}/pdf?reportType=${reportType}&key=${encodeURIComponent(accessKey)}&token=${encodeURIComponent(token)}`;
     window.open(pdfUrl, '_blank');
   };
 
@@ -217,9 +218,7 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
         <div>
           <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between text-xs">
             <span>Select Report Format / Stage *</span>
-            <span className="text-[10px] text-emerald-800 font-mono font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-              Sir Ganga Ram Hospital Format
-            </span>
+            
           </label>
 
           {(() => {
