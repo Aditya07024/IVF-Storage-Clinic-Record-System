@@ -950,6 +950,35 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
+                <div className="sm:col-span-2 flex items-center gap-3.5 bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200 shadow-2xs">
+                  <div className="w-14 h-14 rounded-2xl bg-white border-2 border-amber-400 overflow-hidden shrink-0 flex items-center justify-center shadow-xs">
+                    {editingPatient?.photoUrl ? (
+                      <img src={getImageUrl(editingPatient.photoUrl)} alt="Patient Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-7 h-7 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{editingPatient?.photoUrl ? 'Change & Crop Profile Photo' : '📷 Upload & Crop Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && editingPatient) {
+                            setCropModalFile({ patientId: editingPatient.id, file });
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                    <p className="text-[10px] text-amber-900 font-medium">Opens interactive 1:1 Crop & 90° Rotate Studio before updating profile.</p>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
                     Patient Full Name <span className="text-rose-600 font-bold">*</span>
