@@ -967,7 +967,7 @@ export const OcrVerification: React.FC = () => {
                         <th className="p-1">Stage</th>
                         <th className="p-1">Grade</th>
                         <th className="p-1">Freezing Date</th>
-                        <th className="p-1 text-center">Status / Thaw</th>
+                        <th className="p-1 text-center">Thaw?</th>
                         <th className="p-1 text-center">Action</th>
                       </tr>
                     </thead>
@@ -1029,39 +1029,32 @@ export const OcrVerification: React.FC = () => {
                             />
                           </td>
                           <td className="p-0.5 text-center">
-                            {st.isThawing || st.thawDate ? (
-                              <div className="flex items-center justify-center gap-0.5">
+                            <div className="flex items-center justify-center gap-1">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(st.isThawing || st.thawDate)}
+                                onChange={(e) => {
+                                  const isChecked = e.target.checked;
+                                  updateStrawRow(idx, 'isThawing', isChecked);
+                                  if (isChecked) {
+                                    updateStrawRow(idx, 'thawDate', st.thawDate || new Date().toISOString().split('T')[0]);
+                                  } else {
+                                    updateStrawRow(idx, 'thawDate', '');
+                                  }
+                                }}
+                                className="w-3.5 h-3.5 accent-amber-600 rounded cursor-pointer"
+                                title="Tick box to thaw this specific straw"
+                              />
+                              {(st.isThawing || st.thawDate) && (
                                 <input
                                   type="text"
-                                  autoFocus
                                   value={st.thawDate || ''}
                                   onChange={(e) => updateStrawRow(idx, 'thawDate', e.target.value)}
                                   placeholder="YYYY-MM-DD"
                                   className="w-20 bg-amber-50 border border-amber-400 rounded py-0.5 px-1 font-mono text-[8px] text-amber-900 font-bold focus:outline-none focus:border-amber-600 shadow-2xs"
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    updateStrawRow(idx, 'thawDate', '');
-                                    updateStrawRow(idx, 'isThawing', false);
-                                  }}
-                                  className="text-slate-400 hover:text-rose-600 text-[10px] font-bold px-0.5 cursor-pointer"
-                                  title="Cancel Thaw Date"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => updateStrawRow(idx, 'isThawing', true)}
-                                className="w-full px-1 py-0.5 bg-sky-50 hover:bg-amber-50 text-sky-700 hover:text-amber-800 border border-sky-300 hover:border-amber-400 rounded font-bold text-[8px] transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-                                title="Click to specify Thaw Date for this straw"
-                              >
-                                <span>❄️ Frozen</span>
-                                <span className="text-[7.5px] font-bold text-amber-700 bg-amber-100 px-1 rounded border border-amber-300">+ Thaw</span>
-                              </button>
-                            )}
+                              )}
+                            </div>
                           </td>
                           <td className="p-0.5 text-center">
                             <button
