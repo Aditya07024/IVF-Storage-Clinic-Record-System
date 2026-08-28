@@ -966,7 +966,6 @@ export const OcrVerification: React.FC = () => {
                         <th className="p-1 text-center">Embryos</th>
                         <th className="p-1">Stage</th>
                         <th className="p-1">Grade</th>
-                        <th className="p-1">Freezing Date</th>
                         <th className="p-1 text-center">Thaw?</th>
                         <th className="p-1 text-center">Action</th>
                       </tr>
@@ -1017,15 +1016,6 @@ export const OcrVerification: React.FC = () => {
                               onChange={(e) => updateStrawRow(idx, 'grade', e.target.value)}
                               placeholder="4AA"
                               className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
-                            />
-                          </td>
-                          <td className="p-0.5">
-                            <input
-                              type="text"
-                              value={st.freezingDate || freezingDate || ''}
-                              onChange={(e) => updateStrawRow(idx, 'freezingDate', e.target.value)}
-                              placeholder="DD/MM/YYYY"
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono text-[8px]"
                             />
                           </td>
                           <td className="p-0.5 text-center">
