@@ -390,10 +390,29 @@ ${rawText}`;
     // 4. Structure extracted text with Gemini
     const structuredFields = await this.structureWithGemini(rawOcrText);
 
-    // 5. Store pending OCR Record in database for human staff verification
+    // 5. Resolve candidate patientId string to actual Patient table UUID if it exists in database
+    let resolvedPatientUuid: string | null = null;
+    const candidateId = (patientId || structuredFields.patientId || '').trim();
+
+    if (candidateId) {
+      const existingPatient = await prisma.patient.findFirst({
+        where: {
+          OR: [
+            { id: candidateId },
+            { patientId: candidateId },
+          ],
+        },
+        select: { id: true },
+      });
+      if (existingPatient) {
+        resolvedPatientUuid = existingPatient.id;
+      }
+    }
+
+    // 6. Store pending OCR Record in database for human staff verification
     const record = await prisma.ocrRecord.create({
       data: {
-        patientId: patientId || structuredFields.patientId || null,
+        patientId: resolvedPatientUuid,
         originalFilename: filename,
         storageKey: uniqueFilename,
         mimeType,
