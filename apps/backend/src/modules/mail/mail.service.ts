@@ -105,30 +105,60 @@ export class MailService {
       ],
     };
 
+    let lastErrorMsg = 'Failed to connect to email server.';
+
     // 1. Try SSL (Port 465)
     try {
       const transporter = this.createTransporter(465);
       const info = await transporter.sendMail(mailOptions);
-      console.log(`[MailService] Email sent successfully via SSL (465) to ${recipientEmail}. Message ID: ${info.messageId}`);
+      console.log(`[MailService] Direct email sent via SSL (465) to ${recipientEmail}. Message ID: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } catch (sslErr: any) {
-      console.warn('[MailService] SSL (465) transport failed:', sslErr?.message);
+      console.warn('[MailService] Direct SSL (465) transport failed:', sslErr?.message);
+      lastErrorMsg = sslErr?.message || lastErrorMsg;
     }
 
     // 2. Try STARTTLS (Port 587)
     try {
       const transporter = this.createTransporter(587);
       const info = await transporter.sendMail(mailOptions);
-      console.log(`[MailService] Email sent successfully via STARTTLS (587) to ${recipientEmail}. Message ID: ${info.messageId}`);
+      console.log(`[MailService] Direct email sent via STARTTLS (587) to ${recipientEmail}. Message ID: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } catch (tlsErr: any) {
-      console.warn('[MailService] STARTTLS (587) transport failed:', tlsErr?.message);
+      console.warn('[MailService] Direct STARTTLS (587) transport failed:', tlsErr?.message);
+      lastErrorMsg = tlsErr?.message || lastErrorMsg;
     }
 
-    // 3. Fallback: Log delivery record so clinic workflow never crashes
-    const fallbackMessageId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    console.warn(`[MailService] Cloud SMTP restricted by Gmail firewall. Report email dispatch logged to system database for ${recipientEmail}.`);
-    return { success: true, messageId: fallbackMessageId };
+    // 3. Relay via Hostinger VPS Static Dedicated Server IP (http://200.234.42.142) if running on cloud
+    try {
+      console.log('[MailService] Attempting relay via Hostinger Dedicated VPS (http://200.234.42.142)...');
+      const vpsRes = await fetch('http://200.234.42.142/api/documents/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-key': 'clinic2026',
+        },
+        body: JSON.stringify({
+          patientId,
+          recipientEmail,
+          customSubject,
+          customMessage,
+        }),
+      });
+
+      if (vpsRes.ok) {
+        const vpsData: any = await vpsRes.json();
+        if (vpsData.success) {
+          const msgId = vpsData.emailLog?.messageId || vpsData.messageId || `vps_${Date.now()}`;
+          console.log(`[MailService] Email successfully delivered to ${recipientEmail} via Hostinger VPS Relay! Message ID: ${msgId}`);
+          return { success: true, messageId: msgId };
+        }
+      }
+    } catch (vpsErr: any) {
+      console.warn('[MailService] Hostinger VPS relay attempt error:', vpsErr?.message);
+    }
+
+    throw new Error(`Gmail SMTP delivery error: ${lastErrorMsg}`);
   }
 }
 
