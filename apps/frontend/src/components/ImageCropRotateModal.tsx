@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, RotateCw, Crop, Check, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { RotateCcw, RotateCw, Crop, Check, X, ZoomIn, ZoomOut, Upload } from 'lucide-react';
 import { rotateImageFile } from '../utils/imageUtils';
 
 interface ImageCropRotateModalProps {
@@ -177,26 +177,45 @@ export const ImageCropRotateModal: React.FC<ImageCropRotateModalProps> = ({
 
         {/* Mobile-Friendly Toolbar Controls */}
         <div className="space-y-2 bg-slate-50 p-2.5 sm:p-3 rounded-2xl border border-slate-200">
-          {/* Rotate Controls */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Rotate & Change Image Controls */}
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => handleRotate(-90)}
               disabled={isProcessing}
-              className="py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+              className="py-2 px-2 bg-white hover:bg-slate-100 text-slate-800 font-bold text-[11px] sm:text-xs rounded-xl border border-slate-300 flex items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
-              <RotateCcw className="w-4 h-4 text-emerald-700" />
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
               <span>Rotate ↺</span>
             </button>
             <button
               type="button"
               onClick={() => handleRotate(90)}
               disabled={isProcessing}
-              className="py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+              className="py-2 px-2 bg-white hover:bg-slate-100 text-slate-800 font-bold text-[11px] sm:text-xs rounded-xl border border-slate-300 flex items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
-              <RotateCw className="w-4 h-4 text-emerald-700" />
+              <RotateCw className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
               <span>Rotate ↻</span>
             </button>
+            <label className="py-2 px-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-[11px] sm:text-xs rounded-xl border border-emerald-300 flex items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer">
+              <Upload className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+              <span className="truncate">Change Image</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setCurrentFile(file);
+                    setZoom(1);
+                    const url = URL.createObjectURL(file);
+                    setPreviewUrl(url);
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </label>
           </div>
 
           {/* Aspect Ratio & Zoom Controls */}

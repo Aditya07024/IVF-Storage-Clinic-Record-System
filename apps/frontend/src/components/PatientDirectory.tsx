@@ -983,33 +983,35 @@ export const PatientDirectory: React.FC = () => {
                   </div>
                   <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                      <label className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95">
-                        <Camera className="w-3.5 h-3.5" />
-                        <span>📷 Edit Picture (New Upload)</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file && editingPatient) {
-                              setCropModalFile({ patientId: editingPatient.id, file });
-                            }
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingPatient?.photoUrl) {
+                            handleEditExistingPhotoCrop(editingPatient.id, editingPatient.photoUrl);
+                          } else {
+                            const input = document.getElementById('edit-patient-photo-input');
+                            if (input) input.click();
+                          }
+                        }}
+                        className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <span>📷 Edit Picture</span>
+                      </button>
 
-                      {editingPatient?.photoUrl && (
-                        <button
-                          type="button"
-                          onClick={() => handleEditExistingPhotoCrop(editingPatient.id, editingPatient.photoUrl)}
-                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-xs active:scale-95 transition-all cursor-pointer"
-                        >
-                          <Crop className="w-3.5 h-3.5" />
-                          <span>✂️ Edit Picture (Crop & Rotate)</span>
-                        </button>
-                      )}
+                      <input
+                        id="edit-patient-photo-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && editingPatient) {
+                            setCropModalFile({ patientId: editingPatient.id, file });
+                          }
+                          e.target.value = '';
+                        }}
+                      />
                     </div>
                     <p className="text-[10px] text-amber-900 font-medium">Clicking either button opens the Crop & 90° Rotate Studio before saving.</p>
                   </div>
@@ -1226,35 +1228,38 @@ export const PatientDirectory: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <label className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95">
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>{uploadingPhoto ? 'Uploading...' : '📷 Edit Picture (Upload New)'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={uploadingPhoto}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file && selectedPatient) {
-                            setCropModalFile({ patientId: selectedPatient.id, file });
-                          }
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={uploadingPhoto}
+                      onClick={() => {
+                        if (selectedPatient.photoUrl) {
+                          handleEditExistingPhotoCrop(selectedPatient.id, selectedPatient.photoUrl);
+                        } else {
+                          const input = document.getElementById('drawer-patient-photo-input');
+                          if (input) input.click();
+                        }
+                      }}
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>{uploadingPhoto ? 'Uploading...' : '📷 Edit Picture'}</span>
+                    </button>
 
-                    {selectedPatient.photoUrl && (
-                      <button
-                        type="button"
-                        onClick={() => handleEditExistingPhotoCrop(selectedPatient.id, selectedPatient.photoUrl)}
-                        className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-emerald-300 shadow-2xs active:scale-95 transition-all cursor-pointer"
-                      >
-                        <Crop className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>✂️ Edit Picture (Crop & Rotate)</span>
-                      </button>
-                    )}
+                    <input
+                      id="drawer-patient-photo-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingPhoto}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && selectedPatient) {
+                          setCropModalFile({ patientId: selectedPatient.id, file });
+                        }
+                        e.target.value = '';
+                      }}
+                    />
                   </div>
                 </div>
 
