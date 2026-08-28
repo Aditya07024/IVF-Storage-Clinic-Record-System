@@ -494,6 +494,10 @@ ${rawText}`;
       structuredFields,
       provider: ocrResult.provider,
       status: record.status,
+      record: {
+        ...record,
+        structuredFields,
+      },
     };
   }
 

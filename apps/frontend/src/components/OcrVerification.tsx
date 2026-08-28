@@ -185,7 +185,19 @@ export const OcrVerification: React.FC = () => {
 
   const selectRecord = (record: any) => {
     setActiveRecord(record);
-    const json = record.extractedJson || {};
+    let json: any = {};
+    if (record.structuredFields) {
+      json = record.structuredFields;
+    } else if (typeof record.extractedJson === 'string') {
+      try {
+        json = JSON.parse(record.extractedJson);
+      } catch (e) {
+        json = {};
+      }
+    } else if (typeof record.extractedJson === 'object' && record.extractedJson !== null) {
+      json = record.extractedJson;
+    }
+
     setPatientId(json.patientId || record.patientId || '');
     setFullName(json.fullName || '');
     setPartnerName(json.partnerName || '');
@@ -198,7 +210,7 @@ export const OcrVerification: React.FC = () => {
     setPatientAge(json.patientAge || '');
     setPartnerAge(json.partnerAge || '');
     setDoctorName(json.doctorName || '');
-    setVisitDate(json.visitDate || '');
+    setVisitDate(json.visitDate || json.aspirationDate || '');
     setFreezingDate(json.freezingDate || '');
     setThawDate(json.thawDate || '');
     setEmbryoCount(json.embryoCount ? String(json.embryoCount) : '');
@@ -206,8 +218,38 @@ export const OcrVerification: React.FC = () => {
     setVisoTubeColor(json.visoTubeColor || '');
     setVisoTubeId(json.visoTubeId || '');
     setLevel(json.level || '');
-    setStraws(Array.isArray(json.straws) ? json.straws : []);
+
+    const initialStraws = Array.isArray(json.straws) && json.straws.length > 0
+      ? json.straws
+      : [{ strawId: 'STR-01', colorTag: 'Pink Tag', embryoCount: 1, stage: 'Day 5', grade: '4AA', freezingDate: json.freezingDate || '' }];
+    setStraws(initialStraws);
     setComments(json.comments || '');
+  };
+
+  const addStrawRow = () => {
+    setStraws((prev) => [
+      ...prev,
+      {
+        strawId: `STR-0${prev.length + 1}`,
+        colorTag: 'Pink Tag',
+        embryoCount: 1,
+        stage: 'Day 5',
+        grade: '4AA',
+        freezingDate: freezingDate || '',
+      },
+    ]);
+  };
+
+  const updateStrawRow = (index: number, field: string, value: any) => {
+    setStraws((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const removeStrawRow = (index: number) => {
+    setStraws((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -794,41 +836,95 @@ export const OcrVerification: React.FC = () => {
               </div>
 
               {/* Extracted Specimen Straws Table */}
-              {straws.length > 0 && (
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                      Extracted Specimen Straws ({straws.length} Straws)
-                    </span>
-                  </div>
-                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                    <table className="w-full text-left text-[11px]">
-                      <thead className="bg-slate-100 text-slate-700 font-bold">
-                        <tr>
-                          <th className="p-2">Straw ID</th>
-                          <th className="p-2">Color Tag</th>
-                          <th className="p-2">Embryos</th>
-                          <th className="p-2">Stage</th>
-                          <th className="p-2">Grade</th>
-                          <th className="p-2">Freezing Dt</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {straws.map((st, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50 font-medium text-slate-800">
-                            <td className="p-2 font-mono font-bold">{st.strawId || `STR-${idx + 1}`}</td>
-                            <td className="p-2">{st.colorTag || st.colorName || '-'}</td>
-                            <td className="p-2 font-bold text-emerald-700">{st.embryoCount ?? 1}</td>
-                            <td className="p-2">{st.stage || 'Day 5'}</td>
-                            <td className="p-2 font-bold">{st.grade || '4AA'}</td>
-                            <td className="p-2 font-mono text-[10px]">{st.freezingDate || freezingDate || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                    Specimen Straws Batch ({straws.length} Straws)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={addStrawRow}
+                    className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-[11px] rounded-lg border border-emerald-300 transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>+ Add Straw</span>
+                  </button>
                 </div>
-              )}
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="bg-slate-100 text-slate-700 font-bold">
+                      <tr>
+                        <th className="p-2">Straw ID</th>
+                        <th className="p-2">Color Tag</th>
+                        <th className="p-2">Embryos</th>
+                        <th className="p-2">Stage</th>
+                        <th className="p-2">Grade</th>
+                        <th className="p-2">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {straws.map((st, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50 font-medium text-slate-800">
+                          <td className="p-1.5">
+                            <input
+                              type="text"
+                              value={st.strawId || ''}
+                              onChange={(e) => updateStrawRow(idx, 'strawId', e.target.value)}
+                              placeholder={`STR-0${idx + 1}`}
+                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 font-mono font-bold text-[11px]"
+                            />
+                          </td>
+                          <td className="p-1.5">
+                            <input
+                              type="text"
+                              value={st.colorTag || st.colorName || ''}
+                              onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
+                              placeholder="Pink Tag"
+                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 text-[11px]"
+                            />
+                          </td>
+                          <td className="p-1.5">
+                            <input
+                              type="number"
+                              min={1}
+                              value={st.embryoCount ?? 1}
+                              onChange={(e) => updateStrawRow(idx, 'embryoCount', parseInt(e.target.value, 10) || 1)}
+                              className="w-16 bg-slate-50 border border-slate-300 rounded p-1 font-bold text-emerald-700 text-[11px]"
+                            />
+                          </td>
+                          <td className="p-1.5">
+                            <input
+                              type="text"
+                              value={st.stage || ''}
+                              onChange={(e) => updateStrawRow(idx, 'stage', e.target.value)}
+                              placeholder="Day 5"
+                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 text-[11px]"
+                            />
+                          </td>
+                          <td className="p-1.5">
+                            <input
+                              type="text"
+                              value={st.grade || ''}
+                              onChange={(e) => updateStrawRow(idx, 'grade', e.target.value)}
+                              placeholder="4AA"
+                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 font-bold text-[11px]"
+                            />
+                          </td>
+                          <td className="p-1.5">
+                            <button
+                              type="button"
+                              onClick={() => removeStrawRow(idx)}
+                              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                              title="Delete Straw"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
               <div className="space-y-1">
                 <label className="font-semibold text-slate-700">Clinical Comments / Verification Notes</label>
