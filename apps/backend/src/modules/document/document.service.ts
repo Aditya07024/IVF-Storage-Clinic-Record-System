@@ -310,7 +310,7 @@ export class DocumentService {
 
       // Helper function for seamless multi-page layout flow
       const ensureSpace = (neededHeight: number) => {
-        if (currentSectionY + neededHeight > 730) {
+        if (currentSectionY + neededHeight > 710) {
           doc.addPage();
           currentSectionY = 36;
           doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#065f46')
@@ -487,8 +487,9 @@ export class DocumentService {
       // ==========================================
       // 4. CONTRACT & EXPIRY NOTICE CARD (OUTLINED BORDER)
       // ==========================================
-      ensureSpace(65);
-      const noticeBoxY = currentSectionY + 4;
+      const noticeBoxHeight = 56;
+      ensureSpace(noticeBoxHeight + 10);
+      const noticeBoxY = currentSectionY;
       const contractNoticeText = isThaw
         ? 'Following the thawing procedure, viable embryos are prepared for immediate clinical transfer (FET) or ICSI. All post-thaw recovery parameters are documented in the patient medical record.'
         : isSixMonths
@@ -502,12 +503,12 @@ export class DocumentService {
 
       // Element Border Outline around Advisory Box
       doc
-        .rect(30, noticeBoxY, 535, 54)
+        .rect(30, noticeBoxY, 535, noticeBoxHeight)
         .lineWidth(1.25)
         .fillAndStroke(advisoryBg, advisoryBorder);
 
       // Left Accent Strip
-      doc.rect(30, noticeBoxY, 6, 54).fill(advisoryAccent);
+      doc.rect(30, noticeBoxY, 6, noticeBoxHeight).fill(advisoryAccent);
 
       doc
         .fillColor(advisoryText)
@@ -520,11 +521,15 @@ export class DocumentService {
           { width: 505, align: 'left', lineGap: 3 }
         );
 
+      currentSectionY = noticeBoxY + noticeBoxHeight + 14;
+
       // ==========================================
       // 5. CLINICAL DISCLAIMER NOTE & GRADING FOOTNOTE (OUTLINED BORDER)
       // ==========================================
-      ensureSpace(110);
-      const disclaimerStartY = noticeBoxY + 68;
+      const disclaimerNeededHeight = isThaw ? 65 : (activeReportType === 'DAY3' ? 140 : activeReportType === 'DAY5' ? 115 : 65);
+      ensureSpace(disclaimerNeededHeight);
+
+      const disclaimerStartY = currentSectionY;
       doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#0f172a').text('Note:', 30, disclaimerStartY);
 
       let disclaimerTextY = disclaimerStartY + 16;
@@ -548,6 +553,8 @@ export class DocumentService {
             disclaimerTextY + 24,
             { width: 535, align: 'left', lineGap: 3 }
           );
+
+        currentSectionY = disclaimerTextY + 50;
       } else if (activeReportType === 'DAY5') {
         doc
           .font('Helvetica')
@@ -576,6 +583,8 @@ export class DocumentService {
         doc.fontSize(8).font('Helvetica').fillColor('#334155');
         doc.text('Expansion: 3 - Blastocyst  |  4 - Expanding Blastocyst  |  5 - Hatching Blastocyst', 165, gradeBoxY + 8, { width: 390 });
         doc.text('ICM (Inner Cell Mass): A - Good, B - Average, C - Poor   |   TE (Trophectoderm): A - Good, B - Average, C - Poor', 42, gradeBoxY + 25, { width: 510 });
+
+        currentSectionY = gradeBoxY + 54;
       } else if (activeReportType === 'DAY3') {
         doc
           .font('Helvetica')
@@ -606,6 +615,8 @@ export class DocumentService {
         doc.text('Grade 4: >= 6C with slightly unequal blastomeres or <= 10% fragmentation', 150, gradeBoxY + 22, { width: 405 });
         doc.text('Grade 3: >= 6C with unequal blastomeres or 10-30% fragmentation', 150, gradeBoxY + 36, { width: 405 });
         doc.text('Grade 2: >= 5C with unequal blastomeres and >30% fragmentation', 150, gradeBoxY + 50, { width: 405 });
+
+        currentSectionY = gradeBoxY + 78;
       } else {
         doc
           .font('Helvetica')
@@ -625,7 +636,27 @@ export class DocumentService {
             disclaimerTextY + 24,
             { width: 535, align: 'left', lineGap: 3 }
           );
+
+        currentSectionY = disclaimerTextY + 50;
       }
+
+      // ==========================================
+      // 5.5 CLINICAL SIGNATURE BLOCK
+      // ==========================================
+      ensureSpace(50);
+      const sigY = currentSectionY + 6;
+      doc.strokeColor('#cbd5e1').lineWidth(0.75).dash(3, { space: 3 });
+      doc.moveTo(40, sigY + 20).lineTo(220, sigY + 20).stroke();
+      doc.moveTo(345, sigY + 20).lineTo(525, sigY + 20).stroke();
+      doc.undash();
+
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f172a');
+      doc.text('Consultant Embryologist', 40, sigY + 23, { width: 180, align: 'center' });
+      doc.text('Director / IVF Specialist', 345, sigY + 23, { width: 180, align: 'center' });
+
+      doc.fontSize(7.5).font('Helvetica').fillColor('#64748b');
+      doc.text('Sir Ganga Ram Hospital', 40, sigY + 35, { width: 180, align: 'center' });
+      doc.text('Sir Ganga Ram Hospital', 345, sigY + 35, { width: 180, align: 'center' });
 
       // ==========================================
       // 6. CLINICAL REPORT FOOTER & VERIFICATION BADGE ON EVERY PAGE
