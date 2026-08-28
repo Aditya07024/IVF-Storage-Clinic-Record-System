@@ -41,6 +41,11 @@ export class MailService {
 
     const subject = customSubject || `Official IVF Specimen & Cryo Storage Summary - ${patientName} (${patientId})`;
 
+    const user = (process.env.SMTP_USER || CONFIG.SMTP_USER || 'srghivfcryo@gmail.com').trim();
+    const rawPass = process.env.SMTP_PASS || CONFIG.SMTP_PASS || 'vzba dnde aubt akas';
+    const passWithSpaces = rawPass.trim();
+    const passNoSpaces = rawPass.replace(/["'\s]/g, '').trim();
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -92,7 +97,7 @@ export class MailService {
     `;
 
     const mailOptions = {
-      from: CONFIG.SMTP_FROM,
+      from: CONFIG.SMTP_FROM || `"SRGH IVF Cryo Bank" <${user}>`,
       to: recipientEmail.trim(),
       subject: subject,
       html: htmlContent,
@@ -105,60 +110,33 @@ export class MailService {
       ],
     };
 
-    let lastErrorMsg = 'Failed to connect to email server.';
+    const configs = [
+      { name: 'Gmail Service (Pass with Spaces)', service: 'gmail', auth: { user, pass: passWithSpaces } },
+      { name: 'Gmail Service (Pass without Spaces)', service: 'gmail', auth: { user, pass: passNoSpaces } },
+      { name: 'Gmail SMTP Port 465 SSL', host: 'smtp.gmail.com', port: 465, secure: true, auth: { user, pass: passNoSpaces } },
+      { name: 'Gmail SMTP Port 587 STARTTLS', host: 'smtp.gmail.com', port: 587, secure: false, auth: { user, pass: passNoSpaces } },
+    ];
 
-    // 1. Try SSL (Port 465)
-    try {
-      const transporter = this.createTransporter(465);
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`[MailService] Direct email sent via SSL (465) to ${recipientEmail}. Message ID: ${info.messageId}`);
-      return { success: true, messageId: info.messageId };
-    } catch (sslErr: any) {
-      console.warn('[MailService] Direct SSL (465) transport failed:', sslErr?.message);
-      lastErrorMsg = sslErr?.message || lastErrorMsg;
-    }
+    let lastErr: any = null;
+    for (const cfg of configs) {
+      try {
+        const transporter = nodemailer.createTransport({
+          ...cfg,
+          tls: { rejectUnauthorized: false },
+          connectionTimeout: 10000,
+          socketTimeout: 12000,
+        } as any);
 
-    // 2. Try STARTTLS (Port 587)
-    try {
-      const transporter = this.createTransporter(587);
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`[MailService] Direct email sent via STARTTLS (587) to ${recipientEmail}. Message ID: ${info.messageId}`);
-      return { success: true, messageId: info.messageId };
-    } catch (tlsErr: any) {
-      console.warn('[MailService] Direct STARTTLS (587) transport failed:', tlsErr?.message);
-      lastErrorMsg = tlsErr?.message || lastErrorMsg;
-    }
-
-    // 3. Relay via Hostinger VPS Static Dedicated Server IP (http://200.234.42.142) if running on cloud
-    try {
-      console.log('[MailService] Attempting relay via Hostinger Dedicated VPS (http://200.234.42.142)...');
-      const vpsRes = await fetch('http://200.234.42.142/api/documents/send-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-access-key': 'clinic2026',
-        },
-        body: JSON.stringify({
-          patientId,
-          recipientEmail,
-          customSubject,
-          customMessage,
-        }),
-      });
-
-      if (vpsRes.ok) {
-        const vpsData: any = await vpsRes.json();
-        if (vpsData.success) {
-          const msgId = vpsData.emailLog?.messageId || vpsData.messageId || `vps_${Date.now()}`;
-          console.log(`[MailService] Email successfully delivered to ${recipientEmail} via Hostinger VPS Relay! Message ID: ${msgId}`);
-          return { success: true, messageId: msgId };
-        }
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[MailService] Successfully delivered email via ${cfg.name} to ${recipientEmail}. Message ID: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+      } catch (err: any) {
+        console.warn(`[MailService] ${cfg.name} failed:`, err?.message);
+        lastErr = err;
       }
-    } catch (vpsErr: any) {
-      console.warn('[MailService] Hostinger VPS relay attempt error:', vpsErr?.message);
     }
 
-    throw new Error(`Gmail SMTP delivery error: ${lastErrorMsg}`);
+    throw new Error(`Gmail SMTP delivery error: ${lastErr?.message || 'Authentication or network timeout.'}`);
   }
 }
 
