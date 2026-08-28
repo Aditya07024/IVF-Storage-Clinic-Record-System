@@ -718,14 +718,57 @@ ${rawText}`;
         });
       }
 
-      // 7. Auto-Create StorageBatch and Straws in VisoTube Container View
+      // 7. Auto-Create StorageBatch and Straws in the EXACT selected Canister, Level, and VisoTube
       const strawsList = Array.isArray(input.straws) && input.straws.length > 0
         ? input.straws
         : [{ strawId: 'STR-01', colorTag: input.visoTubeColor || 'Pink', embryoCount: 1, stage: 'Day 5', grade: '4AA' }];
 
+      // Parse user's selected canister, level, and goblet numbers
+      const canisterDigits = (input.canisterName || '8').replace(/\D/g, '');
+      const selectedCanisterNum = canisterDigits ? parseInt(canisterDigits, 10) : 8;
+
+      const levelDigits = (input.level || '1').replace(/\D/g, '');
+      const selectedLevelNum = levelDigits ? parseInt(levelDigits, 10) : 1;
+
+      const gobletDigits = (input.visoTubeId || '9').replace(/\D/g, '');
+      const selectedGobletNum = gobletDigits ? parseInt(gobletDigits, 10) : 9;
+
+      // Search for the specific Canister, Level, Goblet, and VisoTube matching user selection
       let targetVisoTube = await tx.visoTube.findFirst({
-        orderBy: { tubeNumber: 'asc' },
+        where: {
+          goblet: {
+            gobletNumber: selectedGobletNum,
+            level: {
+              levelNumber: selectedLevelNum,
+              canister: {
+                canisterNumber: selectedCanisterNum,
+              },
+            },
+          },
+        },
       });
+
+      // Fallback 1: match by canister number only
+      if (!targetVisoTube) {
+        targetVisoTube = await tx.visoTube.findFirst({
+          where: {
+            goblet: {
+              level: {
+                canister: {
+                  canisterNumber: selectedCanisterNum,
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // Fallback 2: first available VisoTube in database
+      if (!targetVisoTube) {
+        targetVisoTube = await tx.visoTube.findFirst({
+          orderBy: { tubeNumber: 'asc' },
+        });
+      }
 
       if (targetVisoTube) {
         const batchCode = `BAT-${Date.now().toString().slice(-6)}`;
@@ -739,7 +782,7 @@ ${rawText}`;
             totalStraws: strawsList.length,
             totalEmbryos: strawsList.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
             visoTubeId: targetVisoTube.id,
-            notes: `Auto-allocated from OCR Verification (${input.canisterName || 'Canister'} - ${input.visoTubeColor || 'Pink'})`,
+            notes: `Allocated from OCR Verification (Canister C${selectedCanisterNum.toString().padStart(2, '0')}, Level ${selectedLevelNum}, Goblet V${selectedGobletNum.toString().padStart(2, '0')}, Color: ${input.visoTubeColor || 'Pink'})`,
           },
         });
 
@@ -771,7 +814,7 @@ ${rawText}`;
               });
             }
           } catch (err: any) {
-            // Ignore straw code conflicts
+            // Ignore unique straw code conflicts
           }
         }
       }
