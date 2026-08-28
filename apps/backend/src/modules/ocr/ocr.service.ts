@@ -295,6 +295,7 @@ export class OcrService {
       pgtTested?: boolean;
       aspirationDate?: string;
       freezingDate?: string;
+      thawDate?: string;
     }>;
     comments?: string;
   }> {
@@ -800,6 +801,8 @@ ${rawText}`;
                 embryoCount: st.embryoCount || 1,
                 grade: st.grade || '4AA',
                 status: 'OCCUPIED',
+                freezingDate: st.freezingDate ? new Date(st.freezingDate) : (input.freezingDate ? new Date(input.freezingDate) : null),
+                thawDate: st.thawDate ? new Date(st.thawDate) : (input.thawDate ? new Date(input.thawDate) : null),
               },
             });
 

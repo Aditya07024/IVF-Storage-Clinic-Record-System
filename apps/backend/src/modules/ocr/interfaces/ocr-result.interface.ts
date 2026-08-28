@@ -35,6 +35,7 @@ export interface VerifyOcrInput {
     pgtTested?: boolean;
     aspirationDate?: string;
     freezingDate?: string;
+    thawDate?: string;
   }>;
   comments?: string;
 }

@@ -282,8 +282,8 @@ export const OcrVerification: React.FC = () => {
     setLevel(lvl || 'Level 1');
 
     const initialStraws = Array.isArray(json.straws) && json.straws.length > 0
-      ? json.straws
-      : [{ strawId: 'STR-01', colorTag: 'Pink Tag', embryoCount: 1, stage: 'Day 5', grade: '4AA', freezingDate: json.freezingDate || '' }];
+      ? json.straws.map((s: any) => ({ ...s, thawDate: s.thawDate || json.thawDate || '' }))
+      : [{ strawId: 'STR-01', colorTag: 'Pink', embryoCount: 1, stage: 'Day 5', grade: '4AA', freezingDate: json.freezingDate || '', thawDate: json.thawDate || '' }];
     setStraws(initialStraws);
     setComments(json.comments || '');
   };
@@ -293,11 +293,12 @@ export const OcrVerification: React.FC = () => {
       ...prev,
       {
         strawId: `STR-0${prev.length + 1}`,
-        colorTag: 'Pink Tag',
+        colorTag: visoTubeColor || 'Pink',
         embryoCount: 1,
         stage: 'Day 5',
         grade: '4AA',
         freezingDate: freezingDate || '',
+        thawDate: thawDate || '',
       },
     ]);
   };
@@ -960,13 +961,14 @@ export const OcrVerification: React.FC = () => {
                   <table className="w-full text-left text-[9px]">
                     <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                       <tr>
-                        <th className="p-1.5">Straw ID</th>
-                        <th className="p-1.5">Color Tag</th>
-                        <th className="p-1.5 text-center">Embryos</th>
-                        <th className="p-1.5">Stage</th>
-                        <th className="p-1.5">Grade</th>
-                        <th className="p-1.5">Freezing Date</th>
-                        <th className="p-1.5 text-center">Action</th>
+                        <th className="p-1">Straw ID</th>
+                        <th className="p-1">Color Tag</th>
+                        <th className="p-1 text-center">Embryos</th>
+                        <th className="p-1">Stage</th>
+                        <th className="p-1">Grade</th>
+                        <th className="p-1">Freezing Date</th>
+                        <th className="p-1">Thaw Date</th>
+                        <th className="p-1 text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -978,7 +980,7 @@ export const OcrVerification: React.FC = () => {
                               value={st.strawId || ''}
                               onChange={(e) => updateStrawRow(idx, 'strawId', e.target.value)}
                               placeholder={`Straw #${idx + 1}`}
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono font-bold text-[9px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono font-bold text-[8px]"
                             />
                           </td>
                           <td className="p-0.5">
@@ -987,7 +989,7 @@ export const OcrVerification: React.FC = () => {
                               value={st.colorTag || st.colorName || ''}
                               onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
                               placeholder="Pink"
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[9px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[8px]"
                             />
                           </td>
                           <td className="p-0.5 text-center">
@@ -996,7 +998,7 @@ export const OcrVerification: React.FC = () => {
                               min={1}
                               value={st.embryoCount ?? 1}
                               onChange={(e) => updateStrawRow(idx, 'embryoCount', parseInt(e.target.value, 10) || 1)}
-                              className="w-10 bg-slate-50 border border-slate-300 rounded py-0.5 text-center font-bold text-emerald-700 text-[9px]"
+                              className="w-8 bg-slate-50 border border-slate-300 rounded py-0.5 text-center font-bold text-emerald-700 text-[8px]"
                             />
                           </td>
                           <td className="p-0.5">
@@ -1005,7 +1007,7 @@ export const OcrVerification: React.FC = () => {
                               value={st.stage || ''}
                               onChange={(e) => updateStrawRow(idx, 'stage', e.target.value)}
                               placeholder="Day 5"
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[9px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[8px]"
                             />
                           </td>
                           <td className="p-0.5">
@@ -1014,7 +1016,7 @@ export const OcrVerification: React.FC = () => {
                               value={st.grade || ''}
                               onChange={(e) => updateStrawRow(idx, 'grade', e.target.value)}
                               placeholder="4AA"
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[9px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
                             />
                           </td>
                           <td className="p-0.5">
@@ -1023,14 +1025,23 @@ export const OcrVerification: React.FC = () => {
                               value={st.freezingDate || freezingDate || ''}
                               onChange={(e) => updateStrawRow(idx, 'freezingDate', e.target.value)}
                               placeholder="YYYY-MM-DD"
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono text-[8.5px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono text-[8px]"
+                            />
+                          </td>
+                          <td className="p-0.5">
+                            <input
+                              type="text"
+                              value={st.thawDate || thawDate || ''}
+                              onChange={(e) => updateStrawRow(idx, 'thawDate', e.target.value)}
+                              placeholder="YYYY-MM-DD"
+                              className="w-full bg-slate-50 border border-amber-300 rounded py-0.5 px-1 font-mono text-[8px] text-amber-900 font-bold"
                             />
                           </td>
                           <td className="p-0.5 text-center">
                             <button
                               type="button"
                               onClick={() => removeStrawRow(idx)}
-                              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                              className="p-0.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                               title="Delete Straw"
                             >
                               <Trash2 className="w-3 h-3" />

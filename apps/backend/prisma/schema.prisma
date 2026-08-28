@@ -158,6 +158,8 @@ model Straw {
   isPgt       Boolean      @default(false)
   maxCapacity Int          @default(2)
   status      String       @default("OCCUPIED")
+  freezingDate DateTime?
+  thawDate    DateTime?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
