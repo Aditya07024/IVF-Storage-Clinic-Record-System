@@ -795,45 +795,100 @@ export const OcrVerification: React.FC = () => {
                   </span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {/* Canister / Tank Select */}
                   <div className="space-y-0.5">
                     <label className="font-bold text-slate-700 text-[9px] uppercase">Canister / Tank</label>
-                    <input
-                      type="text"
+                    <select
                       value={canisterName}
                       onChange={(e) => setCanisterName(e.target.value)}
-                      placeholder="e.g. Canister 8"
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs"
-                    />
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
+                    >
+                      <option value="">-- Select Canister --</option>
+                      <option value="Canister 8">Canister 8 (Tank 1)</option>
+                      <option value="Canister 8S">Canister 8S (Semen Tank)</option>
+                      <option value="Canister 1">Canister 1 (Tank 1)</option>
+                      <option value="Canister 2">Canister 2 (Tank 1)</option>
+                      <option value="Canister 3">Canister 3 (Tank 1)</option>
+                      <option value="Canister 4">Canister 4 (Tank 1)</option>
+                      <option value="Canister 5">Canister 5 (Tank 1)</option>
+                      <option value="Canister 6">Canister 6 (Tank 1)</option>
+                      <option value="Canister 7">Canister 7 (Tank 1)</option>
+                      <option value="Canister 9">Canister 9 (Tank 2)</option>
+                      <option value="Canister 10">Canister 10 (Tank 2)</option>
+                      {canisterName && ![
+                        'Canister 8', 'Canister 8S', 'Canister 1', 'Canister 2', 'Canister 3', 'Canister 4',
+                        'Canister 5', 'Canister 6', 'Canister 7', 'Canister 9', 'Canister 10'
+                      ].includes(canisterName) && (
+                        <option value={canisterName}>{canisterName} (Detected)</option>
+                      )}
+                    </select>
                   </div>
+
+                  {/* Viso Tube Color Select */}
                   <div className="space-y-0.5">
                     <label className="font-bold text-slate-700 text-[9px] uppercase">Viso Tube Color</label>
-                    <input
-                      type="text"
+                    <select
                       value={visoTubeColor}
                       onChange={(e) => setVisoTubeColor(e.target.value)}
-                      placeholder="e.g. Pink"
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs"
-                    />
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-pink-700 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
+                    >
+                      <option value="">-- Select Color --</option>
+                      <option value="Pink">🌸 Pink</option>
+                      <option value="Yellow">🟡 Yellow</option>
+                      <option value="Green">🟢 Green</option>
+                      <option value="Blue">🔵 Blue</option>
+                      <option value="Red">🔴 Red</option>
+                      <option value="White">⚪ White</option>
+                      <option value="Black">🖤 Black</option>
+                      <option value="Purple">🟣 Purple</option>
+                      <option value="Orange">🟠 Orange</option>
+                      {visoTubeColor && !['Pink', 'Yellow', 'Green', 'Blue', 'Red', 'White', 'Black', 'Purple', 'Orange'].includes(visoTubeColor) && (
+                        <option value={visoTubeColor}>{visoTubeColor} (Detected)</option>
+                      )}
+                    </select>
                   </div>
+
+                  {/* Viso Tube ID / Goblet Select */}
                   <div className="space-y-0.5">
                     <label className="font-bold text-slate-700 text-[9px] uppercase">Viso Tube ID / Goblet</label>
-                    <input
-                      type="text"
+                    <select
                       value={visoTubeId}
                       onChange={(e) => setVisoTubeId(e.target.value)}
-                      placeholder="e.g. Yellow Goblet"
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs"
-                    />
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-amber-700 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
+                    >
+                      <option value="">-- Select Goblet / ID --</option>
+                      <option value="Yellow Goblet">Yellow Goblet</option>
+                      <option value="Pink Goblet">Pink Goblet</option>
+                      <option value="Green Goblet">Green Goblet</option>
+                      <option value="Blue Goblet">Blue Goblet</option>
+                      <option value="White Goblet">White Goblet</option>
+                      <option value="Red Goblet">Red Goblet</option>
+                      <option value="Goblet 1">Goblet 1</option>
+                      <option value="Goblet 2">Goblet 2</option>
+                      {visoTubeId && !['Yellow Goblet', 'Pink Goblet', 'Green Goblet', 'Blue Goblet', 'White Goblet', 'Red Goblet', 'Goblet 1', 'Goblet 2'].includes(visoTubeId) && (
+                        <option value={visoTubeId}>{visoTubeId} (Detected)</option>
+                      )}
+                    </select>
                   </div>
+
+                  {/* Level / Tier Select */}
                   <div className="space-y-0.5">
                     <label className="font-bold text-slate-700 text-[9px] uppercase">Level / Tier</label>
-                    <input
-                      type="text"
+                    <select
                       value={level}
                       onChange={(e) => setLevel(e.target.value)}
-                      placeholder="e.g. Level 1"
-                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs"
-                    />
+                      className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
+                    >
+                      <option value="">-- Select Level --</option>
+                      <option value="Level 1">Level 1 (Top Level)</option>
+                      <option value="Level 2">Level 2 (Middle Level)</option>
+                      <option value="Level 3">Level 3 (Bottom Level)</option>
+                      <option value="Top Tier">Top Tier</option>
+                      <option value="Bottom Tier">Bottom Tier</option>
+                      {level && !['Level 1', 'Level 2', 'Level 3', 'Top Tier', 'Bottom Tier'].includes(level) && (
+                        <option value={level}>{level} (Detected)</option>
+                      )}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -854,83 +909,83 @@ export const OcrVerification: React.FC = () => {
                   </button>
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-                  <table className="w-full text-left text-[10px]">
+                  <table className="w-full text-left text-[9px]">
                     <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                       <tr>
-                        <th className="p-2">Straw ID</th>
-                        <th className="p-2">Color Tag</th>
-                        <th className="p-2 text-center">Embryos</th>
-                        <th className="p-2">Stage</th>
-                        <th className="p-2">Grade</th>
-                        <th className="p-2">Freezing Date</th>
-                        <th className="p-2 text-center">Action</th>
+                        <th className="p-1.5">Straw ID</th>
+                        <th className="p-1.5">Color Tag</th>
+                        <th className="p-1.5 text-center">Embryos</th>
+                        <th className="p-1.5">Stage</th>
+                        <th className="p-1.5">Grade</th>
+                        <th className="p-1.5">Freezing Date</th>
+                        <th className="p-1.5 text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {straws.map((st, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 font-medium text-slate-800">
-                          <td className="p-1">
+                          <td className="p-0.5">
                             <input
                               type="text"
                               value={st.strawId || ''}
                               onChange={(e) => updateStrawRow(idx, 'strawId', e.target.value)}
                               placeholder={`Straw #${idx + 1}`}
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 font-mono font-bold text-[10px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono font-bold text-[9px]"
                             />
                           </td>
-                          <td className="p-1">
+                          <td className="p-0.5">
                             <input
                               type="text"
                               value={st.colorTag || st.colorName || ''}
                               onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
                               placeholder="Pink"
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 text-[10px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[9px]"
                             />
                           </td>
-                          <td className="p-1 text-center">
+                          <td className="p-0.5 text-center">
                             <input
                               type="number"
                               min={1}
                               value={st.embryoCount ?? 1}
                               onChange={(e) => updateStrawRow(idx, 'embryoCount', parseInt(e.target.value, 10) || 1)}
-                              className="w-12 bg-slate-50 border border-slate-300 rounded p-1 text-center font-bold text-emerald-700 text-[10px]"
+                              className="w-10 bg-slate-50 border border-slate-300 rounded py-0.5 text-center font-bold text-emerald-700 text-[9px]"
                             />
                           </td>
-                          <td className="p-1">
+                          <td className="p-0.5">
                             <input
                               type="text"
                               value={st.stage || ''}
                               onChange={(e) => updateStrawRow(idx, 'stage', e.target.value)}
                               placeholder="Day 5"
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 text-[10px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[9px]"
                             />
                           </td>
-                          <td className="p-1">
+                          <td className="p-0.5">
                             <input
                               type="text"
                               value={st.grade || ''}
                               onChange={(e) => updateStrawRow(idx, 'grade', e.target.value)}
                               placeholder="4AA"
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 font-bold text-[10px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[9px]"
                             />
                           </td>
-                          <td className="p-1">
+                          <td className="p-0.5">
                             <input
                               type="text"
                               value={st.freezingDate || freezingDate || ''}
                               onChange={(e) => updateStrawRow(idx, 'freezingDate', e.target.value)}
                               placeholder="YYYY-MM-DD"
-                              className="w-full bg-slate-50 border border-slate-300 rounded p-1 font-mono text-[9px]"
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono text-[8.5px]"
                             />
                           </td>
-                          <td className="p-1 text-center">
+                          <td className="p-0.5 text-center">
                             <button
                               type="button"
                               onClick={() => removeStrawRow(idx)}
                               className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                               title="Delete Straw"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3 h-3" />
                             </button>
                           </td>
                         </tr>

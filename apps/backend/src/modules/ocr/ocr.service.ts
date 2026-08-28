@@ -298,17 +298,33 @@ export class OcrService {
     }>;
     comments?: string;
   }> {
-    // 1. Try Gemini AI Model Extraction
+    // Fetch active clinic containers from PostgreSQL database to feed exact inventory to Gemini
+    let clinicInventoryContext = 'Clinic Canisters: Canister 1, Canister 2, Canister 3, Canister 4, Canister 5, Canister 6, Canister 7, Canister 8 (Semen Canister 8S); Colors: Pink, Yellow, Green, Black, Blue, Red; Goblets: Yellow Goblet, Pink Goblet, Green Goblet; Levels: Level 1, Level 2.';
+    try {
+      const activeCanisters = await prisma.canister.findMany({
+        include: { can: true },
+        orderBy: { canisterNumber: 'asc' },
+      });
+      if (activeCanisters.length > 0) {
+        const canisterNames = activeCanisters.map(c => `Canister ${c.canisterNumber} (${c.can?.name || 'Tank 1'})`).join(', ');
+        clinicInventoryContext = `Active Clinic Storage Inventory: Canisters: [${canisterNames}]; Colors: [Pink, Yellow, Green, Black, Blue, Red, White, Purple]; Goblets: [Yellow Goblet, Pink Goblet, Green Goblet, Blue Goblet, Red Goblet]; Levels: [Level 1, Level 2, Level 3].`;
+      }
+    } catch (e) {}
+
+    // 1. Try Gemini AI Model Extraction with Database Container Context
     if (this.genAI && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'mock_gemini_key') {
       const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
       const prompt = `You are an expert medical OCR data extraction assistant for an IVF & Cryo Storage Clinic.
 Extract all patient demographics, contact details, cryo storage location (Canister, Viso Tube color/ID, Level), and straw specimen records from the raw printed/handwritten document text below with high precision.
 
+${clinicInventoryContext}
+
 Rules:
 - DO NOT invent missing data. If a field is not present, return null.
+- Cross-reference handwritten storage location against the Clinic Active Storage Inventory above. Match "cayo can: S" / "Canister 8" to "Canister 8". Match "Tube: Yellow" to "Yellow Goblet". Match "Color: Pink" to "Pink". Match "Level: I" to "Level 1".
 - Extract "patientId" / Registration No (e.g. 26980, IVF-2026-000007, No: 26980).
 - Extract patient & partner names (e.g. Ramjana Bhadana, Vikas), ages, phone numbers (e.g. 9953078696), doctor name (e.g. DE. Meeti -> Dr. Meeti).
-- Extract cryo storage location fields: "canisterName" (e.g. Canister 8, Can 5), "visoTubeColor" (e.g. Pink), "visoTubeId" (e.g. Yellow), "level" (e.g. Level 1).
+- Extract cryo storage location fields: "canisterName" (e.g. Canister 8), "visoTubeColor" (e.g. Pink), "visoTubeId" (e.g. Yellow Goblet), "level" (e.g. Level 1).
 - Extract all straw records into the "straws" array: each straw object containing "strawId", "colorTag", "embryoCount", "grade" (e.g. 5AA, 5AB, 5AB+5BB), "stage" (e.g. Day 5), "pgtTested" (boolean), "freezingDate".
 - Parse all dates into YYYY-MM-DD format (convert 28/8/2020 -> 2020-08-28, 2/9/2020 -> 2020-09-02, 3/9/20 -> 2020-09-03).
 - Output ONLY valid JSON matching this exact schema:
