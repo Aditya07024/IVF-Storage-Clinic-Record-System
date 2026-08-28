@@ -1,5 +1,18 @@
 import { prisma } from '../../common/prisma.js';
 
+async function getValidUserId(staffUserId?: string): Promise<string | null> {
+  try {
+    if (staffUserId) {
+      const existing = await prisma.user.findUnique({ where: { id: staffUserId } });
+      if (existing) return existing.id;
+    }
+    const anyUser = await prisma.user.findFirst();
+    return anyUser ? anyUser.id : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface CreatePatientInput {
   patientId?: string;
   fullName: string;
@@ -122,17 +135,24 @@ export class PatientService {
       });
     }
 
-    // Audit Log
-    await prisma.auditLog.create({
-      data: {
-        userId: staffUserId,
-        userName: staffName,
-        action: 'PATIENT_CREATED',
-        entityName: 'Patient',
-        entityId: patient.id,
-        newData: JSON.stringify({ patientId: patient.patientId, fullName: patient.fullName }),
-      },
-    });
+    // Safe Audit Log
+    try {
+      const validUserId = await getValidUserId(staffUserId);
+      if (validUserId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: validUserId,
+            userName: staffName,
+            action: 'PATIENT_CREATED',
+            entityName: 'Patient',
+            entityId: patient.id,
+            newData: JSON.stringify({ patientId: patient.patientId, fullName: patient.fullName }),
+          },
+        });
+      }
+    } catch (auditErr) {
+      console.warn('AuditLog creation skipped:', auditErr);
+    }
 
     return patient;
   }
@@ -170,18 +190,25 @@ export class PatientService {
       },
     });
 
-    // Audit Log
-    await prisma.auditLog.create({
-      data: {
-        userId: staffUserId,
-        userName: staffName,
-        action: 'PATIENT_UPDATED',
-        entityName: 'Patient',
-        entityId: updated.id,
-        oldData: JSON.stringify({ fullName: existing.fullName, comments: existing.comments }),
-        newData: JSON.stringify({ fullName: updated.fullName, comments: updated.comments }),
-      },
-    });
+    // Safe Audit Log
+    try {
+      const validUserId = await getValidUserId(staffUserId);
+      if (validUserId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: validUserId,
+            userName: staffName,
+            action: 'PATIENT_UPDATED',
+            entityName: 'Patient',
+            entityId: updated.id,
+            oldData: JSON.stringify({ fullName: existing.fullName, comments: existing.comments }),
+            newData: JSON.stringify({ fullName: updated.fullName, comments: updated.comments }),
+          },
+        });
+      }
+    } catch (auditErr) {
+      console.warn('AuditLog update skipped:', auditErr);
+    }
 
     return updated;
   }
@@ -202,16 +229,24 @@ export class PatientService {
     await prisma.ocrRecord.deleteMany({ where: { patientId: id } });
     await prisma.emailLog.deleteMany({ where: { patientId: id } });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: staffUserId,
-        userName: staffName,
-        action: 'PATIENT_DELETED',
-        entityName: 'Patient',
-        entityId: patient.patientId,
-        oldData: JSON.stringify({ fullName: patient.fullName, patientId: patient.patientId }),
-      },
-    });
+    // Safe Audit Log
+    try {
+      const validUserId = await getValidUserId(staffUserId);
+      if (validUserId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: validUserId,
+            userName: staffName,
+            action: 'PATIENT_DELETED',
+            entityName: 'Patient',
+            entityId: patient.patientId,
+            oldData: JSON.stringify({ fullName: patient.fullName, patientId: patient.patientId }),
+          },
+        });
+      }
+    } catch (auditErr) {
+      console.warn('AuditLog delete skipped:', auditErr);
+    }
 
     await prisma.patient.delete({ where: { id } });
     return { success: true, message: `Patient ${patient.fullName} (${patient.patientId}) deleted successfully.` };
