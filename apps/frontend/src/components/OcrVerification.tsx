@@ -804,27 +804,25 @@ export const OcrVerification: React.FC = () => {
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Canister --</option>
-                      <option value="Canister 8">Canister 8 (Tank 1)</option>
-                      <option value="Canister 8S">Canister 8S (Semen Tank)</option>
-                      <option value="Canister 1">Canister 1 (Tank 1)</option>
-                      <option value="Canister 2">Canister 2 (Tank 1)</option>
-                      <option value="Canister 3">Canister 3 (Tank 1)</option>
-                      <option value="Canister 4">Canister 4 (Tank 1)</option>
-                      <option value="Canister 5">Canister 5 (Tank 1)</option>
-                      <option value="Canister 6">Canister 6 (Tank 1)</option>
-                      <option value="Canister 7">Canister 7 (Tank 1)</option>
-                      <option value="Canister 9">Canister 9 (Tank 2)</option>
-                      <option value="Canister 10">Canister 10 (Tank 2)</option>
+                      <option value="Canister 8">C08 (Canister 08 - CAN-01)</option>
+                      <option value="C01">C01 (Canister 01)</option>
+                      <option value="C02">C02 (Canister 02)</option>
+                      <option value="C03">C03 (Canister 03)</option>
+                      <option value="C04">C04 (Canister 04)</option>
+                      <option value="C05">C05 (Canister 05)</option>
+                      <option value="C06">C06 (Canister 06)</option>
+                      <option value="C07">C07 (Canister 07)</option>
+                      <option value="C09">C09 (Canister 09)</option>
+                      <option value="C10">C10 (Canister 10)</option>
                       {canisterName && ![
-                        'Canister 8', 'Canister 8S', 'Canister 1', 'Canister 2', 'Canister 3', 'Canister 4',
-                        'Canister 5', 'Canister 6', 'Canister 7', 'Canister 9', 'Canister 10'
+                        'Canister 8', 'C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'C07', 'C08', 'C09', 'C10'
                       ].includes(canisterName) && (
                         <option value={canisterName}>{canisterName} (Detected)</option>
                       )}
                     </select>
                   </div>
 
-                  {/* Viso Tube Color Select */}
+                  {/* Viso Tube Color Select (11 Physical Colors) */}
                   <div className="space-y-0.5">
                     <label className="font-bold text-slate-700 text-[9px] uppercase">Viso Tube Color</label>
                     <select
@@ -833,16 +831,18 @@ export const OcrVerification: React.FC = () => {
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-pink-700 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Color --</option>
-                      <option value="Pink">🌸 Pink</option>
-                      <option value="Yellow">🟡 Yellow</option>
-                      <option value="Green">🟢 Green</option>
-                      <option value="Blue">🔵 Blue</option>
-                      <option value="Red">🔴 Red</option>
-                      <option value="White">⚪ White</option>
-                      <option value="Black">🖤 Black</option>
-                      <option value="Purple">🟣 Purple</option>
-                      <option value="Orange">🟠 Orange</option>
-                      {visoTubeColor && !['Pink', 'Yellow', 'Green', 'Blue', 'Red', 'White', 'Black', 'Purple', 'Orange'].includes(visoTubeColor) && (
+                      <option value="Pink">🌸 V01: Pink</option>
+                      <option value="Grey">🩶 V02: Grey</option>
+                      <option value="Red">🔴 V03: Red</option>
+                      <option value="Black">🖤 V04: Black</option>
+                      <option value="Green">🟢 V05: Green</option>
+                      <option value="Rust">🤎 V06: Rust</option>
+                      <option value="Blue">🔵 V07: Blue</option>
+                      <option value="Purple">🟣 V08: Purple</option>
+                      <option value="Yellow">🟡 V09: Yellow</option>
+                      <option value="Orange">🟠 V10: Orange</option>
+                      <option value="Skyblue">🩵 V11: Skyblue</option>
+                      {visoTubeColor && !['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].includes(visoTubeColor) && (
                         <option value={visoTubeColor}>{visoTubeColor} (Detected)</option>
                       )}
                     </select>
@@ -857,15 +857,17 @@ export const OcrVerification: React.FC = () => {
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-amber-700 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Goblet / ID --</option>
-                      <option value="Yellow Goblet">Yellow Goblet</option>
-                      <option value="Pink Goblet">Pink Goblet</option>
-                      <option value="Green Goblet">Green Goblet</option>
-                      <option value="Blue Goblet">Blue Goblet</option>
-                      <option value="White Goblet">White Goblet</option>
-                      <option value="Red Goblet">Red Goblet</option>
-                      <option value="Goblet 1">Goblet 1</option>
-                      <option value="Goblet 2">Goblet 2</option>
-                      {visoTubeId && !['Yellow Goblet', 'Pink Goblet', 'Green Goblet', 'Blue Goblet', 'White Goblet', 'Red Goblet', 'Goblet 1', 'Goblet 2'].includes(visoTubeId) && (
+                      <option value="Yellow Goblet">V09: Yellow Goblet</option>
+                      <option value="Pink Goblet">V01: Pink Goblet</option>
+                      <option value="Green Goblet">V05: Green Goblet</option>
+                      <option value="Blue Goblet">V07: Blue Goblet</option>
+                      <option value="Red Goblet">V03: Red Goblet</option>
+                      <option value="Grey Goblet">V02: Grey Goblet</option>
+                      <option value="Black Goblet">V04: Black Goblet</option>
+                      <option value="Purple Goblet">V08: Purple Goblet</option>
+                      <option value="Orange Goblet">V10: Orange Goblet</option>
+                      <option value="Skyblue Goblet">V11: Skyblue Goblet</option>
+                      {visoTubeId && !['Yellow Goblet', 'Pink Goblet', 'Green Goblet', 'Blue Goblet', 'Red Goblet', 'Grey Goblet', 'Black Goblet', 'Purple Goblet', 'Orange Goblet', 'Skyblue Goblet'].includes(visoTubeId) && (
                         <option value={visoTubeId}>{visoTubeId} (Detected)</option>
                       )}
                     </select>
@@ -880,12 +882,9 @@ export const OcrVerification: React.FC = () => {
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Level --</option>
-                      <option value="Level 1">Level 1 (Top Level)</option>
-                      <option value="Level 2">Level 2 (Middle Level)</option>
-                      <option value="Level 3">Level 3 (Bottom Level)</option>
-                      <option value="Top Tier">Top Tier</option>
-                      <option value="Bottom Tier">Bottom Tier</option>
-                      {level && !['Level 1', 'Level 2', 'Level 3', 'Top Tier', 'Bottom Tier'].includes(level) && (
+                      <option value="Level 1">Level 1 (Bottom)</option>
+                      <option value="Level 2">Level 2 (Top)</option>
+                      {level && !['Level 1', 'Level 2'].includes(level) && (
                         <option value={level}>{level} (Detected)</option>
                       )}
                     </select>

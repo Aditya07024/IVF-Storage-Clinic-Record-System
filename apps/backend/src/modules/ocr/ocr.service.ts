@@ -299,15 +299,19 @@ export class OcrService {
     comments?: string;
   }> {
     // Fetch active clinic containers from PostgreSQL database to feed exact inventory to Gemini
-    let clinicInventoryContext = 'Clinic Canisters: Canister 1, Canister 2, Canister 3, Canister 4, Canister 5, Canister 6, Canister 7, Canister 8 (Semen Canister 8S); Colors: Pink, Yellow, Green, Black, Blue, Red; Goblets: Yellow Goblet, Pink Goblet, Green Goblet; Levels: Level 1, Level 2.';
+    let clinicInventoryContext = `Exact Clinic Physical Container Hierarchy:
+- Tanks: CAN-01, CAN-02, CAN-03, CAN-04, CAN-05, CAN-08, CAN-10, CAN-11, CAN-14
+- Canisters: C01, C02, C03, C04, C05, C06, C07, C08 (Canister 08), C09, C10
+- Levels: Level 1 (Bottom), Level 2 (Top)
+- 11 Physical Viso Tube Colors: V01: Pink, V02: Grey, V03: Red, V04: Black, V05: Green, V06: Rust, V07: Blue, V08: Purple, V09: Yellow, V10: Orange, V11: Skyblue`;
     try {
       const activeCanisters = await prisma.canister.findMany({
         include: { can: true },
         orderBy: { canisterNumber: 'asc' },
       });
       if (activeCanisters.length > 0) {
-        const canisterNames = activeCanisters.map(c => `Canister ${c.canisterNumber} (${c.can?.name || 'Tank 1'})`).join(', ');
-        clinicInventoryContext = `Active Clinic Storage Inventory: Canisters: [${canisterNames}]; Colors: [Pink, Yellow, Green, Black, Blue, Red, White, Purple]; Goblets: [Yellow Goblet, Pink Goblet, Green Goblet, Blue Goblet, Red Goblet]; Levels: [Level 1, Level 2, Level 3].`;
+        const canisterNames = activeCanisters.map(c => `C${c.canisterNumber.toString().padStart(2, '0')} (Canister ${c.canisterNumber})`).join(', ');
+        clinicInventoryContext = `Active Clinic Storage Inventory: Canisters: [${canisterNames}]; Colors: [V01: Pink, V02: Grey, V03: Red, V04: Black, V05: Green, V06: Rust, V07: Blue, V08: Purple, V09: Yellow, V10: Orange, V11: Skyblue]; Levels: [Level 1 (Bottom), Level 2 (Top)].`;
       }
     } catch (e) {}
 
@@ -321,10 +325,10 @@ ${clinicInventoryContext}
 
 Rules:
 - DO NOT invent missing data. If a field is not present, return null.
-- Cross-reference handwritten storage location against the Clinic Active Storage Inventory above. Match "cayo can: S" / "Canister 8" to "Canister 8". Match "Tube: Yellow" to "Yellow Goblet". Match "Color: Pink" to "Pink". Match "Level: I" to "Level 1".
+- Cross-reference handwritten storage location against the Clinic Physical Container Hierarchy above. Match "cayo can: S" / "Canister 8" to "C08 (Canister 08)". Match "Tube: Yellow" to "V09: Yellow". Match "Color: Pink" to "V01: Pink". Match "Level: I" to "Level 1 (Bottom)".
 - Extract "patientId" / Registration No (e.g. 26980, IVF-2026-000007, No: 26980).
 - Extract patient & partner names (e.g. Ramjana Bhadana, Vikas), ages, phone numbers (e.g. 9953078696), doctor name (e.g. DE. Meeti -> Dr. Meeti).
-- Extract cryo storage location fields: "canisterName" (e.g. Canister 8), "visoTubeColor" (e.g. Pink), "visoTubeId" (e.g. Yellow Goblet), "level" (e.g. Level 1).
+- Extract cryo storage location fields: "canisterName" (e.g. C08 (Canister 08)), "visoTubeColor" (e.g. Pink), "visoTubeId" (e.g. V09: Yellow), "level" (e.g. Level 1).
 - Extract all straw records into the "straws" array: each straw object containing "strawId", "colorTag", "embryoCount", "grade" (e.g. 5AA, 5AB, 5AB+5BB), "stage" (e.g. Day 5), "pgtTested" (boolean), "freezingDate".
 - Parse all dates into YYYY-MM-DD format (convert 28/8/2020 -> 2020-08-28, 2/9/2020 -> 2020-09-02, 3/9/20 -> 2020-09-03).
 - Output ONLY valid JSON matching this exact schema:
