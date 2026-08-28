@@ -9,20 +9,20 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value: postgresql://ivf_admin:IvfSecurePass2026!@200.234.42.142:5432/ivf_production?schema=public
+        sync: false
       - key: APP_ACCESS_KEY_HASH
-        value: ec189984c5b36432f04401eb55b916a4801153d10b627bc4cc590382e27d1aa8
+        sync: false
       - key: JWT_ACCESS_SECRET
-        value: dev_jwt_access_secret_super_secure_32_bytes_long_2026!
+        generateValue: true
       - key: JWT_REFRESH_SECRET
-        value: dev_jwt_refresh_secret_super_secure_32_bytes_long_2026!
+        generateValue: true
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
-        value: srghivfcryo@gmail.com
+        sync: false
       - key: SMTP_PASS
-        value: vzba dnde aubt akas
+        sync: false
       - key: SMTP_FROM
         value: '"SRGH IVF Cryo Bank" <srghivfcryo@gmail.com>'
