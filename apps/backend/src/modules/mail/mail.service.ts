@@ -147,6 +147,33 @@ export class MailService {
       ],
     };
 
+    // 0. Try Gmail OAuth2 API (Port 443 HTTPS token exchange)
+    const gmailClientId = process.env.GMAIL_CLIENT_ID || CONFIG.GMAIL_CLIENT_ID;
+    const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET || CONFIG.GMAIL_CLIENT_SECRET;
+    const gmailRefreshToken = process.env.GMAIL_REFRESH_TOKEN || CONFIG.GMAIL_REFRESH_TOKEN;
+
+    if (gmailClientId && gmailClientSecret && gmailRefreshToken) {
+      try {
+        console.log('[MailService] Attempting delivery via Gmail OAuth2 API...');
+        const oauthTransporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            type: 'OAuth2',
+            user: user,
+            clientId: gmailClientId.trim(),
+            clientSecret: gmailClientSecret.trim(),
+            refreshToken: gmailRefreshToken.trim(),
+          },
+        });
+
+        const info = await oauthTransporter.sendMail(mailOptions);
+        console.log(`[MailService] Email delivered successfully via Gmail OAuth2 API to ${recipientEmail}! ID: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+      } catch (oauthErr: any) {
+        console.warn('[MailService] Gmail OAuth2 API failed:', oauthErr?.message);
+      }
+    }
+
     // 2. Try Gmail SMTP Port 465 SSL Direct
     try {
       const transporter = nodemailer.createTransport({
