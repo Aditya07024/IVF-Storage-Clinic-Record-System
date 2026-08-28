@@ -315,10 +315,10 @@ export const OcrVerification: React.FC = () => {
     setStraws((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file) return;
+  const processFileForOcr = async (targetFile: File) => {
+    if (!targetFile) return;
 
+    setFile(targetFile);
     setUploading(true);
     setError(null);
     setSuccessMsg(null);
@@ -328,7 +328,7 @@ export const OcrVerification: React.FC = () => {
       const accessKey = localStorage.getItem('app_access_key') || 'clinic2026';
 
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', targetFile);
 
       const res = await fetch('/api/ocr/upload', {
         method: 'POST',
@@ -344,7 +344,7 @@ export const OcrVerification: React.FC = () => {
         throw new Error(data.error || 'Failed to upload and process OCR image.');
       }
 
-      setSuccessMsg('OCR Scan processed successfully! Please verify patient details on the right.');
+      setSuccessMsg('OCR Scan processed successfully! Patient & specimen details auto-filled on the right.');
       setFile(null);
       await fetchPendingRecords();
       if (data.record) {
@@ -354,6 +354,13 @@ export const OcrVerification: React.FC = () => {
       setError(err.message || 'Error processing document scan.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (file) {
+      processFileForOcr(file);
     }
   };
 
@@ -451,9 +458,9 @@ export const OcrVerification: React.FC = () => {
         capture="environment"
         onChange={(e) => {
           if (e.target.files?.[0]) {
-            setFile(e.target.files[0]);
-            setSuccessMsg('Photo captured from mobile camera! Click "Process OCR & AI" to analyze.');
+            processFileForOcr(e.target.files[0]);
           }
+          e.target.value = '';
         }}
         className="hidden"
       />
@@ -513,57 +520,19 @@ export const OcrVerification: React.FC = () => {
               onChange={(e) => {
                 const selected = e.target.files?.[0];
                 if (selected) {
-                  setFile(selected);
+                  processFileForOcr(selected);
                 }
                 e.target.value = '';
               }}
               className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-700 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-800"
             />
-            {file && (
-              <div className="flex flex-wrap items-center justify-between gap-2 mt-2 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
-                <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Selected Photo: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleRotateImage(-90)}
-                    className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-bold text-[11px] rounded-lg border border-slate-300 flex items-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer"
-                    title="Rotate Left 90°"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-slate-700" />
-                    <span>Rotate ↺</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRotateImage(90)}
-                    className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-bold text-[11px] rounded-lg border border-slate-300 flex items-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer"
-                    title="Rotate Right 90°"
-                  >
-                    <RotateCw className="w-3.5 h-3.5 text-slate-700" />
-                    <span>Rotate ↻</span>
-                  </button>
-                </div>
+            {uploading && (
+              <div className="flex items-center gap-2 mt-2 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 text-xs font-bold text-emerald-800">
+                <span className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span>Processing Document Scan with Gemini AI Vision... Please wait</span>
               </div>
             )}
           </div>
-
-          <button
-            type="submit"
-            disabled={!file || uploading}
-            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 transition-all"
-          >
-            {uploading ? (
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                <span>Process OCR & AI</span>
-              </>
-            )}
-          </button>
         </form>
       </div>
 
