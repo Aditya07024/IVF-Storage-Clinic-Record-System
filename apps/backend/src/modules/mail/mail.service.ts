@@ -141,7 +141,8 @@ export class MailService {
       attachments: [
         {
           filename: `IVF_Patient_Cryo_Report_${patientId}.pdf`,
-          content: pdfBuffer,
+          content: pdfBuffer.toString('base64'),
+          encoding: 'base64',
           contentType: 'application/pdf',
         },
       ],
