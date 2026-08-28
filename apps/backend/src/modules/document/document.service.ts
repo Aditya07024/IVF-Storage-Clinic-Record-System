@@ -662,27 +662,35 @@ export class DocumentService {
       // 6. CLINICAL REPORT FOOTER & VERIFICATION BADGE ON EVERY PAGE
       // ==========================================
       const range = doc.bufferedPageRange();
-      for (let i = range.start; i < range.start + range.count; i++) {
+      const totalPageCount = range.count;
+
+      for (let i = range.start; i < range.start + totalPageCount; i++) {
         doc.switchToPage(i);
 
-        const footerY = 765;
+        // Temporarily disable auto page breaks so drawing footer at bottom never spawns extra pages
+        const oldBottomMargin = doc.page.margins.bottom;
+        doc.page.margins.bottom = 0;
+
+        const footerY = 760;
         // Divider Rule
         doc.strokeColor('#cbd5e1').lineWidth(0.75).moveTo(30, footerY).lineTo(565, footerY).stroke();
 
         doc.fontSize(8.5).font('Helvetica').fillColor('#64748b');
-        doc.text('Center of IVF and Human Reproduction, Sir Ganga Ram Hospital, New Delhi', 30, footerY + 8);
-        doc.text(`Report Generated: ${new Date().toLocaleDateString('en-GB')}`, 30, footerY + 20);
+        doc.text('Center of IVF and Human Reproduction, Sir Ganga Ram Hospital, New Delhi', 30, footerY + 6, { lineBreak: false });
+        doc.text(`Report Generated: ${new Date().toLocaleDateString('en-GB')}`, 30, footerY + 18, { lineBreak: false });
 
         // Verified Clinical Report Badge Bottom Right
         const verBorderColor = isThaw ? '#dc2626' : '#047857';
         const verTextColor = isThaw ? '#dc2626' : '#047857';
         const verBgColor = isThaw ? '#fef2f2' : '#f0fdf4';
 
-        doc.rect(425, footerY + 6, 140, 22).lineWidth(1.25).fillAndStroke(verBgColor, verBorderColor);
-        doc.fillColor(verTextColor).fontSize(8).font('Helvetica-Bold').text('VERIFIED CLINICAL REPORT', 425, footerY + 13, { width: 140, align: 'center' });
+        doc.rect(425, footerY + 4, 140, 22).lineWidth(1.25).fillAndStroke(verBgColor, verBorderColor);
+        doc.fillColor(verTextColor).fontSize(8).font('Helvetica-Bold').text('VERIFIED CLINICAL REPORT', 425, footerY + 11, { width: 140, align: 'center', lineBreak: false });
 
         // Page X of Y page numbering
-        doc.fontSize(8).font('Helvetica').fillColor('#64748b').text(`Page ${i + 1} of ${range.count}`, 30, 810, { align: 'center' });
+        doc.fontSize(8).font('Helvetica').fillColor('#64748b').text(`Page ${i + 1} of ${totalPageCount}`, 30, footerY + 30, { align: 'center', lineBreak: false });
+
+        doc.page.margins.bottom = oldBottomMargin;
       }
 
       doc.end();
