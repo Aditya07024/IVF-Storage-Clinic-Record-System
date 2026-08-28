@@ -51,11 +51,12 @@ export class DocumentService {
       doc.fontSize(10).fillColor('#334155');
       doc.text(`Patient ID: ${patient.patientId}`);
       doc.text(`Full Name: ${patient.fullName}`);
-      doc.text(`Patient Age: ${patient.patientAge || 'N/A'}`);
-      doc.text(`Partner Name: ${patient.partnerName || 'N/A'} ${patient.partnerAge ? `(Age: ${patient.partnerAge})` : ''}`);
+      doc.text(`Phone: ${patient.phone || 'N/A'} | Partner Phone: ${patient.partnerPhone || 'N/A'}`);
+      doc.text(`Email: ${patient.email || 'N/A'} | Partner Email: ${patient.partnerEmail || 'N/A'}`);
+      doc.text(`Patient DOB: ${patient.dob || 'N/A'} (Age: ${patient.patientAge || 'N/A'})`);
+      doc.text(`Partner Name: ${patient.partnerName || 'N/A'} | Partner DOB: ${patient.partnerDob || 'N/A'} (Age: ${patient.partnerAge || 'N/A'})`);
       doc.text(`Attending Doctor: ${patient.doctorName || 'N/A'}`);
-      doc.text(`Visit Date: ${patient.visitDate ? new Date(patient.visitDate).toLocaleDateString() : 'N/A'}`);
-      doc.text(`DE Date: ${patient.deDate ? new Date(patient.deDate).toLocaleDateString() : 'N/A'}`);
+      doc.text(`Date of ASP (Aspiration): ${patient.aspirationDate ? new Date(patient.aspirationDate).toLocaleDateString() : 'N/A'}`);
       doc.text(`Freezing Date: ${patient.freezingDate ? new Date(patient.freezingDate).toLocaleDateString() : 'N/A'}`);
       doc.text(`Thaw Date: ${patient.thawDate ? new Date(patient.thawDate).toLocaleDateString() : 'N/A'}`);
       doc.moveDown(1.5);
@@ -67,12 +68,19 @@ export class DocumentService {
         doc.fontSize(10).fillColor('#64748b').text('No active storage batches recorded.').moveDown(1);
       } else {
         patient.batches.forEach((batch, idx) => {
-          doc.fontSize(11).fillColor('#1e293b').text(`Batch #${idx + 1}: ${batch.batchId} (Date: ${new Date(batch.storageDate).toLocaleDateString()})`);
-          doc.fontSize(10).fillColor('#475569').text(`Location Code: ${batch.visoTube.locationCode}`);
-          doc.text(`Total Embryos: ${batch.totalEmbryos}`);
+          const aspStr = batch.aspirationDate ? new Date(batch.aspirationDate).toLocaleDateString() : 'N/A';
+          const freezeStr = batch.freezingDate ? new Date(batch.freezingDate).toLocaleDateString() : new Date(batch.storageDate).toLocaleDateString();
+          doc.fontSize(11).fillColor('#1e293b').text(`Batch #${idx + 1}: ${batch.batchId} | Stage: ${batch.embryoStage || 'N/A'} | Date of ASP: ${aspStr} | Freezing Date: ${freezeStr}`);
+          doc.fontSize(10).fillColor('#475569').text(`Location Code: ${batch.visoTube.locationCode} | Total Straws: ${batch.totalStraws || batch.straws.length} | Total Embryos: ${batch.totalEmbryos}`);
+          if (batch.notes) {
+            doc.text(`Batch Comments: ${batch.notes}`);
+          }
 
           batch.straws.forEach((straw) => {
-            doc.text(`  - Straw ID: ${straw.strawId} | Color: ${straw.color} | Embryos: ${straw.embryos.length} | Status: ${straw.status}`);
+            const pgtStr = straw.isPgt ? '[PGT TESTED]' : '';
+            const gradeStr = straw.grade ? ` | Grade: ${straw.grade}` : '';
+            const commentStr = straw.comments ? ` | Note: ${straw.comments}` : '';
+            doc.text(`  - Straw ID: ${straw.strawId} | Color: ${straw.color} | Embryos: ${straw.embryoCount || straw.embryos.length}${gradeStr} ${pgtStr}${commentStr} | Status: ${straw.status}`);
           });
           doc.moveDown(0.8);
         });

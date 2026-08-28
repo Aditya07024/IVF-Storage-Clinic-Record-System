@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2 } from 'lucide-react';
 import { apiRequest } from '../api/client';
+import { DateInputDDMMYYYY } from './PatientForm';
 
 export const OcrVerification: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -11,11 +12,16 @@ export const OcrVerification: React.FC = () => {
   const [patientId, setPatientId] = useState('');
   const [fullName, setFullName] = useState('');
   const [partnerName, setPartnerName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [partnerPhone, setPartnerPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [partnerEmail, setPartnerEmail] = useState('');
+  const [dob, setDob] = useState('');
+  const [partnerDob, setPartnerDob] = useState('');
   const [patientAge, setPatientAge] = useState('');
   const [partnerAge, setPartnerAge] = useState('');
   const [doctorName, setDoctorName] = useState('');
   const [visitDate, setVisitDate] = useState('');
-  const [deDate, setDeDate] = useState('');
   const [freezingDate, setFreezingDate] = useState('');
   const [thawDate, setThawDate] = useState('');
   const [embryoCount, setEmbryoCount] = useState('');
@@ -175,11 +181,16 @@ export const OcrVerification: React.FC = () => {
     setPatientId(json.patientId || record.patientId || '');
     setFullName(json.fullName || '');
     setPartnerName(json.partnerName || '');
+    setPhone(json.phone || '');
+    setPartnerPhone(json.partnerPhone || '');
+    setEmail(json.email || '');
+    setPartnerEmail(json.partnerEmail || '');
+    setDob(json.dob || '');
+    setPartnerDob(json.partnerDob || '');
     setPatientAge(json.patientAge || '');
     setPartnerAge(json.partnerAge || '');
     setDoctorName(json.doctorName || '');
     setVisitDate(json.visitDate || '');
-    setDeDate(json.deDate || '');
     setFreezingDate(json.freezingDate || '');
     setThawDate(json.thawDate || '');
     setEmbryoCount(json.embryoCount ? String(json.embryoCount) : '');
@@ -215,11 +226,14 @@ export const OcrVerification: React.FC = () => {
         throw new Error(data.error || 'Failed to upload and process OCR image.');
       }
 
-      setSuccessMsg('Image edges trimmed, OCR processed, and structured by Gemini AI successfully.');
+      setSuccessMsg('OCR Scan processed successfully! Please verify patient details on the right.');
       setFile(null);
       await fetchPendingRecords();
+      if (data.record) {
+        selectRecord(data.record);
+      }
     } catch (err: any) {
-      setError(err.message || 'OCR upload failed.');
+      setError(err.message || 'Error processing document scan.');
     } finally {
       setUploading(false);
     }
@@ -241,11 +255,16 @@ export const OcrVerification: React.FC = () => {
           patientId: patientId.trim() || undefined,
           fullName: fullName.trim(),
           partnerName: partnerName.trim() || undefined,
+          phone: phone.trim() || undefined,
+          partnerPhone: partnerPhone.trim() || undefined,
+          email: email.trim() || undefined,
+          partnerEmail: partnerEmail.trim() || undefined,
+          dob: dob || undefined,
+          partnerDob: partnerDob || undefined,
           patientAge: patientAge.trim() || undefined,
           partnerAge: partnerAge.trim() || undefined,
           doctorName: doctorName.trim() || undefined,
           visitDate: visitDate || undefined,
-          deDate: deDate || undefined,
           freezingDate: freezingDate || undefined,
           thawDate: thawDate || undefined,
           comments: comments.trim() || undefined,
@@ -546,8 +565,8 @@ export const OcrVerification: React.FC = () => {
             </div>
 
             <form onSubmit={handleVerify} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1 md:col-span-2">
                   <label className="font-semibold text-slate-700">Registration No (Patient ID)</label>
                   <input
                     type="text"
@@ -570,19 +589,35 @@ export const OcrVerification: React.FC = () => {
                   />
                 </div>
 
+                <DateInputDDMMYYYY
+                  label="Patient DOB"
+                  value={dob}
+                  onChange={(val) => setDob(val)}
+                  extraBadge={patientAge ? <span className="text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded text-[10px] font-bold border border-emerald-300">{patientAge}</span> : undefined}
+                />
+
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Patient Age</label>
+                  <label className="font-semibold text-slate-700">Patient Mobile Phone</label>
                   <input
                     type="text"
-                    value={patientAge}
-                    onChange={(e) => setPatientAge(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
-                    placeholder="e.g. 32 Yrs"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+                    placeholder="e.g. +91 98260 78901"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Patient Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+                    placeholder="patient@example.com"
+                  />
+                </div>
+
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-700">Partner Name</label>
                   <input
@@ -594,18 +629,36 @@ export const OcrVerification: React.FC = () => {
                   />
                 </div>
 
+                <DateInputDDMMYYYY
+                  label="Partner DOB"
+                  value={partnerDob}
+                  onChange={(val) => setPartnerDob(val)}
+                  extraBadge={partnerAge ? <span className="text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded text-[10px] font-bold border border-emerald-300">{partnerAge}</span> : undefined}
+                />
+
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Partner Age</label>
+                  <label className="font-semibold text-slate-700">Partner Mobile Phone</label>
                   <input
                     type="text"
-                    value={partnerAge}
-                    onChange={(e) => setPartnerAge(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
-                    placeholder="e.g. 35 Yrs"
+                    value={partnerPhone}
+                    onChange={(e) => setPartnerPhone(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+                    placeholder="e.g. +91 98260 12345"
                   />
                 </div>
 
                 <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Partner Email Address</label>
+                  <input
+                    type="email"
+                    value={partnerEmail}
+                    onChange={(e) => setPartnerEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
+                    placeholder="partner@example.com"
+                  />
+                </div>
+
+                <div className="space-y-1 md:col-span-2">
                   <label className="font-semibold text-slate-700">Doctor Name</label>
                   <input
                     type="text"
@@ -617,60 +670,24 @@ export const OcrVerification: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Frozen Embryos Count</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={embryoCount}
-                  onChange={(e) => setEmbryoCount(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
-                  placeholder="e.g. 4"
+              <div className="grid grid-cols-3 gap-4">
+                <DateInputDDMMYYYY
+                  label="Freezing Date"
+                  value={freezingDate}
+                  onChange={(val) => setFreezingDate(val)}
                 />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Freezing / Storage Date</label>
-                  <input
-                    type="date"
-                    value={freezingDate}
-                    onChange={(e) => setFreezingDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
-                  />
-                </div>
+                <DateInputDDMMYYYY
+                  label="Thaw Date"
+                  value={thawDate}
+                  onChange={(val) => setThawDate(val)}
+                />
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Thaw / Withdrawal Date</label>
-                  <input
-                    type="date"
-                    value={thawDate}
-                    onChange={(e) => setThawDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Visit Date</label>
-                  <input
-                    type="date"
-                    value={visitDate}
-                    onChange={(e) => setVisitDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">DE Date (Donor Egg)</label>
-                  <input
-                    type="date"
-                    value={deDate}
-                    onChange={(e) => setDeDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono"
-                  />
-                </div>
+                <DateInputDDMMYYYY
+                  label="Date of ASP"
+                  value={visitDate}
+                  onChange={(val) => setVisitDate(val)}
+                />
               </div>
 
               <div className="space-y-1">

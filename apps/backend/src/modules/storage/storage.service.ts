@@ -42,166 +42,205 @@ export function parseLocationCode(code: string) {
   };
 }
 
-export const CLINIC_CAN_NUMBERS = [1, 2, 3, 4, 5, 8, 10, 14];
+export function parseLocationSortKeys(code: string) {
+  if (!code) return { levelNum: 999, canNum: 999, canisterNum: 999, tubeNum: 999 };
+  const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
+  if (!match) return { levelNum: 999, canNum: 999, canisterNum: 999, tubeNum: 999 };
+
+  return {
+    canNum: parseInt(match[1], 10),
+    canisterNum: parseInt(match[2], 10),
+    levelNum: parseInt(match[3], 10),
+    tubeNum: parseInt(match[5], 10),
+  };
+}
+
+export const CLINIC_CAN_NUMBERS = [1, 2, 3, 4, 5, 8, 10, 11, 14];
+
+export interface StrawItemInput {
+  color: string;
+  embryoCount: number;
+  grade?: string;
+  comments?: string;
+  isPgt?: boolean;
+}
 
 export interface AssignStorageInput {
   patientId: string;
-  storageDate: string;
-  embryoCount: number;
+  storageDate?: string;
+  aspirationDate?: string;
+  freezingDate?: string;
+  embryoStage?: string;
+  embryoCount?: number;
   visoTubeId: string;
-  strawColors: string[];
+  strawColors?: string[];
+  straws?: StrawItemInput[];
   notes?: string;
 }
 
 export class StorageService {
-  // Initialize storage hierarchy if empty (Cans 1, 2, 3, 4, 5, 8, 10, 14 x 10 Canisters x 2 Levels x 1 Goblet x 11 Viso Tubes)
+  // Initialize storage hierarchy if empty (Cans 1, 2, 3, 4, 5, 8, 10, 11, 14 x 10 Canisters x 2 Levels x 1 Goblet x 11 Viso Tubes)
   async seedHierarchyIfNeeded() {
     return withDbRetry(async () => {
-      const existingCans = await prisma.can.count();
-      
-      // Check if current Cans match non-sequential CLINIC_CAN_NUMBERS
-      const cans = await prisma.can.findMany({ select: { code: true } });
-      const currentCanCodes = cans.map(c => c.code);
-      const expectedCodes = CLINIC_CAN_NUMBERS.map(c => `CAN-${c.toString().padStart(2, '0')}`);
-      
-      const isMatching = expectedCodes.every(code => currentCanCodes.includes(code)) && currentCanCodes.length === expectedCodes.length;
-
-      if (existingCans > 0 && isMatching) return;
-
-      // If existing Cans differ, clean up and re-seed with exact non-sequential clinic Cans
-      if (existingCans > 0 && !isMatching) {
-        console.log('[Storage] Syncing Cans to non-sequential clinic layout (1, 2, 3, 4, 5, 8, 10, 14)...');
-        await prisma.straw.deleteMany({});
-        await prisma.storageBatch.deleteMany({});
-        await prisma.visoTube.deleteMany({});
-        await prisma.goblet.deleteMany({});
-        await prisma.level.deleteMany({});
-        await prisma.canister.deleteMany({});
-        await prisma.can.deleteMany({});
-      }
-
-      console.log('[Storage] Seeding 8 Clinic Cans layout hierarchy...');
-
       for (const canNum of CLINIC_CAN_NUMBERS) {
         const canCode = `CAN-${canNum.toString().padStart(2, '0')}`;
         const canName = `Can ${canNum.toString().padStart(2, '0')}`;
 
-        const can = await prisma.can.create({
-          data: { code: canCode, name: canName },
+        let can = await prisma.can.findUnique({
+          where: { code: canCode },
         });
 
-        // 10 Canisters per Can
-        const canistersData = Array.from({ length: 10 }, (_, i) => ({
-          canId: can.id,
-          canisterNumber: i + 1,
-        }));
-        await prisma.canister.createMany({ data: canistersData });
-        const createdCanisters = await prisma.canister.findMany({ where: { canId: can.id } });
-
-        for (const canister of createdCanisters) {
-          const canisterNumStr = canister.canisterNumber.toString().padStart(2, '0');
-
-          // 2 Levels per Canister
-          const levelsData = [1, 2].map((l) => ({
-            canisterId: canister.id,
-            levelNumber: l,
-          }));
-          await prisma.level.createMany({ data: levelsData });
-          const createdLevels = await prisma.level.findMany({ where: { canisterId: canister.id } });
-
-          const gobletsData = createdLevels.map((lvl) => ({
-            levelId: lvl.id,
-            gobletNumber: 1,
-          }));
-          await prisma.goblet.createMany({ data: gobletsData });
-          const createdGoblets = await prisma.goblet.findMany({
-            where: { levelId: { in: createdLevels.map((l) => l.id) } },
-            include: { level: true },
+        if (!can) {
+          console.log(`[Storage] Creating missing Clinic ${canName}...`);
+          can = await prisma.can.create({
+            data: { code: canCode, name: canName },
           });
 
-          const tubeBatchData = [];
-          for (const goblet of createdGoblets) {
-            for (let v = 1; v <= 11; v++) {
-              const tubeNumStr = v.toString().padStart(2, '0');
-              const locCode = `${canCode}-CANISTER${canisterNumStr}-L${goblet.level.levelNumber}-G01-V${tubeNumStr}`;
-              tubeBatchData.push({
-                gobletId: goblet.id,
-                tubeNumber: v,
-                locationCode: locCode,
+          // 10 Canisters per Can
+          const canistersData = Array.from({ length: 10 }, (_, i) => ({
+            canId: can!.id,
+            canisterNumber: i + 1,
+          }));
+          await prisma.canister.createMany({ data: canistersData });
+          const createdCanisters = await prisma.canister.findMany({ where: { canId: can.id } });
+
+          for (const canister of createdCanisters) {
+            // 2 Levels per Canister
+            for (let l = 1; l <= 2; l++) {
+              const level = await prisma.level.create({
+                data: { canisterId: canister.id, levelNumber: l },
               });
+
+              // 1 Goblet per Level
+              const goblet = await prisma.goblet.create({
+                data: { levelId: level.id, gobletNumber: 1 },
+              });
+
+              // 11 Viso Tubes per Goblet
+              const visoTubesData = Array.from({ length: 11 }, (_, v) => {
+                const tubeNum = v + 1;
+                const tubeCode = `CAN-${canNum.toString().padStart(2, '0')}-CANISTER${canister.canisterNumber.toString().padStart(2, '0')}-L${l}-G1-V${tubeNum.toString().padStart(2, '0')}`;
+                return {
+                  gobletId: goblet.id,
+                  tubeNumber: tubeNum,
+                  locationCode: tubeCode,
+                };
+              });
+
+              await prisma.visoTube.createMany({ data: visoTubesData });
             }
           }
-          await prisma.visoTube.createMany({ data: tubeBatchData, skipDuplicates: true });
         }
       }
-      console.log('[Storage] Storage hierarchy seeding completed for non-sequential Cans.');
+
+      console.log('[Storage] Hierarchy successfully initialized!');
     });
   }
 
-  // Find Available Storage Recommendation Algorithm
-  async findAvailableStorage(patientId: string, storageDateInput: string | Date, embryoCount: number) {
-    if (embryoCount <= 0) {
-      throw new Error('Embryo count must be greater than zero.');
-    }
-
-    const storageDate = new Date(storageDateInput);
-    const requiredStraws = Math.ceil(embryoCount / 2); // Max 2 embryos per straw
-
-    // Check if patient already has a StorageBatch on the EXACT same date
-    const sameDateBatch = await prisma.storageBatch.findFirst({
-      where: {
-        patientId,
-        storageDate: {
-          gte: new Date(storageDate.setHours(0, 0, 0, 0)),
-          lte: new Date(storageDate.setHours(23, 59, 59, 999)),
-        },
-      },
+  // Get full storage visual map with occupancy statistics
+  async getStorageMap() {
+    const cans = await prisma.can.findMany({
+      orderBy: { code: 'asc' },
       include: {
-        visoTube: {
+        canisters: {
+          orderBy: { canisterNumber: 'asc' },
           include: {
-            straws: true,
+            levels: {
+              orderBy: { levelNumber: 'asc' },
+              include: {
+                goblets: {
+                  include: {
+                    visoTubes: {
+                      orderBy: { tubeNumber: 'asc' },
+                      include: {
+                        straws: {
+                          where: { status: 'OCCUPIED' },
+                          include: {
+                            batch: {
+                              include: {
+                                patient: {
+                                  select: { id: true, patientId: true, fullName: true },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
     });
 
-    let primaryRecommendation = null;
-    const fallbackRecommendations: Array<{ visoTubeId: string; locationCode: string; availableSlots: number; matchType: string }> = [];
+    return cans;
+  }
 
-    // Priority 1: If same-date batch exists, check if its Viso Tube has capacity
-    if (sameDateBatch) {
-      const existingStrawsCount = sameDateBatch.visoTube.straws.filter(s => s.status === 'OCCUPIED').length;
-      // Assume max 10 straws per Viso Tube for reasonable visual capacity
-      const availableInSameTube = Math.max(0, 10 - existingStrawsCount);
+  // Calculate smart recommendation algorithm for next optimal vacant straw slot
+  async getStorageRecommendation(requiredStrawsCount: number, patientId: string) {
+    const requiredStraws = requiredStrawsCount;
+    const embryoCount = requiredStraws * 2;
 
-      if (availableInSameTube >= requiredStraws) {
-        const parsed = parseLocationCode(sameDateBatch.visoTube.locationCode);
-        primaryRecommendation = {
-          visoTubeId: sameDateBatch.visoTube.id,
-          locationCode: sameDateBatch.visoTube.locationCode,
-          formattedLocation: parsed.formatted,
-          breakdown: parsed,
-          availableSlots: availableInSameTube,
-          matchType: 'SAME_DATE_SAME_TUBE',
-          explanation: `Found existing batch for this patient on ${storageDate.toISOString().split('T')[0]}. Grouping into ${parsed.formatted} (${availableInSameTube} vacant straw slots).`,
-        };
-      }
-    }
+    // Check if patient already has a batch created on the SAME DATE
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-    // Search all Viso Tubes with occupied straw counts ordered sequentially
-    const visoTubes = await prisma.visoTube.findMany({
-      orderBy: { locationCode: 'asc' },
+    const sameDateBatch = await prisma.storageBatch.findFirst({
+      where: {
+        patientId,
+        storageDate: { gte: todayStart },
+      },
       include: {
-        straws: {
-          where: { status: 'OCCUPIED' },
-        },
+        visoTube: true,
       },
     });
+
+    const visoTubes = await prisma.visoTube.findMany({
+      include: {
+        straws: { where: { status: 'OCCUPIED' } },
+      },
+    });
+
+    // Custom Allocation Strategy: Level 1 of ALL Canisters & ALL Cans fills FIRST, then Level 2!
+    visoTubes.sort((a, b) => {
+      const kA = parseLocationSortKeys(a.locationCode);
+      const kB = parseLocationSortKeys(b.locationCode);
+
+      if (kA.levelNum !== kB.levelNum) return kA.levelNum - kB.levelNum; // Level 1 (Bottom) before Level 2 (Top)
+      if (kA.canNum !== kB.canNum) return kA.canNum - kB.canNum; // Can 1, 2, 3...
+      if (kA.canisterNum !== kB.canisterNum) return kA.canisterNum - kB.canisterNum; // Canister 1..10
+      return kA.tubeNum - kB.tubeNum; // Tube 1..11
+    });
+
+    let primaryRecommendation = null;
+    const fallbackRecommendations = [];
+
+    // If existing same-day batch exists and VisoTube has capacity, prioritize same VisoTube
+    if (sameDateBatch) {
+      const sameTube = visoTubes.find((t) => t.id === sameDateBatch.visoTubeId);
+      if (sameTube) {
+        const available = 10 - sameTube.straws.length;
+        if (available >= requiredStraws) {
+          const parsed = parseLocationCode(sameTube.locationCode);
+          primaryRecommendation = {
+            visoTubeId: sameTube.id,
+            locationCode: sameTube.locationCode,
+            formattedLocation: parsed.formatted,
+            breakdown: parsed,
+            availableSlots: available,
+            matchType: 'SAME_PATIENT_SAME_DATE',
+            explanation: `Recommended to group with patient's existing batch on ${sameDateBatch.storageDate.toISOString().split('T')[0]} in ${parsed.formatted}.`,
+          };
+        }
+      }
+    }
 
     for (const tube of visoTubes) {
       const occupiedCount = tube.straws.length;
       const available = 10 - occupiedCount;
-
       if (available >= requiredStraws) {
         const parsed = parseLocationCode(tube.locationCode);
         const item = {
@@ -229,6 +268,11 @@ export class StorageService {
       primaryRecommendation,
       alternativeLocations: fallbackRecommendations.slice(0, 5),
     };
+  }
+
+  async findAvailableStorage(patientId: string, storageDateInput: any, embryoCount: number) {
+    const strawsCount = Math.ceil((embryoCount || 1) / 2);
+    return this.getStorageRecommendation(strawsCount, patientId);
   }
 
   // Generate Straw ID: STR-000001 (Numeric Max Safe)
@@ -291,15 +335,27 @@ export class StorageService {
 
   // Assign Storage with PostgreSQL Row Transaction & Lock
   async assignStorage(input: AssignStorageInput, staffUserId: string, staffName: string) {
-    const requiredStraws = Math.ceil(input.embryoCount / 2);
-    if (input.strawColors.length !== requiredStraws) {
-      throw new Error(`Invalid straw colors provided. Expected ${requiredStraws} colors for ${input.embryoCount} embryos.`);
+    let strawItems: StrawItemInput[] = [];
+
+    if (input.straws && input.straws.length > 0) {
+      strawItems = input.straws;
+    } else if (input.embryoCount && input.strawColors) {
+      const count = Math.ceil(input.embryoCount / 2);
+      let rem = input.embryoCount;
+      for (let i = 0; i < count; i++) {
+        const c = Math.min(2, rem);
+        rem -= c;
+        strawItems.push({
+          color: input.strawColors[i] || 'Pink',
+          embryoCount: c,
+        });
+      }
+    } else {
+      throw new Error('No straw details provided for storage allocation.');
     }
 
-    // Enforce Max 2 embryos per straw backend validation
-    if (input.embryoCount > requiredStraws * 2) {
-      throw new Error('Rule Violation: A straw can contain a maximum of 2 embryos.');
-    }
+    const requiredStraws = strawItems.length;
+    const totalEmbryos = strawItems.reduce((acc, item) => acc + (item.embryoCount || 1), 0);
 
     // Pre-calculate Batch & Straw IDs to minimize transaction roundtrips and connection locks
     const batchIdCode = await this.generateNextBatchId();
@@ -323,7 +379,8 @@ export class StorageService {
         throw new Error(`Location ${visoTube.locationCode} does not have enough vacant straw capacity.`);
       }
 
-      const storageDate = new Date(input.storageDate);
+      const freezingDateObj = input.freezingDate ? new Date(input.freezingDate) : (input.storageDate ? new Date(input.storageDate) : new Date());
+      const aspirationDateObj = input.aspirationDate ? new Date(input.aspirationDate) : null;
 
       // Create Storage Batch entity with self-healing P2002 Unique Constraint retry
       let batch: any = null;
@@ -336,10 +393,14 @@ export class StorageService {
             data: {
               batchId: finalBatchId,
               patientId: input.patientId,
-              storageDate,
-              totalEmbryos: input.embryoCount,
+              storageDate: freezingDateObj,
+              freezingDate: freezingDateObj,
+              aspirationDate: aspirationDateObj,
+              embryoStage: input.embryoStage || null,
+              totalStraws: requiredStraws,
+              totalEmbryos: totalEmbryos,
               visoTubeId: input.visoTubeId,
-              notes: input.notes,
+              notes: input.notes || null,
             },
           });
         } catch (err: any) {
@@ -347,7 +408,7 @@ export class StorageService {
             batchAttemptCounter++;
             const baseNum = parseInt(finalBatchId.split('-').pop() || '0', 10);
             const nextNum = (isNaN(baseNum) ? 1 : baseNum) + batchAttemptCounter;
-            finalBatchId = `BATCH-${storageDate.getFullYear()}-${nextNum.toString().padStart(6, '0')}`;
+            finalBatchId = `BATCH-${freezingDateObj.getFullYear()}-${nextNum.toString().padStart(6, '0')}`;
           } else {
             throw err;
           }
@@ -358,23 +419,21 @@ export class StorageService {
         throw new Error('Failed to create storage batch after retry attempts.');
       }
 
-      // Update patient's visitDate to latest storage date on record allocation
+      // Update patient's aspirationDate & freezingDate on record allocation
       await tx.patient.update({
         where: { id: input.patientId },
         data: {
-          visitDate: storageDate,
+          aspirationDate: aspirationDateObj || undefined,
+          freezingDate: freezingDateObj,
         },
       });
 
-      // Distribute embryos into straws (max 2 per straw)
-      let remainingEmbryos = input.embryoCount;
       const createdStraws = [];
 
       for (let i = 0; i < requiredStraws; i++) {
-        const embryosInThisStraw = Math.min(2, remainingEmbryos);
-        remainingEmbryos -= embryosInThisStraw;
-
-        const color = input.strawColors[i] || 'Pink';
+        const item = strawItems[i];
+        const embryosInThisStraw = item.embryoCount || 1;
+        const color = item.color || 'Pink';
 
         let straw: any = null;
         let strawIdCode = `STR-${(baseStrawNum + i).toString().padStart(6, '0')}`;
@@ -388,6 +447,10 @@ export class StorageService {
                 batchId: batch.id,
                 visoTubeId: input.visoTubeId,
                 color,
+                embryoCount: embryosInThisStraw,
+                grade: item.grade ? item.grade.trim() : null,
+                comments: item.comments ? item.comments.trim() : null,
+                isPgt: item.isPgt ?? false,
                 maxCapacity: 2,
                 status: 'OCCUPIED',
               },
@@ -414,7 +477,8 @@ export class StorageService {
             data: {
               strawId: straw.id,
               embryoNumber: e,
-              grade: '',
+              grade: item.grade ? item.grade.trim() : '',
+              notes: item.comments ? item.comments.trim() : null,
               status: 'FROZEN',
             },
           });

@@ -23,22 +23,25 @@ model User {
 }
 
 model Patient {
-  id           String        @id @default(uuid())
-  patientId    String        @unique
-  fullName     String
-  partnerName  String?
-  phone        String?
-  dob          String?
-  patientAge   String?
-  partnerAge   String?
-  doctorName   String?
-  visitDate    DateTime?
-  deDate       DateTime?
-  freezingDate DateTime?
-  thawDate     DateTime?
-  comments     String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id             String        @id @default(uuid())
+  patientId      String        @unique
+  fullName       String
+  partnerName    String?
+  phone          String?
+  partnerPhone   String?
+  email          String?
+  partnerEmail   String?
+  dob            String?
+  partnerDob     String?
+  patientAge     String?
+  partnerAge     String?
+  doctorName     String?
+  aspirationDate DateTime?
+  freezingDate   DateTime?
+  thawDate       DateTime?
+  comments       String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   batches      StorageBatch[]
   notes        PatientNote[]
@@ -49,7 +52,7 @@ model Patient {
   @@index([fullName])
   @@index([phone])
   @@index([freezingDate])
-  @@index([visitDate])
+  @@index([aspirationDate])
   @@index([createdAt])
 }
 
@@ -119,14 +122,18 @@ model VisoTube {
 }
 
 model StorageBatch {
-  id           String    @id @default(uuid())
-  batchId      String    @unique
-  patientId    String
-  storageDate  DateTime
-  totalEmbryos Int
-  visoTubeId   String
-  notes        String?
-  createdAt    DateTime  @default(now())
+  id             String    @id @default(uuid())
+  batchId        String    @unique
+  patientId      String
+  storageDate    DateTime
+  aspirationDate DateTime?
+  freezingDate   DateTime?
+  embryoStage    String?
+  totalStraws    Int       @default(1)
+  totalEmbryos   Int       @default(1)
+  visoTubeId     String
+  notes          String?
+  createdAt      DateTime  @default(now())
 
   patient      Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
   visoTube     VisoTube  @relation(fields: [visoTubeId], references: [id])
@@ -142,6 +149,10 @@ model Straw {
   batchId     String
   visoTubeId  String
   color       String
+  embryoCount Int          @default(1)
+  grade       String?
+  comments    String?
+  isPgt       Boolean      @default(false)
   maxCapacity Int          @default(2)
   status      String       @default("OCCUPIED")
   createdAt   DateTime     @default(now())

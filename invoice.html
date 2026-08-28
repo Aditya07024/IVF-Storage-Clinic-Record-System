@@ -6,7 +6,7 @@
   <title>Invoice & Scope of Work - IVF Storage Clinic Record System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #059669;
@@ -400,6 +400,39 @@
       color: var(--slate-500);
     }
 
+    .digital-sig-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-top: 10px;
+    }
+
+    .digital-signature {
+      font-family: 'Dancing Script', cursive;
+      font-size: 32px;
+      font-weight: 700;
+      color: #047857;
+      letter-spacing: 1px;
+      transform: rotate(-3deg);
+      display: inline-block;
+      margin-bottom: 6px;
+      text-shadow: 0 1px 2px rgba(4, 120, 87, 0.15);
+    }
+
+    .sig-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+
     /* Print media rules */
     @media print {
       body {
@@ -490,8 +523,8 @@
         <tr>
           <td><strong>Phase 1 Milestone</strong></td>
           <td>
-            <strong>Core Architecture & Visual Storage Visualizer</strong><br>
-            <span style="font-size: 11px; color: var(--slate-500);">Setup database schema, 8-Can cryo tank visualizer (8 Cans, 80 Canisters, 160 Levels, 160 Goblets, 1,760 VisoTubes), radial wheel, and heatmap views.</span>
+            <strong>Core Architecture & Non-Sequential Cryo Tank Visualizer</strong><br>
+            <span style="font-size: 11px; color: var(--slate-500);">Database schema & Prisma ORM, 9-Can non-sequential clinic storage hierarchy (Cans 01, 02, 03, 04, 05, 08, 10, 11, 14 x 10 Canisters x 2 Levels x 11 VisoTubes = 1,980 VisoTubes), radial wheel, and occupancy intensity heatmap.</span>
           </td>
           <td>Phase 1 Completion</td>
           <td class="amount-col">₹20,000</td>
@@ -499,8 +532,8 @@
         <tr>
           <td><strong>Phase 2 Milestone</strong></td>
           <td>
-            <strong>Medical Records, OCR Scanner & Thaw Engine</strong><br>
-            <span style="font-size: 11px; color: var(--slate-500);">Patient directory, mobile responsive side-by-side date fields, OCR paper record scanner, and cryo straw thaw execution engine.</span>
+            <strong>Medical Records, Granular Per-Straw Engine & OCR Scanner</strong><br>
+            <span style="font-size: 11px; color: var(--slate-500);">Patient directory, DD/MM/YYYY date input suite with calendar picker, calculate age auto-engine, Section 2 Freezing details, granular per-straw configuration (1 or 2 embryos toggle, PGT status, color tags, grades), OCR scanner, and thaw workflow engine.</span>
           </td>
           <td>Phase 2 Completion</td>
           <td class="amount-col">₹20,000</td>
@@ -508,8 +541,8 @@
         <tr>
           <td><strong>Phase 3 Milestone</strong></td>
           <td>
-            <strong>Cloud Deployment, Security Hardening & Handover</strong><br>
-            <span style="font-size: 11px; color: var(--slate-500);">Production deployment on Neon PostgreSQL & cloud server, role-based access control, security headers, rate limiting, and final handover.</span>
+            <strong>Cloud VPS Deployment, Security Hardening & Handover</strong><br>
+            <span style="font-size: 11px; color: var(--slate-500);">Hostinger KVM 1 VPS production deployment, local PostgreSQL database setup, PM2 process management, Nginx reverse proxy, security headers, rate limiting, and final credentials handover.</span>
           </td>
           <td>Project Handover</td>
           <td class="amount-col">₹10,000</td>
@@ -537,37 +570,38 @@
       <div class="feature-card">
         <h5><span>01.</span> Cryo Storage Visualizer</h5>
         <ul>
-          <li>Interactive 3D-styled physical hierarchy (8 Cans, 80 Canisters, 160 Levels, 160 Goblets, 1,760 VisoTubes, 17,600 Straws).</li>
+          <li>Interactive 3D-styled physical hierarchy (9 Cans: 01, 02, 03, 04, 05, 08, 10, 11, 14 x 90 Canisters x 180 Levels x 180 Goblets x 1,980 VisoTubes x 19,800 Straw Capacity).</li>
+          <li>Bottom-to-Top Level 1 Priority Auto-Recommendation Strategy (fills Level 1 across all canisters/cans before Level 2).</li>
+          <li>Manual Storage Location Selector enabled as default mode.</li>
           <li>Radial Pizza-Slice Goblet Wheel & 8-step occupancy intensity heatmap view.</li>
-          <li>Viso Tube Specimen Inspector modal with pinned header/footer and scrollable middle body.</li>
         </ul>
       </div>
 
       <div class="feature-card">
-        <h5><span>02.</span> Patient Medical Directory</h5>
+        <h5><span>02.</span> Patient Medical Directory & Date Engine</h5>
         <ul>
-          <li>Complete patient profiles, demographic records & clinical notes management.</li>
-          <li>Mobile-tailored side-by-side Visit Date & Freezing Date input layout.</li>
-          <li>Instant search engine & multi-field filters (ID, Name, Phone, Freezing Date, Visit Date).</li>
-          <li>Mobile responsive popups with background body scroll lock.</li>
+          <li>Complete patient profiles, demographic records, DOB, mobile numbers, emails & clinical notes.</li>
+          <li>Strict DD/MM/YYYY date format across all fields with built-in native calendar pickers.</li>
+          <li>Automatic age calculator engine based on patient & partner Date of Birth.</li>
+          <li>Section 2 Freezing Batch Details (ASP Aspiration Date, Freezing Date, Embryo Stage).</li>
         </ul>
       </div>
 
       <div class="feature-card">
-        <h5><span>03.</span> AI / Google Cloud Vision OCR</h5>
+        <h5><span>03.</span> Granular Per-Straw Specimen Engine</h5>
+        <ul>
+          <li>Per-straw quick-toggle embryo selector ([ 1 Embryo ] vs [ 2 Embryos ]).</li>
+          <li>Multi-color VisoTube tag system (Pink, Grey, Red, Black, Green, Rust, Blue, Purple, Yellow, Orange, Skyblue).</li>
+          <li>Embryo grading, per-straw comments, and PGT-tested euploid boolean status.</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <h5><span>04.</span> AI / Google Cloud Vision OCR</h5>
         <ul>
           <li>Upload handwritten/printed physical clinic records (JPEG, PNG, HEIC, PDF).</li>
           <li>Automatic data extraction & side-by-side verification review editor.</li>
           <li>Instant patient record creation from verified OCR scans.</li>
-        </ul>
-      </div>
-
-      <div class="feature-card">
-        <h5><span>04.</span> Cryo Thaw Workflow Engine</h5>
-        <ul>
-          <li>Direct straw thaw execution from Viso Tube modal or Thaw Workflow tab.</li>
-          <li>Real-time background task queue with status toast notifications.</li>
-          <li>Audit logging for every thaw operation and storage movement.</li>
         </ul>
       </div>
 
@@ -581,11 +615,11 @@
       </div>
 
       <div class="feature-card">
-        <h5><span>06.</span> Database & Cloud Deployment</h5>
+        <h5><span>06.</span> Hostinger VPS Cloud Deployment</h5>
         <ul>
-          <li>Serverless Neon PostgreSQL cloud database integration with Prisma ORM.</li>
-          <li>Optimized bulk seeding script for instant storage initialization.</li>
-          <li>Deployment setup on cloud server (Render/Vercel/Cloud host).</li>
+          <li>Hostinger KVM 1 VPS production server deployment (IP: 200.234.42.142).</li>
+          <li>Local PostgreSQL production database setup with Prisma ORM migrations & seeding.</li>
+          <li>PM2 process manager, Nginx reverse proxy, UFW firewall security, and live health monitoring endpoints.</li>
         </ul>
       </div>
 
@@ -632,10 +666,14 @@
         </div>
       </div>
       <div>
-        <div style="font-size: 11px; text-transform: uppercase; color: var(--slate-500); font-weight: 700;">Issued & Confirmed By Developer</div>
-        <div class="sig-line">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--slate-500); font-weight: 700; margin-bottom: 8px;">Issued & Digitally Signed By Developer</div>
+        <div class="digital-sig-container">
+          <div class="digital-signature">Aditya Kumar</div>
+          
+        </div>
+        <div class="sig-line" style="margin-top: 12px;">
           Aditya Kumar (Lead Software Engineer)
-          <span>Signature & Date: ______________________</span>
+          <span>Email: adityakumar07024@gmail.com</span>
         </div>
       </div>
     </div>

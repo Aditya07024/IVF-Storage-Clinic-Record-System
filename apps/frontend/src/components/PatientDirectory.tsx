@@ -51,11 +51,16 @@ export const PatientDirectory: React.FC = () => {
   const [editingPatient, setEditingPatient] = useState<any | null>(null);
   const [editPatientId, setEditPatientId] = useState('');
   const [editFullName, setEditFullName] = useState('');
+  const [editDob, setEditDob] = useState('');
   const [editPatientAge, setEditPatientAge] = useState('');
-  const [editPartnerName, setEditPartnerName] = useState('');
-  const [editPartnerAge, setEditPartnerAge] = useState('');
-  const [editDoctorName, setEditDoctorName] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPartnerName, setEditPartnerName] = useState('');
+  const [editPartnerDob, setEditPartnerDob] = useState('');
+  const [editPartnerAge, setEditPartnerAge] = useState('');
+  const [editPartnerPhone, setEditPartnerPhone] = useState('');
+  const [editPartnerEmail, setEditPartnerEmail] = useState('');
+  const [editDoctorName, setEditDoctorName] = useState('');
   const [editComments, setEditComments] = useState('');
   const [editFreezingDate, setEditFreezingDate] = useState('');
   const [editVisitDate, setEditVisitDate] = useState('');
@@ -78,11 +83,16 @@ export const PatientDirectory: React.FC = () => {
     setEditingPatient(patient);
     setEditPatientId(patient.patientId || '');
     setEditFullName(patient.fullName || '');
-    setEditPatientAge(patient.patientAge || '');
-    setEditPartnerName(patient.partnerName || '');
-    setEditPartnerAge(patient.partnerAge || '');
-    setEditDoctorName(patient.doctorName || '');
+    setEditDob(patient.dob || '');
+    setEditPatientAge(patient.patientAge || calculateAgeFromDob(patient.dob));
     setEditPhone(patient.phone || '');
+    setEditEmail(patient.email || '');
+    setEditPartnerName(patient.partnerName || '');
+    setEditPartnerDob(patient.partnerDob || '');
+    setEditPartnerAge(patient.partnerAge || calculateAgeFromDob(patient.partnerDob));
+    setEditPartnerPhone(patient.partnerPhone || '');
+    setEditPartnerEmail(patient.partnerEmail || '');
+    setEditDoctorName(patient.doctorName || '');
     setEditComments(patient.comments || '');
     setEditFreezingDate(patient.freezingDate ? new Date(patient.freezingDate).toISOString().split('T')[0] : '');
     setEditVisitDate(patient.visitDate ? new Date(patient.visitDate).toISOString().split('T')[0] : '');
@@ -101,11 +111,16 @@ export const PatientDirectory: React.FC = () => {
       const payload = {
         patientId: editPatientId.trim(),
         fullName: editFullName.trim(),
-        patientAge: editPatientAge.trim(),
-        partnerName: editPartnerName.trim(),
-        partnerAge: editPartnerAge.trim(),
-        doctorName: editDoctorName.trim(),
+        dob: editDob.trim(),
+        patientAge: editPatientAge.trim() || calculateAgeFromDob(editDob),
         phone: editPhone.trim(),
+        email: editEmail.trim(),
+        partnerName: editPartnerName.trim(),
+        partnerDob: editPartnerDob.trim(),
+        partnerAge: editPartnerAge.trim() || calculateAgeFromDob(editPartnerDob),
+        partnerPhone: editPartnerPhone.trim(),
+        partnerEmail: editPartnerEmail.trim(),
+        doctorName: editDoctorName.trim(),
         comments: editComments.trim(),
         freezingDate: editFreezingDate ? editFreezingDate : null,
         visitDate: editVisitDate ? editVisitDate : null,
@@ -830,45 +845,108 @@ export const PatientDirectory: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Patient Age <span className="text-rose-600 font-bold">*</span>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Patient DOB</span>
+                    {editPatientAge && (
+                      <span className="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded text-[10px] font-bold border border-amber-300">
+                        {editPatientAge}
+                      </span>
+                    )}
                   </label>
                   <input
-                    type="text"
-                    value={editPatientAge}
-                    onChange={(e) => setEditPatientAge(e.target.value)}
-                    required
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
+                    type="date"
+                    value={editDob}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditDob(val);
+                      setEditPatientAge(calculateAgeFromDob(val));
+                    }}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Partner Name <span className="text-rose-600 font-bold">*</span>
+                    Patient Mobile Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Patient Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Partner Name
                   </label>
                   <input
                     type="text"
                     value={editPartnerName}
                     onChange={(e) => setEditPartnerName(e.target.value)}
-                    required
                     className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Partner DOB</span>
+                    {editPartnerAge && (
+                      <span className="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded text-[10px] font-bold border border-amber-300">
+                        {editPartnerAge}
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="date"
+                    value={editPartnerDob}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditPartnerDob(val);
+                      setEditPartnerAge(calculateAgeFromDob(val));
+                    }}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Partner Age <span className="text-rose-600 font-bold">*</span>
+                    Partner Mobile Phone
                   </label>
                   <input
                     type="text"
-                    value={editPartnerAge}
-                    onChange={(e) => setEditPartnerAge(e.target.value)}
-                    required
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
+                    value={editPartnerPhone}
+                    onChange={(e) => setEditPartnerPhone(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Partner Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={editPartnerEmail}
+                    onChange={(e) => setEditPartnerEmail(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
                     Doctor Name / Attending Physician <span className="text-rose-600 font-bold">*</span>
                   </label>
@@ -878,19 +956,6 @@ export const PatientDirectory: React.FC = () => {
                     onChange={(e) => setEditDoctorName(e.target.value)}
                     required
                     className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Mobile Phone <span className="text-rose-600 font-bold">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    required
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
@@ -1042,13 +1107,30 @@ export const PatientDirectory: React.FC = () => {
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Patient Age:</span>
-                <strong className="text-slate-900 font-medium">{selectedPatient.patientAge || 'N/A'}</strong>
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Patient DOB & Age:</span>
+                <strong className="text-slate-900 font-medium">
+                  {selectedPatient.dob ? formatDateDDMMYYYY(selectedPatient.dob) : 'N/A'} {selectedPatient.patientAge ? `(${selectedPatient.patientAge})` : ''}
+                </strong>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Patient Mobile & Email:</span>
+                <strong className="text-slate-900 font-mono text-[11px] block">{selectedPatient.phone || 'N/A'}</strong>
+                <span className="text-slate-500 text-[10px] truncate block">{selectedPatient.email || ''}</span>
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-slate-500 font-semibold block uppercase text-[10px]">Partner Name & Age:</span>
-                <strong className="text-slate-900">{selectedPatient.partnerName || 'N/A'} {selectedPatient.partnerAge ? `(${selectedPatient.partnerAge})` : ''}</strong>
+                <strong className="text-slate-900 block">{selectedPatient.partnerName || 'N/A'} {selectedPatient.partnerAge ? `(${selectedPatient.partnerAge})` : ''}</strong>
+                {selectedPatient.partnerDob && (
+                  <span className="text-slate-500 text-[10px] font-mono block">DOB: {formatDateDDMMYYYY(selectedPatient.partnerDob)}</span>
+                )}
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Partner Mobile & Email:</span>
+                <strong className="text-slate-900 font-mono text-[11px] block">{selectedPatient.partnerPhone || 'N/A'}</strong>
+                <span className="text-slate-500 text-[10px] truncate block">{selectedPatient.partnerEmail || ''}</span>
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
@@ -1064,16 +1146,6 @@ export const PatientDirectory: React.FC = () => {
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-slate-500 font-semibold block uppercase text-[10px]">Freezing Date:</span>
                 <strong className="text-slate-900 font-mono">{formatDateDDMMYYYY(selectedPatient.freezingDate)}</strong>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">DE Date (Donor Egg):</span>
-                <strong className="text-slate-900 font-mono">{formatDateDDMMYYYY(selectedPatient.deDate)}</strong>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Mobile Phone:</span>
-                <strong className="text-slate-900 font-mono">{selectedPatient.phone || 'N/A'}</strong>
               </div>
             </div>
 
@@ -1126,11 +1198,23 @@ export const PatientDirectory: React.FC = () => {
 
                   return (
                     <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-3 shadow-2xs">
-                      <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
+                      <div className="flex flex-wrap items-center justify-between text-xs border-b border-slate-200 pb-2 gap-2">
                         <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span>
-                        <span className="text-slate-600 font-mono font-medium">
-                          Stored on: {formatDateDDMMYYYY(batch.storageDate)}
-                        </span>
+                        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700">
+                          {batch.aspirationDate && (
+                            <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 font-bold">
+                              ASP: {formatDateDDMMYYYY(batch.aspirationDate)}
+                            </span>
+                          )}
+                          <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 font-bold">
+                            Frozen: {formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}
+                          </span>
+                          {batch.embryoStage && (
+                            <span className="bg-blue-100 text-blue-900 px-2 py-0.5 rounded border border-blue-300 font-bold">
+                              Stage: {batch.embryoStage}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Physical Location Breakdown */}
@@ -1140,6 +1224,11 @@ export const PatientDirectory: React.FC = () => {
                           <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
                             <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
                             <div className="text-slate-900 font-bold">{parseVisoTubeLocation(locCode)}</div>
+                            {batch.notes && (
+                              <div className="text-[11px] text-slate-600 italic mt-1 font-mono">
+                                Batch Comment: {batch.notes}
+                              </div>
+                            )}
                           </div>
                         );
                       })()}
@@ -1148,16 +1237,33 @@ export const PatientDirectory: React.FC = () => {
                       <div className="space-y-1.5">
                         <div className="text-[11px] font-bold text-slate-700">Active Straws in this Batch ({activeStraws.length}):</div>
                         {activeStraws.map((straw: any) => (
-                          <div key={straw.id} className="text-xs bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between">
+                          <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
                             <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
                               <span>Straw ID: {straw.strawId}</span>
                               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
-                                Straw Color: {straw.color || 'Pink'}
+                                {straw.color || 'Pink'} Tag
                               </span>
+                              {straw.isPgt && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
+                                  PGT TESTED
+                                </span>
+                              )}
                             </div>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
-                              ({straw.embryos?.length || 0} Embryos)
-                            </span>
+                            <div className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                              {straw.grade && (
+                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
+                                  Grade: {straw.grade}
+                                </span>
+                              )}
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
+                                ({straw.embryoCount || straw.embryos?.length || 1} Embryos)
+                              </span>
+                              {straw.comments && (
+                                <span className="text-[11px] text-slate-500 italic">
+                                  "{straw.comments}"
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

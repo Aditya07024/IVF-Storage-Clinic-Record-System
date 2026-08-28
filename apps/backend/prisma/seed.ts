@@ -45,6 +45,7 @@ const DEMO_PATIENTS = [
   { name: 'Rolanda Hooch', partner: 'Richard Roe', phone: '+91 97900 20002', comments: 'Vitrification complete.' },
   { name: 'Irina Shayk', partner: 'Bradley Cooper', phone: '+91 97890 30003', comments: 'Grade 4BB Embryos.' },
   { name: 'Gisele Bündchen', partner: 'Tom Brady', phone: '+91 97880 40004', comments: 'Stored in Can 10.' },
+  { name: 'Aditi Rao', partner: 'Siddharth Narayan', phone: '+91 97875 51111', comments: 'Stored in Can 11.' },
   { name: 'Adriana Lima', partner: 'Marko Jarić', phone: '+91 97870 50005', comments: 'Vitrified in Can 14.' },
   { name: 'Alessandra Ambrosio', partner: 'Jamie Mazur', phone: '+91 97860 60006', comments: 'Grade A Blastocysts.' },
   { name: 'Miranda Kerr', partner: 'Evan Spiegel', phone: '+91 97850 70007', comments: 'Day 5 embryo freezing.' },

@@ -87,7 +87,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
     };
   }, [selectedTube]);
 
-  const CLINIC_CANS = [1, 2, 3, 4, 5, 8, 10, 14];
+  const CLINIC_CANS = [1, 2, 3, 4, 5, 8, 10, 11, 14];
 
   useEffect(() => {
     fetchGlobalOccupancy();
@@ -371,9 +371,8 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
             </div>
 
             <div className="flex flex-col items-center gap-2 sm:gap-4 py-2 sm:py-4">
-              {/* Row 1: Cans 1, 2, 3, 4 */}
-              <div className="grid grid-cols-4 gap-1.5 sm:gap-4 max-w-full">
-                {[1, 2, 3, 4].map((num) => {
+              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5 sm:gap-3 max-w-full">
+                {CLINIC_CANS.map((num) => {
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
                   const occupiedInCan = canOccupancyMap[code] || 0;
@@ -388,7 +387,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                       }}
                       className="group relative focus:outline-none transition-transform hover:scale-105 flex flex-col items-center"
                     >
-                      <svg viewBox="0 0 100 115" className="w-18 h-20 sm:w-26 sm:h-28 filter drop-shadow-sm">
+                      <svg viewBox="0 0 100 115" className="w-16 h-18 sm:w-20 sm:h-22 filter drop-shadow-sm">
                         <polygon
                           points="50,2 95,28 95,87 50,113 5,87 5,28"
                           fill={colorInfo.hex}
@@ -403,48 +402,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                         <span className="font-mono text-xs sm:text-sm font-black text-slate-950">
                           {code}
                         </span>
-                        <span className={`text-[9.5px] sm:text-xs font-black mt-0.5 px-2 sm:px-2.5 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
-                          {colorInfo.label}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Row 2: Cans 5, 8, 10, 14 */}
-              <div className="grid grid-cols-4 gap-1.5 sm:gap-4 max-w-full -mt-2 sm:-mt-4">
-                {[5, 8, 10, 14].map((num) => {
-                  const code = `CAN-${num.toString().padStart(2, '0')}`;
-                  const isSelected = selectedCanCode === code;
-                  const occupiedInCan = canOccupancyMap[code] || 0;
-                  const colorInfo = getSpaceFillColor(occupiedInCan, 2640);
-
-                  return (
-                    <button
-                      key={code}
-                      onClick={() => {
-                        setSelectedCanCode(code);
-                        setSelectedTube(null);
-                      }}
-                      className="group relative focus:outline-none transition-transform hover:scale-105 flex flex-col items-center"
-                    >
-                      <svg viewBox="0 0 100 115" className="w-18 h-20 sm:w-26 sm:h-28 filter drop-shadow-sm">
-                        <polygon
-                          points="50,2 95,28 95,87 50,113 5,87 5,28"
-                          fill={colorInfo.hex}
-                          className={`transition-all duration-300 ${
-                            isSelected
-                              ? 'stroke-slate-900 stroke-[5.5]'
-                              : `${colorInfo.stroke} stroke-[2.5]`
-                          }`}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-1 pointer-events-none">
-                        <span className="font-mono text-xs sm:text-sm font-black text-slate-950">
-                          {code}
-                        </span>
-                        <span className={`text-[9.5px] sm:text-xs font-black mt-0.5 px-2 sm:px-2.5 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
+                        <span className={`text-[8.5px] sm:text-[10px] font-black mt-0.5 px-1.5 sm:px-2 py-0.5 rounded-full border shadow-2xs ${colorInfo.bg}`}>
                           {colorInfo.label}
                         </span>
                       </div>

@@ -132,6 +132,18 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
+// Serve official project invoice & scope agreement HTML document
+app.get('/invoice.html', (req: Request, res: Response) => {
+  const rootInvoicePath = path.resolve(process.cwd(), 'invoice.html');
+  const parentInvoicePath = path.resolve(process.cwd(), '../../invoice.html');
+  if (fs.existsSync(rootInvoicePath)) {
+    return res.sendFile(rootInvoicePath);
+  } else if (fs.existsSync(parentInvoicePath)) {
+    return res.sendFile(parentInvoicePath);
+  }
+  return res.status(404).send('Invoice document not found');
+});
+
 // 5. Multer File Upload Security & Strict MIME Filter (15MB Limit)
 const upload = multer({
   storage: multer.memoryStorage(),

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 
@@ -98,6 +98,143 @@ function parseLocationCode(code: string) {
   };
 }
 
+export function calculateAgeFromDob(dobString?: string): string {
+  if (!dobString) return '';
+  const dob = new Date(dobString);
+  if (isNaN(dob.getTime())) return '';
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age >= 0 ? `${age} Yrs` : '';
+}
+
+export function formatISOToDDMMYYYY(isoStr?: string | null): string {
+  if (!isoStr) return '';
+  const clean = isoStr.split('T')[0];
+  const parts = clean.split('-');
+  if (parts.length === 3) {
+    const [y, m, d] = parts;
+    if (y.length === 4 && m && d) return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+  }
+  return isoStr;
+}
+
+export function parseDDMMYYYYToISO(input: string): string {
+  if (!input) return '';
+  const digits = input.replace(/\D/g, '');
+  if (digits.length === 8) {
+    const d = digits.substring(0, 2);
+    const m = digits.substring(2, 4);
+    const y = digits.substring(4, 8);
+    return `${y}-${m}-${d}`;
+  }
+  if (input.includes('/') || input.includes('-')) {
+    const parts = input.split(/[\/\-]/);
+    if (parts.length === 3) {
+      const [d, m, y] = parts;
+      if (y.length === 4 && d && m) {
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      }
+    }
+  }
+  return input;
+}
+
+interface DateInputDDMMYYYYProps {
+  label: string;
+  value: string; // ISO format (YYYY-MM-DD)
+  onChange: (isoDate: string) => void;
+  required?: boolean;
+  extraBadge?: React.ReactNode;
+  className?: string;
+}
+
+export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
+  label,
+  value,
+  onChange,
+  required,
+  extraBadge,
+  className,
+}) => {
+  const [displayValue, setDisplayValue] = useState(() => formatISOToDDMMYYYY(value));
+  const hiddenDateRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDisplayValue(formatISOToDDMMYYYY(value));
+  }, [value]);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setDisplayValue(raw);
+
+    const iso = parseDDMMYYYYToISO(raw);
+    if (iso && iso.length === 10) {
+      const testDate = new Date(iso);
+      if (!isNaN(testDate.getTime())) {
+        onChange(iso);
+      }
+    } else if (!raw) {
+      onChange('');
+    }
+  };
+
+  const handleOpenPicker = () => {
+    if (hiddenDateRef.current) {
+      if (typeof hiddenDateRef.current.showPicker === 'function') {
+        hiddenDateRef.current.showPicker();
+      } else {
+        hiddenDateRef.current.click();
+      }
+    }
+  };
+
+  return (
+    <div className="min-w-0 max-w-full">
+      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+        <span>{label} {required && <span className="text-rose-600 font-bold">*</span>}</span>
+        {extraBadge || (
+          <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+            DD/MM/YYYY
+          </span>
+        )}
+      </label>
+      <div className="relative flex items-center">
+        <input
+          type="text"
+          value={displayValue}
+          onChange={handleTextChange}
+          placeholder="DD/MM/YYYY"
+          maxLength={10}
+          className={`w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 pr-10 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block ${className || ''}`}
+        />
+        <button
+          type="button"
+          onClick={handleOpenPicker}
+          className="absolute right-2 text-slate-400 hover:text-emerald-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors"
+          title="Pick date from calendar"
+        >
+          <Calendar className="w-4 h-4" />
+        </button>
+        <input
+          ref={hiddenDateRef}
+          type="date"
+          value={value || ''}
+          onChange={(e) => {
+            const iso = e.target.value;
+            onChange(iso);
+            setDisplayValue(formatISOToDDMMYYYY(iso));
+          }}
+          className="sr-only pointer-events-none"
+        />
+      </div>
+    </div>
+  );
+};
+
 interface PatientFormProps {
   onSuccess: (patient: any) => void;
 }
@@ -125,24 +262,37 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [fullName, setFullName] = useState('');
   const [partnerName, setPartnerName] = useState('');
   const [phone, setPhone] = useState('');
+  const [partnerPhone, setPartnerPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [partnerEmail, setPartnerEmail] = useState('');
+  const [dob, setDob] = useState('');
+  const [partnerDob, setPartnerDob] = useState('');
   const [patientAge, setPatientAge] = useState('');
   const [partnerAge, setPartnerAge] = useState('');
   const [doctorName, setDoctorName] = useState('');
-  const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
-  const [deDate, setDeDate] = useState('');
+  const [aspirationDate, setAspirationDate] = useState(new Date().toISOString().split('T')[0]);
   const [freezingDate, setFreezingDate] = useState(new Date().toISOString().split('T')[0]);
+  const [embryoStage, setEmbryoStage] = useState('Day 5 Blastocyst');
   const [thawDate, setThawDate] = useState('');
   const [comments, setComments] = useState('');
 
   // Storage Allocation State
   const [assignStorageEnabled, setAssignStorageEnabled] = useState(false);
-  const [allocationMode, setAllocationMode] = useState<'recommended' | 'manual'>('recommended');
-  const [embryoCount, setEmbryoCount] = useState(1);
+  const [allocationMode, setAllocationMode] = useState<'recommended' | 'manual'>('manual');
+  const [strawsCount, setStrawsCount] = useState(1);
+  const [strawItems, setStrawItems] = useState<Array<{
+    color: string;
+    embryoCount: number;
+    grade: string;
+    comments: string;
+    isPgt: boolean;
+  }>>([
+    { color: 'Pink', embryoCount: 1, grade: '', comments: '', isPgt: false },
+  ]);
   const [storageDate, setStorageDate] = useState(new Date().toISOString().split('T')[0]);
   const [recommendation, setRecommendation] = useState<any>(null);
   const [selectedVisoTubeId, setSelectedVisoTubeId] = useState<string>('');
   const [selectedLocationCode, setSelectedLocationCode] = useState<string>('');
-  const [strawColors, setStrawColors] = useState<string[]>(['Pink']);
 
   // Manual Storage Selection State
   const [hierarchyCans, setHierarchyCans] = useState<any[]>([]);
@@ -263,25 +413,63 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
   // Fetch full storage hierarchy for manual selection
   const fetchHierarchy = async () => {
-    if (hierarchyCans.length > 0) return;
     setLoadingHierarchy(true);
     try {
       const res = await apiRequest('/api/storage/hierarchy');
       if (res.success && res.cans) {
         setHierarchyCans(res.cans);
-        // Default select first available tube
-        const firstCan = res.cans[0];
-        if (firstCan && firstCan.canisters[0]?.levels[0]?.goblets[0]?.visoTubes[0]) {
-          const tube = firstCan.canisters[0].levels[0].goblets[0].visoTubes[0];
-          setSelectedVisoTubeId(tube.id);
-          setSelectedLocationCode(tube.locationCode);
-        }
       }
     } catch (err: any) {
       console.error('Failed to load storage hierarchy:', err);
     } finally {
       setLoadingHierarchy(false);
     }
+  };
+
+  // Automatically fetch hierarchy on mount
+  useEffect(() => {
+    fetchHierarchy();
+  }, []);
+
+  // Auto-select first available VisoTube when hierarchy loads or selection changes
+  useEffect(() => {
+    if (hierarchyCans.length === 0) return;
+    const currentCanObj = hierarchyCans.find(c => c.code === manualCanCode);
+    const currentCanisterObj = currentCanObj?.canisters?.find((cn: any) => cn.canisterNumber === manualCanisterNum);
+    const currentLevelObj = currentCanisterObj?.levels?.find((l: any) => l.levelNumber === manualLevelNum);
+    const tubes: any[] = currentLevelObj?.goblets?.[0]?.visoTubes || [];
+
+    const availableTubes = tubes.filter((t: any) => {
+      const occupiedCount = t.straws ? t.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
+      const remaining = 10 - occupiedCount;
+      return remaining >= strawsCount;
+    });
+
+    if (availableTubes.length > 0) {
+      const isStillValid = availableTubes.some((t: any) => t.id === selectedVisoTubeId);
+      if (!isStillValid || !selectedVisoTubeId) {
+        setSelectedVisoTubeId(availableTubes[0].id);
+        setSelectedLocationCode(availableTubes[0].locationCode);
+      }
+    }
+  }, [hierarchyCans, manualCanCode, manualCanisterNum, manualLevelNum, strawsCount]);
+
+  const handleUpdateStrawsCount = (newCount: number) => {
+    const validCount = Math.max(1, Math.min(20, newCount));
+    setStrawsCount(validCount);
+    setStrawItems((prev) => {
+      if (prev.length === validCount) return prev;
+      const VISO_COLORS = ['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'];
+      if (prev.length < validCount) {
+        const next = [...prev];
+        for (let i = prev.length; i < validCount; i++) {
+          const colorName = VISO_COLORS[i % VISO_COLORS.length] || 'Pink';
+          next.push({ color: colorName, embryoCount: 1, grade: '4AA', comments: '', isPgt: false });
+        }
+        return next;
+      }
+      return prev.slice(0, validCount);
+    });
   };
 
   // Search Empty Storage Recommendation
@@ -293,8 +481,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         method: 'POST',
         body: JSON.stringify({
           patientId: selectedExistingPatient ? selectedExistingPatient.id : 'NEW_PATIENT',
-          storageDate,
-          embryoCount: Number(embryoCount),
+          storageDate: freezingDate,
+          embryoCount: strawsCount * 2,
         }),
       });
 
@@ -318,7 +506,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     if (assignStorageEnabled && allocationMode === 'recommended') {
       handleFindStorage();
     }
-  }, [assignStorageEnabled, allocationMode, embryoCount, storageDate, selectedExistingPatient]);
+  }, [assignStorageEnabled, allocationMode, strawsCount, freezingDate, selectedExistingPatient]);
 
   useEffect(() => {
     if (saveSuccessDetails) {
@@ -329,19 +517,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     }
   }, [saveSuccessDetails]);
 
-  // Keep straw colors array in sync with required straws count
-  useEffect(() => {
-    const requiredStraws = Math.ceil(embryoCount / 2);
-    setStrawColors(prev => {
-      if (prev.length === requiredStraws) return prev;
-      const next = Array(requiredStraws).fill('Pink');
-      for (let i = 0; i < Math.min(prev.length, requiredStraws); i++) {
-        next[i] = prev[i];
-      }
-      return next;
-    });
-  }, [embryoCount]);
-
   const { enqueueTask } = useBackgroundTask();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -349,13 +524,19 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setError(null);
 
     if (formMode === 'new') {
-      if (!fullName.trim() || !patientAge.trim() || !partnerName.trim() || !partnerAge.trim() || !doctorName.trim() || !phone.trim()) {
-        setError('All 7 clinical fields (Registration No, Patient Name, Patient Age, Partner Name, Partner Age, Doctor Name, and Mobile Phone) are compulsory.');
+      if (!fullName.trim() || !doctorName.trim()) {
+        setError('Patient Full Name and Doctor Name are required.');
+        return;
+      }
+      if (!phone.trim() && !partnerPhone.trim()) {
+        setError('Please enter at least 1 Mobile Phone number (Patient or Partner).');
         return;
       }
     }
 
     const patientName = fullName.trim() || selectedExistingPatient?.fullName || 'Patient Record';
+
+    const totalEmbryosCount = strawItems.reduce((acc, item) => acc + (item.embryoCount || 1), 0);
 
     // Capture current form inputs before clearing
     const payload = {
@@ -365,20 +546,26 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       fullName: fullName.trim(),
       partnerName: partnerName.trim(),
       phone: phone.trim(),
-      patientAge: patientAge.trim(),
-      partnerAge: partnerAge.trim(),
+      partnerPhone: partnerPhone.trim(),
+      email: email.trim(),
+      partnerEmail: partnerEmail.trim(),
+      dob: dob.trim(),
+      partnerDob: partnerDob.trim(),
+      patientAge: patientAge.trim() || calculateAgeFromDob(dob),
+      partnerAge: partnerAge.trim() || calculateAgeFromDob(partnerDob),
       doctorName: doctorName.trim(),
-      visitDate,
-      deDate,
+      aspirationDate,
       freezingDate,
+      embryoStage,
       thawDate,
       comments: comments.trim(),
       assignStorageEnabled,
       selectedVisoTubeId,
       selectedLocationCode,
-      storageDate,
-      embryoCount: Number(embryoCount),
-      strawColors: [...strawColors],
+      storageDate: freezingDate,
+      strawsCount,
+      strawItems: [...strawItems],
+      totalEmbryosCount,
     };
 
     // Show immediate success confirmation & reset form so staff can immediately enter next patient!
@@ -386,8 +573,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       patientId: payload.customPatientId || (payload.selectedExistingPatient?.patientId) || 'SAVING IN BACKGROUND...',
       fullName: patientName,
       status: payload.assignStorageEnabled ? 'QUEUED (ALLOCATION & OCCUPIED)' : 'QUEUED (RECORD SAVING)',
-      embryoCount: payload.assignStorageEnabled ? payload.embryoCount : 0,
-      strawCount: payload.assignStorageEnabled ? payload.strawColors.length : 0,
+      embryoCount: payload.assignStorageEnabled ? payload.totalEmbryosCount : 0,
+      strawCount: payload.assignStorageEnabled ? payload.strawItems.length : 0,
       location: payload.assignStorageEnabled ? payload.selectedLocationCode : null,
       timestamp: new Date().toLocaleString(),
     });
@@ -400,7 +587,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     enqueueTask({
       title: `Saving ${payload.formMode === 'new' ? 'New Patient' : 'Batch'}: ${patientName}`,
       description: payload.assignStorageEnabled
-        ? `Allocating ${payload.embryoCount} Embryo(s) in Viso Tube`
+        ? `Allocating ${payload.strawItems.length} Straw(s) (${payload.totalEmbryosCount} Embryo(s))`
         : 'Saving Patient Demographics & Medical History',
       action: async () => {
         let targetPatient = payload.selectedExistingPatient;
@@ -413,11 +600,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               fullName: payload.fullName,
               partnerName: payload.partnerName || undefined,
               phone: payload.phone || undefined,
+              partnerPhone: payload.partnerPhone || undefined,
+              email: payload.email || undefined,
+              partnerEmail: payload.partnerEmail || undefined,
+              dob: payload.dob || undefined,
+              partnerDob: payload.partnerDob || undefined,
               patientAge: payload.patientAge || undefined,
               partnerAge: payload.partnerAge || undefined,
               doctorName: payload.doctorName || undefined,
-              visitDate: payload.visitDate || undefined,
-              deDate: payload.deDate || undefined,
+              aspirationDate: payload.aspirationDate || undefined,
               freezingDate: payload.freezingDate || undefined,
               thawDate: payload.thawDate || undefined,
               comments: payload.comments || undefined,
@@ -431,9 +622,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               fullName: payload.fullName,
               partnerName: payload.partnerName || undefined,
               phone: payload.phone || undefined,
+              partnerPhone: payload.partnerPhone || undefined,
+              email: payload.email || undefined,
+              partnerEmail: payload.partnerEmail || undefined,
+              dob: payload.dob || undefined,
+              partnerDob: payload.partnerDob || undefined,
               patientAge: payload.patientAge || undefined,
               partnerAge: payload.partnerAge || undefined,
               doctorName: payload.doctorName || undefined,
+              aspirationDate: payload.aspirationDate || undefined,
               freezingDate: payload.freezingDate || undefined,
               comments: payload.comments || undefined,
             }),
@@ -445,10 +642,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             method: 'POST',
             body: JSON.stringify({
               patientId: targetPatient.id,
-              storageDate: payload.storageDate,
-              embryoCount: payload.embryoCount,
+              aspirationDate: payload.aspirationDate,
+              freezingDate: payload.freezingDate,
+              embryoStage: payload.embryoStage,
               visoTubeId: payload.selectedVisoTubeId,
-              strawColors: payload.strawColors,
+              straws: payload.strawItems,
               notes: payload.comments || undefined,
             }),
           });
@@ -830,6 +1028,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   setFullName('Sunita Verma');
                   setPartnerName('Deepak Verma');
                   setPhone('+91 98260 78901');
+                  setPartnerPhone('+91 98260 12345');
+                  setEmail('sunita.verma@example.com');
+                  setPartnerEmail('deepak.verma@example.com');
+                  setDob('1994-05-15');
+                  setPartnerDob('1991-08-20');
                   setPatientAge('32 Yrs');
                   setPartnerAge('35 Yrs');
                   setDoctorName('Dr. Ananya Sharma');
@@ -837,7 +1040,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   setVisitDate(today);
                   setFreezingDate(today);
                   setStorageDate(today);
-                  setDeDate(today);
                   setComments('');
                 }}
                 className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs rounded-xl border border-amber-300 shadow-2xs transition-all active:scale-95 flex items-center gap-1.5"
@@ -875,6 +1077,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
+            {/* PATIENT DEMOGRAPHICS */}
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Patient Full Name <span className="text-rose-600 font-bold">*</span>
@@ -889,49 +1092,106 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
+            <DateInputDDMMYYYY
+              label="Patient Date of Birth (DOB)"
+              value={dob}
+              onChange={(val) => {
+                setDob(val);
+                setPatientAge(calculateAgeFromDob(val));
+              }}
+              extraBadge={
+                patientAge ? (
+                  <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11px] font-bold border border-emerald-300">
+                    Age: {patientAge}
+                  </span>
+                ) : undefined
+              }
+            />
+
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Patient Age <span className="text-rose-600 font-bold">*</span>
+                Patient Mobile Phone <span className="text-rose-600 font-bold">*</span>
               </label>
               <input
                 type="text"
-                value={patientAge}
-                onChange={(e) => setPatientAge(e.target.value)}
-                placeholder="e.g. 32 Yrs"
-                required
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium block"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. +91 98260 78901"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
               />
             </div>
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Partner Name <span className="text-rose-600 font-bold">*</span>
+                Patient Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. patient@example.com"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+              />
+            </div>
+
+            {/* PARTNER DEMOGRAPHICS */}
+            <div className="min-w-0 max-w-full">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Partner Name
               </label>
               <input
                 type="text"
                 value={partnerName}
                 onChange={(e) => setPartnerName(e.target.value)}
                 placeholder="e.g. Deepak Verma"
-                required
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block font-medium"
+              />
+            </div>
+
+            <DateInputDDMMYYYY
+              label="Partner Date of Birth (DOB)"
+              value={partnerDob}
+              onChange={(val) => {
+                setPartnerDob(val);
+                setPartnerAge(calculateAgeFromDob(val));
+              }}
+              extraBadge={
+                partnerAge ? (
+                  <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11px] font-bold border border-emerald-300">
+                    Age: {partnerAge}
+                  </span>
+                ) : undefined
+              }
+            />
+
+            <div className="min-w-0 max-w-full">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Partner Mobile Phone
+              </label>
+              <input
+                type="text"
+                value={partnerPhone}
+                onChange={(e) => setPartnerPhone(e.target.value)}
+                placeholder="e.g. +91 98260 12345"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
               />
             </div>
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Partner Age <span className="text-rose-600 font-bold">*</span>
+                Partner Email Address
               </label>
               <input
-                type="text"
-                value={partnerAge}
-                onChange={(e) => setPartnerAge(e.target.value)}
-                placeholder="e.g. 35 Yrs"
-                required
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium block"
+                type="email"
+                value={partnerEmail}
+                onChange={(e) => setPartnerEmail(e.target.value)}
+                placeholder="e.g. partner@example.com"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
               />
             </div>
 
-            <div className="min-w-0 max-w-full">
+            {/* CLINICAL PHYSICIAN */}
+            <div className="md:col-span-2 min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Doctor Name / Attending Physician <span className="text-rose-600 font-bold">*</span>
               </label>
@@ -945,72 +1205,17 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Mobile Phone <span className="text-rose-600 font-bold">*</span>
-              </label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g. +91 98260 78901"
-                required
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 md:col-span-2 min-w-0 max-w-full">
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Visit Date
-                </label>
-                <input
-                  type="date"
-                  value={visitDate}
-                  onChange={(e) => setVisitDate(e.target.value)}
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono block"
-                />
-              </div>
-
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  New Embryo Freezing Date *
-                </label>
-                <input
-                  type="date"
-                  value={freezingDate}
-                  onChange={(e) => {
-                    setFreezingDate(e.target.value);
-                    setStorageDate(e.target.value);
-                  }}
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block"
-                />
-              </div>
-            </div>
-
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                DE Date (Donor Egg)
-              </label>
-              <input
-                type="date"
-                value={deDate}
-                onChange={(e) => setDeDate(e.target.value)}
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-mono block"
-              />
-            </div>
-
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex flex-wrap items-center justify-between gap-1">
                 <span>Clinical Comments & Doctor Remarks</span>
                 <span className="text-[10px] text-slate-500 font-normal lowercase">(Egg yield, embryo grade quality, special instructions)</span>
               </label>
               <textarea
-                rows={5}
+                rows={4}
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
                 placeholder="Write unlimited clinical comments, doctor instructions, embryo quality remarks, OCR notes, or detailed storage records here..."
-                className="w-full max-w-full box-border bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium min-h-[140px] resize-y leading-relaxed block"
+                className="w-full max-w-full box-border bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium min-h-[120px] resize-y leading-relaxed block"
               />
             </div>
           </div>
@@ -1065,54 +1270,224 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                    Embryo Count for New Freezing Batch *
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setEmbryoCount(Math.max(1, embryoCount - 1))}
-                      className="w-11 h-11 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded-xl border border-rose-300 font-bold text-lg flex items-center justify-center transition-all shrink-0 active:scale-95 shadow-xs"
-                      title="Decrease Embryo Count"
-                    >
-                      <Minus className="w-4 h-4 text-rose-700 stroke-[2.5]" />
-                    </button>
+              {/* FREEZING BATCH LEVEL METADATA */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2">
+                  <Snowflake className="w-4 h-4 text-emerald-600" />
+                  <span>Freezing Batch Details (Asked on Every Freezing)</span>
+                </h3>
 
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={embryoCount}
-                      onChange={(e) => setEmbryoCount(Math.max(1, Number(e.target.value)))}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-center text-base font-bold font-mono text-slate-900 focus:outline-none focus:border-emerald-500"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <DateInputDDMMYYYY
+                    label="Date of ASP (Aspiration)"
+                    value={aspirationDate}
+                    onChange={(val) => setAspirationDate(val)}
+                  />
 
-                    <button
-                      type="button"
-                      onClick={() => setEmbryoCount(embryoCount + 1)}
-                      className="w-11 h-11 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-xl border border-emerald-300 font-bold text-lg flex items-center justify-center transition-all shrink-0 active:scale-95 shadow-xs"
-                      title="Increase Embryo Count"
+                  <DateInputDDMMYYYY
+                    label="Date of Freezing"
+                    required
+                    value={freezingDate}
+                    onChange={(val) => {
+                      setFreezingDate(val);
+                      setStorageDate(val);
+                    }}
+                  />
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Stage of Embryo *
+                    </label>
+                    <select
+                      value={embryoStage}
+                      onChange={(e) => setEmbryoStage(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 h-11 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
                     >
-                      <Plus className="w-4 h-4 text-emerald-800" />
-                    </button>
+                      <option value="Day 5 Blastocyst">Day 5 Blastocyst</option>
+                      <option value="Day 6 Blastocyst">Day 6 Blastocyst</option>
+                      <option value="Day 3 Cleavage">Day 3 Cleavage (8-cell)</option>
+                      <option value="Day 2 Cleavage">Day 2 Cleavage (4-cell)</option>
+                      <option value="Oocyte MII">Oocyte MII (Mature Egg)</option>
+                      <option value="Pronuclear PN">Pronuclear PN (Zygote)</option>
+                    </select>
                   </div>
-                  <span className="text-[10px] text-slate-500 mt-1.5 block font-medium">
-                    Strict Limit: Max 2 embryos per straw. (<strong className="text-emerald-700 font-bold">{Math.ceil(embryoCount / 2)} straw(s)</strong> required)
-                  </span>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Number of Straws *
+                    </label>
+                    <div className="flex items-center gap-1.5 h-11">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStrawsCount(strawsCount - 1)}
+                        className="w-9 h-9 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded-lg border border-rose-300 font-bold flex items-center justify-center transition-all shrink-0 active:scale-95 shadow-xs"
+                      >
+                        <Minus className="w-3.5 h-3.5 text-rose-700 stroke-[2.5]" />
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={strawsCount}
+                        onChange={(e) => handleUpdateStrawsCount(Number(e.target.value))}
+                        className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-center text-sm font-bold font-mono text-slate-900 focus:outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStrawsCount(strawsCount + 1)}
+                        className="w-9 h-9 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-lg border border-emerald-300 font-bold flex items-center justify-center transition-all shrink-0 active:scale-95 shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-800" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* GRANULAR PER-STRAW ALLOCATION TABLE / CARDS */}
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <span>Straw Configuration & Individual Metadata</span>
+                    <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                      Total {strawsCount} Straw(s) ({strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0)} Embryo(s))
+                    </span>
+                  </h4>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                    Storage Cycle Date
-                  </label>
-                  <input
-                    type="date"
-                    value={storageDate}
-                    onChange={(e) => setStorageDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500"
-                  />
+                <div className="grid grid-cols-1 gap-3">
+                  {strawItems.map((item, idx) => {
+                    const badgeClass = getStrawColorBadgeClass(item.color);
+                    return (
+                      <div key={idx} className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-slate-900 text-white font-mono font-bold text-xs flex items-center justify-center">
+                              #{idx + 1}
+                            </span>
+                            <span className="text-xs font-bold text-slate-900">Straw #{idx + 1}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                              {item.color} Tag
+                            </span>
+                          </div>
+
+                          {/* PGT Tested Tick Checkbox */}
+                          <label className={`flex items-center gap-2 px-3 py-1 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                            item.isPgt
+                              ? 'bg-purple-100 text-purple-950 border-purple-300 shadow-2xs'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={item.isPgt}
+                              onChange={(e) => {
+                                const next = [...strawItems];
+                                next[idx].isPgt = e.target.checked;
+                                setStrawItems(next);
+                              }}
+                              className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                            />
+                            <span>PGT Tested ({item.isPgt ? 'TRUE' : 'FALSE'})</span>
+                          </label>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">
+                              Straw Color Tag *
+                            </label>
+                            <select
+                              value={item.color}
+                              onChange={(e) => {
+                                const next = [...strawItems];
+                                next[idx].color = e.target.value;
+                                setStrawItems(next);
+                              }}
+                              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                            >
+                              {['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].map((c) => (
+                                <option key={c} value={c}>
+                                  {c} Straw Color
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                              Embryos in Straw #{idx + 1} *
+                            </label>
+                            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = [...strawItems];
+                                  next[idx].embryoCount = 1;
+                                  setStrawItems(next);
+                                }}
+                                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                  item.embryoCount === 1
+                                    ? 'bg-emerald-600 text-white shadow-xs font-mono font-bold'
+                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                                }`}
+                              >
+                                1 Embryo
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = [...strawItems];
+                                  next[idx].embryoCount = 2;
+                                  setStrawItems(next);
+                                }}
+                                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                  item.embryoCount === 2
+                                    ? 'bg-emerald-600 text-white shadow-xs font-mono font-bold'
+                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                                }`}
+                              >
+                                2 Embryos
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">
+                              Embryo Grade
+                            </label>
+                            <input
+                              type="text"
+                              value={item.grade}
+                              onChange={(e) => {
+                                const next = [...strawItems];
+                                next[idx].grade = e.target.value;
+                                setStrawItems(next);
+                              }}
+                              placeholder="e.g. 4AA, 4BB, 3AA"
+                              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">
+                              Straw Specific Comments
+                            </label>
+                            <input
+                              type="text"
+                              value={item.comments}
+                              onChange={(e) => {
+                                const next = [...strawItems];
+                                next[idx].comments = e.target.value;
+                                setStrawItems(next);
+                              }}
+                              placeholder="Remarks for this straw..."
+                              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1144,7 +1519,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                           <span>Recommended Physical Storage Location</span>
                         </div>
                         <span className="text-[10px] font-mono font-bold bg-emerald-200/80 text-emerald-900 px-2.5 py-1 rounded-full border border-emerald-300">
-                          {recommendation.requiredStraws} Straw(s) Required
+                          {strawsCount} Straw(s) Required
                         </span>
                       </div>
 
@@ -1228,7 +1603,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         }}
                         className="w-full bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 shadow-xs"
                       >
-                        {[1, 2, 3, 4, 5, 8, 10, 14].map(cNum => {
+                        {[1, 2, 3, 4, 5, 8, 10, 11, 14].map(cNum => {
                           const code = `CAN-${cNum.toString().padStart(2, '0')}`;
                           return (
                             <option key={code} value={code}>
@@ -1283,12 +1658,28 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       const currentCanisterObj = currentCanObj?.canisters?.find((cn: any) => cn.canisterNumber === manualCanisterNum);
                       const currentLevelObj = currentCanisterObj?.levels?.find((l: any) => l.levelNumber === manualLevelNum);
                       const tubes: any[] = currentLevelObj?.goblets?.[0]?.visoTubes || [];
-                      const requiredStrawsNeeded = Math.ceil(embryoCount / 2);
+                      const requiredStrawsNeeded = strawsCount;
+
+                      if (loadingHierarchy) {
+                        return (
+                          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-bold flex items-center gap-2">
+                            <RefreshCw className="w-4 h-4 text-emerald-600 animate-spin" />
+                            <span>Loading Viso Tubes for {manualCanCode} Canister {manualCanisterNum.toString().padStart(2, '0')} Level {manualLevelNum}...</span>
+                          </div>
+                        );
+                      }
 
                       if (tubes.length === 0) {
                         return (
-                          <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-500 italic font-medium">
-                            Loading Viso Tubes for {manualCanCode} Canister {manualCanisterNum.toString().padStart(2, '0')} Level {manualLevelNum}...
+                          <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-600 flex items-center justify-between">
+                            <span>No storage tubes found for {manualCanCode}.</span>
+                            <button
+                              type="button"
+                              onClick={() => fetchHierarchy()}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-colors"
+                            >
+                              Retry Loading
+                            </button>
                           </div>
                         );
                       }
@@ -1363,36 +1754,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   })()}
                 </div>
               )}
-
-              {/* Straw Color Selection */}
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                  <span>Specify Visual Straw Color Tags:</span>
-                  <span className="text-[10px] text-slate-500 font-normal">({Math.ceil(embryoCount / 2)} Straw Tags Needed)</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {strawColors.map((color, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                      <span className="text-xs font-mono font-bold text-slate-500">Straw #{idx + 1}:</span>
-                      <select
-                        value={color}
-                        onChange={(e) => {
-                          const updated = [...strawColors];
-                          updated[idx] = e.target.value;
-                          setStrawColors(updated);
-                        }}
-                        className="bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 flex-1"
-                      >
-                        {['Pink', 'White', 'Blue', 'Purple', 'Yellow', 'Black'].map((c) => (
-                          <option key={c} value={c}>
-                            {c} Straw Tag
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
         </div>

@@ -27,12 +27,14 @@ sudo npm install -g pm2
 echo "🗄️ Setting up Local PostgreSQL Database on Hostinger VPS..."
 DB_NAME="ivf_production"
 DB_USER="ivf_admin"
-DB_PASS=$(openssl rand -hex 16)
+DB_PASS="IvfSecurePass2026!"
 
 sudo -u postgres psql -c "CREATE DATABASE ${DB_NAME};" || true
-sudo -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}';" || true
+sudo -u postgres psql -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${DB_USER}') THEN CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}'; END IF; END \$\$;"
+sudo -u postgres psql -c "ALTER USER ${DB_USER} WITH PASSWORD '${DB_PASS}';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};" || true
 sudo -u postgres psql -d ${DB_NAME} -c "GRANT ALL ON SCHEMA public TO ${DB_USER};" || true
+sudo -u postgres psql -d ${DB_NAME} -c "ALTER SCHEMA public OWNER TO ${DB_USER};" || true
 
 LOCAL_DB_URL="postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}?schema=public"
 
@@ -41,9 +43,11 @@ PROJECT_DIR="/var/www/ivf"
 sudo mkdir -p ${PROJECT_DIR}/uploads
 sudo chown -R $USER:$USER ${PROJECT_DIR}
 
-# Copy repository files to /var/www/ivf
+# Copy repository files to /var/www/ivf if not already inside
 echo "📁 Deploying application files to ${PROJECT_DIR}..."
-cp -r . ${PROJECT_DIR}/
+if [ "$(pwd)" != "${PROJECT_DIR}" ]; then
+  cp -r . ${PROJECT_DIR}/
+fi
 
 cd ${PROJECT_DIR}
 
@@ -66,11 +70,10 @@ EOT
 
 cp ${PROJECT_DIR}/apps/backend/.env ${PROJECT_DIR}/.env
 
-# 5. Install Dependencies & Build Frontend + Backend
-echo "🔨 Building IVF System Backend & Frontend..."
+# 5. Install Dependencies & Build Backend Only
+echo "🔨 Building IVF System Backend..."
 npm install
 npm run build:backend
-npm run build:frontend
 
 # 6. Push Schema to Local PostgreSQL Database & Seed Admin Account
 echo "🌱 Initializing Database Schema & Seeding Storage Hierarchy..."
@@ -86,8 +89,8 @@ pm2 start apps/backend/dist/src/main.js --name "ivf-backend"
 pm2 save
 pm2 startup | tail -n 1 | sudo bash || true
 
-# 8. Configure Nginx Reverse Proxy
-echo "🌐 Configuring Nginx Web Server & Static File Host..."
+# 8. Configure Nginx Reverse Proxy for Backend API & Image Storage
+echo "🌐 Configuring Nginx Web Server for Backend API & Image Uploads..."
 cat <<EOT | sudo tee /etc/nginx/sites-available/ivf
 server {
     listen 80;
@@ -95,15 +98,8 @@ server {
 
     client_max_body_size 25M;
 
-    # Serve Frontend Single Page Application
-    location / {
-        root ${PROJECT_DIR}/apps/frontend/dist;
-        index index.html;
-        try_files \$uri \$uri/ /index.html;
-    }
-
     # Reverse Proxy Backend API Requests
-    location /api/ {
+    location / {
         proxy_pass http://127.0.0.1:4000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;

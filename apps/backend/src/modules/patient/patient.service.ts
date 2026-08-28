@@ -5,12 +5,15 @@ export interface CreatePatientInput {
   fullName: string;
   partnerName?: string;
   phone?: string;
+  partnerPhone?: string;
+  email?: string;
+  partnerEmail?: string;
   dob?: string;
+  partnerDob?: string;
   patientAge?: string;
   partnerAge?: string;
   doctorName?: string;
-  visitDate?: Date | string;
-  deDate?: Date | string;
+  aspirationDate?: Date | string;
   freezingDate?: Date | string;
   thawDate?: Date | string;
   comments?: string;
@@ -77,12 +80,15 @@ export class PatientService {
             fullName: input.fullName.trim(),
             partnerName: input.partnerName ? input.partnerName.trim() : null,
             phone: input.phone ? input.phone.trim() : null,
+            partnerPhone: input.partnerPhone ? input.partnerPhone.trim() : null,
+            email: input.email ? input.email.trim() : null,
+            partnerEmail: input.partnerEmail ? input.partnerEmail.trim() : null,
             dob: input.dob ? input.dob.trim() : null,
+            partnerDob: input.partnerDob ? input.partnerDob.trim() : null,
             patientAge: input.patientAge ? input.patientAge.trim() : null,
             partnerAge: input.partnerAge ? input.partnerAge.trim() : null,
             doctorName: input.doctorName ? input.doctorName.trim() : null,
-            visitDate: input.visitDate ? new Date(input.visitDate) : null,
-            deDate: input.deDate ? new Date(input.deDate) : null,
+            aspirationDate: input.aspirationDate ? new Date(input.aspirationDate) : null,
             freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
             thawDate: input.thawDate ? new Date(input.thawDate) : null,
             comments: input.comments ? input.comments.trim() : null,
@@ -141,12 +147,15 @@ export class PatientService {
         fullName: input.fullName !== undefined ? input.fullName.trim() : existing.fullName,
         partnerName: input.partnerName !== undefined ? input.partnerName.trim() : existing.partnerName,
         phone: input.phone !== undefined ? (input.phone ? input.phone.trim() : null) : existing.phone,
+        partnerPhone: input.partnerPhone !== undefined ? (input.partnerPhone ? input.partnerPhone.trim() : null) : existing.partnerPhone,
+        email: input.email !== undefined ? (input.email ? input.email.trim() : null) : existing.email,
+        partnerEmail: input.partnerEmail !== undefined ? (input.partnerEmail ? input.partnerEmail.trim() : null) : existing.partnerEmail,
         dob: input.dob !== undefined ? (input.dob ? input.dob.trim() : null) : existing.dob,
+        partnerDob: input.partnerDob !== undefined ? (input.partnerDob ? input.partnerDob.trim() : null) : existing.partnerDob,
         patientAge: input.patientAge !== undefined ? (input.patientAge ? input.patientAge.trim() : null) : existing.patientAge,
         partnerAge: input.partnerAge !== undefined ? (input.partnerAge ? input.partnerAge.trim() : null) : existing.partnerAge,
         doctorName: input.doctorName !== undefined ? (input.doctorName ? input.doctorName.trim() : null) : existing.doctorName,
-        visitDate: input.visitDate !== undefined ? (input.visitDate ? new Date(input.visitDate) : null) : existing.visitDate,
-        deDate: input.deDate !== undefined ? (input.deDate ? new Date(input.deDate) : null) : existing.deDate,
+        aspirationDate: input.aspirationDate !== undefined ? (input.aspirationDate ? new Date(input.aspirationDate) : null) : existing.aspirationDate,
         freezingDate: input.freezingDate !== undefined ? (input.freezingDate ? new Date(input.freezingDate) : null) : existing.freezingDate,
         thawDate: input.thawDate !== undefined ? (input.thawDate ? new Date(input.thawDate) : null) : existing.thawDate,
         comments: input.comments !== undefined ? input.comments.trim() : existing.comments,
@@ -313,13 +322,17 @@ export class PatientService {
           patientId: true,
           fullName: true,
           partnerName: true,
-          partnerAge: true,
-          patientAge: true,
-          doctorName: true,
           phone: true,
-          visitDate: true,
+          partnerPhone: true,
+          email: true,
+          partnerEmail: true,
+          dob: true,
+          partnerDob: true,
+          patientAge: true,
+          partnerAge: true,
+          doctorName: true,
+          aspirationDate: true,
           freezingDate: true,
-          deDate: true,
           comments: true,
           createdAt: true,
           updatedAt: true,
