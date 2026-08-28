@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw } from 'lucide-react';
-import { apiRequest } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { DateInputDDMMYYYY } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
@@ -1024,7 +1024,7 @@ export const OcrVerification: React.FC = () => {
                               type="text"
                               value={st.freezingDate || freezingDate || ''}
                               onChange={(e) => updateStrawRow(idx, 'freezingDate', e.target.value)}
-                              placeholder="YYYY-MM-DD"
+                              placeholder="DD/MM/YYYY"
                               className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono text-[8px]"
                             />
                           </td>
@@ -1037,7 +1037,7 @@ export const OcrVerification: React.FC = () => {
                                   const isChecked = e.target.checked;
                                   updateStrawRow(idx, 'isThawing', isChecked);
                                   if (isChecked) {
-                                    updateStrawRow(idx, 'thawDate', st.thawDate || new Date().toISOString().split('T')[0]);
+                                    updateStrawRow(idx, 'thawDate', st.thawDate || formatDateDDMMYYYY(new Date()));
                                   } else {
                                     updateStrawRow(idx, 'thawDate', '');
                                   }
@@ -1050,7 +1050,7 @@ export const OcrVerification: React.FC = () => {
                                   type="text"
                                   value={st.thawDate || ''}
                                   onChange={(e) => updateStrawRow(idx, 'thawDate', e.target.value)}
-                                  placeholder="YYYY-MM-DD"
+                                  placeholder="DD/MM/YYYY"
                                   className="w-20 bg-amber-50 border border-amber-400 rounded py-0.5 px-1 font-mono text-[8px] text-amber-900 font-bold focus:outline-none focus:border-amber-600 shadow-2xs"
                                 />
                               )}
