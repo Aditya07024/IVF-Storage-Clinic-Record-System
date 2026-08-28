@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload } from 'lucide-react';
-import { apiRequest, formatDateDDMMYYYY } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY, getImageUrl } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
@@ -616,7 +616,7 @@ export const PatientDirectory: React.FC = () => {
                         <div className="flex items-center gap-3">
                           {p.photoUrl && (
                             <img
-                              src={p.photoUrl}
+                              src={getImageUrl(p.photoUrl)}
                               alt={p.fullName}
                               className="w-10 h-10 rounded-xl object-cover border-2 border-emerald-500 shadow-2xs shrink-0"
                             />
@@ -1155,7 +1155,7 @@ export const PatientDirectory: React.FC = () => {
                 <div className="relative group shrink-0">
                   {selectedPatient.photoUrl ? (
                     <img
-                      src={selectedPatient.photoUrl}
+                      src={getImageUrl(selectedPatient.photoUrl)}
                       alt={selectedPatient.fullName}
                       className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl object-cover border-2 border-emerald-500 shadow-md"
                     />

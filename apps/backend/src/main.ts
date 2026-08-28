@@ -182,7 +182,7 @@ const uploadSingle = (fieldName: string) => {
   };
 };
 
-// 6. Static Upload File Serving with Path Traversal Protection
+// 6. Static Upload File Serving with Path Traversal Protection & CORS Headers
 app.get('/uploads/:key', (req, res) => {
   const safeFilename = path.basename(req.params.key); // Prevents directory traversal attacks like ../../
   const uploadDirectory = path.resolve(CONFIG.STORAGE_LOCAL_DIR);
@@ -192,6 +192,8 @@ app.get('/uploads/:key', (req, res) => {
     return res.status(404).json({ success: false, error: 'Document image not found.' });
   }
 
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'public, max-age=2592000');
   return res.sendFile(targetPath);
 });
 

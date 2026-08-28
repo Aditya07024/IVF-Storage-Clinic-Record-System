@@ -189,3 +189,13 @@ export function formatDateDDMMYYYY(dateInput: string | Date | null | undefined):
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
 }
+
+export function getImageUrl(pathUrl: string | null | undefined): string {
+  if (!pathUrl) return '';
+  if (pathUrl.startsWith('http://') || pathUrl.startsWith('https://') || pathUrl.startsWith('data:')) {
+    return pathUrl;
+  }
+  const base = getApiBaseUrl().replace(/\/$/, '');
+  const clean = pathUrl.startsWith('/') ? pathUrl : `/${pathUrl}`;
+  return `${base}${clean}`;
+}
