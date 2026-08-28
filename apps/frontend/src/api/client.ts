@@ -207,3 +207,38 @@ export function getImageUrl(pathUrl: string | null | undefined): string {
   }
   return `${base}${cleanPath}`;
 }
+
+export const openSecurePdfBlob = async (patientId: string, reportType?: string) => {
+  try {
+    const apiBase = getApiBaseUrl().replace(/\/$/, '');
+    const accessKey = localStorage.getItem('app_access_key') || localStorage.getItem('site_access_key') || 'clinic2026';
+    const token = localStorage.getItem('access_token') || localStorage.getItem('accessToken') || localStorage.getItem('token') || '';
+
+    const query = reportType ? `?reportType=${reportType}` : '';
+    const url = `${apiBase}/api/documents/patient/${patientId}/pdf${query}`;
+
+    // Fetch PDF binary directly using authenticated headers (NO URL TOKENS OR BACKEND ADDRESS VISIBLE)
+    const response = await fetch(url, {
+      headers: {
+        'x-access-key': accessKey,
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to load report PDF (${response.status})`);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Open clean in-memory blob URL (Backend URL & secret token are 100% hidden)
+    const pdfWindow = window.open(blobUrl, '_blank');
+    if (pdfWindow) {
+      pdfWindow.title = 'IVF Clinical Specimen Report';
+    }
+  } catch (err: any) {
+    console.error('Secure PDF opening error:', err);
+    alert('Error opening report PDF: ' + (err.message || err));
+  }
+};

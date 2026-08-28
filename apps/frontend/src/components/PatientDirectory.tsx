@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload } from 'lucide-react';
-import { apiRequest, formatDateDDMMYYYY, getImageUrl } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
@@ -393,11 +393,7 @@ export const PatientDirectory: React.FC = () => {
   };
 
   const handlePrintPdf = (patientId: string) => {
-    const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
-    const accessKey = localStorage.getItem('site_access_key') || 'clinic2026';
-    const token = localStorage.getItem('access_token') || '';
-    const url = `${apiBase}/api/documents/patient/${patientId}/pdf?key=${encodeURIComponent(accessKey)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
-    window.open(url, '_blank');
+    openSecurePdfBlob(patientId);
   };
 
   const handleDeletePatient = async (id: string, name: string) => {

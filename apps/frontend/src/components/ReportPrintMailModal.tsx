@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Printer, Mail, Send, X, CheckCircle2, AlertCircle, RefreshCw, FileText, Sparkles, ShieldCheck, History } from 'lucide-react';
-import { apiRequest, getApiBaseUrl } from '../api/client';
+import { apiRequest, getApiBaseUrl, openSecurePdfBlob } from '../api/client';
 
 interface ReportPrintMailModalProps {
   isOpen: boolean;
@@ -122,11 +122,7 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
   if (!isOpen || !patient) return null;
 
   const handlePrintPdf = () => {
-    const apiBase = getApiBaseUrl().replace(/\/$/, '');
-    const accessKey = localStorage.getItem('app_access_key') || 'clinic2026';
-    const token = localStorage.getItem('access_token') || localStorage.getItem('accessToken') || '';
-    const pdfUrl = `${apiBase}/api/documents/patient/${patient.id}/pdf?reportType=${reportType}&key=${encodeURIComponent(accessKey)}&token=${encodeURIComponent(token)}`;
-    window.open(pdfUrl, '_blank');
+    openSecurePdfBlob(patient.id, reportType);
   };
 
   const handleSendEmail = async () => {
