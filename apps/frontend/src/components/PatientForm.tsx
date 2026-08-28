@@ -1125,8 +1125,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                   <div className="pt-1 flex items-center justify-center sm:justify-start gap-2">
                     <label className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{photoPreviewUrl ? 'Change Photo' : '📷 Click to Add Patient Photo'}</span>
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{photoPreviewUrl ? '📷 Edit Picture' : '📷 Click to Add Patient Photo'}</span>
                       <input
                         type="file"
                         accept="image/*"

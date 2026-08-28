@@ -172,14 +172,29 @@ export const PatientDirectory: React.FC = () => {
         if (selectedPatient && selectedPatient.id === patientId) {
           setSelectedPatient({ ...selectedPatient, photoUrl: json.photoUrl });
         }
+        if (editingPatient && editingPatient.id === patientId) {
+          setEditingPatient({ ...editingPatient, photoUrl: json.photoUrl });
+        }
         fetchPatients();
       } else {
-        setError(json.error || 'Failed to upload patient photo.');
+        setError(json.error || 'Failed to upload photo');
       }
     } catch (err: any) {
-      setError(err.message || 'Error uploading patient photo.');
+      setError(err.message || 'Error uploading photo');
     } finally {
       setUploadingPhoto(false);
+    }
+  };
+
+  const handleEditExistingPhotoCrop = async (patientId: string, photoUrl: string) => {
+    try {
+      const fullUrl = getImageUrl(photoUrl);
+      const res = await fetch(fullUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `patient-${patientId}-photo.jpg`, { type: 'image/jpeg' });
+      setCropModalFile({ patientId, file });
+    } catch (err) {
+      console.error('Failed to load existing photo for crop studio:', err);
     }
   };
 
@@ -950,32 +965,53 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
-                <div className="sm:col-span-2 flex items-center gap-3.5 bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200 shadow-2xs">
-                  <div className="w-14 h-14 rounded-2xl bg-white border-2 border-amber-400 overflow-hidden shrink-0 flex items-center justify-center shadow-xs">
+                <div className="sm:col-span-2 flex flex-col sm:flex-row items-center gap-3.5 bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 shadow-2xs">
+                  <div className="relative shrink-0">
                     {editingPatient?.photoUrl ? (
-                      <img src={getImageUrl(editingPatient.photoUrl)} alt="Patient Profile" className="w-full h-full object-cover" />
+                      <img
+                        src={getImageUrl(editingPatient.photoUrl)}
+                        alt="Patient Profile"
+                        onClick={() => handleEditExistingPhotoCrop(editingPatient.id, editingPatient.photoUrl)}
+                        className="w-16 h-16 rounded-2xl border-2 border-amber-500 object-cover cursor-pointer shadow-md"
+                        title="Click to Crop & Rotate Studio"
+                      />
                     ) : (
-                      <User className="w-7 h-7 text-slate-400" />
+                      <div className="w-16 h-16 rounded-2xl bg-white border-2 border-dashed border-amber-300 flex items-center justify-center">
+                        <User className="w-7 h-7 text-amber-400" />
+                      </div>
                     )}
                   </div>
-                  <div className="space-y-1">
-                    <label className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95">
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>{editingPatient?.photoUrl ? 'Change & Crop Profile Photo' : '📷 Upload & Crop Photo'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file && editingPatient) {
-                            setCropModalFile({ patientId: editingPatient.id, file });
-                          }
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
-                    <p className="text-[10px] text-amber-900 font-medium">Opens interactive 1:1 Crop & 90° Rotate Studio before updating profile.</p>
+                  <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <label className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95">
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>📷 Edit Picture (New Upload)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file && editingPatient) {
+                              setCropModalFile({ patientId: editingPatient.id, file });
+                            }
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+
+                      {editingPatient?.photoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleEditExistingPhotoCrop(editingPatient.id, editingPatient.photoUrl)}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-xs active:scale-95 transition-all cursor-pointer"
+                        >
+                          <Crop className="w-3.5 h-3.5" />
+                          <span>✂️ Edit Picture (Crop & Rotate)</span>
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-amber-900 font-medium">Clicking either button opens the Crop & 90° Rotate Studio before saving.</p>
                   </div>
                 </div>
 
@@ -1170,37 +1206,56 @@ export const PatientDirectory: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
               {/* Left Column: Patient Photo & Demographics */}
               <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                <div className="relative group shrink-0">
-                  {selectedPatient.photoUrl ? (
-                    <img
-                      src={getImageUrl(selectedPatient.photoUrl)}
-                      alt={selectedPatient.fullName}
-                      className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl object-cover border-2 border-emerald-500 shadow-md"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 font-bold text-xs">
-                      <User className="w-7 h-7 text-slate-400" />
-                      <span className="text-[9px] text-slate-500 mt-0.5">No Photo</span>
-                    </div>
-                  )}
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <div
+                    className="relative group shrink-0 cursor-pointer"
+                    onClick={() => selectedPatient.photoUrl && handleEditExistingPhotoCrop(selectedPatient.id, selectedPatient.photoUrl)}
+                  >
+                    {selectedPatient.photoUrl ? (
+                      <img
+                        src={getImageUrl(selectedPatient.photoUrl)}
+                        alt={selectedPatient.fullName}
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md"
+                        title="Tap to Crop & Rotate Studio"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 font-bold text-xs">
+                        <User className="w-7 h-7 text-slate-400" />
+                        <span className="text-[9px] text-slate-500 mt-0.5">No Photo</span>
+                      </div>
+                    )}
+                  </div>
 
-                  <label className="absolute inset-0 bg-slate-950/75 rounded-2xl flex flex-col items-center justify-center text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-lg backdrop-blur-xs text-center p-1">
-                    <Camera className="w-4 h-4 mb-0.5" />
-                    <span>{uploadingPhoto ? 'Uploading...' : 'Change Photo'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      disabled={uploadingPhoto}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file && selectedPatient) {
-                          setCropModalFile({ patientId: selectedPatient.id, file });
-                        }
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <label className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{uploadingPhoto ? 'Uploading...' : '📷 Edit Picture (Upload New)'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingPhoto}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && selectedPatient) {
+                            setCropModalFile({ patientId: selectedPatient.id, file });
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+
+                    {selectedPatient.photoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => handleEditExistingPhotoCrop(selectedPatient.id, selectedPatient.photoUrl)}
+                        className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-emerald-300 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                      >
+                        <Crop className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>✂️ Edit Picture (Crop & Rotate)</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex-1 min-w-0 space-y-1">
