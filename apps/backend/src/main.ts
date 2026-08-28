@@ -125,6 +125,13 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   next(err);
 });
 
+// Static serving for uploaded patient images & document files on Hostinger VPS
+const uploadsDir = path.resolve(CONFIG.STORAGE_LOCAL_DIR || './uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+
 // 5. Multer File Upload Security & Strict MIME Filter (15MB Limit)
 const upload = multer({
   storage: multer.memoryStorage(),

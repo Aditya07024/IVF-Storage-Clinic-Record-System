@@ -32,6 +32,7 @@ export const CONFIG = {
 
   STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'local',
   STORAGE_LOCAL_DIR: process.env.STORAGE_LOCAL_DIR || './uploads',
+  ENABLE_DISK_PURGE: process.env.ENABLE_DISK_PURGE || 'false',
   
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   GOOGLE_CLOUD_PROJECT_ID: process.env.GOOGLE_CLOUD_PROJECT_ID || '',

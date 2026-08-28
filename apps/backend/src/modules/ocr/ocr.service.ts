@@ -29,6 +29,9 @@ export class OcrService {
    * Purges local disk image files to stay 100% text-only and preserve Render free tier / 5GB disk space
    */
   public purgeDiskStorage() {
+    if (CONFIG.ENABLE_DISK_PURGE !== 'true') {
+      return; // All image uploads & scanned documents are permanently preserved on hostinger server disk
+    }
     try {
       const uploadDir = path.resolve(CONFIG.STORAGE_LOCAL_DIR);
       if (fs.existsSync(uploadDir)) {
@@ -44,7 +47,7 @@ export class OcrService {
           } catch (e) {}
         }
         if (count > 0) {
-          console.log(`[OcrService] Render 5GB Disk Guard: Purged ${count} image file(s) from local storage. Database operates in 100% text-only mode.`);
+          console.log(`[OcrService] Ephemeral Disk Guard: Purged ${count} image file(s) from local storage.`);
         }
       }
     } catch (err: any) {
