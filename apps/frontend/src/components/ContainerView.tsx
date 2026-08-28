@@ -91,6 +91,17 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
   useEffect(() => {
     fetchGlobalOccupancy();
+    const handleStorageUpdate = () => {
+      clearApiCache();
+      fetchGlobalOccupancy();
+      fetchHierarchy();
+    };
+    window.addEventListener('storage-updated', handleStorageUpdate);
+    window.addEventListener('focus', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('storage-updated', handleStorageUpdate);
+      window.removeEventListener('focus', handleStorageUpdate);
+    };
   }, []);
 
   useEffect(() => {

@@ -728,17 +728,23 @@ ${rawText}`;
         ? input.straws
         : [{ strawId: 'STR-01', colorTag: input.visoTubeColor || 'Pink', embryoCount: 1, stage: 'Day 5', grade: '4AA' }];
 
-      // Parse user's selected canister, level, and goblet numbers
+      // Parse user's selected tank, canister, level, and goblet numbers
+      const rawTank = (input.tankName || '').trim();
+      const tankDigits = rawTank.replace(/\D/g, '');
+      const selectedTankCode = rawTank
+        ? (rawTank.toUpperCase().startsWith('CAN-') ? rawTank.toUpperCase() : `CAN-${tankDigits.padStart(2, '0')}`)
+        : 'CAN-01';
+
       const canisterDigits = (input.canisterName || '8').replace(/\D/g, '');
       const selectedCanisterNum = canisterDigits ? parseInt(canisterDigits, 10) : 8;
 
       const levelDigits = (input.level || '1').replace(/\D/g, '');
       const selectedLevelNum = levelDigits ? parseInt(levelDigits, 10) : 1;
 
-      const gobletDigits = (input.visoTubeId || '9').replace(/\D/g, '');
-      const selectedGobletNum = gobletDigits ? parseInt(gobletDigits, 10) : 9;
+      const gobletDigits = (input.visoTubeId || '1').replace(/\D/g, '');
+      const selectedGobletNum = gobletDigits ? parseInt(gobletDigits, 10) : 1;
 
-      // Search for the specific Canister, Level, Goblet, and VisoTube matching user selection
+      // Search for the specific Canister, Level, Goblet, and VisoTube matching user selection (Tank, Canister, Level, Goblet)
       let targetVisoTube = await tx.visoTube.findFirst({
         where: {
           goblet: {
@@ -747,20 +753,27 @@ ${rawText}`;
               levelNumber: selectedLevelNum,
               canister: {
                 canisterNumber: selectedCanisterNum,
+                can: {
+                  code: selectedTankCode,
+                },
               },
             },
           },
         },
       });
 
-      // Fallback 1: match by canister number only
+      // Fallback 1: match by Tank Code, Canister Number & Level Number
       if (!targetVisoTube) {
         targetVisoTube = await tx.visoTube.findFirst({
           where: {
             goblet: {
               level: {
+                levelNumber: selectedLevelNum,
                 canister: {
                   canisterNumber: selectedCanisterNum,
+                  can: {
+                    code: selectedTankCode,
+                  },
                 },
               },
             },
@@ -768,7 +781,42 @@ ${rawText}`;
         });
       }
 
-      // Fallback 2: first available VisoTube in database
+      // Fallback 2: match by Tank Code & Canister Number
+      if (!targetVisoTube) {
+        targetVisoTube = await tx.visoTube.findFirst({
+          where: {
+            goblet: {
+              level: {
+                canister: {
+                  canisterNumber: selectedCanisterNum,
+                  can: {
+                    code: selectedTankCode,
+                  },
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // Fallback 3: match by Tank Code only
+      if (!targetVisoTube) {
+        targetVisoTube = await tx.visoTube.findFirst({
+          where: {
+            goblet: {
+              level: {
+                canister: {
+                  can: {
+                    code: selectedTankCode,
+                  },
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // Fallback 4: first available VisoTube in database
       if (!targetVisoTube) {
         targetVisoTube = await tx.visoTube.findFirst({
           orderBy: { tubeNumber: 'asc' },
@@ -787,7 +835,7 @@ ${rawText}`;
             totalStraws: strawsList.length,
             totalEmbryos: strawsList.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
             visoTubeId: targetVisoTube.id,
-            notes: `Allocated from OCR Verification (Canister C${selectedCanisterNum.toString().padStart(2, '0')}, Level ${selectedLevelNum}, Goblet V${selectedGobletNum.toString().padStart(2, '0')}, Color: ${input.visoTubeColor || 'Pink'})`,
+            notes: `Allocated from OCR Verification (${selectedTankCode}, Canister C${selectedCanisterNum.toString().padStart(2, '0')}, Level ${selectedLevelNum}, Viso Tube V${selectedGobletNum.toString().padStart(2, '0')}, Color: ${input.visoTubeColor || 'Pink'})`,
           },
         });
 

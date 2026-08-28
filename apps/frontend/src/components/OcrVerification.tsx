@@ -385,6 +385,7 @@ export const OcrVerification: React.FC = () => {
           visitDate: visitDate || undefined,
           freezingDate: freezingDate || undefined,
           thawDate: thawDate || undefined,
+          tankName: tankName.trim() || undefined,
           canisterName: canisterName.trim() || undefined,
           visoTubeColor: visoTubeColor.trim() || undefined,
           visoTubeId: visoTubeId.trim() || undefined,
@@ -398,6 +399,11 @@ export const OcrVerification: React.FC = () => {
         setSuccessMsg(`Patient record verified & saved to database (Patient ID: ${res.patient.patientId}).`);
         setActiveRecord(null);
         await fetchPendingRecords();
+        try {
+          const { clearApiCache } = await import('../api/client');
+          clearApiCache();
+          window.dispatchEvent(new CustomEvent('storage-updated'));
+        } catch (e) {}
       }
     } catch (err: any) {
       setError(err.message || 'Failed to verify OCR record.');

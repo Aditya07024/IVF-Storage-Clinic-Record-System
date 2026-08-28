@@ -22,6 +22,7 @@ export interface VerifyOcrInput {
   aspirationDate?: string;
   freezingDate?: string;
   thawDate?: string;
+  tankName?: string;
   canisterName?: string;
   visoTubeColor?: string;
   visoTubeId?: string;
