@@ -786,27 +786,17 @@ app.post('/api/documents/send-email', accessKeyGuard, jwtAuthGuard, async (req: 
   try {
     const pdfBuffer = await documentService.generatePatientPdf(patientId, (reportType as any) || 'OOCYTE');
 
-    const emailResult = await mailService.sendPatientReportEmail({
-      recipientEmail,
+    const queueResult = await mailService.queuePatientReportEmail({
+      patientId: patient.id,
+      recipientEmail: recipientEmail.trim(),
       patientName: patient.fullName,
-      patientId: patient.patientId,
-      pdfBuffer,
       customSubject: subject,
       customMessage,
+      pdfBuffer,
       authToken: req.headers.authorization,
     });
 
-    // Create permanent EmailLog record
-    const emailLog = await prisma.emailLog.create({
-      data: {
-        patientId: patient.id,
-        recipientEmail: recipientEmail.trim(),
-        subject: subject,
-        senderEmail: CONFIG.SMTP_USER || 'srghivfcryo@gmail.com',
-        status: 'DELIVERED',
-        messageId: emailResult.messageId || null,
-      },
-    });
+    const emailLog = queueResult.emailLog;
 
     // Create System Audit Log
     if (req.user) {
@@ -819,10 +809,10 @@ app.post('/api/documents/send-email', accessKeyGuard, jwtAuthGuard, async (req: 
             data: {
               userId: auditUserId,
               userName: req.user.name || req.user.staffId,
-              action: 'SEND_PATIENT_EMAIL_REPORT',
+              action: 'QUEUE_PATIENT_EMAIL_REPORT',
               entityName: 'Patient',
               entityId: patient.id,
-              newData: JSON.stringify({ recipientEmail, messageId: emailResult.messageId, emailLogId: emailLog.id }),
+              newData: JSON.stringify({ recipientEmail, scheduledAt: queueResult.scheduledAt, queuePosition: queueResult.queuePosition }),
             },
           });
         }
@@ -831,10 +821,17 @@ app.post('/api/documents/send-email', accessKeyGuard, jwtAuthGuard, async (req: 
       }
     }
 
+    const delayMinutes = Math.round((queueResult.scheduledAt.getTime() - Date.now()) / 60000);
+    const notice = delayMinutes > 0
+      ? `Report email scheduled in ${delayMinutes} min (Anti-spam queue position #${queueResult.queuePosition})!`
+      : `Report email queued for background delivery to ${recipientEmail}!`;
+
     return res.json({
       success: true,
-      message: `Report email successfully sent to ${recipientEmail} from srghivfcryo@gmail.com!`,
+      message: notice,
       emailLog,
+      queuePosition: queueResult.queuePosition,
+      scheduledAt: queueResult.scheduledAt,
     });
   } catch (err: any) {
     console.error('Failed to send email:', err);

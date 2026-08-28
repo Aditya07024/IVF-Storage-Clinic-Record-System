@@ -123,43 +123,44 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
       return;
     }
 
-    setSendingEmail(true);
-    setEmailStatusMsg(null);
-    setEmailErrorMsg(null);
+    const targetEmail = recipientEmail.trim();
+    const reqType = reportType;
+    const reqSubject = customSubject.trim() || undefined;
+    const reqMsg = customMessage.trim() || undefined;
 
-    try {
-      const res = await apiRequest('/api/documents/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          patientId: patient.id,
-          recipientEmail: recipientEmail.trim(),
-          reportType: reportType,
-          customSubject: customSubject.trim() || undefined,
-          customMessage: customMessage.trim() || undefined,
-        }),
+    // Trigger non-blocking background queue API call
+    apiRequest('/api/documents/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patientId: patient.id,
+        recipientEmail: targetEmail,
+        reportType: reqType,
+        customSubject: reqSubject,
+        customMessage: reqMsg,
+      }),
+    })
+      .then((res) => {
+        if (res.success && onSuccess) {
+          onSuccess(res.message || `Email queued for ${targetEmail}`);
+        }
+      })
+      .catch((err) => {
+        console.error('Background email dispatch error:', err);
       });
 
-      if (res.success) {
-        const msg = res.message || `Report email sent to ${recipientEmail} from srghivfcryo@gmail.com!`;
-        setEmailStatusMsg(msg);
-        fetchEmailLogs(patient.id);
-        if (onSuccess) onSuccess(msg);
-      } else {
-        setEmailErrorMsg(res.error || 'Failed to send email.');
-        fetchEmailLogs(patient.id);
-      }
-    } catch (err: any) {
-      setEmailErrorMsg(err.message || 'Error occurred while sending email.');
-      fetchEmailLogs(patient.id);
-    } finally {
-      setSendingEmail(false);
+    const instantNotice = `Report email queued for ${targetEmail}! (Anti-spam 2-min queue active)`;
+    if (onSuccess) {
+      onSuccess(instantNotice);
     }
+
+    // Close modal immediately so staff can do another work without waiting!
+    onClose();
   };
 
-  const handlePrintAndEmail = async () => {
+  const handlePrintAndEmail = () => {
     handlePrintPdf();
-    await handleSendEmail();
+    handleSendEmail();
   };
 
   return (

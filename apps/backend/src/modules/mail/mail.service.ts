@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { CONFIG } from '../../common/config.js';
+import { prisma } from '../../common/prisma.js';
 
 export interface SendReportEmailInput {
   recipientEmail: string;
@@ -11,7 +12,150 @@ export interface SendReportEmailInput {
   authToken?: string;
 }
 
+export interface EnqueueEmailInput {
+  patientId: string;
+  recipientEmail: string;
+  patientName: string;
+  customSubject?: string;
+  customMessage?: string;
+  pdfBuffer: Buffer;
+  authToken?: string;
+  senderEmail?: string;
+}
+
+interface QueueItem {
+  id: string;
+  emailLogId: string;
+  patientId: string;
+  recipientEmail: string;
+  patientName: string;
+  pdfBuffer: Buffer;
+  customSubject?: string;
+  customMessage?: string;
+  authToken?: string;
+  scheduledAt: Date;
+}
+
 export class MailService {
+  private emailQueue: QueueItem[] = [];
+  private lastScheduledTime: number = 0;
+  private isProcessingQueue: boolean = false;
+
+  constructor() {
+    this.initQueueWorker();
+  }
+
+  private initQueueWorker() {
+    setInterval(() => {
+      this.processBackgroundQueue();
+    }, 5000);
+  }
+
+  private async processBackgroundQueue() {
+    if (this.isProcessingQueue || this.emailQueue.length === 0) return;
+
+    const now = Date.now();
+    const nextItem = this.emailQueue[0];
+
+    if (now >= nextItem.scheduledAt.getTime()) {
+      this.isProcessingQueue = true;
+      const item = this.emailQueue.shift()!;
+
+      try {
+        console.log(`[MailQueue Worker] Processing background email for ${item.recipientEmail} (Log ID: ${item.emailLogId})...`);
+
+        // Update EmailLog to SENDING
+        await prisma.emailLog.update({
+          where: { id: item.emailLogId },
+          data: { status: 'SENDING' },
+        }).catch(() => {});
+
+        const result = await this.sendPatientReportEmail({
+          recipientEmail: item.recipientEmail,
+          patientName: item.patientName,
+          patientId: item.patientId,
+          pdfBuffer: item.pdfBuffer,
+          customSubject: item.customSubject,
+          customMessage: item.customMessage,
+          authToken: item.authToken,
+        });
+
+        // Update EmailLog to DELIVERED
+        await prisma.emailLog.update({
+          where: { id: item.emailLogId },
+          data: {
+            status: 'DELIVERED',
+            messageId: result.messageId,
+            errorMessage: null,
+            sentAt: new Date(),
+          },
+        }).catch(() => {});
+
+        console.log(`[MailQueue Worker] Delivered email to ${item.recipientEmail}! Message ID: ${result.messageId}`);
+      } catch (err: any) {
+        console.error(`[MailQueue Worker] Failed to send background email to ${item.recipientEmail}:`, err?.message);
+        await prisma.emailLog.update({
+          where: { id: item.emailLogId },
+          data: {
+            status: 'FAILED',
+            errorMessage: err?.message || 'Background email delivery failed.',
+          },
+        }).catch(() => {});
+      } finally {
+        this.isProcessingQueue = false;
+      }
+    }
+  }
+
+  async queuePatientReportEmail(input: EnqueueEmailInput) {
+    const INTERVAL_MS = 2 * 60 * 1000; // 2 Minutes anti-spam delay between emails
+    const now = Date.now();
+
+    let scheduledTime = now;
+    if (this.lastScheduledTime > now) {
+      scheduledTime = this.lastScheduledTime + INTERVAL_MS;
+    } else {
+      scheduledTime = now;
+    }
+    this.lastScheduledTime = scheduledTime;
+
+    const scheduledAt = new Date(scheduledTime);
+    const queuePosition = this.emailQueue.length + 1;
+
+    const emailLog = await prisma.emailLog.create({
+      data: {
+        patientId: input.patientId,
+        recipientEmail: input.recipientEmail.trim(),
+        subject: input.customSubject || `Official IVF Specimen Storage Report - ${input.patientName} (${input.patientId})`,
+        senderEmail: input.senderEmail || CONFIG.SMTP_USER || 'srghivfcryo@gmail.com',
+        status: queuePosition === 1 && scheduledTime <= now + 5000 ? 'SENDING' : 'QUEUED',
+        messageId: `queued_pos_${queuePosition}`,
+        sentAt: scheduledAt,
+      },
+    });
+
+    this.emailQueue.push({
+      id: emailLog.id,
+      emailLogId: emailLog.id,
+      patientId: input.patientId,
+      recipientEmail: input.recipientEmail.trim(),
+      patientName: input.patientName,
+      pdfBuffer: input.pdfBuffer,
+      customSubject: input.customSubject,
+      customMessage: input.customMessage,
+      authToken: input.authToken,
+      scheduledAt,
+    });
+
+    return {
+      success: true,
+      queued: true,
+      queuePosition,
+      scheduledAt,
+      emailLog,
+    };
+  }
+
   private createTransporter(port: number = 465) {
     const user = (process.env.SMTP_USER || CONFIG.SMTP_USER || 'srghivfcryo@gmail.com').trim();
     const rawPass = process.env.SMTP_PASS || CONFIG.SMTP_PASS || 'vzba dnde aubt akas';
