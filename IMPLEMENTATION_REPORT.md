@@ -119,7 +119,7 @@
 
 ## 13. Deployment
 - **Frontend**: Vercel / Netlify / Static Hosting
-- **Backend / Database**: Render / Direct Node.js on Hostinger KVM with Neon PostgreSQL
+- **Backend / Database**: Render / Direct Node.js on Hostinger KVM with Hostinger VPS PostgreSQL
 - **Proxy**: Nginx + Cloudflare HTTPS SSL
 
 ## 14. Testing Performed

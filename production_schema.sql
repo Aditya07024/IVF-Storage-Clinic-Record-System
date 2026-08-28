@@ -1,6 +1,6 @@
 -- =============================================================================
 -- IVF Storage Clinic Record System - Production Database Schema & Initial Setup
--- Compatible with PostgreSQL / Neon / AWS RDS / Supabase / DigitalOcean
+-- Compatible with PostgreSQL / Hostinger VPS / AWS RDS / Supabase / DigitalOcean
 -- =============================================================================
 
 -- 1. DROP EXISTING TABLES (IF RE-INITIALIZING)

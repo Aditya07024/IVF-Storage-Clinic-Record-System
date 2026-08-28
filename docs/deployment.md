@@ -2,7 +2,7 @@
 
 ## Hosting Architecture
 - **Frontend**: Vercel / Netlify / Static Server (Vite Single Page App)
-- **Backend / DB**: Node.js Service (Render / Hostinger KVM / PM2) with Neon PostgreSQL Database
+- **Backend / DB**: Node.js Service (Render / Hostinger KVM / PM2) with Hostinger VPS PostgreSQL Database
 - **Security / Proxy**: Cloudflare DNS, HTTPS SSL, Web Application Firewall (WAF)
 - **Object Storage**: Local server disk (`./uploads`) / Private Cloudflare R2
 
