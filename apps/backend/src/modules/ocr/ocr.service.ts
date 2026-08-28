@@ -631,6 +631,7 @@ ${rawText}`;
           data: {
             patientId: targetPatientId || undefined,
             fullName: input.fullName,
+            photoUrl: record.storageKey || undefined,
             partnerName: input.partnerName,
             phone: input.phone,
             partnerPhone: input.partnerPhone,
@@ -654,6 +655,7 @@ ${rawText}`;
             where: { id: existing.id },
             data: {
               fullName: input.fullName,
+              photoUrl: record.storageKey || existing.photoUrl || undefined,
               partnerName: input.partnerName,
               phone: input.phone,
               partnerPhone: input.partnerPhone,
@@ -675,6 +677,7 @@ ${rawText}`;
             data: {
               patientId: targetPatientId,
               fullName: input.fullName,
+              photoUrl: record.storageKey || null,
               partnerName: input.partnerName,
               phone: input.phone,
               partnerPhone: input.partnerPhone,
@@ -701,6 +704,7 @@ ${rawText}`;
           data: {
             patientId: pId,
             fullName: input.fullName,
+            photoUrl: record.storageKey || null,
             partnerName: input.partnerName,
             phone: input.phone,
             partnerPhone: input.partnerPhone,

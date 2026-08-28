@@ -1390,6 +1390,34 @@ export const PatientDirectory: React.FC = () => {
               </div>
             )}
 
+            {/* Attached Scanned Document & Verification Record Image */}
+            {selectedPatient.photoUrl && (
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <span>Attached Scanned Document & Verification Record</span>
+                  </span>
+                  <a
+                    href={getImageUrl(selectedPatient.photoUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
+                  >
+                    View Full Image ↗
+                  </a>
+                </div>
+                <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs flex justify-center">
+                  <img
+                    src={getImageUrl(selectedPatient.photoUrl)}
+                    alt={`Scanned Document for ${selectedPatient.fullName}`}
+                    className="max-h-64 w-auto object-contain rounded-lg border border-slate-100 shadow-sm cursor-pointer hover:opacity-95 transition-all"
+                    onClick={() => window.open(getImageUrl(selectedPatient.photoUrl), '_blank')}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Active Storage Batches Section */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
