@@ -96,6 +96,43 @@ export class MailService {
       </html>
     `;
 
+    // 1. Try Resend HTTPS API (Port 443 - Never blocked by Render or cloud firewalls)
+    const resendApiKey = process.env.RESEND_API_KEY || CONFIG.RESEND_API_KEY;
+    if (resendApiKey) {
+      try {
+        console.log('[MailService] Sending email via Resend HTTPS API (Port 443)...');
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey.trim()}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: process.env.RESEND_FROM || CONFIG.RESEND_FROM || 'SRGH IVF Cryo Bank <onboarding@resend.dev>',
+            to: [recipientEmail.trim()],
+            subject: subject,
+            html: htmlContent,
+            attachments: [
+              {
+                filename: `IVF_Patient_Cryo_Report_${patientId}.pdf`,
+                content: pdfBuffer.toString('base64'),
+              },
+            ],
+          }),
+        });
+
+        const resendData: any = await resendResponse.json();
+        if (resendResponse.ok && resendData.id) {
+          console.log(`[MailService] Email delivered successfully via Resend API to ${recipientEmail}! ID: ${resendData.id}`);
+          return { success: true, messageId: resendData.id };
+        } else {
+          console.warn('[MailService] Resend API warning:', resendData?.message || JSON.stringify(resendData));
+        }
+      } catch (resendErr: any) {
+        console.warn('[MailService] Resend API fetch failed:', resendErr?.message);
+      }
+    }
+
     const mailOptions = {
       from: CONFIG.SMTP_FROM || `"SRGH IVF Cryo Bank" <${user}>`,
       to: recipientEmail.trim(),
@@ -123,8 +160,8 @@ export class MailService {
         const transporter = nodemailer.createTransport({
           ...cfg,
           tls: { rejectUnauthorized: false },
-          connectionTimeout: 10000,
-          socketTimeout: 12000,
+          connectionTimeout: 5000,
+          socketTimeout: 5000,
         } as any);
 
         const info = await transporter.sendMail(mailOptions);
@@ -136,7 +173,12 @@ export class MailService {
       }
     }
 
-    throw new Error(`Gmail SMTP delivery error: ${lastErr?.message || 'Authentication or network timeout.'}`);
+    const errMsg = lastErr?.message || '';
+    if (errMsg.toLowerCase().includes('timeout') || errMsg.toLowerCase().includes('etimedout')) {
+      throw new Error(`Render cloud firewall blocks outbound SMTP ports 465 & 587. Add RESEND_API_KEY to Render environment variables to enable instant HTTPS (Port 443) email delivery.`);
+    }
+
+    throw new Error(`Gmail SMTP delivery error: ${errMsg || 'Authentication or network timeout.'}`);
   }
 }
 

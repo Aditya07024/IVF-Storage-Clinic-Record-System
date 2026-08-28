@@ -39,6 +39,10 @@ export const CONFIG = {
   GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS || '',
   OCR_PROVIDER: process.env.OCR_PROVIDER || 'google',
 
+  // Transactional Email API Keys
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  RESEND_FROM: process.env.RESEND_FROM || 'SRGH IVF Cryo Bank <onboarding@resend.dev>',
+
   // SMTP Email Settings
   SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
   SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
