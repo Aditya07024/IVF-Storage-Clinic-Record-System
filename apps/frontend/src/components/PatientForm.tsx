@@ -1409,7 +1409,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       <option value="Day 3">Day 3</option>
                       <option value="Day 5">Day 5</option>
                       <option value="Day 6">Day 6</option>
-                      <option value="Day 5/6">Day 5/6</option>
+
                     </select>
                   </div>
 
