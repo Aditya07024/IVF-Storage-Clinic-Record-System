@@ -81,6 +81,7 @@ pm2 startup | tail -n 1 | sudo bash || true
 
 # 8. Configure Nginx Reverse Proxy for Backend API & Image Storage
 echo "🌐 Configuring Nginx Web Server for Backend API & Image Uploads..."
+if [ ! -f "/etc/nginx/sites-available/ivf" ] || ! grep -q "listen 443" /etc/nginx/sites-available/ivf; then
 cat <<EOT | sudo tee /etc/nginx/sites-available/ivf
 server {
     listen 80;
@@ -110,8 +111,11 @@ server {
 }
 EOT
 
-sudo ln -sf /etc/nginx/sites-available/ivf /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
+  sudo ln -sf /etc/nginx/sites-available/ivf /etc/nginx/sites-enabled/
+  sudo rm -f /etc/nginx/sites-enabled/default
+  sudo certbot --nginx -d api.sgrhivfcryo.in --non-interactive --agree-tos -m srghivfcryo@gmail.com || true
+fi
+
 sudo nginx -t
 sudo systemctl restart nginx
 
