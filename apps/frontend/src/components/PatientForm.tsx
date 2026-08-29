@@ -1380,7 +1380,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <DateInputDDMMYYYY
-                    label="Date of ASP (Aspiration)"
+                    label="Date of Egg Retrieval"
                     value={aspirationDate}
                     onChange={(val) => setAspirationDate(val)}
                   />

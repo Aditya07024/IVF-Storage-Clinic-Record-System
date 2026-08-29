@@ -828,7 +828,7 @@ export const OcrVerification: React.FC = () => {
                 />
 
                 <DateInputDDMMYYYY
-                  label="Date of ASP"
+                  label="Date of Egg Retrieval"
                   value={visitDate}
                   onChange={(val) => setVisitDate(val)}
                 />

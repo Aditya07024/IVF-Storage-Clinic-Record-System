@@ -1470,7 +1470,7 @@ export const PatientDirectory: React.FC = () => {
                         <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700">
                           {batch.aspirationDate && (
                             <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 font-bold">
-                              ASP: {formatDateDDMMYYYY(batch.aspirationDate)}
+                              Egg Retrieval: {formatDateDDMMYYYY(batch.aspirationDate)}
                             </span>
                           )}
                           <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 font-bold">
