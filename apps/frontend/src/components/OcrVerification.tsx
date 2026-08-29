@@ -695,7 +695,7 @@ export const OcrVerification: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Google Vision OCR Raw Output:</div>
+              <div className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Google Lens Raw Output:</div>
               <pre className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-[11px] font-mono text-slate-800 max-h-40 overflow-y-auto whitespace-pre-wrap">
                 {activeRecord.rawOcrText}
               </pre>
