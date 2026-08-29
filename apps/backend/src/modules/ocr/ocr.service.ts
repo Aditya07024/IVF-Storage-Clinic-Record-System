@@ -588,13 +588,6 @@ ${rawText}`;
       },
     });
 
-    // 6. Immediately purge local image file to keep storage 100% text-only for Render 5GB limit
-    try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    } catch (e) {}
-
     return {
       ocrRecordId: record.id,
       storageKey: uniqueFilename,

@@ -127,12 +127,16 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   next(err);
 });
 
-// Static serving for uploaded patient images & document files on Hostinger VPS
+// Static serving for uploaded patient images & document files on Hostinger VPS & Render
 const uploadsDir = path.resolve(CONFIG.STORAGE_LOCAL_DIR || './uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(uploadsDir));
 
 // Serve official project invoice & scope agreement HTML document
 app.get('/invoice.html', (req: Request, res: Response) => {
