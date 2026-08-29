@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw } from 'lucide-react';
-import { apiRequest, formatDateDDMMYYYY } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl } from '../api/client';
 import { DateInputDDMMYYYY } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
@@ -391,7 +391,8 @@ export const OcrVerification: React.FC = () => {
       const formData = new FormData();
       formData.append('image', optimizedFile);
 
-      const res = await fetch('/api/ocr/upload', {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/ocr/upload`, {
         method: 'POST',
         headers: {
           'x-access-key': accessKey,
