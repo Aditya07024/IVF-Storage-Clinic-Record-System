@@ -574,12 +574,15 @@ ${rawText}`;
       }
     }
 
-    // 6. Store pending OCR Record in database for human staff verification
+    const cleanMime = mimeType && mimeType.startsWith('image/') ? mimeType : 'image/jpeg';
+    const base64Image = `data:${cleanMime};base64,${optimizedBuffer.toString('base64')}`;
+
+    // 6. Store pending OCR Record directly in PostgreSQL database (Base64 + Permanent Disk Backup)
     const record = await prisma.ocrRecord.create({
       data: {
         patientId: resolvedPatientUuid,
         originalFilename: filename,
-        storageKey: uniqueFilename,
+        storageKey: base64Image,
         mimeType,
         fileSize,
         rawOcrText,
