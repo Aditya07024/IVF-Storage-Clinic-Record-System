@@ -181,7 +181,7 @@ export const ThawWorkflow: React.FC = () => {
             <span>Doctor Embryo Thaw / Warm / Withdrawal Workflow</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
-            Search by <strong className="text-slate-900">Registration No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, or <strong className="text-slate-900">Patient Name</strong>
+            Search by <strong className="text-slate-900">Registration ID</strong>, <strong className="text-slate-900">Mobile Phone</strong>, or <strong className="text-slate-900">Patient Name</strong>
           </p>
         </div>
 
@@ -215,7 +215,7 @@ export const ThawWorkflow: React.FC = () => {
             type="text"
             value={patientIdQuery}
             onChange={handleInputChange}
-            placeholder="Search by Reg No (e.g. IVF-2026-000001), Mobile Phone, or Patient Name..."
+            placeholder="Search by Reg ID (e.g. IVF-2026-000001), Mobile Phone, or Patient Name..."
             className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
           />
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />

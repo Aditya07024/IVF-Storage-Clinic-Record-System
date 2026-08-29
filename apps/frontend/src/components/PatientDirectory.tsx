@@ -437,7 +437,7 @@ export const PatientDirectory: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Patient Record Directory</h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
-            Search by <strong className="text-slate-900">Reg No (ID)</strong>, <strong className="text-slate-900">Mobile Phone</strong>, <strong className="text-slate-900">Patient Name</strong>, or <strong className="text-slate-900">Freezing Date</strong>
+            Search by <strong className="text-slate-900">Registration ID</strong>, <strong className="text-slate-900">Mobile Phone</strong>, <strong className="text-slate-900">Patient Name</strong>, or <strong className="text-slate-900">Freezing Date</strong>
           </p>
         </div>
 
@@ -450,7 +450,7 @@ export const PatientDirectory: React.FC = () => {
                 value={queryInput}
                 onChange={(e) => setQueryInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleExecuteSearch(e)}
-                placeholder="Type Reg No, Mobile, Name, or Date..."
+                placeholder="Type Reg ID, Mobile, Name, or Date..."
                 className="w-full max-w-full min-w-0 box-border bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -539,7 +539,7 @@ export const PatientDirectory: React.FC = () => {
           <table className="w-full text-left text-sm text-slate-800">
             <thead className="bg-slate-100 text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4">Reg No (ID)</th>
+                <th className="px-6 py-4">Registration ID</th>
                 <th className="px-6 py-4">Full Name</th>
                 <th className="px-6 py-4">Freezing / Storage Date</th>
                 <th className="px-6 py-4">Mobile Phone</th>
@@ -805,7 +805,7 @@ export const PatientDirectory: React.FC = () => {
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">Execute Thaw / Warming Operation</h2>
                   <p className="text-xs text-slate-500 font-mono font-bold">
-                    Patient: {quickThawPatient.fullName} • Reg No: {quickThawPatient.patientId}
+                    Patient: {quickThawPatient.fullName} • Reg ID: {quickThawPatient.patientId}
                   </p>
                 </div>
               </div>
@@ -958,7 +958,7 @@ export const PatientDirectory: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Registration No (Unique Primary Key) <span className="text-rose-600 font-bold">*</span>
+                    Registration ID (Unique Primary Key) <span className="text-rose-600 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -1336,7 +1336,7 @@ export const PatientDirectory: React.FC = () => {
             {/* Patient Metadata Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Registration No (ID):</span>
+                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Registration ID:</span>
                 <strong className="text-emerald-800 font-mono text-sm">{selectedPatient.patientId}</strong>
               </div>
 
@@ -1570,7 +1570,7 @@ export const PatientDirectory: React.FC = () => {
                   <table className="w-full text-left text-xs font-mono">
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
-                        <th className="py-2 px-3">Straw ID & Color</th>
+                        <th className="py-2 px-3">Straw ID & Colour</th>
                         <th className="py-2 px-3">Thaw Date & Time</th>
                         <th className="py-2 px-3">Executing Doctor / Staff</th>
                         <th className="py-2 px-3">Freed Storage Location</th>
@@ -1852,7 +1852,7 @@ export const PatientDirectory: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Straw Tag Color <span className="text-rose-600">*</span>
+                    Straw Tag Colour <span className="text-rose-600">*</span>
                   </label>
                   <select
                     value={editStrawColor}

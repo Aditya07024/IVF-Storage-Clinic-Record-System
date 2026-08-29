@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check } from 'lucide-react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check, Eye } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
@@ -53,9 +53,9 @@ export const CLINIC_DOCTORS = [
   'Dr. Shweta Mittal',
   'Dr. Neeti Tiwari',
   'Dr. Ruma Satwik',
-  'Dr . Sakshi Nayar',
-  'Dr. Bhauani shekhar',
-  'Dr. Tejashvi Strotri',
+  'Dr. Sakshi Nayar',
+  'Dr. Bhawani shekhar',
+  'Dr. Tejashri Shrotri',
 ] as const;
 
 export const FRAGMENTATION_OPTIONS = ['No', '+', '++'] as const;
@@ -324,6 +324,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [thawSuccessMsg, setThawSuccessMsg] = useState<string | null>(null);
   const [saveSuccessDetails, setSaveSuccessDetails] = useState<any | null>(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [viewDetailStraw, setViewDetailStraw] = useState<any | null>(null);
 
   // Form Fields
   const [customPatientId, setCustomPatientId] = useState('');
@@ -913,7 +914,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Search className="w-4 h-4 text-emerald-600" />
-              <span>Search Existing Patient by Reg No (ID), Mobile, or Name:</span>
+              <span>Search Existing Patient by Reg ID, Mobile, or Name:</span>
             </h2>
           </div>
 
@@ -922,7 +923,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               type="text"
               value={existingSearchQuery}
               onChange={(e) => handleSearchExisting(e.target.value)}
-              placeholder="Type Reg No (e.g. IVF-2026-000001), Mobile, or Patient Name..."
+              placeholder="Type Reg ID (e.g. IVF-2026-000001), Mobile, or Patient Name..."
               className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -947,7 +948,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold text-slate-900 text-sm truncate">{p.fullName}</span>
                       <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-950 rounded border border-emerald-300 shrink-0">
-                        Reg No: {p.patientId}
+                        Reg ID: {p.patientId}
                       </span>
                     </div>
 
@@ -985,22 +986,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 Existing Patient Selected: {selectedExistingPatient.fullName}
               </div>
               <div className="text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                <span>Reg No: {selectedExistingPatient.patientId}</span>
-                {/* <span>•</span> */}
-                {/* <span>Total Batches Recorded: {selectedExistingPatient.batches?.length || 0}</span> */}
-                {/* {(() => {
-                  const activeBatches = selectedExistingPatient.batches?.filter((b: any) =>
-                    b.straws?.some((s: any) => s.status === 'OCCUPIED')
-                  ).length || 0;
-                  const activeStraws = selectedExistingPatient.batches?.reduce((acc: number, b: any) => {
-                    return acc + (b.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0);
-                  }, 0) || 0;
-                  return (
-                    <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11px] border border-emerald-300 font-bold ml-1">
-                      {activeBatches} Active Batch(es) • {activeStraws} Active Straw(s) in Storage
-                    </span>
-                  );
-                })()} */}
+                <span>Reg ID: {selectedExistingPatient.patientId}</span>
               </div>
             </div>
           </div>
@@ -1057,7 +1043,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             if (b.straws) {
               b.straws.forEach((s: any) => {
                 if (s.status === 'OCCUPIED') {
-                  activeStraws.push({ ...s, batchCode: b.batchId, storageDate: b.storageDate });
+                  activeStraws.push({
+                    ...s,
+                    batchCode: b.batchId,
+                    freezingDate: b.freezingDate || b.storageDate,
+                    aspirationDate: b.aspirationDate,
+                    doctorName: b.doctorName || selectedExistingPatient.doctorName,
+                    embryoStage: b.embryoStage,
+                    batchComments: b.comments || b.notes,
+                  });
                 }
               });
             }
@@ -1082,23 +1076,33 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 <Flame className="w-5 h-5 text-rose-600" />
                 <span>Active Stored Embryos ({activeStraws.length} Active Straws in Cryo Storage)</span>
               </div>
-              {/* <span className="text-[10px] text-rose-800 font-bold font-mono bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
-                Direct Thaw / Withdrawal Available Here
-              </span> */}
+              <span className="text-[10px] text-emerald-800 font-bold font-mono bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                Click any straw to view full specimen details
+              </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {activeStraws.map((straw: any) => {
                 const locCode = straw.visoTube?.locationCode || '';
                 const parsedLoc = locCode ? parseLocationCode(locCode).formatted : '';
-                const embryoCount = straw.embryos ? straw.embryos.length : 2;
+                const embryoCount = straw.embryos ? straw.embryos.length : (straw.embryoCount || 1);
 
                 return (
-                  <div key={straw.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 shadow-xs">
+                  <div
+                    key={straw.id}
+                    onClick={() => setViewDetailStraw(straw)}
+                    className="p-4 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-400 rounded-2xl space-y-3 shadow-xs cursor-pointer transition-all group"
+                  >
                     <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                      <span className="font-mono font-bold text-xs text-slate-900">{straw.strawId}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs bg-slate-900 text-white px-2 py-0.5 rounded-lg">{straw.strawId}</span>
+                        <span className="text-[10px] text-emerald-700 font-bold group-hover:underline flex items-center gap-1">
+                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>View All Details</span>
+                        </span>
+                      </div>
                       <span className={`text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-md border ${getStrawColorBadgeClass(straw.color)}`}>
-                        {embryoCount} Embryos ({straw.color || 'Pink'} Tag)
+                        {embryoCount} Embryo{embryoCount > 1 ? 's' : ''} ({straw.color || 'Pink'})
                       </span>
                     </div>
 
@@ -1120,11 +1124,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setThawModalStraw(straw);
-                        // setThawDoctorNotes();
                       }}
-                      className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98"
+                      className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
                     >
                       <Flame className="w-4 h-4 text-amber-300" />
                       <span>Thaw / Withdraw This Straw Now</span>
@@ -1143,35 +1147,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-2">
             <span>Patient & Clinical Details</span>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const randomId = `IVF-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-                  setCustomPatientId(randomId);
-                  setFullName('Sunita Verma');
-                  setPartnerName('Deepak Verma');
-                  setPhone('+91 98260 78901');
-                  setPartnerPhone('+91 98260 12345');
-                  setEmail('sunita.verma@example.com');
-                  setPartnerEmail('deepak.verma@example.com');
-                  setDob('1994-05-15');
-                  setPartnerDob('1991-08-20');
-                  setPatientAge('32 Yrs');
-                  setPartnerAge('35 Yrs');
-                  setDoctorName('Dr. Ananya Sharma');
-                  const today = new Date().toISOString().split('T')[0];
-                  setAspirationDate(today);
-                  setFreezingDate(today);
-                  setStorageDate(today);
-                  setComments('');
-                }}
-                className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs rounded-xl border border-amber-300 shadow-2xs transition-all active:scale-95 flex items-center gap-1.5"
-                title="Auto-fill sample patient data"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                <span>Auto-Fill Demo Data</span>
-              </button>
-
               {selectedExistingPatient && (
                 <>
                   <button
@@ -1255,7 +1230,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
             <div className="md:col-span-2 min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                <span>Registration No (Unique Primary Key) <span className="text-rose-600 font-bold">*</span></span>
+                <span>Registration ID (Unique Primary Key) <span className="text-rose-600 font-bold">*</span></span>
               </label>
               <input
                 type="text"
@@ -1537,10 +1512,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               {/* GRANULAR PER-STRAW ALLOCATION TABLE / CARDS */}
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <span>Straw Configuration</span>
-                    <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                      Total {strawsCount} Straws ({strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0)} Embryo)
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                    <span className="uppercase tracking-wider">Straw Configuration</span>
+                    <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-bold normal-case">
+                      TOTAL {strawsCount} STRAWS - {strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0)} EMBRYO(s)
                     </span>
                   </h4>
                 </div>
@@ -1588,7 +1563,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                           <div>
                             <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">
-                              Straw Color *
+                              Straw Colour *
                             </label>
                             <select
                               value={item.color}
@@ -2094,6 +2069,134 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         </div>
       )}
 
+      {/* FULL STRAW SPECIMEN & CLINICAL DETAILS OVERVIEW MODAL */}
+      {viewDetailStraw && (
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="px-3 py-1 bg-slate-900 text-white rounded-xl font-mono font-bold text-sm">
+                  {viewDetailStraw.strawId}
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStrawColorBadgeClass(viewDetailStraw.color)}`}>
+                  {viewDetailStraw.color || 'Pink'}
+                </span>
+                {viewDetailStraw.isPgt && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs bg-purple-100 text-purple-900 border border-purple-300 font-bold">
+                    PGT TESTED
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewDetailStraw(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center font-bold cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Storage Location Card */}
+            <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-1 text-xs">
+              <div className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider">
+                Cryo Storage Physical Destination
+              </div>
+              <div className="font-mono font-bold text-emerald-950 bg-white p-2.5 rounded-xl border border-emerald-300">
+                {viewDetailStraw.visoTube?.locationCode
+                  ? parseLocationCode(viewDetailStraw.visoTube.locationCode).formatted
+                  : 'Location Recorded'}
+              </div>
+            </div>
+
+            {/* Embryo Breakdown List */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+              <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between border-b border-slate-200 pb-2">
+                <span>Stored Embryos Breakdown ({viewDetailStraw.embryos?.length || viewDetailStraw.embryoCount || 1} Embryos)</span>
+                <span className="bg-blue-100 text-blue-900 px-2 py-0.5 rounded border border-blue-300 text-[10px] font-bold">
+                  Stage: {viewDetailStraw.embryoStage || 'Day 5'}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {viewDetailStraw.embryos && viewDetailStraw.embryos.length > 0 ? (
+                  viewDetailStraw.embryos.map((emb: any, eIdx: number) => (
+                    <div key={eIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-1 shadow-2xs">
+                      <div className="flex items-center justify-between font-bold">
+                        <span className="text-slate-900">Embryo #{emb.embryoNumber || eIdx + 1}</span>
+                        <span className="font-mono text-emerald-800 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          Grade: {emb.grade || 'N/A'}
+                        </span>
+                      </div>
+                      {emb.notes && (
+                        <div className="text-slate-600 text-[11px] italic">
+                          "{emb.notes}"
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-700">
+                    Grade: {viewDetailStraw.grade || '4AA'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Clinical Metadata */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
+              <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider border-b border-slate-200 pb-2">
+                Clinical Details & Physician Remarks
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-semibold block">Attending Doctor:</span>
+                  <strong className="text-emerald-900 font-bold">{viewDetailStraw.doctorName || selectedExistingPatient?.doctorName || 'N/A'}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-semibold block">Date of Egg Retrieval:</span>
+                  <strong className="text-slate-900 font-bold">{formatDateDDMMYYYY(viewDetailStraw.aspirationDate || selectedExistingPatient?.aspirationDate)}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-semibold block">Freezing Date:</span>
+                  <strong className="text-slate-900 font-bold">{formatDateDDMMYYYY(viewDetailStraw.freezingDate || viewDetailStraw.storageDate)}</strong>
+                </div>
+              </div>
+
+              {(viewDetailStraw.comments || viewDetailStraw.batchComments) && (
+                <div className="pt-2 border-t border-slate-200/60 text-xs">
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Remarks & Notes:</span>
+                  <p className="text-slate-700 italic font-medium">"{viewDetailStraw.comments || viewDetailStraw.batchComments}"</p>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setViewDetailStraw(null)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Close Overview
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = viewDetailStraw;
+                  setViewDetailStraw(null);
+                  setThawModalStraw(target);
+                }}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+              >
+                <Flame className="w-4 h-4 text-amber-300" />
+                <span>Thaw / Withdraw This Straw Now</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Print / Send Email Report Modal */}
       <ReportPrintMailModal
         isOpen={!!reportMailPatient}
@@ -2148,7 +2251,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between border-b border-slate-200 pb-2">
                 <span>1. Patient & Partner Profile Summary</span>
                 <span className="bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold border border-emerald-300">
-                  Reg No: {customPatientId || selectedExistingPatient?.patientId || 'Auto-Generated'}
+                  Reg ID: {customPatientId || selectedExistingPatient?.patientId || 'Auto-Generated'}
                 </span>
               </div>
 

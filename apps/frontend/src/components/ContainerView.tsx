@@ -770,7 +770,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     {selectedTube.locationCode}
                   </span>
                   <span className={`text-xs px-3 py-0.5 rounded-full font-mono font-bold border ${VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.bg || ''}`}>
-                    Color: {VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.name}
+                    Colour: {VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.name}
                   </span>
                 </div>
                 <h2 className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight leading-tight flex items-center gap-2">
@@ -911,7 +911,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                               <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 space-y-1">
                                 <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
                                   <Tag className="w-3 h-3 text-emerald-600 shrink-0" />
-                                  <span>Straw Color</span>
+                                  <span>Straw Colour</span>
                                 </div>
                                 <div className="font-bold text-slate-900">
                                   {straw.color || 'Pink'}

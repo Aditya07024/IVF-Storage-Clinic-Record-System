@@ -712,7 +712,7 @@ export const OcrVerification: React.FC = () => {
             <form onSubmit={handleVerify} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1 md:col-span-2">
-                  <label className="font-semibold text-slate-700">Registration No (Patient ID)</label>
+                  <label className="font-semibold text-slate-700">Registration ID</label>
                   <input
                     type="text"
                     value={patientId}
