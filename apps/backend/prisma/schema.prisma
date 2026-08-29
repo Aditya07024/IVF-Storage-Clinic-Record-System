@@ -190,7 +190,7 @@ model ThawRecord {
   batchId              String
   originalLocationCode String
   thawDate             DateTime @default(now())
-  doctorId             String
+  doctorId             String?
   doctorName           String
   status               String   @default("COMPLETED")
   doctorNotes          String?
@@ -198,7 +198,7 @@ model ThawRecord {
 
   straw                Straw    @relation(fields: [strawId], references: [id])
   patient              Patient  @relation(fields: [patientId], references: [id])
-  doctor               User     @relation(fields: [doctorId], references: [id])
+  doctor               User?    @relation(fields: [doctorId], references: [id], onDelete: SetNull)
 
   @@index([patientId])
   @@index([strawId])
@@ -239,7 +239,7 @@ model OcrRecord {
 
 model AuditLog {
   id         String   @id @default(uuid())
-  userId     String
+  userId     String?
   userName   String
   action     String
   entityName String
@@ -249,7 +249,7 @@ model AuditLog {
   ipAddress  String?
   createdAt  DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([action])

@@ -341,7 +341,25 @@ export class AuthService {
       throw new Error('Primary system administrator (ADMIN001) cannot be deleted.');
     }
 
-    await prisma.user.delete({ where: { id: targetUserId } });
+    // Clean up or detach foreign-key references before deleting user to prevent constraint failures
+    await prisma.$transaction([
+      prisma.auditLog.updateMany({
+        where: { userId: targetUserId },
+        data: { userId: null },
+      }),
+      prisma.ocrRecord.updateMany({
+        where: { verifiedBy: targetUserId },
+        data: { verifiedBy: null },
+      }),
+      prisma.thawRecord.updateMany({
+        where: { doctorId: targetUserId },
+        data: { doctorId: null },
+      }),
+      prisma.patientNote.deleteMany({
+        where: { authorId: targetUserId },
+      }),
+      prisma.user.delete({ where: { id: targetUserId } }),
+    ]);
 
     if (adminUserId) {
       await prisma.auditLog.create({
