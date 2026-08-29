@@ -97,15 +97,18 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${endpoint}`;
+  const primaryBaseUrl = getApiBaseUrl();
+  const fallbackBaseUrl = 'http://200.234.42.142';
 
   let response: Response | undefined;
   let fetchError: any = null;
 
   for (let attempt = 0; attempt < 3; attempt++) {
+    const currentBase = (attempt > 0 && primaryBaseUrl.includes('sgrhivfcryo.in')) ? fallbackBaseUrl : primaryBaseUrl;
+    const targetUrl = `${currentBase}${endpoint}`;
+
     try {
-      response = await fetch(url, {
+      response = await fetch(targetUrl, {
         ...options,
         body: reqBody,
         headers,
@@ -115,7 +118,7 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     } catch (err: any) {
       fetchError = err;
       if (attempt < 2) {
-        await new Promise((res) => setTimeout(res, 600 * (attempt + 1)));
+        await new Promise((res) => setTimeout(res, 400 * (attempt + 1)));
       }
     }
   }
