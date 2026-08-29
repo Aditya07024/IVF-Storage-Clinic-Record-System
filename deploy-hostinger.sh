@@ -119,11 +119,13 @@ fi
 sudo nginx -t
 sudo systemctl restart nginx
 
-# 9. Configure Firewall
-echo "🛡️ Configuring UFW Firewall Security..."
+# 9. Configure Firewall & 5-Minute Keep-Alive Cron Job
+echo "🛡️ Configuring UFW Firewall Security & Keep-Alive Cron Job..."
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
+
+(crontab -l 2>/dev/null | grep -v "http://127.0.0.1:4000/api/health" ; echo "*/5 * * * * curl -s http://127.0.0.1:4000/api/health > /dev/null 2>&1") | crontab -
 
 echo "================================================================="
 echo "✅ IVF CLINIC SYSTEM DEPLOYMENT SUCCESSFUL ON HOSTINGER KVM 1!"
