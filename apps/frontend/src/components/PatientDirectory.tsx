@@ -669,7 +669,7 @@ export const PatientDirectory: React.FC = () => {
                           if (activeBatches > 0) {
                             return (
                               <span className="px-1 py-1 bg-emerald-100 text-emerald-950 rounded-lg text-xs font-bold font-mono border border-emerald-300">
-                                {activeBatches} Active Batch(es)
+                                {activeBatches} Active Batches
                               </span>
                             );
                           }
@@ -1376,10 +1376,7 @@ export const PatientDirectory: React.FC = () => {
                 <strong className="text-slate-900 font-bold">{selectedPatient.doctorName || 'N/A'}</strong>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Freezing Date:</span>
-                <strong className="text-emerald-800 font-mono font-bold">{formatDateDDMMYYYY(selectedPatient.freezingDate)}</strong>
-              </div>
+              
             </div>
 
             {/* Clinical Comments & Doctor Remarks Card */}
@@ -1441,7 +1438,7 @@ export const PatientDirectory: React.FC = () => {
                   ).length || 0;
                   return (
                     <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold border ${activeCount > 0 ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-300'}`}>
-                      {activeCount} Active Batch(es)
+                      {activeCount} Active Batches
                     </span>
                   );
                 })()}
@@ -1484,21 +1481,7 @@ export const PatientDirectory: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Physical Location Breakdown */}
-                      {(() => {
-                        const locCode = activeStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
-                        return (
-                          <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
-                            <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
-                            <div className="text-slate-900 font-bold">{parseVisoTubeLocation(locCode)}</div>
-                            {batch.notes && (
-                              <div className="text-[11px] text-slate-600 italic mt-1 font-mono">
-                                Batch Comment: {batch.notes}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
+                      
 
                       {/* Active Straws List */}
                       <div className="space-y-1.5">
@@ -1517,14 +1500,15 @@ export const PatientDirectory: React.FC = () => {
                               )}
                             </div>
                             <div className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
+                                {straw.embryoCount || straw.embryos?.length || 1} Embryos(s)
+                              </span>
                               {straw.grade && (
                                 <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
                                   Grade: {straw.grade}
                                 </span>
                               )}
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
-                                ({straw.embryoCount || straw.embryos?.length || 1} Embryos)
-                              </span>
+                              
                               {straw.comments && (
                                 <span className="text-[11px] text-slate-500 italic">
                                   "{straw.comments}"
@@ -1545,6 +1529,22 @@ export const PatientDirectory: React.FC = () => {
                           </div>
                         ))}
                       </div>
+
+                      {/* Physical Location Breakdown */}
+                      {(() => {
+                        const locCode = activeStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
+                        return (
+                          <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
+                            <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
+                            <div className="text-slate-900 font-bold">{parseVisoTubeLocation(locCode)}</div>
+                            {batch.notes && (
+                              <div className="text-[11px] text-slate-600 italic mt-1 font-mono">
+                                Batch Comment: {batch.notes}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 });

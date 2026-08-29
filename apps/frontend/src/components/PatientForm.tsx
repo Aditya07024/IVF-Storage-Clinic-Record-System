@@ -1449,9 +1449,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <span>Straw Configuration & Individual Metadata</span>
+                    <span>Straw Configuration</span>
                     <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                      Total {strawsCount} Straw(s) ({strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0)} Embryo(s))
+                      Total {strawsCount} Straws ({strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0)} Embryo)
                     </span>
                   </h4>
                 </div>
