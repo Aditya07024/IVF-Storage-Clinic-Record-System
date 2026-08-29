@@ -101,7 +101,7 @@ echo "🌐 Configuring Nginx Web Server for Backend API & Image Uploads..."
 cat <<EOT | sudo tee /etc/nginx/sites-available/ivf
 server {
     listen 80;
-    server_name _;
+    server_name sgrhivfcryo.in www.sgrhivfcryo.in _;
 
     client_max_body_size 25M;
 

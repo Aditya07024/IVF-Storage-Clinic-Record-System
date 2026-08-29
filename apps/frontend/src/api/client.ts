@@ -15,13 +15,16 @@ export const getApiBaseUrl = () => {
     ) {
       return `http://${hostname}:4000`;
     }
+    if (hostname.includes('sgrhivfcryo.in')) {
+      return `${window.location.protocol}//${hostname}`;
+    }
     if (hostname.includes('vercel.app')) {
-      return 'https://ivf-storage-clinic-record-system-7qne.onrender.com';
+      return 'https://sgrhivfcryo.in';
     }
     return `${window.location.protocol}//${hostname}`;
   }
 
-  return 'https://ivf-storage-clinic-record-system-7qne.onrender.com';
+  return 'https://sgrhivfcryo.in';
 };
 
 const API_BASE_URL = getApiBaseUrl();
