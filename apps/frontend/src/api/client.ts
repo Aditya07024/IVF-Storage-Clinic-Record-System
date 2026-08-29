@@ -195,11 +195,26 @@ export function formatDateDDMMYYYY(dateInput: string | Date | null | undefined):
 
 export function getImageUrl(pathUrl: string | null | undefined): string {
   if (!pathUrl) return '';
-  if (pathUrl.startsWith('http://') || pathUrl.startsWith('https://') || pathUrl.startsWith('data:')) {
-    return pathUrl;
+  const trimmed = pathUrl.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed;
   }
+
+  // Detect raw Base64 image payloads (e.g., 2Q==, /9j/, iVBORw0KGgo, etc.)
+  if (
+    trimmed.startsWith('/9j/') ||
+    trimmed.startsWith('iVBORw0KGgo') ||
+    trimmed.startsWith('2Q==') ||
+    trimmed.startsWith('R0lGOD') ||
+    trimmed.startsWith('UklGR') ||
+    trimmed.startsWith('PHN2Zw') ||
+    trimmed.length > 500
+  ) {
+    return `data:image/jpeg;base64,${trimmed}`;
+  }
+
   const base = getApiBaseUrl().replace(/\/$/, '');
-  let cleanPath = pathUrl;
+  let cleanPath = trimmed;
   if (!cleanPath.startsWith('/uploads/') && !cleanPath.startsWith('uploads/')) {
     cleanPath = cleanPath.startsWith('/') ? `/uploads${cleanPath}` : `/uploads/${cleanPath}`;
   } else if (!cleanPath.startsWith('/')) {

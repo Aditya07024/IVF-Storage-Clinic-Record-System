@@ -685,7 +685,7 @@ export const OcrVerification: React.FC = () => {
             {/* Document Preview */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 min-h-[300px] flex items-center justify-center overflow-hidden">
               <img
-                src={`/uploads/${activeRecord.storageKey}`}
+                src={getImageUrl(activeRecord.storageKey)}
                 alt="Scanned Record"
                 className="max-h-[400px] w-auto object-contain rounded-xl border border-slate-200 shadow-sm"
                 onError={(e) => {

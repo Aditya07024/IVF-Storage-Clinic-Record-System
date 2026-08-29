@@ -1739,8 +1739,7 @@ export const PatientDirectory: React.FC = () => {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {selectedPatient.ocrRecords.map((ocr: any) => {
-                    const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
-                    const imgUrl = `${apiBase}/uploads/${ocr.storageKey}`;
+                    const imgUrl = getImageUrl(ocr.storageKey);
                     return (
                       <div key={ocr.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
                         <div className="flex items-center justify-between text-xs font-semibold">
