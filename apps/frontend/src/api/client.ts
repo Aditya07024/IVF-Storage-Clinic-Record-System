@@ -16,12 +16,12 @@ export const getApiBaseUrl = () => {
       return `http://${hostname}:4000`;
     }
     if (hostname.includes('sgrhivfcryo.in') || hostname.includes('vercel.app')) {
-      return 'http://200.234.42.142';
+      return 'https://api.sgrhivfcryo.in';
     }
     return `${window.location.protocol}//${hostname}`;
   }
 
-  return 'http://200.234.42.142';
+  return 'https://api.sgrhivfcryo.in';
 };
 
 const API_BASE_URL = getApiBaseUrl();
