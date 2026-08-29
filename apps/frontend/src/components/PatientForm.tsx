@@ -50,7 +50,7 @@ export const CLINIC_STRAW_COLORS = ['Pink', 'Green', 'Blue', 'Yellow', 'White'] 
 
 export const CLINIC_DOCTORS = [
   'Dr Abha Majumdar',
-  'Dr. Shweta Mittal',
+  'Dr. Shweta Mittal Gupta',
   'Dr. Neeti Tiwari',
   'Dr. Ruma Satwik',
   'Dr. Sakshi Nayar',
