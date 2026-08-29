@@ -94,32 +94,23 @@ export class OcrService {
           }
         }
 
-        const options: Record<string, any> = {};
-
         if (credPath && fs.existsSync(credPath)) {
-          options.keyFilename = credPath;
           process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
+          const ClientClass = visionModule?.ImageAnnotatorClient || visionModule?.default?.ImageAnnotatorClient;
+          if (ClientClass) {
+            this.visionClient = new ClientClass({ keyFilename: credPath });
+            console.log('[OcrService] Google Cloud Vision Service Account client initialized.');
+            return;
+          }
         }
 
-        const apiKey = CONFIG.GOOGLE_VISION_API_KEY || process.env.GOOGLE_VISION_API_KEY;
+        const apiKey = CONFIG.GOOGLE_VISION_API_KEY || process.env.GOOGLE_VISION_API_KEY || CONFIG.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
         if (apiKey) {
-          options.apiKey = apiKey;
-        }
-
-        if (CONFIG.GOOGLE_CLOUD_PROJECT_ID) {
-          options.projectId = CONFIG.GOOGLE_CLOUD_PROJECT_ID;
-        }
-
-        const ClientClass = visionModule?.ImageAnnotatorClient || visionModule?.default?.ImageAnnotatorClient;
-        if (ClientClass) {
-          this.visionClient = new ClientClass(options);
-          console.log('[OcrService] Google Cloud Vision client initialized securely.');
-        } else {
-          console.warn('[OcrService] @google-cloud/vision module not available.');
+          console.log('[OcrService] Google Cloud Vision REST API & Gemini Vision AI engine initialized securely via API Key.');
         }
       }
     } catch (err: any) {
-      console.error('[OcrService] Failed to initialize Google Cloud Vision client:', err.message || err);
+      console.warn('[OcrService] Notice initializing Vision Client, using REST API & Gemini Vision engine:', err.message || err);
       this.visionClient = null;
     }
   }

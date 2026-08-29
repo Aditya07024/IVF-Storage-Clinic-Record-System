@@ -61,8 +61,15 @@ export const CONFIG = {
 export function validateConfig(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   if (CONFIG.OCR_PROVIDER === 'google') {
-    if (!CONFIG.GOOGLE_APPLICATION_CREDENTIALS) {
-      errors.push('GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.');
+    const hasCreds = Boolean(
+      CONFIG.GOOGLE_APPLICATION_CREDENTIALS ||
+      CONFIG.GOOGLE_VISION_API_KEY ||
+      CONFIG.GEMINI_API_KEY ||
+      process.env.GOOGLE_VISION_API_KEY ||
+      process.env.GEMINI_API_KEY
+    );
+    if (!hasCreds) {
+      errors.push('Neither GOOGLE_APPLICATION_CREDENTIALS nor GOOGLE_VISION_API_KEY / GEMINI_API_KEY environment variable is set.');
     }
   }
   return { valid: errors.length === 0, errors };
