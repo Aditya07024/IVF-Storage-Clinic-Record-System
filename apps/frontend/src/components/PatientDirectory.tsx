@@ -958,7 +958,7 @@ export const PatientDirectory: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Registration ID (Unique Primary Key) <span className="text-rose-600 font-bold">*</span>
+                    Registration ID (Unique Key) <span className="text-rose-600 font-bold">*</span>
                   </label>
                   <input
                     type="text"

@@ -1230,7 +1230,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
             <div className="md:col-span-2 min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                <span>Registration ID (Unique Primary Key) <span className="text-rose-600 font-bold">*</span></span>
+                <span>Registration ID (Unique Key) <span className="text-rose-600 font-bold">*</span></span>
               </label>
               <input
                 type="text"
