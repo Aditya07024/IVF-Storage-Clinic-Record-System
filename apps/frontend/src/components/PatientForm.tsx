@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw } from 'lucide-react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
@@ -46,33 +46,97 @@ export function getVisoTubeStyle(tubeStr?: string, locCode?: string) {
   return VISO_TUBE_STYLE_MAP[tubeNum] || VISO_TUBE_STYLE_MAP[1];
 }
 
+export const CLINIC_STRAW_COLORS = ['Pink', 'Green', 'Blue', 'Yellow', 'White'] as const;
+
+export const CLINIC_DOCTORS = [
+  'Dr Abha Majumdar',
+  'Dr. Shweta Mittal',
+  'Dr. Neeti Tiwari',
+  'Dr. Ruma Satwik',
+  'Dr . Sakshi Nayar',
+  'Dr. Bhauani shekhar',
+  'Dr. Tejashvi Strotri',
+] as const;
+
+export const FRAGMENTATION_OPTIONS = ['No', '+', '++'] as const;
+
+export function capitalizeWords(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export const DoctorSelect: React.FC<{
+  value: string;
+  onChange: (val: string) => void;
+  required?: boolean;
+  className?: string;
+  label?: string;
+}> = ({ value, onChange, required, className, label }) => {
+  const isPreset = CLINIC_DOCTORS.includes(value as any);
+  const [isCustom, setIsCustom] = useState(!isPreset && Boolean(value));
+
+  useEffect(() => {
+    if (!CLINIC_DOCTORS.includes(value as any) && Boolean(value)) {
+      setIsCustom(true);
+    }
+  }, [value]);
+
+  return (
+    <div className="space-y-1 w-full">
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+          {label} {required && <span className="text-rose-600 font-bold">*</span>}
+        </label>
+      )}
+      <select
+        value={isCustom ? 'Other' : value}
+        onChange={(e) => {
+          if (e.target.value === 'Other') {
+            setIsCustom(true);
+            onChange('');
+          } else {
+            setIsCustom(false);
+            onChange(e.target.value);
+          }
+        }}
+        required={required && !value}
+        className={className || "w-full h-11 bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 cursor-pointer"}
+      >
+        <option value="">-- Select Doctor --</option>
+        {CLINIC_DOCTORS.map((doc) => (
+          <option key={doc} value={doc}>
+            {doc}
+          </option>
+        ))}
+        <option value="Other">Other / Custom Doctor Name...</option>
+      </select>
+      {isCustom && (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Enter Doctor Name"
+          required={required}
+          className="w-full h-10 bg-white border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500 mt-1.5"
+        />
+      )}
+    </div>
+  );
+};
+
 export function getStrawColorBadgeClass(colorName?: string): string {
   const color = (colorName || 'Pink').toLowerCase().trim();
   switch (color) {
     case 'pink':
       return 'bg-pink-100 text-pink-900 border-pink-300 font-bold';
-    case 'grey':
-    case 'gray':
-      return 'bg-slate-200 text-slate-900 border-slate-300 font-bold';
-    case 'red':
-      return 'bg-rose-100 text-rose-900 border-rose-300 font-bold';
-    case 'black':
-      return 'bg-slate-900 text-white border-slate-700 font-bold';
     case 'green':
       return 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold';
-    case 'rust':
-      return 'bg-amber-100 text-amber-950 border-amber-400 font-bold';
     case 'blue':
       return 'bg-blue-100 text-blue-900 border-blue-300 font-bold';
-    case 'purple':
-      return 'bg-purple-100 text-purple-900 border-purple-300 font-bold';
     case 'yellow':
       return 'bg-yellow-100 text-yellow-950 border-yellow-400 font-bold';
-    case 'orange':
-      return 'bg-orange-100 text-orange-950 border-orange-300 font-bold';
-    case 'skyblue':
-    case 'sky blue':
-      return 'bg-sky-100 text-sky-900 border-sky-300 font-bold';
+    case 'white':
+      return 'bg-slate-100 text-slate-900 border-slate-300 font-bold';
     default:
       return 'bg-pink-100 text-pink-900 border-pink-300 font-bold';
   }
@@ -259,6 +323,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [reloadingPatientDetails, setReloadingPatientDetails] = useState(false);
   const [thawSuccessMsg, setThawSuccessMsg] = useState<string | null>(null);
   const [saveSuccessDetails, setSaveSuccessDetails] = useState<any | null>(null);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
 
   // Form Fields
   const [customPatientId, setCustomPatientId] = useState('');
@@ -340,16 +405,28 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     }
   };
 
+  const populatePatientFields = (pt: any) => {
+    if (!pt) return;
+    setCustomPatientId(pt.patientId || '');
+    setFullName(capitalizeWords(pt.fullName || ''));
+    setPartnerName(capitalizeWords(pt.partnerName || ''));
+    setPhone(pt.phone || '');
+    setPartnerPhone(pt.partnerPhone || '');
+    setEmail(pt.email || '');
+    setPartnerEmail(pt.partnerEmail || '');
+    setDob(pt.dob || '');
+    setPartnerDob(pt.partnerDob || '');
+    setPatientAge(pt.patientAge || calculateAgeFromDob(pt.dob));
+    setPartnerAge(pt.partnerAge || calculateAgeFromDob(pt.partnerDob));
+    setDoctorName(pt.doctorName || '');
+    if (pt.comments) setComments(pt.comments);
+    if (pt.aspirationDate) setAspirationDate(typeof pt.aspirationDate === 'string' ? pt.aspirationDate.split('T')[0] : '');
+  };
+
   // Select Existing Patient & Auto-Fill Fields
   const handleSelectExistingPatient = async (p: any) => {
     setSelectedExistingPatient(p);
-    setCustomPatientId(p.patientId || '');
-    setFullName(p.fullName || '');
-    setPartnerName(p.partnerName || '');
-    setPhone(p.phone || '');
-    setPatientAge(p.patientAge || '');
-    setPartnerAge(p.partnerAge || '');
-    setDoctorName(p.doctorName || '');
+    populatePatientFields(p);
     setFreezingDate(new Date().toISOString().split('T')[0]);
     setStorageDate(new Date().toISOString().split('T')[0]);
     setExistingSearchResults([]);
@@ -360,6 +437,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       const res = await apiRequest(`/api/patients/${p.id}`);
       if (res.success && res.patient) {
         setSelectedExistingPatient(res.patient);
+        populatePatientFields(res.patient);
       }
     } catch (err: any) {
       console.error('Failed to load patient detail batches:', err);
@@ -534,7 +612,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
   const { enqueueTask } = useBackgroundTask();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -547,10 +625,26 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         setError('Please enter at least 1 Mobile Phone number (Patient or Partner).');
         return;
       }
+    } else {
+      if (!selectedExistingPatient) {
+        setError('Please search and select an existing patient first.');
+        return;
+      }
+      if (!doctorName.trim()) {
+        setError('Doctor Name is required.');
+        return;
+      }
     }
 
-    const patientName = fullName.trim() || selectedExistingPatient?.fullName || 'Patient Record';
+    // Open Pre-Save Confirmation & Overview Modal
+    setShowConfirmationModal(true);
+  };
 
+  const executeFormSubmit = async () => {
+    setShowConfirmationModal(false);
+    setError(null);
+
+    const patientName = fullName.trim() || selectedExistingPatient?.fullName || 'Patient Record';
     const totalEmbryosCount = strawItems.reduce((acc, item) => acc + (item.embryoCount || 1), 0);
 
     // Capture current form inputs before clearing
@@ -1186,7 +1280,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               <input
                 type="text"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(e) => setFullName(capitalizeWords(e.target.value))}
                 placeholder="e.g. Sunita Verma"
                 required
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
@@ -1243,7 +1337,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               <input
                 type="text"
                 value={partnerName}
-                onChange={(e) => setPartnerName(e.target.value)}
+                onChange={(e) => setPartnerName(capitalizeWords(e.target.value))}
                 placeholder="e.g. Deepak Verma"
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block font-medium"
               />
@@ -1293,16 +1387,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
             {/* CLINICAL PHYSICIAN */}
             <div className="md:col-span-2 min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Doctor Name / Attending Physician <span className="text-rose-600 font-bold">*</span>
-              </label>
-              <input
-                type="text"
+              <DoctorSelect
+                label="Doctor Name / Attending Physician"
                 value={doctorName}
-                onChange={(e) => setDoctorName(e.target.value)}
-                placeholder="e.g. Dr. Ananya Sharma"
+                onChange={(val) => setDoctorName(val)}
                 required
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
               />
             </div>
 
@@ -1463,12 +1552,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       <div key={idx} className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
                           <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-slate-900 text-white font-mono font-bold text-xs flex items-center justify-center">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-mono font-bold text-xs">
                               #{idx + 1}
                             </span>
-                            <span className="text-xs font-bold text-slate-900">Straw #{idx + 1}</span>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}`}>
-                              {item.color} Tag
+                              {item.color}
                             </span>
                           </div>
 
@@ -1495,7 +1583,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                           <div>
                             <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">
-                              Straw Color Tag *
+                              Straw Color *
                             </label>
                             <select
                               value={item.color}
@@ -1506,15 +1594,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                               }}
                               className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
                             >
-                              {['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].map((c) => (
+                              {['Pink', 'Green', 'Blue', 'Yellow', 'White'].map((c) => (
                                 <option key={c} value={c}>
-                                  {c} Straw Color
+                                  {c}
                                 </option>
                               ))}
                             </select>
                           </div>
 
-                          <div>
+                          <div className="sm:col-span-3">
                             <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                               Embryos in Straw #{idx + 1} *
                             </label>
@@ -1551,40 +1639,78 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                               </button>
                             </div>
                           </div>
+                        </div>
 
-                          <div>
-                            <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">
-                              Embryo Grade
-                            </label>
-                            <input
-                              type="text"
-                              value={item.grade}
-                              onChange={(e) => {
-                                const next = [...strawItems];
-                                next[idx].grade = e.target.value;
-                                setStrawItems(next);
-                              }}
-                              placeholder="e.g. 4AA, 4BB, 3AA"
-                              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
-                            />
+                        {/* Granular Per-Embryo Breakdown (1 or 2 Embryos) */}
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+                          <div className="text-[10px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                            <span>Per-Embryo Grade, Fragmentation & Comments ({item.embryoCount || 1} Embryo{item.embryoCount === 2 ? 's' : ''})</span>
                           </div>
 
-                          <div>
-                            <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">
-                              Straw Specific Comments
-                            </label>
-                            <input
-                              type="text"
-                              value={item.comments}
-                              onChange={(e) => {
-                                const next = [...strawItems];
-                                next[idx].comments = e.target.value;
-                                setStrawItems(next);
-                              }}
-                              placeholder="Remarks for this straw..."
-                              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-500"
-                            />
-                          </div>
+                          {Array.from({ length: item.embryoCount || 1 }).map((_, eIdx) => {
+                            const eGradeKey = eIdx === 0 ? 'grade1' : 'grade2';
+                            const eFragKey = eIdx === 0 ? 'frag1' : 'frag2';
+                            const eCommentKey = eIdx === 0 ? 'comment1' : 'comment2';
+
+                            return (
+                              <div key={eIdx} className="bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center">
+                                <div>
+                                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">
+                                    Embryo #{eIdx + 1} Grade
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={(item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '')}
+                                    onChange={(e) => {
+                                      const next = [...strawItems];
+                                      (next[idx] as any)[eGradeKey] = e.target.value;
+                                      if (eIdx === 0) next[idx].grade = e.target.value;
+                                      setStrawItems(next);
+                                    }}
+                                    placeholder="e.g. 4AA, 4BB"
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono font-bold text-slate-900 text-xs focus:outline-none focus:border-emerald-500"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">
+                                    Fragmentation
+                                  </label>
+                                  <select
+                                    value={(item as any)[eFragKey] || 'No'}
+                                    onChange={(e) => {
+                                      const next = [...strawItems];
+                                      (next[idx] as any)[eFragKey] = e.target.value;
+                                      setStrawItems(next);
+                                    }}
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
+                                  >
+                                    <option value="No">No</option>
+                                    <option value="+">+</option>
+                                    <option value="++">++</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">
+                                    Embryo #{eIdx + 1} Comment
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={(item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '')}
+                                    onChange={(e) => {
+                                      const next = [...strawItems];
+                                      (next[idx] as any)[eCommentKey] = e.target.value;
+                                      if (eIdx === 0) next[idx].comments = e.target.value;
+                                      setStrawItems(next);
+                                    }}
+                                    placeholder="Specific remarks..."
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 text-xs focus:outline-none focus:border-emerald-500"
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -1981,6 +2107,171 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           setPhotoPreviewUrl(dataUrl);
         }}
       />
+
+      {/* PRE-SAVE CONFIRMATION & OVERVIEW MODAL */}
+      {showConfirmationModal && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5 text-slate-900 font-bold text-base">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                    Confirm Record Before Saving
+                  </h3>
+                  <p className="text-xs text-slate-500 font-normal">
+                    {selectedExistingPatient ? `Adding new freezing batch to existing patient record` : `Registering new patient & allocating cryo storage slot`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConfirmationModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center font-bold transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Patient & Partner Details Summary */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+              <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between border-b border-slate-200 pb-2">
+                <span>Patient Demographics & Attending Physician</span>
+                <span className="bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold">
+                  Reg No: {customPatientId || selectedExistingPatient?.patientId || 'Auto-Generated'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Patient Name:</span>
+                  <strong className="text-slate-900 font-bold text-sm">{fullName || selectedExistingPatient?.fullName}</strong>
+                  {(dob || patientAge) && (
+                    <span className="text-slate-600 block text-[11px]">DOB: {formatDateDDMMYYYY(dob)} (Age: {patientAge || calculateAgeFromDob(dob)})</span>
+                  )}
+                  {phone && <span className="text-slate-600 block font-mono text-[11px]">Ph: {phone}</span>}
+                </div>
+
+                <div>
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Partner Name:</span>
+                  <strong className="text-slate-900 font-bold text-sm">{partnerName || selectedExistingPatient?.partnerName || 'N/A'}</strong>
+                  {(partnerDob || partnerAge) && (
+                    <span className="text-slate-600 block text-[11px]">DOB: {formatDateDDMMYYYY(partnerDob)} (Age: {partnerAge || calculateAgeFromDob(partnerDob)})</span>
+                  )}
+                  {partnerPhone && <span className="text-slate-600 block font-mono text-[11px]">Ph: {partnerPhone}</span>}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200/60 grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Attending Doctor:</span>
+                  <strong className="text-emerald-900 font-bold">{doctorName}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Date of Egg Retrieval:</span>
+                  <strong className="text-slate-900 font-bold">{formatDateDDMMYYYY(aspirationDate)}</strong>
+                </div>
+              </div>
+
+              {comments && (
+                <div className="pt-2 border-t border-slate-200/60 text-xs">
+                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Doctor Remarks & Instructions:</span>
+                  <p className="text-slate-700 italic font-medium">"{comments}"</p>
+                </div>
+              )}
+            </div>
+
+            {/* Storage Destination Location */}
+            {assignStorageEnabled && (
+              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 space-y-2">
+                <div className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center justify-between">
+                  <span>Cryo Storage Destination</span>
+                  <span className="bg-emerald-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                    Freezing Date: {formatDateDDMMYYYY(freezingDate)}
+                  </span>
+                </div>
+                <div className="text-xs font-mono font-bold text-emerald-950 bg-white p-2.5 rounded-xl border border-emerald-300">
+                  {selectedLocationCode ? parseLocationCode(selectedLocationCode).formatted : 'Auto-Allocating Best Storage Slot'}
+                </div>
+              </div>
+            )}
+
+            {/* Granular Straws Breakdown Table */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+              <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
+                <span>Specimen Straws Overview ({strawItems.length} Straws • {strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0)} Embryos)</span>
+              </div>
+
+              <div className="space-y-2">
+                {strawItems.map((item, sIdx) => {
+                  const badgeClass = getStrawColorBadgeClass(item.color);
+                  return (
+                    <div key={sIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between font-bold">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded-lg font-mono font-bold text-xs">#{sIdx + 1}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] border ${badgeClass}`}>{item.color}</span>
+                          <span className="text-slate-700 text-[11px]">{item.embryoCount || 1} Embryo(s)</span>
+                        </div>
+                        {item.isPgt && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-900 border border-purple-300">
+                            PGT TESTED
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Per-Embryo Details */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                        {Array.from({ length: item.embryoCount || 1 }).map((_, eIdx) => {
+                          const eGrade = (item as any)[eIdx === 0 ? 'grade1' : 'grade2'] || (eIdx === 0 ? item.grade : '');
+                          const eFrag = (item as any)[eIdx === 0 ? 'frag1' : 'frag2'] || 'No';
+                          const eComment = (item as any)[eIdx === 0 ? 'comment1' : 'comment2'] || (eIdx === 0 ? item.comments : '');
+
+                          return (
+                            <div key={eIdx} className="bg-slate-50 p-2 rounded-lg border border-slate-200">
+                              <div className="font-bold text-slate-800">
+                                Embryo #{eIdx + 1}: Grade <span className="font-mono text-emerald-800 font-extrabold">{eGrade || 'N/A'}</span>
+                              </div>
+                              <div className="text-slate-600 text-[10px]">
+                                Fragmentation: <span className="font-bold text-slate-900">{eFrag}</span>
+                              </div>
+                              {eComment && (
+                                <div className="text-slate-500 italic text-[10px]">
+                                  "{eComment}"
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowConfirmationModal(false)}
+                className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-2xl transition-all cursor-pointer"
+              >
+                Go Back & Edit
+              </button>
+              <button
+                type="button"
+                onClick={executeFormSubmit}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl flex items-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
+              >
+                <Check className="w-4 h-4 text-white" />
+                <span>Confirm & Save Record</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

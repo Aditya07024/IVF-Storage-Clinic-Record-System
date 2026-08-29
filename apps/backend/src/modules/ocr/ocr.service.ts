@@ -312,12 +312,11 @@ export class OcrService {
     }>;
     comments?: string;
   }> {
-    // Fetch active clinic containers from PostgreSQL database to feed exact inventory to Gemini
     let clinicInventoryContext = `Exact Clinic Physical Container Hierarchy:
-- Tanks: CAN-01, CAN-02, CAN-03, CAN-04, CAN-05, CAN-08, CAN-10, CAN-11, CAN-14
-- Canisters: C01, C02, C03, C04, C05, C06, C07, C08 (Canister 08), C09, C10
+- Canisters: C01, C02, C03, C04, C05, C06, C07, C08, C09, C10
 - Levels: Level 1 (Bottom), Level 2 (Top)
-- 11 Physical Viso Tube Colors: V01: Pink, V02: Grey, V03: Red, V04: Black, V05: Green, V06: Rust, V07: Blue, V08: Purple, V09: Yellow, V10: Orange, V11: Skyblue`;
+- 5 Clinic Straw Colors: ONLY Pink, Green, Blue, Yellow, or White.`;
+
     try {
       const activeCanisters = await prisma.canister.findMany({
         include: { can: true },
@@ -325,7 +324,7 @@ export class OcrService {
       });
       if (activeCanisters.length > 0) {
         const canisterNames = activeCanisters.map(c => `C${c.canisterNumber.toString().padStart(2, '0')} (Canister ${c.canisterNumber})`).join(', ');
-        clinicInventoryContext = `Active Clinic Storage Inventory: Canisters: [${canisterNames}]; Colors: [V01: Pink, V02: Grey, V03: Red, V04: Black, V05: Green, V06: Rust, V07: Blue, V08: Purple, V09: Yellow, V10: Orange, V11: Skyblue]; Levels: [Level 1 (Bottom), Level 2 (Top)].`;
+        clinicInventoryContext = `Active Clinic Storage Inventory: Canisters: [${canisterNames}]; 5 Clinic Straw Colors: [Pink, Green, Blue, Yellow, White]; Levels: [Level 1 (Bottom), Level 2 (Top)].`;
       }
     } catch (e) {}
 
@@ -339,7 +338,8 @@ ${clinicInventoryContext}
 
 Rules:
 - DO NOT invent missing data. If a field is not present, return null.
-- Cross-reference handwritten storage location against the Clinic Physical Container Hierarchy above. Match "cayo can: S" / "Canister 8" to "C08 (Canister 08)". Match "Tube: Yellow" to "V09: Yellow". Match "Color: Pink" to "V01: Pink". Match "Level: I" to "Level 1 (Bottom)".
+- Straw Color ("colorTag" / "visoTubeColor") MUST ONLY be one of these 5 physical clinic colors: Pink, Green, Blue, Yellow, White.
+- Cross-reference handwritten storage location against the Clinic Physical Container Hierarchy above. Match "Canister 8" to "C08 (Canister 08)". Match "Tube: Yellow" to "Yellow". Match "Color: Pink" to "Pink". Match "Level: I" to "Level 1 (Bottom)".
 - Extract "patientId" / Registration No (e.g. 26980, IVF-2026-000007, No: 26980).
 - Extract patient & partner names (e.g. Ramjana Bhadana, Vikas), ages, phone numbers (e.g. 9953078696), doctor name (e.g. DE. Meeti -> Dr. Meeti).
 - Extract cryo storage location fields: "canisterName" (e.g. C08 (Canister 08)), "visoTubeColor" (e.g. Pink), "visoTubeId" (e.g. V09: Yellow), "level" (e.g. Level 1).
@@ -851,13 +851,19 @@ ${rawText}`;
           },
         });
 
+        const existingPatientStrawCount = await tx.straw.count({
+          where: { batch: { patientId: patient.id } },
+        });
+
         for (let i = 0; i < strawsList.length; i++) {
           const st = strawsList[i];
-          const rawCode = (st.strawId || `STR-${(i + 1).toString().padStart(2, '0')}`).trim();
+          const seqNum = existingPatientStrawCount + i + 1;
+          const defaultLabel = `#${seqNum}`;
+          const rawCode = st.strawId && !st.strawId.startsWith('STR-') ? st.strawId.trim() : defaultLabel;
           
           // Check if strawId already exists to avoid unique constraint failure aborting transaction
           const existingStraw = await tx.straw.findUnique({ where: { strawId: rawCode } });
-          const uniqueStrawCode = existingStraw ? `${rawCode}-${Date.now().toString().slice(-4)}-${i + 1}` : rawCode;
+          const uniqueStrawCode = existingStraw ? `${rawCode} (P-${i + 1})` : rawCode;
 
           const createdStraw = await tx.straw.create({
             data: {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
@@ -1034,7 +1034,7 @@ export const PatientDirectory: React.FC = () => {
                   <input
                     type="text"
                     value={editFullName}
-                    onChange={(e) => setEditFullName(e.target.value)}
+                    onChange={(e) => setEditFullName(capitalizeWords(e.target.value))}
                     required
                     className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                   />
@@ -1092,7 +1092,7 @@ export const PatientDirectory: React.FC = () => {
                   <input
                     type="text"
                     value={editPartnerName}
-                    onChange={(e) => setEditPartnerName(e.target.value)}
+                    onChange={(e) => setEditPartnerName(capitalizeWords(e.target.value))}
                     className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                 </div>
@@ -1143,15 +1143,11 @@ export const PatientDirectory: React.FC = () => {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Doctor Name / Attending Physician <span className="text-rose-600 font-bold">*</span>
-                  </label>
-                  <input
-                    type="text"
+                  <DoctorSelect
+                    label="Doctor Name / Attending Physician"
                     value={editDoctorName}
-                    onChange={(e) => setEditDoctorName(e.target.value)}
+                    onChange={(val) => setEditDoctorName(val)}
                     required
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
@@ -1486,13 +1482,19 @@ export const PatientDirectory: React.FC = () => {
                       {/* Active Straws List */}
                       <div className="space-y-1.5">
                         <div className="text-[11px] font-bold text-slate-700">Active Straws in this Batch ({activeStraws.length}):</div>
-                        {activeStraws.map((straw: any) => (
-                          <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
-                            <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
-                              <span>Straw ID: {straw.strawId}</span>
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
-                                {straw.color || 'Pink'} Tag
-                              </span>
+                        {activeStraws.map((straw: any, sIdx: number) => {
+                          const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
+                          const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `#${sIdx + 1}`;
+                          return (
+                            <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                              <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold text-xs">{displayLabel}</span>
+                                {straw.strawId && !straw.strawId.startsWith('#') && !straw.strawId.startsWith('Straw #') && (
+                                  <span className="text-[11px] text-slate-500 font-mono">({straw.strawId})</span>
+                                )}
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
+                                  {straw.color || 'Pink'}
+                                </span>
                               {straw.isPgt && (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
                                   PGT TESTED
@@ -1527,7 +1529,8 @@ export const PatientDirectory: React.FC = () => {
                               </button>
                             </div>
                           </div>
-                        ))}
+                        );
+                      })}
                       </div>
 
                       {/* Physical Location Breakdown */}
@@ -1856,7 +1859,7 @@ export const PatientDirectory: React.FC = () => {
                     onChange={(e) => setEditStrawColor(e.target.value)}
                     className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                   >
-                    {['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].map((col) => (
+                    {['Pink', 'Green', 'Blue', 'Yellow', 'White'].map((col) => (
                       <option key={col} value={col}>{col} Tag</option>
                     ))}
                   </select>

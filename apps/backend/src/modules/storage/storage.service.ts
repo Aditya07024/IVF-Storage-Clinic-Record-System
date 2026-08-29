@@ -428,22 +428,26 @@ export class StorageService {
         },
       });
 
-      const createdStraws = [];
+      const createdStraws: any[] = [];
+      const existingPatientStrawCount = await tx.straw.count({
+        where: { batch: { patientId: input.patientId } },
+      });
 
       for (let i = 0; i < requiredStraws; i++) {
         const item = strawItems[i];
         const embryosInThisStraw = item.embryoCount || 1;
         const color = item.color || 'Pink';
+        const seqNum = existingPatientStrawCount + i + 1;
 
         let straw: any = null;
-        let strawIdCode = `STR-${(baseStrawNum + i).toString().padStart(6, '0')}`;
+        let strawIdCode = `#${seqNum}`;
         let strawAttemptCounter = 0;
 
         while (!straw && strawAttemptCounter < 25) {
           try {
             straw = await tx.straw.create({
               data: {
-                strawId: strawIdCode,
+                strawId: strawAttemptCounter === 0 ? strawIdCode : `#${seqNum} (P-${strawAttemptCounter})`,
                 batchId: batch.id,
                 visoTubeId: input.visoTubeId,
                 color,
@@ -458,9 +462,7 @@ export class StorageService {
           } catch (err: any) {
             if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
               strawAttemptCounter++;
-              const currentNum = parseInt(strawIdCode.split('-').pop() || '0', 10);
-              const nextNum = (isNaN(currentNum) ? 1 : currentNum) + strawAttemptCounter;
-              strawIdCode = `STR-${nextNum.toString().padStart(6, '0')}`;
+              strawIdCode = `#${seqNum} (P-${strawAttemptCounter})`;
             } else {
               throw err;
             }

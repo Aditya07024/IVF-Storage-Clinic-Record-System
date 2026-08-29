@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl, getImageUrl } from '../api/client';
-import { DateInputDDMMYYYY } from './PatientForm';
+import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
@@ -246,20 +246,15 @@ export const OcrVerification: React.FC = () => {
     else if (can.match(/10|C10/i)) can = 'C10';
     setCanisterName(can || 'C08');
 
-    // Normalize Viso Tube Color (11 Physical Colors)
+    // Normalize Viso Tube / Straw Color (5 Physical Colors: Pink, Green, Blue, Yellow, White)
     let col = (json.visoTubeColor || '').trim();
     if (col.match(/pink/i)) col = 'Pink';
-    else if (col.match(/grey|gray/i)) col = 'Grey';
-    else if (col.match(/red/i)) col = 'Red';
-    else if (col.match(/black/i)) col = 'Black';
     else if (col.match(/green/i)) col = 'Green';
-    else if (col.match(/rust/i)) col = 'Rust';
     else if (col.match(/blue/i)) col = 'Blue';
-    else if (col.match(/purple/i)) col = 'Purple';
     else if (col.match(/yellow/i)) col = 'Yellow';
-    else if (col.match(/orange/i)) col = 'Orange';
-    else if (col.match(/sky/i)) col = 'Skyblue';
-    setVisoTubeColor(col || 'Pink');
+    else if (col.match(/white/i)) col = 'White';
+    else col = 'Pink';
+    setVisoTubeColor(col);
 
     // Normalize Viso Tube ID / Goblet
     let gob = (json.visoTubeId || '').trim();
@@ -733,7 +728,7 @@ export const OcrVerification: React.FC = () => {
                     type="text"
                     required
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => setFullName(capitalizeWords(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
                     placeholder="Full Name"
                   />
@@ -773,7 +768,7 @@ export const OcrVerification: React.FC = () => {
                   <input
                     type="text"
                     value={partnerName}
-                    onChange={(e) => setPartnerName(e.target.value)}
+                    onChange={(e) => setPartnerName(capitalizeWords(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
                     placeholder="Partner Name"
                   />
@@ -809,13 +804,10 @@ export const OcrVerification: React.FC = () => {
                 </div>
 
                 <div className="space-y-1 md:col-span-2">
-                  <label className="font-semibold text-slate-700">Doctor Name</label>
-                  <input
-                    type="text"
+                  <DoctorSelect
+                    label="Doctor Name"
                     value={doctorName}
-                    onChange={(e) => setDoctorName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
-                    placeholder="e.g. Dr. Ananya Sharma"
+                    onChange={(val) => setDoctorName(val)}
                   />
                 </div>
               </div>
@@ -914,17 +906,11 @@ export const OcrVerification: React.FC = () => {
                       className={`w-full border rounded-lg p-1.5 font-bold text-[11px] focus:outline-none shadow-2xs cursor-pointer transition-all ${getVisoColorStyle(visoTubeColor)}`}
                     >
                       <option value="" className="bg-white text-slate-900 font-bold">-- Select Color --</option>
-                      <option value="Pink" className="bg-pink-100 text-pink-900 font-bold">V01: Pink</option>
-                      <option value="Grey" className="bg-slate-200 text-slate-900 font-bold">V02: Grey</option>
-                      <option value="Red" className="bg-red-100 text-red-900 font-bold">V03: Red</option>
-                      <option value="Black" className="bg-slate-900 text-white font-bold">V04: Black</option>
-                      <option value="Green" className="bg-emerald-100 text-emerald-900 font-bold">V05: Green</option>
-                      <option value="Rust" className="bg-amber-100 text-amber-950 font-bold">V06: Rust</option>
-                      <option value="Blue" className="bg-blue-100 text-blue-900 font-bold">V07: Blue</option>
-                      <option value="Purple" className="bg-purple-100 text-purple-900 font-bold">V08: Purple</option>
-                      <option value="Yellow" className="bg-yellow-100 text-yellow-950 font-bold">V09: Yellow</option>
-                      <option value="Orange" className="bg-orange-100 text-orange-950 font-bold">V10: Orange</option>
-                      <option value="Skyblue" className="bg-sky-100 text-sky-950 font-bold">V11: Skyblue</option>
+                      <option value="Pink" className="bg-pink-100 text-pink-900 font-bold">Pink</option>
+                      <option value="Green" className="bg-emerald-100 text-emerald-900 font-bold">Green</option>
+                      <option value="Blue" className="bg-blue-100 text-blue-900 font-bold">Blue</option>
+                      <option value="Yellow" className="bg-yellow-100 text-yellow-950 font-bold">Yellow</option>
+                      <option value="White" className="bg-slate-100 text-slate-900 font-bold">White</option>
                     </select>
                   </div>
                 </div>
@@ -966,18 +952,22 @@ export const OcrVerification: React.FC = () => {
                               type="text"
                               value={st.strawId || ''}
                               onChange={(e) => updateStrawRow(idx, 'strawId', e.target.value)}
-                              placeholder={`Straw #${idx + 1}`}
+                              placeholder={`#${idx + 1}`}
                               className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono font-bold text-[8px]"
                             />
                           </td>
                           <td className="p-0.5">
-                            <input
-                              type="text"
-                              value={st.colorTag || st.colorName || ''}
+                            <select
+                              value={st.colorTag || st.colorName || 'Pink'}
                               onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
-                              placeholder="Pink"
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[8px]"
-                            />
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
+                            >
+                              <option value="Pink">Pink</option>
+                              <option value="Green">Green</option>
+                              <option value="Blue">Blue</option>
+                              <option value="Yellow">Yellow</option>
+                              <option value="White">White</option>
+                            </select>
                           </td>
                           <td className="p-0.5 text-center">
                             <input
