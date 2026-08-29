@@ -1547,13 +1547,18 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                 <div className="grid grid-cols-1 gap-3">
                   {strawItems.map((item, idx) => {
+                    const existingOffset = selectedExistingPatient?.batches?.reduce(
+                      (acc: number, b: any) => acc + (b.straws ? b.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0),
+                      0
+                    ) || 0;
+                    const strawDisplayNum = existingOffset + idx + 1;
                     const badgeClass = getStrawColorBadgeClass(item.color);
                     return (
                       <div key={idx} className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
                           <div className="flex items-center gap-2">
                             <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-mono font-bold text-xs">
-                              #{idx + 1}
+                              #{strawDisplayNum}
                             </span>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}`}>
                               {item.color}
@@ -1604,7 +1609,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                           <div className="sm:col-span-3">
                             <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                              Embryos in Straw #{idx + 1} *
+                              Embryos in Straw #{strawDisplayNum} *
                             </label>
                             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                               <button
@@ -2110,18 +2115,22 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
       {/* PRE-SAVE CONFIRMATION & OVERVIEW MODAL */}
       {showConfirmationModal && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5 text-slate-900 font-bold text-base">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+              <div className="flex items-center gap-3 text-slate-900 font-bold text-base">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
-                    Confirm Record Before Saving
+                    Confirm Full Overview Before Saving
                   </h3>
                   <p className="text-xs text-slate-500 font-normal">
-                    {selectedExistingPatient ? `Adding new freezing batch to existing patient record` : `Registering new patient & allocating cryo storage slot`}
+                    {selectedExistingPatient
+                      ? `Adding new freezing batch to existing patient record`
+                      : `Registering new patient & allocating cryo storage slot`}
                   </p>
                 </div>
               </div>
@@ -2134,43 +2143,73 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </button>
             </div>
 
-            {/* Patient & Partner Details Summary */}
+            {/* Patient & Partner Complete Demographics */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
               <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between border-b border-slate-200 pb-2">
-                <span>Patient Demographics & Attending Physician</span>
-                <span className="bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold">
+                <span>1. Patient & Partner Profile Summary</span>
+                <span className="bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold border border-emerald-300">
                   Reg No: {customPatientId || selectedExistingPatient?.patientId || 'Auto-Generated'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Patient Name:</span>
-                  <strong className="text-slate-900 font-bold text-sm">{fullName || selectedExistingPatient?.fullName}</strong>
-                  {(dob || patientAge) && (
-                    <span className="text-slate-600 block text-[11px]">DOB: {formatDateDDMMYYYY(dob)} (Age: {patientAge || calculateAgeFromDob(dob)})</span>
+              <div className="flex items-start gap-4">
+                {/* Photo Thumbnail */}
+                <div className="shrink-0">
+                  {photoPreviewUrl || selectedExistingPatient?.photoUrl ? (
+                    <img
+                      src={photoPreviewUrl || getImageUrl(selectedExistingPatient?.photoUrl)}
+                      alt="Patient Profile"
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-white border border-slate-300 flex items-center justify-center text-slate-400">
+                      <User className="w-8 h-8 text-slate-300" />
+                    </div>
                   )}
-                  {phone && <span className="text-slate-600 block font-mono text-[11px]">Ph: {phone}</span>}
                 </div>
 
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Partner Name:</span>
-                  <strong className="text-slate-900 font-bold text-sm">{partnerName || selectedExistingPatient?.partnerName || 'N/A'}</strong>
-                  {(partnerDob || partnerAge) && (
-                    <span className="text-slate-600 block text-[11px]">DOB: {formatDateDDMMYYYY(partnerDob)} (Age: {partnerAge || calculateAgeFromDob(partnerDob)})</span>
-                  )}
-                  {partnerPhone && <span className="text-slate-600 block font-mono text-[11px]">Ph: {partnerPhone}</span>}
+                {/* Demographics Grid */}
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="space-y-1">
+                    <span className="text-slate-500 text-[10px] uppercase font-semibold block">Patient Demographics:</span>
+                    <strong className="text-slate-900 font-bold text-sm block">{fullName || selectedExistingPatient?.fullName}</strong>
+                    <div className="text-slate-600 space-y-0.5 text-[11px]">
+                      <div><span className="font-semibold text-slate-700">DOB:</span> {formatDateDDMMYYYY(dob || selectedExistingPatient?.dob)} {patientAge || selectedExistingPatient?.patientAge ? `(Age: ${patientAge || selectedExistingPatient?.patientAge})` : ''}</div>
+                      <div><span className="font-semibold text-slate-700">Phone:</span> {phone || selectedExistingPatient?.phone || 'N/A'}</div>
+                      {(email || selectedExistingPatient?.email) && <div><span className="font-semibold text-slate-700">Email:</span> {email || selectedExistingPatient?.email}</div>}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-slate-500 text-[10px] uppercase font-semibold block">Partner Demographics:</span>
+                    <strong className="text-slate-900 font-bold text-sm block">{partnerName || selectedExistingPatient?.partnerName || 'N/A'}</strong>
+                    <div className="text-slate-600 space-y-0.5 text-[11px]">
+                      <div><span className="font-semibold text-slate-700">DOB:</span> {formatDateDDMMYYYY(partnerDob || selectedExistingPatient?.partnerDob)} {partnerAge || selectedExistingPatient?.partnerAge ? `(Age: ${partnerAge || selectedExistingPatient?.partnerAge})` : ''}</div>
+                      <div><span className="font-semibold text-slate-700">Phone:</span> {partnerPhone || selectedExistingPatient?.partnerPhone || 'N/A'}</div>
+                      {(partnerEmail || selectedExistingPatient?.partnerEmail) && <div><span className="font-semibold text-slate-700">Email:</span> {partnerEmail || selectedExistingPatient?.partnerEmail}</div>}
+                    </div>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="pt-2 border-t border-slate-200/60 grid grid-cols-2 gap-3 text-xs">
+            {/* Clinical & Physician Information */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
+              <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider border-b border-slate-200 pb-2">
+                <span>2. Clinical & Physician Information</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Attending Doctor:</span>
-                  <strong className="text-emerald-900 font-bold">{doctorName}</strong>
+                  <span className="text-slate-500 text-[10px] uppercase font-semibold block">Attending Physician:</span>
+                  <strong className="text-emerald-900 font-bold text-sm">{doctorName}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px] uppercase font-semibold">Date of Egg Retrieval:</span>
+                  <span className="text-slate-500 text-[10px] uppercase font-semibold block">Date of Egg Retrieval:</span>
                   <strong className="text-slate-900 font-bold">{formatDateDDMMYYYY(aspirationDate)}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-semibold block">Embryo Stage:</span>
+                  <strong className="text-blue-900 font-bold bg-blue-100 px-2 py-0.5 rounded border border-blue-300 text-[11px]">{embryoStage || 'Day 5'}</strong>
                 </div>
               </div>
 
@@ -2182,17 +2221,17 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               )}
             </div>
 
-            {/* Storage Destination Location */}
+            {/* Cryo Storage Destination */}
             {assignStorageEnabled && (
               <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 space-y-2">
                 <div className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center justify-between">
-                  <span>Cryo Storage Destination</span>
+                  <span>3. Cryo Storage Physical Destination</span>
                   <span className="bg-emerald-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">
                     Freezing Date: {formatDateDDMMYYYY(freezingDate)}
                   </span>
                 </div>
-                <div className="text-xs font-mono font-bold text-emerald-950 bg-white p-2.5 rounded-xl border border-emerald-300">
-                  {selectedLocationCode ? parseLocationCode(selectedLocationCode).formatted : 'Auto-Allocating Best Storage Slot'}
+                <div className="text-xs font-mono font-bold text-emerald-950 bg-white p-3 rounded-xl border border-emerald-300 flex items-center justify-between">
+                  <span>{selectedLocationCode ? parseLocationCode(selectedLocationCode).formatted : 'Auto-Allocating Best Storage Slot'}</span>
                 </div>
               </div>
             )}
@@ -2200,22 +2239,27 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             {/* Granular Straws Breakdown Table */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
               <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
-                <span>Specimen Straws Overview ({strawItems.length} Straws • {strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0)} Embryos)</span>
+                <span>4. Specimen Straws Breakdown ({strawItems.length} Straws • {strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0)} Embryos)</span>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {strawItems.map((item, sIdx) => {
+                  const existingOffset = selectedExistingPatient?.batches?.reduce(
+                    (acc: number, b: any) => acc + (b.straws ? b.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0),
+                    0
+                  ) || 0;
+                  const strawDisplayNum = existingOffset + sIdx + 1;
                   const badgeClass = getStrawColorBadgeClass(item.color);
                   return (
                     <div key={sIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-2 shadow-2xs">
                       <div className="flex items-center justify-between font-bold">
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded-lg font-mono font-bold text-xs">#{sIdx + 1}</span>
+                          <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded-lg font-mono font-bold text-xs">#{strawDisplayNum}</span>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] border ${badgeClass}`}>{item.color}</span>
                           <span className="text-slate-700 text-[11px]">{item.embryoCount || 1} Embryo(s)</span>
                         </div>
                         {item.isPgt && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-900 border border-purple-300">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-900 border border-purple-300 font-bold">
                             PGT TESTED
                           </span>
                         )}
@@ -2229,7 +2273,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                           const eComment = (item as any)[eIdx === 0 ? 'comment1' : 'comment2'] || (eIdx === 0 ? item.comments : '');
 
                           return (
-                            <div key={eIdx} className="bg-slate-50 p-2 rounded-lg border border-slate-200">
+                            <div key={eIdx} className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-0.5">
                               <div className="font-bold text-slate-800">
                                 Embryo #{eIdx + 1}: Grade <span className="font-mono text-emerald-800 font-extrabold">{eGrade || 'N/A'}</span>
                               </div>
@@ -2266,7 +2310,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl flex items-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
               >
                 <Check className="w-4 h-4 text-white" />
-                <span>Confirm & Save Record</span>
+                <span>Confirm & Save Patient Record</span>
               </button>
             </div>
           </div>
