@@ -53,28 +53,11 @@ cd ${PROJECT_DIR}
 
 # 4. Configure Backend Environment
 echo "⚙️ Configuring Production Environment (.env)..."
-cat <<EOT > ${PROJECT_DIR}/apps/backend/.env
-PORT=4000
-NODE_ENV=production
-FRONTEND_URL=http://localhost:3000
-BACKEND_URL=http://localhost:4000
-DATABASE_URL="${LOCAL_DB_URL}"
-APP_ACCESS_KEY_HASH=ec189984c5b36432f04401eb55b916a4801153d10b627bc4cc590382e27d1aa8
-JWT_ACCESS_SECRET=$(openssl rand -hex 32)
-JWT_REFRESH_SECRET=$(openssl rand -hex 32)
-STORAGE_PROVIDER=local
-STORAGE_LOCAL_DIR=${PROJECT_DIR}/uploads
-ENABLE_DISK_PURGE=false
-OCR_PROVIDER=google
-IS_HOSTINGER_VPS=true
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_SECURE=true
-SMTP_USER=srghivfcryo@gmail.com
-SMTP_PASS=grwq ezyt ivgb bisn
-SMTP_FROM="SRGH IVF Cryo Bank" <srghivfcryo@gmail.com>
-EOT
-
+if [ -f "${PROJECT_DIR}/apps/backend/.env" ]; then
+  echo "✅ Preserving user updated apps/backend/.env credentials"
+  sed -i 's|DATABASE_URL=.*|DATABASE_URL="postgresql://ivf_admin:IvfSecurePass2026!@localhost:5432/ivf_production?schema=public"|g' ${PROJECT_DIR}/apps/backend/.env
+  sed -i 's|STORAGE_LOCAL_DIR=.*|STORAGE_LOCAL_DIR=/var/www/ivf/uploads|g' ${PROJECT_DIR}/apps/backend/.env
+fi
 cp ${PROJECT_DIR}/apps/backend/.env ${PROJECT_DIR}/.env
 
 # 5. Install Dependencies & Build Backend Only
