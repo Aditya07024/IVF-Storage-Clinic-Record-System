@@ -15,16 +15,13 @@ export const getApiBaseUrl = () => {
     ) {
       return `http://${hostname}:4000`;
     }
-    if (hostname.includes('sgrhivfcryo.in')) {
-      return `${window.location.protocol}//${hostname}`;
-    }
-    if (hostname.includes('vercel.app')) {
-      return 'https://sgrhivfcryo.in';
+    if (hostname.includes('sgrhivfcryo.in') || hostname.includes('vercel.app')) {
+      return 'https://api.sgrhivfcryo.in';
     }
     return `${window.location.protocol}//${hostname}`;
   }
 
-  return 'https://sgrhivfcryo.in';
+  return 'https://api.sgrhivfcryo.in';
 };
 
 const API_BASE_URL = getApiBaseUrl();
