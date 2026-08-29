@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop } from 'lucide-react';
+import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
@@ -95,8 +95,12 @@ export const PatientDirectory: React.FC = () => {
   const [savingStrawEdit, setSavingStrawEdit] = useState(false);
   const [editStrawError, setEditStrawError] = useState<string | null>(null);
 
+  // Full Resolution Image Preview Lightbox State
+  const [previewImageModalUrl, setPreviewImageModalUrl] = useState<string | null>(null);
+  const [previewImageTitle, setPreviewImageTitle] = useState<string>('Patient Document Scan');
+
   useEffect(() => {
-    if (selectedPatient || editingPatient || quickThawPatient || editingStraw) {
+    if (selectedPatient || editingPatient || quickThawPatient || editingStraw || previewImageModalUrl) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -104,7 +108,7 @@ export const PatientDirectory: React.FC = () => {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [selectedPatient, editingPatient, quickThawPatient, editingStraw]);
+  }, [selectedPatient, editingPatient, quickThawPatient, editingStraw, previewImageModalUrl]);
 
   const openEditStrawModal = (straw: any) => {
     setEditingStraw(straw);
@@ -1398,21 +1402,27 @@ export const PatientDirectory: React.FC = () => {
                     <FileText className="w-4 h-4 text-emerald-600" />
                     <span>Attached Scanned Document & Verification Record</span>
                   </span>
-                  <a
-                    href={getImageUrl(selectedPatient.photoUrl)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewImageModalUrl(getImageUrl(selectedPatient.photoUrl));
+                      setPreviewImageTitle(`Scanned Document - ${selectedPatient.fullName}`);
+                    }}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer"
                   >
-                    View Full Image ↗
-                  </a>
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>View Full Image</span>
+                  </button>
                 </div>
                 <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs flex justify-center">
                   <img
                     src={getImageUrl(selectedPatient.photoUrl)}
                     alt={`Scanned Document for ${selectedPatient.fullName}`}
                     className="max-h-64 w-auto object-contain rounded-lg border border-slate-100 shadow-sm cursor-pointer hover:opacity-95 transition-all"
-                    onClick={() => window.open(getImageUrl(selectedPatient.photoUrl), '_blank')}
+                    onClick={() => {
+                      setPreviewImageModalUrl(getImageUrl(selectedPatient.photoUrl));
+                      setPreviewImageTitle(`Scanned Document - ${selectedPatient.fullName}`);
+                    }}
                   />
                 </div>
               </div>
@@ -1749,10 +1759,33 @@ export const PatientDirectory: React.FC = () => {
                           </span>
                         </div>
                         {ocr.mimeType?.startsWith('image/') && (
-                          <div className="relative rounded-xl overflow-hidden border border-slate-300 max-h-36 bg-slate-900 flex items-center justify-center">
+                          <div
+                            className="relative rounded-xl overflow-hidden border border-slate-300 max-h-36 bg-slate-900 flex items-center justify-center group cursor-pointer"
+                            onClick={() => {
+                              setPreviewImageModalUrl(imgUrl);
+                              setPreviewImageTitle(ocr.originalFilename || 'OCR Scanned Document');
+                            }}
+                          >
                             <img src={imgUrl} alt={ocr.originalFilename} className="object-contain max-h-36 w-full" />
+                            <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <span className="px-3 py-1 bg-emerald-600 text-white font-bold text-[11px] rounded-lg shadow-md flex items-center gap-1">
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>View Full Image</span>
+                              </span>
+                            </div>
                           </div>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewImageModalUrl(imgUrl);
+                            setPreviewImageTitle(ocr.originalFilename || 'OCR Scanned Document');
+                          }}
+                          className="w-full py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-lg border border-emerald-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>View Full Image</span>
+                        </button>
                         {ocr.rawOcrText && (
                           <div className="text-[10px] font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-700 max-h-20 overflow-y-auto whitespace-pre-wrap">
                             {ocr.rawOcrText}
@@ -1936,6 +1969,58 @@ export const PatientDirectory: React.FC = () => {
           }
         }}
       />
+
+      {/* Full Resolution Image Lightbox Modal */}
+      {previewImageModalUrl && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="relative w-full max-w-5xl bg-slate-900 rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 backdrop-blur-md text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">{previewImageTitle}</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Full Resolution Document Scan Preview</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const win = window.open();
+                    if (win) {
+                      win.document.write(`<body style="margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="${previewImageModalUrl}" style="max-width:100%;max-height:100vh;object-contain;" /></body>`);
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <span>Open in New Tab ↗</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageModalUrl(null)}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                  title="Close Preview"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Canvas Body */}
+            <div className="p-4 flex-1 bg-slate-950 overflow-auto flex items-center justify-center min-h-[400px]">
+              <img
+                src={previewImageModalUrl}
+                alt="Full Resolution View"
+                className="max-h-[75vh] w-auto object-contain rounded-2xl border border-slate-800 shadow-2xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
