@@ -15,6 +15,28 @@ try {
   console.warn('[OcrService] @google-cloud/vision package load notice:', e.message || e);
 }
 
+export function parseFlexibleDate(dateVal?: string | Date | null): Date | null {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
+
+  const str = String(dateVal).trim();
+  if (!str || str.toLowerCase() === 'n/a') return null;
+
+  // 1. Check DD/MM/YYYY or DD-MM-YYYY format
+  const ddmmyyyyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (ddmmyyyyMatch) {
+    const day = parseInt(ddmmyyyyMatch[1], 10);
+    const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+    const year = parseInt(ddmmyyyyMatch[3], 10);
+    const parsed = new Date(year, month, day);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  // 2. Standard ISO / JS date parse
+  const parsed = new Date(str);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export class OcrService {
   private visionClient: any = null;
   private genAI: GoogleGenerativeAI | null = null;
@@ -642,9 +664,9 @@ ${rawText}`;
             patientAge: input.patientAge,
             partnerAge: input.partnerAge,
             doctorName: input.doctorName,
-            aspirationDate: input.aspirationDate ? new Date(input.aspirationDate) : undefined,
-            freezingDate: input.freezingDate ? new Date(input.freezingDate) : undefined,
-            thawDate: input.thawDate ? new Date(input.thawDate) : undefined,
+            aspirationDate: parseFlexibleDate(input.aspirationDate) || undefined,
+            freezingDate: parseFlexibleDate(input.freezingDate) || undefined,
+            thawDate: parseFlexibleDate(input.thawDate) || undefined,
             comments: input.comments,
           },
         });
@@ -666,9 +688,9 @@ ${rawText}`;
               patientAge: input.patientAge,
               partnerAge: input.partnerAge,
               doctorName: input.doctorName,
-              aspirationDate: input.aspirationDate ? new Date(input.aspirationDate) : undefined,
-              freezingDate: input.freezingDate ? new Date(input.freezingDate) : undefined,
-              thawDate: input.thawDate ? new Date(input.thawDate) : undefined,
+              aspirationDate: parseFlexibleDate(input.aspirationDate) || undefined,
+              freezingDate: parseFlexibleDate(input.freezingDate) || undefined,
+              thawDate: parseFlexibleDate(input.thawDate) || undefined,
               comments: input.comments,
             },
           });
@@ -688,9 +710,9 @@ ${rawText}`;
               patientAge: input.patientAge,
               partnerAge: input.partnerAge,
               doctorName: input.doctorName,
-              aspirationDate: input.aspirationDate ? new Date(input.aspirationDate) : null,
-              freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
-              thawDate: input.thawDate ? new Date(input.thawDate) : null,
+              aspirationDate: parseFlexibleDate(input.aspirationDate),
+              freezingDate: parseFlexibleDate(input.freezingDate),
+              thawDate: parseFlexibleDate(input.thawDate),
               comments: input.comments,
             },
           });
@@ -715,9 +737,9 @@ ${rawText}`;
             patientAge: input.patientAge,
             partnerAge: input.partnerAge,
             doctorName: input.doctorName,
-            aspirationDate: input.aspirationDate ? new Date(input.aspirationDate) : null,
-            freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
-            thawDate: input.thawDate ? new Date(input.thawDate) : null,
+            aspirationDate: parseFlexibleDate(input.aspirationDate),
+            freezingDate: parseFlexibleDate(input.freezingDate),
+            thawDate: parseFlexibleDate(input.thawDate),
             comments: input.comments,
           },
         });
@@ -825,13 +847,16 @@ ${rawText}`;
 
       if (targetVisoTube) {
         const batchCode = `BAT-${Date.now().toString().slice(-6)}`;
+        const parsedFreezing = parseFlexibleDate(input.freezingDate) || new Date();
+        const parsedAsp = parseFlexibleDate(input.aspirationDate);
+
         const batch = await tx.storageBatch.create({
           data: {
             batchId: batchCode,
             patientId: patient.id,
             storageDate: new Date(),
-            freezingDate: input.freezingDate ? new Date(input.freezingDate) : new Date(),
-            aspirationDate: input.aspirationDate ? new Date(input.aspirationDate) : null,
+            freezingDate: parsedFreezing,
+            aspirationDate: parsedAsp,
             totalStraws: strawsList.length,
             totalEmbryos: strawsList.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
             visoTubeId: targetVisoTube.id,
@@ -841,35 +866,35 @@ ${rawText}`;
 
         for (let i = 0; i < strawsList.length; i++) {
           const st = strawsList[i];
-          const strawCode = st.strawId || `STR-${(i + 1).toString().padStart(6, '0')}`;
+          const rawCode = (st.strawId || `STR-${(i + 1).toString().padStart(2, '0')}`).trim();
           
-          try {
-            const createdStraw = await tx.straw.create({
+          // Check if strawId already exists to avoid unique constraint failure aborting transaction
+          const existingStraw = await tx.straw.findUnique({ where: { strawId: rawCode } });
+          const uniqueStrawCode = existingStraw ? `${rawCode}-${Date.now().toString().slice(-4)}-${i + 1}` : rawCode;
+
+          const createdStraw = await tx.straw.create({
+            data: {
+              strawId: uniqueStrawCode,
+              batchId: batch.id,
+              visoTubeId: targetVisoTube.id,
+              color: st.colorTag || input.visoTubeColor || 'Pink',
+              embryoCount: st.embryoCount || 1,
+              grade: st.grade || '4AA',
+              status: st.thawDate ? 'THAWED' : 'OCCUPIED',
+              freezingDate: parseFlexibleDate(st.freezingDate) || parsedFreezing,
+              thawDate: parseFlexibleDate(st.thawDate) || parseFlexibleDate(input.thawDate),
+            },
+          });
+
+          for (let e = 1; e <= (st.embryoCount || 1); e++) {
+            await tx.embryo.create({
               data: {
-                strawId: strawCode,
-                batchId: batch.id,
-                visoTubeId: targetVisoTube.id,
-                color: st.colorTag || input.visoTubeColor || 'Pink',
-                embryoCount: st.embryoCount || 1,
+                strawId: createdStraw.id,
+                embryoNumber: e,
                 grade: st.grade || '4AA',
-                status: 'OCCUPIED',
-                freezingDate: st.freezingDate ? new Date(st.freezingDate) : (input.freezingDate ? new Date(input.freezingDate) : null),
-                thawDate: st.thawDate ? new Date(st.thawDate) : (input.thawDate ? new Date(input.thawDate) : null),
+                status: st.thawDate ? 'THAWED' : 'FREEZED',
               },
             });
-
-            for (let e = 1; e <= (st.embryoCount || 1); e++) {
-              await tx.embryo.create({
-                data: {
-                  strawId: createdStraw.id,
-                  embryoNumber: e,
-                  grade: st.grade || '4AA',
-                  status: 'FREEZED',
-                },
-              });
-            }
-          } catch (err: any) {
-            // Ignore unique straw code conflicts
           }
         }
       }
