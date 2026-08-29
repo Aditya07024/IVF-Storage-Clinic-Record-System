@@ -156,7 +156,7 @@ export class OcrService {
 
   private async extractVisionViaGemini(fileBuffer: Buffer, mimeType: string): Promise<string> {
     if (!this.genAI) return '';
-    const candidateModels = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+    const candidateModels = ['gemini-3.6-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
     const base64Image = fileBuffer.toString('base64');
 
     for (const modelName of candidateModels) {
@@ -331,7 +331,7 @@ export class OcrService {
 
     // 1. Try Gemini AI Model Extraction with Database Container Context
     if (this.genAI && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'mock_gemini_key') {
-      const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+      const candidateModels = ['gemini-3.6-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
       const prompt = `You are an expert medical OCR data extraction assistant for an IVF & Cryo Storage Clinic.
 Extract all patient demographics, contact details, cryo storage location (Canister, Viso Tube color/ID, Level), and straw specimen records from the raw printed/handwritten document text below with high precision.
 
