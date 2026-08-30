@@ -206,7 +206,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
   const visoTubes = currentGoblet?.visoTubes || [];
 
   // Helper to determine space-fill background color using 8-Step Extended Heatmap Scale
-  const getSpaceFillColor = (occupied: number, max: number = 10) => {
+  const getSpaceFillColor = (occupied: number, max: number = 14) => {
     const rawPercentage = max > 0 ? (occupied / max) * 100 : 0;
     const step = get8StepHeatmapColor(rawPercentage);
 
@@ -387,7 +387,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   const code = `CAN-${num.toString().padStart(2, '0')}`;
                   const isSelected = selectedCanCode === code;
                   const occupiedInCan = canOccupancyMap[code] || 0;
-                  const colorInfo = getSpaceFillColor(occupiedInCan, 2640);
+                  const colorInfo = getSpaceFillColor(occupiedInCan, 3080);
 
                   return (
                     <button
@@ -437,7 +437,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     const num = idx + 1;
                     const isSelected = selectedCanisterNum === num;
                     const cnOccupied = canisterOccupancyMap[`${selectedCanCode}-C${num}`] || 0;
-                    const cnMax = 264; // 264 straws per canister capacity
+                    const cnMax = 308; // 308 straws per canister capacity (2 levels * 11 tubes * 14 straws)
 
                     let bgStyle = 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold';
                     if (cnOccupied >= cnMax) {
@@ -476,7 +476,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   {[1, 2].map((lvl) => {
                     const isSelected = selectedLevelNum === lvl;
                     const lOccupied = levelOccupancyMap[`${selectedCanCode}-C${selectedCanisterNum}-L${lvl}`] || 0;
-                    const lMax = 132; // 132 straws max per Level
+                    const lMax = 154; // 154 straws max per Level (11 tubes * 14 straws)
 
                     let bgStyle = 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold';
                     if (lOccupied >= lMax) {

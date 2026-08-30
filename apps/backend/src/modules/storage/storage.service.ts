@@ -222,7 +222,7 @@ export class StorageService {
     if (sameDateBatch) {
       const sameTube = visoTubes.find((t) => t.id === sameDateBatch.visoTubeId);
       if (sameTube) {
-        const available = 10 - sameTube.straws.length;
+        const available = 14 - sameTube.straws.length;
         if (available >= requiredStraws) {
           const parsed = parseLocationCode(sameTube.locationCode);
           primaryRecommendation = {
@@ -240,7 +240,7 @@ export class StorageService {
 
     for (const tube of visoTubes) {
       const occupiedCount = tube.straws.length;
-      const available = 10 - occupiedCount;
+      const available = 14 - occupiedCount;
       if (available >= requiredStraws) {
         const parsed = parseLocationCode(tube.locationCode);
         const item = {
@@ -375,7 +375,7 @@ export class StorageService {
 
       // Check current capacity
       const currentOccupied = visoTube.straws.length;
-      if (currentOccupied + requiredStraws > 10) {
+      if (currentOccupied + requiredStraws > 14) {
         throw new Error(`Location ${visoTube.locationCode} does not have enough vacant straw capacity.`);
       }
 
@@ -564,14 +564,14 @@ export class StorageService {
               totalVisoTubes += 1;
               const occ = v.straws.filter(s => s.status === 'OCCUPIED').length;
               occupiedStrawsCount += occ;
-              vacantStrawsCount += (10 - occ);
+              vacantStrawsCount += (14 - occ);
             });
           });
         });
       });
     });
 
-    const totalCapacityStraws = totalVisoTubes * 10;
+    const totalCapacityStraws = totalVisoTubes * 14;
     const utilizationPercentage = totalCapacityStraws > 0 ? ((occupiedStrawsCount / totalCapacityStraws) * 100).toFixed(1) : '0';
 
     return {
@@ -608,7 +608,7 @@ export class StorageService {
         throw new Error('Target Viso Tube location not found.');
       }
 
-      if (targetTube.straws.length >= 10) {
+      if (targetTube.straws.length >= 14) {
         throw new Error(`Target location ${targetTube.locationCode} is full.`);
       }
 

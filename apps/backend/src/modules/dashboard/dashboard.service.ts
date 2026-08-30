@@ -49,7 +49,7 @@ export class DashboardService {
         });
       });
 
-      const maxStrawCapacity = canTubes * 10;
+      const maxStrawCapacity = canTubes * 14;
       const canUtilVal = maxStrawCapacity > 0 ? (canOccupiedStraws / maxStrawCapacity) * 100 : 0;
       const utilization = canUtilVal > 0 && canUtilVal < 1 ? Number(canUtilVal.toFixed(2)) : Math.round(canUtilVal);
 
@@ -68,7 +68,7 @@ export class DashboardService {
       };
     });
 
-    const globalMaxStrawCapacity = globalTotalVisoTubes * 10;
+    const globalMaxStrawCapacity = globalTotalVisoTubes * 14;
     const globalUtilVal = globalMaxStrawCapacity > 0 ? (globalOccupiedStraws / globalMaxStrawCapacity) * 100 : 0;
     const globalUtilizationPercentage = globalUtilVal > 0 && globalUtilVal < 1
       ? `${globalUtilVal.toFixed(2)}%`

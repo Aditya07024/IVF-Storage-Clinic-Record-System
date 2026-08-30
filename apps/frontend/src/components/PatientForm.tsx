@@ -535,7 +535,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
     const availableTubes = tubes.filter((t: any) => {
       const occupiedCount = t.straws ? t.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
-      const remaining = 10 - occupiedCount;
+      const remaining = 14 - occupiedCount;
       return remaining >= strawsCount;
     });
 
