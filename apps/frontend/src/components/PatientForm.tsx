@@ -1894,7 +1894,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       // STRICT CAPACITY FILTER: Exclude full tubes or tubes with insufficient space
                       const availableTubes = tubes.filter((t: any) => {
                         const occupiedCount = t.straws ? t.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
-                        const remaining = 10 - occupiedCount;
+                        const remaining = 14 - occupiedCount;
                         return remaining >= requiredStrawsNeeded;
                       });
 
@@ -1922,13 +1922,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                           >
                             {availableTubes.map((t: any) => {
                               const occupiedCount = t.straws ? t.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
-                              const remaining = 10 - occupiedCount;
+                              const remaining = 14 - occupiedCount;
                               const tubeInt = t.tubeNumber || parseInt(t.locationCode?.match(/-V(\d+)/i)?.[1] || '1', 10);
                               const tNum = tubeInt.toString().padStart(2, '0');
                               const colorName = VISO_TUBE_COLOR_NAMES[tubeInt] || 'Standard';
                               return (
                                 <option key={t.id} value={t.id}>
-                                  Viso Tube {tNum} ({colorName}) — {remaining} / 10 Straw Slots Free (Available)
+                                  Viso Tube {tNum} ({colorName}) — {remaining} / 14 Straw Slots Free (Available)
                                 </option>
                               );
                             })}

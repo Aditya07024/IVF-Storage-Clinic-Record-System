@@ -598,7 +598,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                       const ty = 180 + 98 * Math.sin(midAngleRad);
 
                       const occupiedCount = tube.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                      const capacityColor = getSpaceFillColor(occupiedCount, 10);
+                      const capacityColor = getSpaceFillColor(occupiedCount, 14);
                       const isSelected = selectedTube?.id === tube.id;
 
                       const textFillClass = (capacityColor.percentage > 60 && !isSelected) ? 'fill-white' : 'fill-slate-900';
@@ -638,7 +638,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                             textAnchor="middle"
                             className={`font-mono text-[9px] font-extrabold ${textFillClass} pointer-events-none select-none`}
                           >
-                            {occupiedCount}/10
+                            {occupiedCount}/14
                           </text>
                         </g>
                       );
@@ -721,7 +721,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                         {Array.from({ length: 10 }).map((_, idx) => {
                           const cn = idx + 1;
                           const cnOccupied = canisterOccupancyMap[`${canCode}-C${cn}`] || 0;
-                          const cnMax = 220; // 220 straws per canister (22 Viso Tubes x 10 straws)
+                          const cnMax = 308; // 308 straws per canister (22 Viso Tubes x 14 straws)
 
                           let bgStyle = 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold';
                           if (cnOccupied >= cnMax) {
@@ -801,7 +801,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     This Viso Tube ({VISO_TUBE_COLOR_MAP[selectedTube.tubeNumber]?.name}) is 100% EMPTY
                   </h3>
                   <p className="text-xs text-slate-600 max-w-md mx-auto">
-                    All <strong>10 straw slots</strong> are vacant and available for immediate patient specimen allocation.
+                    All <strong>14 straw slots</strong> are vacant and available for immediate patient specimen allocation.
                   </p>
                 </div>
               ) : (
@@ -813,7 +813,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                       <span>Stored Patient Specimens ({selectedTube.straws.filter((s: any) => s.status === 'OCCUPIED').length} Straws Present):</span>
                     </div>
                     <span className="text-xs text-emerald-700 font-extrabold font-mono">
-                      {10 - selectedTube.straws.filter((s: any) => s.status === 'OCCUPIED').length} Slots Vacant
+                      {14 - selectedTube.straws.filter((s: any) => s.status === 'OCCUPIED').length} Slots Vacant
                     </span>
                   </div>
 
