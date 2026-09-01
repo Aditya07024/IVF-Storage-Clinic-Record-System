@@ -295,7 +295,7 @@ export class StorageService {
     let candidate = `STR-${nextNum.toString().padStart(6, '0')}`;
 
     let attempts = 0;
-    while (await db.straw.findUnique({ where: { strawId: candidate } })) {
+    while (await db.straw.findFirst({ where: { strawId: candidate } })) {
       attempts++;
       candidate = `STR-${(nextNum + attempts).toString().padStart(6, '0')}`;
       if (attempts > 50) break;
@@ -382,42 +382,34 @@ export class StorageService {
       const freezingDateObj = input.freezingDate ? new Date(input.freezingDate) : (input.storageDate ? new Date(input.storageDate) : new Date());
       const aspirationDateObj = input.aspirationDate ? new Date(input.aspirationDate) : null;
 
-      // Create Storage Batch entity with self-healing P2002 Unique Constraint retry
-      let batch: any = null;
+      // Pre-check Batch ID uniqueness using read-only findUnique to prevent P2002/25P02 transaction aborts
       let finalBatchId = batchIdCode;
       let batchAttemptCounter = 0;
-
-      while (!batch && batchAttemptCounter < 25) {
-        try {
-          batch = await tx.storageBatch.create({
-            data: {
-              batchId: finalBatchId,
-              patientId: input.patientId,
-              storageDate: freezingDateObj,
-              freezingDate: freezingDateObj,
-              aspirationDate: aspirationDateObj,
-              embryoStage: input.embryoStage || null,
-              totalStraws: requiredStraws,
-              totalEmbryos: totalEmbryos,
-              visoTubeId: input.visoTubeId,
-              notes: input.notes || null,
-            },
-          });
-        } catch (err: any) {
-          if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
-            batchAttemptCounter++;
-            const baseNum = parseInt(finalBatchId.split('-').pop() || '0', 10);
-            const nextNum = (isNaN(baseNum) ? 1 : baseNum) + batchAttemptCounter;
-            finalBatchId = `BATCH-${freezingDateObj.getFullYear()}-${nextNum.toString().padStart(6, '0')}`;
-          } else {
-            throw err;
-          }
+      while (await tx.storageBatch.findUnique({ where: { batchId: finalBatchId } })) {
+        batchAttemptCounter++;
+        const baseNum = parseInt(finalBatchId.split('-').pop() || '0', 10);
+        const nextNum = (isNaN(baseNum) ? 1 : baseNum) + 1;
+        finalBatchId = `BATCH-${freezingDateObj.getFullYear()}-${nextNum.toString().padStart(6, '0')}`;
+        if (batchAttemptCounter > 50) {
+          finalBatchId = `BATCH-${freezingDateObj.getFullYear()}-${Date.now().toString().slice(-6)}`;
+          break;
         }
       }
 
-      if (!batch) {
-        throw new Error('Failed to create storage batch after retry attempts.');
-      }
+      const batch = await tx.storageBatch.create({
+        data: {
+          batchId: finalBatchId,
+          patientId: input.patientId,
+          storageDate: freezingDateObj,
+          freezingDate: freezingDateObj,
+          aspirationDate: aspirationDateObj,
+          embryoStage: input.embryoStage || null,
+          totalStraws: requiredStraws,
+          totalEmbryos: totalEmbryos,
+          visoTubeId: input.visoTubeId,
+          notes: input.notes || null,
+        },
+      });
 
       // Update patient's aspirationDate & freezingDate on record allocation
       await tx.patient.update({
@@ -439,39 +431,23 @@ export class StorageService {
         const color = item.color || 'Pink';
         const seqNum = existingPatientStrawCount + i + 1;
 
-        let straw: any = null;
-        let strawIdCode = `#${seqNum}`;
-        let strawAttemptCounter = 0;
+        const customId = (item as any).strawCustomId?.trim();
+        const strawIdCode = customId || `#${seqNum}`;
 
-        while (!straw && strawAttemptCounter < 25) {
-          try {
-            straw = await tx.straw.create({
-              data: {
-                strawId: strawAttemptCounter === 0 ? strawIdCode : `#${seqNum} (P-${strawAttemptCounter})`,
-                batchId: batch.id,
-                visoTubeId: input.visoTubeId,
-                color,
-                embryoCount: embryosInThisStraw,
-                grade: item.grade ? item.grade.trim() : null,
-                comments: item.comments ? item.comments.trim() : null,
-                isPgt: item.isPgt ?? false,
-                maxCapacity: 2,
-                status: 'OCCUPIED',
-              },
-            });
-          } catch (err: any) {
-            if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
-              strawAttemptCounter++;
-              strawIdCode = `#${seqNum} (P-${strawAttemptCounter})`;
-            } else {
-              throw err;
-            }
-          }
-        }
-
-        if (!straw) {
-          throw new Error('Failed to create straw entity after retry attempts.');
-        }
+        const straw = await tx.straw.create({
+          data: {
+            strawId: strawIdCode,
+            batchId: batch.id,
+            visoTubeId: input.visoTubeId,
+            color,
+            embryoCount: embryosInThisStraw,
+            grade: item.grade ? item.grade.trim() : null,
+            comments: item.comments ? item.comments.trim() : null,
+            isPgt: item.isPgt ?? false,
+            maxCapacity: 2,
+            status: 'OCCUPIED',
+          },
+        });
 
         // Create Embryo entities inside straw
         for (let e = 1; e <= embryosInThisStraw; e++) {
@@ -675,7 +651,18 @@ export class StorageService {
       }
 
       const updatePayload: any = {};
-      if (data.strawCustomId !== undefined) updatePayload.strawId = data.strawCustomId.trim();
+      if (data.strawCustomId !== undefined) {
+        const newCustomId = data.strawCustomId.trim();
+        if (newCustomId !== straw.strawId) {
+          const existing = await tx.straw.findFirst({
+            where: { strawId: newCustomId, batch: { patientId: straw.batch.patientId } },
+          });
+          if (existing) {
+            throw new Error(`Straw ID "${newCustomId}" is already assigned to another straw for this patient. Please enter a unique Straw ID.`);
+          }
+        }
+        updatePayload.strawId = newCustomId;
+      }
       if (data.color !== undefined) updatePayload.color = data.color.trim();
       if (data.grade !== undefined) updatePayload.grade = data.grade.trim();
       if (data.embryoCount !== undefined && !isNaN(Number(data.embryoCount))) {

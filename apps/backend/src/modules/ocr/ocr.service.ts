@@ -861,9 +861,7 @@ ${rawText}`;
           const defaultLabel = `#${seqNum}`;
           const rawCode = st.strawId && !st.strawId.startsWith('STR-') ? st.strawId.trim() : defaultLabel;
           
-          // Check if strawId already exists to avoid unique constraint failure aborting transaction
-          const existingStraw = await tx.straw.findUnique({ where: { strawId: rawCode } });
-          const uniqueStrawCode = existingStraw ? `${rawCode} (P-${i + 1})` : rawCode;
+          const uniqueStrawCode = rawCode;
 
           const createdStraw = await tx.straw.create({
             data: {

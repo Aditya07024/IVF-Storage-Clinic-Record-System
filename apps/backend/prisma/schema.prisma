@@ -148,7 +148,7 @@ model StorageBatch {
 
 model Straw {
   id          String       @id @default(uuid())
-  strawId     String       @unique
+  strawId     String
   batchId     String
   visoTubeId  String
   color       String
