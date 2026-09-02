@@ -2402,7 +2402,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                           const eComment = ((item as any)[eIdx === 0 ? 'comment1' : 'comment2'] || (eIdx === 0 ? item.comments : '') || '').trim();
 
                           const gradeStr = eGrade ? eGrade : 'N/A';
-                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Frag: ${eFrag})` : '';
+                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
                           const commentStr = eComment ? ` - (${eComment})` : '';
 
                           return (

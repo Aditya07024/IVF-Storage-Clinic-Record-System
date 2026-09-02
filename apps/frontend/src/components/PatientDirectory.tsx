@@ -1559,7 +1559,7 @@ export const PatientDirectory: React.FC = () => {
                           const eComment = (straw.comments || '').trim();
 
                           const gradeStr = eGrade ? eGrade : 'N/A';
-                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Frag: ${eFrag})` : '';
+                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
                           const commentStr = eComment ? ` - (${eComment})` : '';
 
                           return (
