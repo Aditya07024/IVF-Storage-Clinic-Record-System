@@ -125,7 +125,7 @@ export const DoctorSelect: React.FC<{
 };
 
 export function getStrawColorBadgeClass(colorName?: string): string {
-  const color = (colorName || 'Pink').toLowerCase().trim();
+  const color = (colorName || '').toLowerCase().trim();
   switch (color) {
     case 'pink':
       return 'bg-pink-100 text-pink-900 border-pink-300 font-bold';
@@ -138,7 +138,7 @@ export function getStrawColorBadgeClass(colorName?: string): string {
     case 'white':
       return 'bg-slate-100 text-slate-900 border-slate-300 font-bold';
     default:
-      return 'bg-pink-100 text-pink-900 border-pink-300 font-bold';
+      return 'bg-amber-50 text-amber-900 border-amber-300 font-bold';
   }
 }
 
@@ -625,7 +625,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       if (prev.length === validCount) return prev;
       if (prev.length < validCount) {
         const next = [...prev];
-        const primaryColor = prev[0]?.color || 'Pink';
+        const primaryColor = prev[0]?.color || '';
         for (let i = prev.length; i < validCount; i++) {
           next.push({ color: primaryColor, embryoCount: 1, grade: '4AA', comments: '', isPgt: false });
         }
