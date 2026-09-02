@@ -623,12 +623,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setStrawsCount(validCount);
     setStrawItems((prev) => {
       if (prev.length === validCount) return prev;
-      const VISO_COLORS = ['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'];
       if (prev.length < validCount) {
         const next = [...prev];
+        const primaryColor = prev[0]?.color || 'Pink';
         for (let i = prev.length; i < validCount; i++) {
-          const colorName = VISO_COLORS[i % VISO_COLORS.length] || 'Pink';
-          next.push({ color: colorName, embryoCount: 1, grade: '4AA', comments: '', isPgt: false });
+          next.push({ color: primaryColor, embryoCount: 1, grade: '4AA', comments: '', isPgt: false });
         }
         return next;
       }
