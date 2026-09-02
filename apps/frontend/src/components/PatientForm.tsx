@@ -492,17 +492,35 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     });
   };
 
-  // Clear Selected Existing Patient
+  // Clear Selected Existing Patient & Reset ALL Form Fields Completely
   const handleClearSelectedExisting = () => {
     setSelectedExistingPatient(null);
     setCustomPatientId('');
     setFullName('');
     setPartnerName('');
     setPhone('');
+    setPartnerPhone('');
+    setEmail('');
+    setPartnerEmail('');
+    setDob('');
+    setPartnerDob('');
     setPatientAge('');
     setPartnerAge('');
     setDoctorName('');
+    setAspirationDate(new Date().toISOString().split('T')[0]);
+    setFreezingDate(new Date().toISOString().split('T')[0]);
+    setEmbryoStage('Day 5');
+    setThawDate('');
+    setComments('');
+    setPhotoFile(null);
+    setPhotoPreviewUrl(null);
+    setCropModalFile(null);
+    setAssignStorageEnabled(false);
+    setStrawsCount(1);
+    setStrawItems([{ color: 'Pink', embryoCount: 1, grade: '', comments: '', isPgt: false }]);
     setExistingSearchQuery('');
+    setExistingSearchResults([]);
+    setError(null);
   };
 
   // Fetch full storage hierarchy for manual selection
@@ -1141,7 +1159,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         );
       })()}
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8" autoComplete="off">
         {/* Section 1: Clinical Patient Details */}
         <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
           <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1556,7 +1574,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                               }}
                               className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
                             />
-                            <span>PGT Tested ({item.isPgt ? 'TRUE' : 'FALSE'})</span>
+                            <span>PGT Tested</span>
                           </label>
                         </div>
 
