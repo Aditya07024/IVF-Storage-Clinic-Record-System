@@ -1661,7 +1661,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                           <div className="sm:col-span-3">
                             <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              Embryos in Straw #{strawDisplayNum} *
+                              {strawDisplayNum} No of Embryo(s) 
                             </label>
                             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                               <button
@@ -1701,7 +1701,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         {/* Granular Per-Embryo Breakdown (1 or 2 Embryos) */}
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
                           <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                            <span>Per-Embryo Grade, Fragmentation & Comments (Straw #{strawDisplayNum})</span>
+                            <span>Embryo Details</span>
                           </div>
 
                           {Array.from({ length: item.embryoCount || 1 }).map((_, eIdx) => {
@@ -1721,7 +1721,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                               <div key={eIdx} className="bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center">
                                 <div>
                                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    {gradeLabel}
+                                    Grade
                                   </label>
                                   <input
                                     type="text"
@@ -2473,9 +2473,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                           return (
                             <div key={eIdx} className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
-                              {embryoCount > 1 && (
+                              {/* {embryoCount > 1 && (
                                 <span className="font-bold text-slate-700">Embryo #{eIdx + 1}: </span>
-                              )}
+                              )} */}
                               <span className="font-mono font-bold text-slate-900">
                                 Embryo grade: {gradeStr}{fragStr}{commentStr}
                               </span>

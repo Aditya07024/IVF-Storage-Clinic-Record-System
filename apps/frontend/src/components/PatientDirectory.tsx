@@ -1507,16 +1507,16 @@ export const PatientDirectory: React.FC = () => {
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
                                   {straw.color || 'Pink'}
                                 </span>
+                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
+                                  Embryo grade: {gradeStr}{fragStr}{commentStr}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs font-medium text-slate-700 flex-wrap">
                                 {straw.isPgt && (
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
                                     PGT TESTED
                                   </span>
                                 )}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs font-medium text-slate-700 flex-wrap">
-                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
-                                  Embryo grade: {gradeStr}{fragStr}{commentStr}
-                                </span>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
