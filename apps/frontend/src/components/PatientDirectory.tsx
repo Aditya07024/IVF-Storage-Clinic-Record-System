@@ -1370,12 +1370,14 @@ export const PatientDirectory: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Full Name & Age</span>
-                      <strong className="text-slate-900 font-bold block">{selectedPatient.fullName} {selectedPatient.patientAge ? `(${selectedPatient.patientAge})` : ''}</strong>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Full Name</span>
+                      <strong className="text-slate-900 font-bold block">{selectedPatient.fullName}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Date of Birth</span>
-                      <span className="text-slate-800 font-mono font-bold block">{selectedPatient.dob ? formatDateDDMMYYYY(selectedPatient.dob) : 'N/A'}</span>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Date of Birth & Age</span>
+                      <span className="text-slate-800 font-mono font-bold block">
+                        {selectedPatient.dob ? formatDateDDMMYYYY(selectedPatient.dob) : 'N/A'} {selectedPatient.patientAge ? `(${selectedPatient.patientAge})` : ''}
+                      </span>
                     </div>
                   </div>
 
@@ -1409,12 +1411,14 @@ export const PatientDirectory: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Partner Name & Age</span>
-                      <strong className="text-slate-900 font-bold block">{selectedPatient.partnerName || 'N/A'} {selectedPatient.partnerAge ? `(${selectedPatient.partnerAge})` : ''}</strong>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Partner Name</span>
+                      <strong className="text-slate-900 font-bold block">{selectedPatient.partnerName || 'N/A'}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Date of Birth</span>
-                      <span className="text-slate-800 font-mono font-bold block">{selectedPatient.partnerDob ? formatDateDDMMYYYY(selectedPatient.partnerDob) : 'N/A'}</span>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Date of Birth & Age</span>
+                      <span className="text-slate-800 font-mono font-bold block">
+                        {selectedPatient.partnerDob ? formatDateDDMMYYYY(selectedPatient.partnerDob) : 'N/A'} {selectedPatient.partnerAge ? `(${selectedPatient.partnerAge})` : ''}
+                      </span>
                     </div>
                   </div>
 
