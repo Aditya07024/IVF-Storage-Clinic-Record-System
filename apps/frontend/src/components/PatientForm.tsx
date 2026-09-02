@@ -159,9 +159,9 @@ function parseLocationCode(code: string) {
     can: `Can ${canNum}`,
     canister: `Canister ${canisterNum}`,
     level: levelName,
-    tube: `${colorName} Viso Tube (Tube ${tubeNumPadded})`,
+    tube: `Viso Tube - ${colorName}`,
     tubeColor: colorName,
-    formatted: `Can ${canNum} • Canister ${canisterNum} • ${levelName} • ${colorName} Viso Tube (V${tubeNumPadded})`,
+    formatted: `Can ${canNum} • Canister ${canisterNum} • ${levelName} • Viso Tube - ${colorName}`,
   };
 }
 
@@ -189,25 +189,69 @@ export function formatISOToDDMMYYYY(isoStr?: string | null): string {
   return isoStr;
 }
 
-export function parseDDMMYYYYToISO(input: string): string {
-  if (!input) return '';
-  const digits = input.replace(/\D/g, '');
-  if (digits.length === 8) {
-    const d = digits.substring(0, 2);
-    const m = digits.substring(2, 4);
-    const y = digits.substring(4, 8);
-    return `${y}-${m}-${d}`;
+export function formatRawToDDMMYYYYMask(rawInput: string): string {
+  // If user typed slashes or hyphens (e.g. 2/2/23), don't strip slashes during raw typing
+  if (rawInput.includes('/') || rawInput.includes('-') || rawInput.includes('.')) {
+    return rawInput;
   }
-  if (input.includes('/') || input.includes('-')) {
-    const parts = input.split(/[\/\-]/);
-    if (parts.length === 3) {
-      const [d, m, y] = parts;
-      if (y.length === 4 && d && m) {
-        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  const digits = rawInput.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) {
+    return digits;
+  }
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+}
+
+export function normalizeFlexibleDateToDDMMYYYY(input: string): { formatted: string; iso: string } {
+  if (!input) return { formatted: '', iso: '' };
+
+  const parts = input.split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    let [dStr, mStr, yStr] = parts.map(p => p.trim());
+    if (dStr && mStr && yStr) {
+      let day = parseInt(dStr, 10);
+      let month = parseInt(mStr, 10);
+      let year = parseInt(yStr, 10);
+
+      // Convert 2-digit year to 4-digit year (e.g. 23 -> 2023, 88 -> 1988)
+      if (yStr.length === 2) {
+        year = year < 50 ? 2000 + year : 1900 + year;
+      }
+
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+        const dd = day.toString().padStart(2, '0');
+        const mm = month.toString().padStart(2, '0');
+        const yyyy = year.toString();
+        const formatted = `${dd}/${mm}/${yyyy}`;
+        const iso = `${yyyy}-${mm}-${dd}`;
+        return { formatted, iso };
       }
     }
   }
-  return input;
+
+  // Also try 8 digits
+  const digits = input.replace(/\D/g, '');
+  if (digits.length === 8) {
+    const day = parseInt(digits.substring(0, 2), 10);
+    const month = parseInt(digits.substring(2, 4), 10);
+    const year = parseInt(digits.substring(4, 8), 10);
+
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+      const dd = day.toString().padStart(2, '0');
+      const mm = month.toString().padStart(2, '0');
+      const yyyy = year.toString();
+      return { formatted: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
+    }
+  }
+
+  return { formatted: input, iso: '' };
+}
+
+export function parseDDMMYYYYToISO(input: string): string {
+  const { iso } = normalizeFlexibleDateToDDMMYYYY(input);
+  return iso;
 }
 
 interface DateInputDDMMYYYYProps {
@@ -236,16 +280,23 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    setDisplayValue(raw);
+    const formatted = formatRawToDDMMYYYYMask(raw);
+    setDisplayValue(formatted);
 
-    const iso = parseDDMMYYYYToISO(raw);
+    const { iso } = normalizeFlexibleDateToDDMMYYYY(formatted);
     if (iso && iso.length === 10) {
-      const testDate = new Date(iso);
-      if (!isNaN(testDate.getTime())) {
-        onChange(iso);
-      }
-    } else if (!raw) {
+      onChange(iso);
+    } else if (!formatted) {
       onChange('');
+    }
+  };
+
+  const handleBlur = () => {
+    if (!displayValue) return;
+    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(displayValue);
+    if (iso) {
+      setDisplayValue(formatted);
+      onChange(iso);
     }
   };
 
@@ -274,6 +325,7 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
           type="text"
           value={displayValue}
           onChange={handleTextChange}
+          onBlur={handleBlur}
           placeholder="DD/MM/YYYY"
           maxLength={10}
           className={`w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 pr-10 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block ${className || ''}`}
@@ -1388,7 +1440,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
-            <div className="md:col-span-2">
+            {/* <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex flex-wrap items-center justify-between gap-1">
                 <span>Clinical Comments & Doctor Remarks</span>
                 <span className="text-[10px] text-slate-500 font-normal lowercase">(Egg yield, embryo grade quality, special instructions)</span>
@@ -1400,7 +1452,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 placeholder="Write unlimited clinical comments, doctor instructions, embryo quality remarks, OCR notes, or detailed storage records here..."
                 className="w-full max-w-full box-border bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-medium min-h-[120px] resize-y leading-relaxed block"
               />
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -1580,19 +1632,26 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                           <div>
-                            <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">
-                              Straw Colour *
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                              Straw Color *
                             </label>
                             <select
                               value={item.color}
                               onChange={(e) => {
+                                const newColor = e.target.value;
                                 const next = [...strawItems];
-                                next[idx].color = e.target.value;
+                                next[idx].color = newColor;
+                                // Auto-select same color for remaining straws when strawsCount > 1 and updating top/first straw
+                                if (idx === 0 && next.length > 1) {
+                                  for (let k = 1; k < next.length; k++) {
+                                    next[k].color = newColor;
+                                  }
+                                }
                                 setStrawItems(next);
                               }}
                               className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
                             >
-                              {['Pink', 'Green', 'Blue', 'Yellow', 'White'].map((c) => (
+                              {['Pink', 'Grey', 'Red', 'Black', 'Green', 'Rust', 'Blue', 'Purple', 'Yellow', 'Orange', 'Skyblue'].map((c) => (
                                 <option key={c} value={c}>
                                   {c}
                                 </option>
@@ -1601,7 +1660,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                           </div>
 
                           <div className="sm:col-span-3">
-                            <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">
                               Embryos in Straw #{strawDisplayNum} *
                             </label>
                             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
@@ -1641,8 +1700,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                         {/* Granular Per-Embryo Breakdown (1 or 2 Embryos) */}
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
-                          <div className="text-[10px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                            <span>Per-Embryo Grade, Fragmentation & Comments ({item.embryoCount || 1} Embryo{item.embryoCount === 2 ? 's' : ''})</span>
+                          <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                            <span>Per-Embryo Grade, Fragmentation & Comments (Straw #{strawDisplayNum})</span>
                           </div>
 
                           {Array.from({ length: item.embryoCount || 1 }).map((_, eIdx) => {
@@ -1650,28 +1709,37 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                             const eFragKey = eIdx === 0 ? 'frag1' : 'frag2';
                             const eCommentKey = eIdx === 0 ? 'comment1' : 'comment2';
 
+                            const gradeLabel = item.embryoCount > 1
+                              ? `Straw #${strawDisplayNum} • Embryo #${eIdx + 1} Grade`
+                              : `Straw #${strawDisplayNum} Grade`;
+
+                            const commentLabel = item.embryoCount > 1
+                              ? `Straw #${strawDisplayNum} • Embryo #${eIdx + 1} Comment`
+                              : `Straw #${strawDisplayNum} Comment`;
+
                             return (
                               <div key={eIdx} className="bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center">
                                 <div>
-                                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">
-                                    Embryo #{eIdx + 1} Grade
+                                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    {gradeLabel}
                                   </label>
                                   <input
                                     type="text"
                                     value={(item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '')}
                                     onChange={(e) => {
+                                      const upperGrade = e.target.value.toUpperCase();
                                       const next = [...strawItems];
-                                      (next[idx] as any)[eGradeKey] = e.target.value;
-                                      if (eIdx === 0) next[idx].grade = e.target.value;
+                                      (next[idx] as any)[eGradeKey] = upperGrade;
+                                      if (eIdx === 0) next[idx].grade = upperGrade;
                                       setStrawItems(next);
                                     }}
-                                    placeholder="e.g. 4AA, 4BB"
-                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono font-bold text-slate-900 text-xs focus:outline-none focus:border-emerald-500"
+                                    placeholder="e.g. 5AA, 4BB"
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono font-bold text-slate-900 text-xs focus:outline-none focus:border-emerald-500 uppercase"
                                   />
                                 </div>
 
                                 <div>
-                                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">
+                                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                                     Fragmentation
                                   </label>
                                   <select
@@ -1690,8 +1758,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                                 </div>
 
                                 <div>
-                                  <label className="block text-[9px] font-bold text-slate-700 uppercase mb-1">
-                                    Embryo #{eIdx + 1} Comment
+                                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    {commentLabel}
                                   </label>
                                   <input
                                     type="text"
@@ -1946,7 +2014,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                               const colorName = VISO_TUBE_COLOR_NAMES[tubeInt] || 'Standard';
                               return (
                                 <option key={t.id} value={t.id}>
-                                  Viso Tube {tNum} ({colorName}) — {remaining} / 14 Straw Slots Free (Available)
+                                  Viso Tube - {colorName} — {remaining} / 14 Straw Slots Free (Available)
                                 </option>
                               );
                             })}
@@ -2357,10 +2425,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </div>
             )}
 
-            {/* Granular Straws Breakdown Table */}
+            {/* Granular Embryo Details Table */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-              <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
-                <span>4. Specimen Straws Breakdown ({strawItems.length} Straws • {strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0)} Embryos)</span>
+              <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                <span>4. Embryo Details ({strawItems.length} straw{strawItems.length === 1 ? '' : 's'} - {strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0)} embryo{strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0) === 1 ? '' : 's'})</span>
               </div>
 
               <div className="space-y-2.5">
@@ -2371,13 +2439,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   ) || 0;
                   const strawDisplayNum = existingOffset + sIdx + 1;
                   const badgeClass = getStrawColorBadgeClass(item.color);
+                  const embryoCount = item.embryoCount || 1;
+
                   return (
                     <div key={sIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-2 shadow-2xs">
                       <div className="flex items-center justify-between font-bold">
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded-lg font-mono font-bold text-xs">#{strawDisplayNum}</span>
+                          <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded-lg font-mono font-bold text-xs">
+                            Straw #{strawDisplayNum} - {embryoCount} Embryo(s)
+                          </span>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] border ${badgeClass}`}>{item.color}</span>
-                          <span className="text-slate-700 text-[11px]">{item.embryoCount || 1} Embryo(s)</span>
                         </div>
                         {item.isPgt && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-900 border border-purple-300 font-bold">
@@ -2387,25 +2458,24 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       </div>
 
                       {/* Per-Embryo Details */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                        {Array.from({ length: item.embryoCount || 1 }).map((_, eIdx) => {
-                          const eGrade = (item as any)[eIdx === 0 ? 'grade1' : 'grade2'] || (eIdx === 0 ? item.grade : '');
-                          const eFrag = (item as any)[eIdx === 0 ? 'frag1' : 'frag2'] || 'No';
-                          const eComment = (item as any)[eIdx === 0 ? 'comment1' : 'comment2'] || (eIdx === 0 ? item.comments : '');
+                      <div className="space-y-1 text-xs font-medium">
+                        {Array.from({ length: embryoCount }).map((_, eIdx) => {
+                          const eGrade = ((item as any)[eIdx === 0 ? 'grade1' : 'grade2'] || (eIdx === 0 ? item.grade : '') || '').trim().toUpperCase();
+                          const eFrag = ((item as any)[eIdx === 0 ? 'frag1' : 'frag2'] || '').trim();
+                          const eComment = ((item as any)[eIdx === 0 ? 'comment1' : 'comment2'] || (eIdx === 0 ? item.comments : '') || '').trim();
+
+                          const gradeStr = eGrade ? eGrade : 'N/A';
+                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Frag: ${eFrag})` : '';
+                          const commentStr = eComment ? ` - (${eComment})` : '';
 
                           return (
-                            <div key={eIdx} className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-0.5">
-                              <div className="font-bold text-slate-800">
-                                Embryo #{eIdx + 1}: Grade <span className="font-mono text-emerald-800 font-extrabold">{eGrade || 'N/A'}</span>
-                              </div>
-                              <div className="text-slate-600 text-[10px]">
-                                Fragmentation: <span className="font-bold text-slate-900">{eFrag}</span>
-                              </div>
-                              {eComment && (
-                                <div className="text-slate-500 italic text-[10px]">
-                                  "{eComment}"
-                                </div>
+                            <div key={eIdx} className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
+                              {embryoCount > 1 && (
+                                <span className="font-bold text-slate-700">Embryo #{eIdx + 1}: </span>
                               )}
+                              <span className="font-mono font-bold text-slate-900">
+                                Grade - {gradeStr}{fragStr}{commentStr}
+                              </span>
                             </div>
                           );
                         })}

@@ -20,10 +20,8 @@ function parseVisoTubeLocation(code?: string) {
   const levelNum = parseInt(match[3], 10);
   const levelName = levelNum === 1 ? 'Level 1 (Bottom)' : levelNum === 2 ? 'Level 2 (Top)' : `Level ${levelNum}`;
   const tubeNumInt = parseInt(match[5], 10);
-  const tubeNumPadded = match[5].padStart(2, '0');
   const tubeColor = VISO_TUBE_COLOR_NAMES[tubeNumInt] || 'Standard';
-
-  return `Can ${canNum} • Canister ${canisterNum} • ${levelName} • ${tubeColor} Viso Tube (V${tubeNumPadded})`;
+  return `Can ${canNum} • Canister ${canisterNum} • ${levelName} • Viso Tube - ${tubeColor}`;
 }
 
 export const PatientDirectory: React.FC = () => {
@@ -1480,57 +1478,57 @@ export const PatientDirectory: React.FC = () => {
                       
 
                       {/* Active Straws List */}
-                      <div className="space-y-1.5">
-                        <div className="text-[11px] font-bold text-slate-700">Active Straws in this Batch ({activeStraws.length}):</div>
+                      <div className="space-y-2">
+                        <div className="text-xs font-bold text-slate-800">
+                          Embryo Details ({activeStraws.length} straw{activeStraws.length === 1 ? '' : 's'} - {activeStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0)} embryo{activeStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0) === 1 ? '' : 's'})
+                        </div>
                         {activeStraws.map((straw: any, sIdx: number) => {
                           const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
                           const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `#${sIdx + 1}`;
+                          const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
+
+                          const eGrade = (straw.grade || '').trim().toUpperCase();
+                          const eFrag = (straw.fragmentation || '').trim();
+                          const eComment = (straw.comments || '').trim();
+
+                          const gradeStr = eGrade ? eGrade : 'N/A';
+                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Frag: ${eFrag})` : '';
+                          const commentStr = eComment ? ` - (${eComment})` : '';
+
                           return (
                             <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
-                              <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
-                                <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold text-xs">{displayLabel}</span>
-                                {straw.strawId && !straw.strawId.startsWith('#') && !straw.strawId.startsWith('Straw #') && (
-                                  <span className="text-[11px] text-slate-500 font-mono">({straw.strawId})</span>
-                                )}
+                              <div className="font-mono font-bold text-slate-800 flex items-center gap-2 flex-wrap">
+                                <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold text-xs">
+                                  Straw {displayLabel} - {embryoCount} Embryo(s)
+                                </span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
                                   {straw.color || 'Pink'}
                                 </span>
-                              {straw.isPgt && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
-                                  PGT TESTED
+                                {straw.isPgt && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
+                                    PGT TESTED
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs font-medium text-slate-700 flex-wrap">
+                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
+                                  Grade - {gradeStr}{fragStr}{commentStr}
                                 </span>
-                              )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditStrawModal(straw);
+                                  }}
+                                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg border border-amber-300 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs active:scale-95 ml-1"
+                                  title="Edit Freezed Straw Properties (Grade, ID, Tag Color, PGT, Count)"
+                                >
+                                  <Edit3 className="w-3 h-3 text-amber-700" />
+                                  <span>Edit Straw</span>
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-900 border-emerald-300">
-                                {straw.embryoCount || straw.embryos?.length || 1} Embryos(s)
-                              </span>
-                              {straw.grade && (
-                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
-                                  Grade: {straw.grade}
-                                </span>
-                              )}
-                              
-                              {straw.comments && (
-                                <span className="text-[11px] text-slate-500 italic">
-                                  "{straw.comments}"
-                                </span>
-                              )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditStrawModal(straw);
-                                }}
-                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg border border-amber-300 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs active:scale-95 ml-1"
-                                title="Edit Freezed Straw Properties (Grade, ID, Tag Color, PGT, Count)"
-                              >
-                                <Edit3 className="w-3 h-3 text-amber-700" />
-                                <span>Edit Straw</span>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                       </div>
 
                       {/* Physical Location Breakdown */}

@@ -25,13 +25,15 @@ export function parseLocationCode(code: string) {
   if (!code) return { can: '01', canister: '01', level: '1', goblet: '01', tube: '01', formatted: 'Unknown' };
   const match = code.match(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i);
   if (!match) return { can: '01', canister: '01', level: '1', goblet: '01', tube: '01', formatted: code };
+  const tubeNumInt = parseInt(match[5], 10);
+  const colorName = VISO_TUBE_COLOR_MAP[tubeNumInt]?.name || 'Standard';
   return {
     can: match[1],
     canister: match[2],
     level: match[3],
     goblet: match[4],
     tube: match[5],
-    formatted: `Can ${match[1]} • Canister ${match[2]} • Level ${match[3]} (${match[3] === '1' ? 'Bottom' : 'Top'}) • Viso Tube ${match[5]}`,
+    formatted: `Can ${match[1]} • Canister ${match[2]} • Level ${match[3]} (${match[3] === '1' ? 'Bottom' : 'Top'}) • Viso Tube - ${colorName}`,
   };
 }
 
@@ -538,7 +540,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                       return (
                         <div
                           key={num}
-                          className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border text-center justify-center shadow-2xs"
+                          className="flex items-center gap-1 bg-slate-50 px-5 py-2 rounded-xl border text-center justify-center shadow-2xs"
                           style={{ borderColor: color.dotHex }}
                         >
                           <span
@@ -546,7 +548,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                             style={{ backgroundColor: color.dotHex }}
                           />
                           <span className="text-[10px] font-extrabold text-slate-900">
-                            V{num.toString().padStart(2, '0')}: {color.name}
+                            {color.name}
                           </span>
                         </div>
                       );
@@ -557,28 +559,22 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
               {/* RADIAL PIZZA SLICE GOBLET (FILL = SPACE LEFT, STROKE = PHYSICAL COLOR) */}
               <div className="py-6 flex flex-col items-center justify-center space-y-4">
-                {/* <div className="text-xs text-slate-600 font-bold uppercase tracking-wider">
-                  Fill = Space Left (Green/Yellow/Red) • Borders = Physical Colors (Pink, Grey, Red, Black, Green, Rust, Blue, Purple, Yellow, Orange, Skyblue):
-                </div> */}
-
                 <div className="relative flex items-center justify-center">
                   <svg width="370" height="370" viewBox="0 0 360 360" className="filter drop-shadow-lg">
                     {/* Outer Circular Goblet Rim */}
                     <circle cx="180" cy="180" r="168" className="fill-slate-100/90 stroke-slate-300 stroke-[4]" />
                     <circle cx="180" cy="180" r="162" className="fill-white stroke-emerald-500/20 stroke-2 stroke-dashed" />
 
-                    {/* 11 Radial Pizza Slices / Wedges (V01 to V11) */}
+                    {/* 11 Radial Pizza Slices / Wedges */}
                     {visoTubes.slice(0, 11).map((tube: any, idx: number) => {
                       const tubeNum = tube.tubeNumber;
                       const tubeColor = VISO_TUBE_COLOR_MAP[tubeNum] || VISO_TUBE_COLOR_MAP[1];
 
-                      // 11 Equal Angular Slices (360 / 11 = 32.72727 degrees per slice)
                       const sliceAngle = 360 / 11;
                       const startAngle = idx * sliceAngle - 90 + 1.2;
                       const endAngle = (idx + 1) * sliceAngle - 90 - 1.2;
                       const midAngleRad = (((startAngle + endAngle) / 2) * Math.PI) / 180;
 
-                      // SVG Pizza Slice Path (Outer Radius 156, Inner Empty Hole Radius 40)
                       const pathData = (() => {
                         const rad1 = (startAngle * Math.PI) / 180;
                         const rad2 = (endAngle * Math.PI) / 180;
@@ -590,16 +586,17 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                         const yi2 = 180 + 40 * Math.sin(rad2);
                         const xi1 = 180 + 40 * Math.cos(rad1);
                         const yi1 = 180 + 40 * Math.sin(rad1);
+
                         return `M ${xo1} ${yo1} A 156 156 0 0 1 ${xo2} ${yo2} L ${xi2} ${yi2} A 40 40 0 0 0 ${xi1} ${yi1} Z`;
                       })();
+
+                      const occupiedCount = tube.straws ? tube.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0;
+                      const capacityColor = getSpaceFillColor(occupiedCount, 14);
+                      const isSelected = selectedTube?.id === tube.id;
 
                       // Text label position at mid-radius 98
                       const tx = 180 + 98 * Math.cos(midAngleRad);
                       const ty = 180 + 98 * Math.sin(midAngleRad);
-
-                      const occupiedCount = tube.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                      const capacityColor = getSpaceFillColor(occupiedCount, 14);
-                      const isSelected = selectedTube?.id === tube.id;
 
                       const textFillClass = (capacityColor.percentage > 60 && !isSelected) ? 'fill-white' : 'fill-slate-900';
 
@@ -618,15 +615,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           />
                           <text
                             x={tx}
-                            y={ty - 6}
-                            textAnchor="middle"
-                            className={`font-mono text-xs font-black ${textFillClass} pointer-events-none select-none`}
-                          >
-                            V{tube.tubeNumber.toString().padStart(2, '0')}
-                          </text>
-                          <text
-                            x={tx}
-                            y={ty + 5}
+                            y={ty - 2}
                             textAnchor="middle"
                             className={`font-mono text-[9px] font-extrabold ${textFillClass} pointer-events-none select-none`}
                           >
@@ -634,7 +623,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           </text>
                           <text
                             x={tx}
-                            y={ty + 16}
+                            y={ty + 9}
                             textAnchor="middle"
                             className={`font-mono text-[9px] font-extrabold ${textFillClass} pointer-events-none select-none`}
                           >

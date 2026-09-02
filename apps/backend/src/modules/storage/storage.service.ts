@@ -28,7 +28,7 @@ export function parseLocationCode(code: string) {
   };
 
   const tubeColor = VISO_TUBE_COLOR_NAMES[tubeNumInt] || 'Standard';
-  const tubeFormatted = `Viso Tube ${tubeNumPadded} (${tubeColor})`;
+  const tubeFormatted = `Viso Tube - ${tubeColor}`;
   const formatted = `Can ${canNum} • Canister ${canisterNum} • ${levelName} • ${tubeFormatted}`;
 
   return {
