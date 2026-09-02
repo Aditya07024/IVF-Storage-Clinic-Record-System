@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye } from 'lucide-react';
-import { apiRequest, formatDateDDMMYYYY, getImageUrl, openSecurePdfBlob } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
@@ -539,7 +539,7 @@ export const PatientDirectory: React.FC = () => {
               <tr>
                 <th className="px-6 py-4">Registration ID</th>
                 <th className="px-6 py-4">Full Name</th>
-                <th className="px-6 py-4">Freezing / Storage Date</th>
+                <th className="px-6 py-4">Date of Egg Retrieval</th>
                 <th className="px-6 py-4">Mobile Phone</th>
                 <th className="px-6 py-4">Storage Batches</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -583,15 +583,14 @@ export const PatientDirectory: React.FC = () => {
                         <div className="h-6 bg-slate-100 rounded-lg w-28" />
                       </td>
                       <td className="px-6 py-4 flex justify-end gap-2">
-                        <div className="h-8 bg-slate-200 rounded-xl w-16" />
-                        <div className="h-8 bg-slate-200 rounded-xl w-16" />
+                        <div className="h-8 bg-slate-200 rounded-xl w-24" />
                       </td>
                     </tr>
                   ))}
                 </>
               ) : patients.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
                     No matching patient records found. Click "Search" button above.
                   </td>
                 </tr>
@@ -600,8 +599,8 @@ export const PatientDirectory: React.FC = () => {
                   const sameNameCount = patients.filter(item => item.fullName.toLowerCase() === p.fullName.toLowerCase()).length;
                   const isDuplicateName = sameNameCount > 1;
 
-                  const freezingDateObj = p.freezingDate || p.batches?.[0]?.storageDate;
-                  const freezingDateStr = formatDateDDMMYYYY(freezingDateObj);
+                  const eggRetrievalObj = p.aspirationDate || p.batches?.[0]?.aspirationDate || p.freezingDate || p.batches?.[0]?.storageDate;
+                  const eggRetrievalDateStr = formatDateDDMMYYYY(eggRetrievalObj);
                   const isOpeningDetail = loadingDetailId === p.id;
 
                   return (
@@ -628,17 +627,18 @@ export const PatientDirectory: React.FC = () => {
                             />
                           )}
                           <div className="min-w-0">
-                            <div className="font-semibold text-slate-900">
-                              {p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}
+                            <div className="font-bold text-slate-900 text-sm flex items-center gap-2 flex-wrap">
+                              <span>{p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}</span>
+                              {p.partnerName && (
+                                <>
+                                  <span className="text-slate-400 font-normal">•</span>
+                                  <span>Partner: {p.partnerName} {p.partnerAge ? `(${p.partnerAge})` : ''}</span>
+                                </>
+                              )}
                             </div>
-                            {p.partnerName && (
-                              <div className="text-xs text-slate-500">
-                                Partner: {p.partnerName} {p.partnerAge ? `(${p.partnerAge})` : ''}
-                              </div>
-                            )}
                             {p.doctorName && (
-                              <div className="text-xs text-emerald-800 font-bold">
-                                Doctor: {p.doctorName}
+                              <div className="text-xs text-emerald-800 font-bold mt-0.5">
+                                {p.doctorName.startsWith('Dr.') ? p.doctorName : `Dr. ${p.doctorName}`}
                               </div>
                             )}
                           </div>
@@ -646,17 +646,17 @@ export const PatientDirectory: React.FC = () => {
                         {isDuplicateName && (
                           <div className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 mt-1 inline-flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3 text-amber-700" />
-                            <span>Same Name Account — Check Freezing Date: {freezingDateStr}</span>
+                            <span>Same Name Account — Check Egg Retrieval Date: {eggRetrievalDateStr}</span>
                           </div>
                         )}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-xl text-xs font-bold font-mono border inline-block ${isDuplicateName ? 'bg-amber-100 text-amber-950 border-amber-400' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
-                          {freezingDateStr}
+                          {eggRetrievalDateStr}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-slate-700 font-mono text-xs font-semibold">
-                        {p.phone ? p.phone : '—'}
+                      <td className="px-6 py-4 text-slate-700 font-mono text-xs font-semibold whitespace-nowrap">
+                        {formatPhoneNumber(p.phone)}
                       </td>
                       <td className="px-6 py-4">
                         {(() => {
@@ -666,13 +666,13 @@ export const PatientDirectory: React.FC = () => {
 
                           if (activeBatches > 0) {
                             return (
-                              <span className="px-1 py-1 bg-emerald-100 text-emerald-950 rounded-lg text-xs font-bold font-mono border border-emerald-300">
-                                {activeBatches} Active Batches
+                              <span className="px-2 py-1 bg-emerald-100 text-emerald-950 rounded-lg text-xs font-bold font-mono border border-emerald-300 whitespace-nowrap">
+                                {activeBatches} {activeBatches === 1 ? 'Active Batch' : 'Active Batches'}
                               </span>
                             );
                           }
                           return (
-                            <span className="px-1 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold font-mono border border-slate-300">
+                            <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold font-mono border border-slate-300 whitespace-nowrap">
                               0 Active (All Thawed)
                             </span>
                           );
@@ -736,18 +736,6 @@ export const PatientDirectory: React.FC = () => {
                             <span>Print / Mail</span>
                           </button>
                         )}
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePatient(p.id, p.fullName);
-                          }}
-                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl border border-rose-200 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs active:scale-95"
-                          title="Permanently delete patient record"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                          <span>Delete</span>
-                        </button>
                       </td>
                     </tr>
                   );
@@ -1261,9 +1249,14 @@ export const PatientDirectory: React.FC = () => {
                   <span className="text-xs font-mono font-bold text-emerald-700 block">{selectedPatient.patientId}</span>
                   <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight truncate">{selectedPatient.fullName}</h2>
                   <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-1.5 sm:gap-x-2.5 mt-1">
-                    <span className="text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit">
-                      {formatDateDDMMYYYY(selectedPatient.freezingDate)}
+                    <span className="text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300 w-fit">
+                      Egg Pick Up: {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate || selectedPatient.freezingDate)}
                     </span>
+                    {(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate) && (
+                      <span className="text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit">
+                        Frozen: {formatDateDDMMYYYY(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1332,45 +1325,61 @@ export const PatientDirectory: React.FC = () => {
             </div>
 
             {/* Patient Metadata Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Registration ID:</span>
-                <strong className="text-emerald-800 font-mono text-sm">{selectedPatient.patientId}</strong>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-slate-500 font-semibold block text-[11px]">Egg Pick Up Date</span>
+                <strong className="text-amber-900 font-mono font-bold text-sm block">
+                  {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate || selectedPatient.freezingDate)}
+                </strong>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Patient DOB & Age:</span>
-                <strong className="text-slate-900 font-medium">
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-slate-500 font-semibold block text-[11px]">Freezing Date</span>
+                <strong className="text-emerald-800 font-mono font-bold text-sm block">
+                  {formatDateDDMMYYYY(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate || selectedPatient.batches?.[0]?.storageDate)}
+                </strong>
+              </div>
+
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-slate-500 font-semibold block text-[11px]">Attending Doctor</span>
+                <strong className="text-slate-900 font-bold text-sm block">
+                  {selectedPatient.doctorName || 'N/A'}
+                </strong>
+              </div>
+
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-slate-500 font-semibold block text-[11px]">Registration ID</span>
+                <strong className="text-emerald-700 font-mono font-bold text-sm block">
+                  {selectedPatient.patientId}
+                </strong>
+              </div>
+
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-slate-500 font-semibold block text-[11px]">Patient DOB & Age</span>
+                <strong className="text-slate-900 font-medium text-xs block">
                   {selectedPatient.dob ? formatDateDDMMYYYY(selectedPatient.dob) : 'N/A'} {selectedPatient.patientAge ? `(${selectedPatient.patientAge})` : ''}
                 </strong>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Patient Mobile & Email:</span>
-                <strong className="text-slate-900 font-mono text-[11px] block">{selectedPatient.phone || 'N/A'}</strong>
-                <span className="text-slate-500 text-[10px] truncate block">{selectedPatient.email || ''}</span>
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-slate-500 font-semibold block text-[11px]">Patient Contact Info</span>
+                <strong className="text-slate-900 font-mono text-xs block">{selectedPatient.phone || 'N/A'}</strong>
+                {selectedPatient.email && <span className="text-slate-500 text-[11px] truncate block">{selectedPatient.email}</span>}
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Partner Name & Age:</span>
-                <strong className="text-slate-900 block">{selectedPatient.partnerName || 'N/A'} {selectedPatient.partnerAge ? `(${selectedPatient.partnerAge})` : ''}</strong>
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-slate-500 font-semibold block text-[11px]">Partner Details</span>
+                <strong className="text-slate-900 font-medium text-xs block">{selectedPatient.partnerName || 'N/A'} {selectedPatient.partnerAge ? `(${selectedPatient.partnerAge})` : ''}</strong>
                 {selectedPatient.partnerDob && (
-                  <span className="text-slate-500 text-[10px] font-mono block">DOB: {formatDateDDMMYYYY(selectedPatient.partnerDob)}</span>
+                  <span className="text-slate-500 text-[11px] font-mono block">DOB: {formatDateDDMMYYYY(selectedPatient.partnerDob)}</span>
                 )}
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Partner Mobile & Email:</span>
-                <strong className="text-slate-900 font-mono text-[11px] block">{selectedPatient.partnerPhone || 'N/A'}</strong>
-                <span className="text-slate-500 text-[10px] truncate block">{selectedPatient.partnerEmail || ''}</span>
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-slate-500 font-semibold block text-[11px]">Partner Contact Info</span>
+                <strong className="text-slate-900 font-mono text-xs block">{selectedPatient.partnerPhone || 'N/A'}</strong>
+                {selectedPatient.partnerEmail && <span className="text-slate-500 text-[11px] truncate block">{selectedPatient.partnerEmail}</span>}
               </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-semibold block uppercase text-[10px]">Doctor / Physician:</span>
-                <strong className="text-slate-900 font-bold">{selectedPatient.doctorName || 'N/A'}</strong>
-              </div>
-
-              
             </div>
 
             {/* Clinical Comments & Doctor Remarks Card */}

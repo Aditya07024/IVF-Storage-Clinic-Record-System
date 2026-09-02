@@ -193,6 +193,33 @@ export function formatDateDDMMYYYY(dateInput: string | Date | null | undefined):
   return `${day}/${month}/${year}`;
 }
 
+export function formatPhoneNumber(phoneInput?: string | null): string {
+  if (!phoneInput) return '—';
+  const cleaned = phoneInput.trim();
+  if (!cleaned) return '—';
+
+  // If already starts with '+', format cleanly with space
+  if (cleaned.startsWith('+')) {
+    return cleaned;
+  }
+
+  // Strip non-digits
+  const digits = cleaned.replace(/\D/g, '');
+  if (!digits) return cleaned;
+
+  // 10-digit Indian local mobile number without country code
+  if (digits.length === 10) {
+    return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  }
+
+  // 12-digit Indian number starting with 91
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+  }
+
+  return `+${digits}`;
+}
+
 export function getImageUrl(pathUrl: string | null | undefined): string {
   if (!pathUrl) return '';
   const trimmed = pathUrl.trim();

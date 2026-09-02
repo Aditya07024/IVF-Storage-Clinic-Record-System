@@ -2360,16 +2360,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 {/* Demographics Grid */}
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div className="space-y-1">
-                    <span className="text-slate-500 text-[10px] uppercase font-semibold block">Patient Demographics:</span>
+                    <span className="text-slate-500 text-[10px] uppercase font-semibold block">Patient Name:</span>
                     <strong className="text-slate-900 font-bold text-sm block">{fullName || selectedExistingPatient?.fullName}</strong>
-                    <div className="text-slate-600 space-y-0.5 text-[11px]">
+                    {/* <div className="text-slate-600 space-y-0.5 text-[11px]">
                       <div><span className="font-semibold text-slate-700">DOB:</span> {formatDateDDMMYYYY(dob || selectedExistingPatient?.dob)} {patientAge || selectedExistingPatient?.patientAge ? `(Age: ${patientAge || selectedExistingPatient?.patientAge})` : ''}</div>
                       <div><span className="font-semibold text-slate-700">Phone:</span> {phone || selectedExistingPatient?.phone || 'N/A'}</div>
                       {(email || selectedExistingPatient?.email) && <div><span className="font-semibold text-slate-700">Email:</span> {email || selectedExistingPatient?.email}</div>}
-                    </div>
+                    </div> */}
                   </div>
 
-                  <div className="space-y-1">
+                  {/* <div className="space-y-1">
                     <span className="text-slate-500 text-[10px] uppercase font-semibold block">Partner Demographics:</span>
                     <strong className="text-slate-900 font-bold text-sm block">{partnerName || selectedExistingPatient?.partnerName || 'N/A'}</strong>
                     <div className="text-slate-600 space-y-0.5 text-[11px]">
@@ -2377,7 +2377,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       <div><span className="font-semibold text-slate-700">Phone:</span> {partnerPhone || selectedExistingPatient?.partnerPhone || 'N/A'}</div>
                       {(partnerEmail || selectedExistingPatient?.partnerEmail) && <div><span className="font-semibold text-slate-700">Email:</span> {partnerEmail || selectedExistingPatient?.partnerEmail}</div>}
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>
