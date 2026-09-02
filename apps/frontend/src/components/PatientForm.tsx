@@ -2428,7 +2428,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             {/* Granular Embryo Details Table */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
               <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                <span>4. Embryo Details ({strawItems.length} straw{strawItems.length === 1 ? '' : 's'} - {strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0)} embryo{strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0) === 1 ? '' : 's'})</span>
+                <span>4. Embryo Details ({strawItems.length} Straw(s) - {strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0)} Embryo(s))</span>
               </div>
 
               <div className="space-y-2.5">
@@ -2446,7 +2446,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       <div className="flex items-center justify-between font-bold">
                         <div className="flex items-center gap-2">
                           <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded-lg font-mono font-bold text-xs">
-                            Straw #{strawDisplayNum} - {embryoCount} Embryo(s)
+                            Straw #{strawDisplayNum}
+                          </span>
+                          <span className="text-slate-700 font-bold text-xs">
+                            ({embryoCount} Embryo(s))
                           </span>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] border ${badgeClass}`}>{item.color}</span>
                         </div>
@@ -2474,7 +2477,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                                 <span className="font-bold text-slate-700">Embryo #{eIdx + 1}: </span>
                               )}
                               <span className="font-mono font-bold text-slate-900">
-                                Grade - {gradeStr}{fragStr}{commentStr}
+                                Embryo grade: {gradeStr}{fragStr}{commentStr}
                               </span>
                             </div>
                           );

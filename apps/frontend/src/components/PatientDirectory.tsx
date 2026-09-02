@@ -1480,11 +1480,11 @@ export const PatientDirectory: React.FC = () => {
                       {/* Active Straws List */}
                       <div className="space-y-2">
                         <div className="text-xs font-bold text-slate-800">
-                          Embryo Details ({activeStraws.length} straw{activeStraws.length === 1 ? '' : 's'} - {activeStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0)} embryo{activeStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0) === 1 ? '' : 's'})
+                          Embryo Details ({activeStraws.length} Straw(s) - {activeStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0)} Embryo(s))
                         </div>
                         {activeStraws.map((straw: any, sIdx: number) => {
                           const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
-                          const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `#${sIdx + 1}`;
+                          const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
 
                           const eGrade = (straw.grade || '').trim().toUpperCase();
@@ -1499,7 +1499,10 @@ export const PatientDirectory: React.FC = () => {
                             <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
                               <div className="font-mono font-bold text-slate-800 flex items-center gap-2 flex-wrap">
                                 <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold text-xs">
-                                  Straw {displayLabel} - {embryoCount} Embryo(s)
+                                  {displayLabel}
+                                </span>
+                                <span className="text-slate-700 font-bold text-xs">
+                                  ({embryoCount} Embryo(s))
                                 </span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
                                   {straw.color || 'Pink'}
@@ -1512,7 +1515,7 @@ export const PatientDirectory: React.FC = () => {
                               </div>
                               <div className="flex items-center gap-2 text-xs font-medium text-slate-700 flex-wrap">
                                 <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
-                                  Grade - {gradeStr}{fragStr}{commentStr}
+                                  Embryo grade: {gradeStr}{fragStr}{commentStr}
                                 </span>
                                 <button
                                   onClick={(e) => {
