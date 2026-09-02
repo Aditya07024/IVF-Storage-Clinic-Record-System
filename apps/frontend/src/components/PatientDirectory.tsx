@@ -631,14 +631,13 @@ export const PatientDirectory: React.FC = () => {
                               <span>{p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}</span>
                               {p.partnerName && (
                                 <>
-                                  <span className="text-slate-400 font-normal">•</span>
                                   <span>Partner: {p.partnerName} {p.partnerAge ? `(${p.partnerAge})` : ''}</span>
                                 </>
                               )}
                             </div>
                             {p.doctorName && (
                               <div className="text-xs text-emerald-800 font-bold mt-0.5">
-                                {p.doctorName.startsWith('Dr.') ? p.doctorName : `Dr. ${p.doctorName}`}
+                                {p.doctorName}
                               </div>
                             )}
                           </div>
@@ -1252,11 +1251,11 @@ export const PatientDirectory: React.FC = () => {
                     <span className="text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300 w-fit">
                       Egg Pick Up: {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate || selectedPatient.freezingDate)}
                     </span>
-                    {(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate) && (
+                    {/* {(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate) && (
                       <span className="text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit">
                         Frozen: {formatDateDDMMYYYY(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate)}
                       </span>
-                    )}
+                    )} */}
                   </div>
                 </div>
               </div>
@@ -1324,61 +1323,116 @@ export const PatientDirectory: React.FC = () => {
               </div>
             </div>
 
-            {/* Patient Metadata Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
-                <span className="text-slate-500 font-semibold block text-[11px]">Egg Pick Up Date</span>
-                <strong className="text-amber-900 font-mono font-bold text-sm block">
-                  {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate || selectedPatient.freezingDate)}
-                </strong>
+            {/* Redesigned Clinical Summary & Patient/Partner Profile Cards */}
+            <div className="space-y-3">
+              {/* Top Clinical & Storage Quick Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200/80 shadow-2xs space-y-0.5">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Registration ID</span>
+                  <span className="font-mono font-bold text-slate-900 text-sm block">{selectedPatient.patientId}</span>
+                </div>
+
+                <div className="bg-amber-50/80 p-3 rounded-2xl border border-amber-200/80 shadow-2xs space-y-0.5">
+                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">Egg Pick Up Date</span>
+                  <span className="font-mono font-bold text-amber-950 text-sm block">
+                    {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate || selectedPatient.freezingDate)}
+                  </span>
+                </div>
+
+                <div className="bg-blue-50/80 p-3 rounded-2xl border border-blue-200/80 shadow-2xs space-y-0.5">
+                  <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">Freezing Date</span>
+                  <span className="font-mono font-bold text-blue-950 text-sm block">
+                    {formatDateDDMMYYYY(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate || selectedPatient.batches?.[0]?.storageDate)}
+                  </span>
+                </div>
+
+                <div className="bg-slate-100/80 p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Attending Doctor</span>
+                  <span className="font-bold text-slate-900 text-sm block truncate">
+                    {selectedPatient.doctorName || 'N/A'}
+                  </span>
+                </div>
               </div>
 
-              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
-                <span className="text-slate-500 font-semibold block text-[11px]">Freezing Date</span>
-                <strong className="text-emerald-800 font-mono font-bold text-sm block">
-                  {formatDateDDMMYYYY(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate || selectedPatient.batches?.[0]?.storageDate)}
-                </strong>
-              </div>
+              {/* Side-by-Side Patient & Partner Details Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {/* Female Patient Card */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-emerald-600" />
+                      <span>Patient Profile</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                      Female
+                    </span>
+                  </div>
 
-              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
-                <span className="text-slate-500 font-semibold block text-[11px]">Attending Doctor</span>
-                <strong className="text-slate-900 font-bold text-sm block">
-                  {selectedPatient.doctorName || 'N/A'}
-                </strong>
-              </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Full Name & Age</span>
+                      <strong className="text-slate-900 font-bold block">{selectedPatient.fullName} {selectedPatient.patientAge ? `(${selectedPatient.patientAge})` : ''}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Date of Birth</span>
+                      <span className="text-slate-800 font-mono font-bold block">{selectedPatient.dob ? formatDateDDMMYYYY(selectedPatient.dob) : 'N/A'}</span>
+                    </div>
+                  </div>
 
-              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
-                <span className="text-slate-500 font-semibold block text-[11px]">Registration ID</span>
-                <strong className="text-emerald-700 font-mono font-bold text-sm block">
-                  {selectedPatient.patientId}
-                </strong>
-              </div>
+                  <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-slate-400" /> Mobile Phone
+                      </span>
+                      <span className="text-slate-900 font-mono font-bold block">{formatPhoneNumber(selectedPatient.phone)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
+                        <Mail className="w-3 h-3 text-slate-400" /> Email Address
+                      </span>
+                      <span className="text-slate-800 font-medium block truncate">{selectedPatient.email || '—'}</span>
+                    </div>
+                  </div>
+                </div>
 
-              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
-                <span className="text-slate-500 font-semibold block text-[11px]">Patient DOB & Age</span>
-                <strong className="text-slate-900 font-medium text-xs block">
-                  {selectedPatient.dob ? formatDateDDMMYYYY(selectedPatient.dob) : 'N/A'} {selectedPatient.patientAge ? `(${selectedPatient.patientAge})` : ''}
-                </strong>
-              </div>
+                {/* Male Partner Card */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-blue-600" />
+                      <span>Partner Profile</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-full border border-blue-300">
+                      Male
+                    </span>
+                  </div>
 
-              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
-                <span className="text-slate-500 font-semibold block text-[11px]">Patient Contact Info</span>
-                <strong className="text-slate-900 font-mono text-xs block">{selectedPatient.phone || 'N/A'}</strong>
-                {selectedPatient.email && <span className="text-slate-500 text-[11px] truncate block">{selectedPatient.email}</span>}
-              </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Partner Name & Age</span>
+                      <strong className="text-slate-900 font-bold block">{selectedPatient.partnerName || 'N/A'} {selectedPatient.partnerAge ? `(${selectedPatient.partnerAge})` : ''}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">Date of Birth</span>
+                      <span className="text-slate-800 font-mono font-bold block">{selectedPatient.partnerDob ? formatDateDDMMYYYY(selectedPatient.partnerDob) : 'N/A'}</span>
+                    </div>
+                  </div>
 
-              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
-                <span className="text-slate-500 font-semibold block text-[11px]">Partner Details</span>
-                <strong className="text-slate-900 font-medium text-xs block">{selectedPatient.partnerName || 'N/A'} {selectedPatient.partnerAge ? `(${selectedPatient.partnerAge})` : ''}</strong>
-                {selectedPatient.partnerDob && (
-                  <span className="text-slate-500 text-[11px] font-mono block">DOB: {formatDateDDMMYYYY(selectedPatient.partnerDob)}</span>
-                )}
-              </div>
-
-              <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
-                <span className="text-slate-500 font-semibold block text-[11px]">Partner Contact Info</span>
-                <strong className="text-slate-900 font-mono text-xs block">{selectedPatient.partnerPhone || 'N/A'}</strong>
-                {selectedPatient.partnerEmail && <span className="text-slate-500 text-[11px] truncate block">{selectedPatient.partnerEmail}</span>}
+                  <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-slate-400" /> Mobile Phone
+                      </span>
+                      <span className="text-slate-900 font-mono font-bold block">{formatPhoneNumber(selectedPatient.partnerPhone)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
+                        <Mail className="w-3 h-3 text-slate-400" /> Email Address
+                      </span>
+                      <span className="text-slate-800 font-medium block truncate">{selectedPatient.partnerEmail || '—'}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
