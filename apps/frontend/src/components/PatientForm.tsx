@@ -768,6 +768,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       timestamp: new Date().toLocaleString(),
     });
 
+    setTimeout(() => {
+      setSaveSuccessDetails(null);
+    }, 3500);
+
     if (formMode === 'new') {
       handleClearSelectedExisting();
     }
@@ -961,16 +965,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 </span>
               </div>
             )}
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSaveSuccessDetails(null)}
-                className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 text-center"
-              >
-                Okay, Done
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -1770,7 +1764,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                                 <div>
                                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    {commentLabel}
+                                    Comment
                                   </label>
                                   <input
                                     type="text"
