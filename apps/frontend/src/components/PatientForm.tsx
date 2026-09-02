@@ -419,7 +419,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     comments: string;
     isPgt: boolean;
   }>>([
-    { color: 'Pink', embryoCount: 1, grade: '', comments: '', isPgt: false },
+    { color: '', embryoCount: 1, grade: '', comments: '', isPgt: false },
   ]);
   const [storageDate, setStorageDate] = useState(new Date().toISOString().split('T')[0]);
   const [recommendation, setRecommendation] = useState<any>(null);
@@ -569,7 +569,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setCropModalFile(null);
     setAssignStorageEnabled(false);
     setStrawsCount(1);
-    setStrawItems([{ color: 'Pink', embryoCount: 1, grade: '', comments: '', isPgt: false }]);
+    setStrawItems([{ color: '', embryoCount: 1, grade: '', comments: '', isPgt: false }]);
     setExistingSearchQuery('');
     setExistingSearchResults([]);
     setError(null);
@@ -704,6 +704,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         setError('Doctor Name is required.');
         return;
       }
+    }
+
+    if (assignStorageEnabled && strawItems.some((s) => !s.color)) {
+      setError('Please select a straw color for all straws before saving.');
+      return;
     }
 
     // Open Pre-Save Confirmation & Overview Modal
@@ -1604,9 +1609,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                             <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-mono font-bold text-xs">
                               #{strawDisplayNum}
                             </span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}`}>
-                              {item.color}
-                            </span>
+                            {item.color ? (
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                                {item.color}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full border border-amber-300 bg-amber-50 text-amber-900 font-bold">
+                                Color Unselected
+                              </span>
+                            )}
                           </div>
 
                           {/* PGT Tested Tick Checkbox */}
@@ -1640,8 +1651,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                                 const newColor = e.target.value;
                                 const next = [...strawItems];
                                 next[idx].color = newColor;
-                                // Auto-select same color for remaining straws when strawsCount > 1 and updating top/first straw
-                                if (idx === 0 && next.length > 1) {
+                                // Only pre-select remaining straws if user explicitly selects a color for Straw 1 (idx === 0)
+                                if (idx === 0 && newColor) {
                                   for (let k = 1; k < next.length; k++) {
                                     next[k].color = newColor;
                                   }
@@ -1650,6 +1661,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                               }}
                               className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
                             >
+                              <option value="">-- Select Straw Color --</option>
                               {['Pink', 'Green', 'Blue', 'Yellow', 'White'].map((c) => (
                                 <option key={c} value={c}>
                                   {c}
