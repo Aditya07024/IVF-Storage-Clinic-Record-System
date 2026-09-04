@@ -863,14 +863,18 @@ ${rawText}`;
           
           const uniqueStrawCode = rawCode;
 
+          const fragText = (st.fragmentation === '+' || st.fragmentation === '++') ? ` (Fragmentation: ${st.fragmentation})` : '';
+          const baseGrade = (st.grade || '4AA').trim();
+          const finalGrade = baseGrade.includes('Fragmentation:') ? baseGrade : `${baseGrade}${fragText}`;
+
           const createdStraw = await tx.straw.create({
             data: {
               strawId: uniqueStrawCode,
               batchId: batch.id,
               visoTubeId: targetVisoTube.id,
-              color: st.colorTag || input.visoTubeColor || 'Pink',
+              color: st.colorTag || input.visoTubeColor || '',
               embryoCount: st.embryoCount || 1,
-              grade: st.grade || '4AA',
+              grade: finalGrade,
               status: st.thawDate ? 'THAWED' : 'OCCUPIED',
               freezingDate: parseFlexibleDate(st.freezingDate) || parsedFreezing,
               thawDate: parseFlexibleDate(st.thawDate) || parseFlexibleDate(input.thawDate),
@@ -882,7 +886,7 @@ ${rawText}`;
               data: {
                 strawId: createdStraw.id,
                 embryoNumber: e,
-                grade: st.grade || '4AA',
+                grade: finalGrade,
                 status: st.thawDate ? 'THAWED' : 'FREEZED',
               },
             });

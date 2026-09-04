@@ -253,7 +253,7 @@ export const OcrVerification: React.FC = () => {
     else if (col.match(/blue/i)) col = 'Blue';
     else if (col.match(/yellow/i)) col = 'Yellow';
     else if (col.match(/white/i)) col = 'White';
-    else col = 'Pink';
+    else col = '';
     setVisoTubeColor(col);
 
     // Normalize Viso Tube ID / Goblet
@@ -277,31 +277,55 @@ export const OcrVerification: React.FC = () => {
     setLevel(lvl || 'Level 1');
 
     const initialStraws = Array.isArray(json.straws) && json.straws.length > 0
-      ? json.straws.map((s: any) => ({ ...s, thawDate: s.thawDate || json.thawDate || '' }))
-      : [{ strawId: 'STR-01', colorTag: 'Pink', embryoCount: 1, stage: 'Day 5', grade: '4AA', freezingDate: json.freezingDate || '', thawDate: json.thawDate || '' }];
+      ? json.straws.map((s: any) => {
+          let sCol = (s.colorTag || s.colorName || '').trim();
+          if (sCol.match(/pink/i)) sCol = 'Pink';
+          else if (sCol.match(/green/i)) sCol = 'Green';
+          else if (sCol.match(/blue/i)) sCol = 'Blue';
+          else if (sCol.match(/yellow/i)) sCol = 'Yellow';
+          else if (sCol.match(/white/i)) sCol = 'White';
+          else sCol = col || '';
+          return {
+            ...s,
+            colorTag: sCol,
+            fragmentation: s.fragmentation || 'No',
+            thawDate: s.thawDate || json.thawDate || '',
+          };
+        })
+      : [{ strawId: 'STR-01', colorTag: col || '', embryoCount: 1, stage: 'Day 5', grade: '4AA', fragmentation: 'No', freezingDate: json.freezingDate || '', thawDate: json.thawDate || '' }];
     setStraws(initialStraws);
     setComments(json.comments || '');
   };
 
   const addStrawRow = () => {
-    setStraws((prev) => [
-      ...prev,
-      {
-        strawId: `STR-0${prev.length + 1}`,
-        colorTag: visoTubeColor || 'Pink',
-        embryoCount: 1,
-        stage: 'Day 5',
-        grade: '4AA',
-        freezingDate: freezingDate || '',
-        thawDate: thawDate || '',
-      },
-    ]);
+    setStraws((prev) => {
+      const primaryColor = prev[0]?.colorTag || visoTubeColor || '';
+      return [
+        ...prev,
+        {
+          strawId: `STR-0${prev.length + 1}`,
+          colorTag: primaryColor,
+          embryoCount: 1,
+          stage: 'Day 5',
+          grade: '4AA',
+          fragmentation: 'No',
+          freezingDate: freezingDate || '',
+          thawDate: thawDate || '',
+        },
+      ];
+    });
   };
 
   const updateStrawRow = (index: number, field: string, value: any) => {
     setStraws((prev) => {
       const copy = [...prev];
       copy[index] = { ...copy[index], [field]: value };
+      // Only pre-select remaining straws if user explicitly selects a color for Straw 1 (index === 0)
+      if (index === 0 && field === 'colorTag' && value) {
+        for (let k = 1; k < copy.length; k++) {
+          copy[k] = { ...copy[k], colorTag: value };
+        }
+      }
       return copy;
     });
   };
@@ -940,6 +964,7 @@ export const OcrVerification: React.FC = () => {
                         <th className="p-1 text-center">Embryos</th>
                         <th className="p-1">Stage</th>
                         <th className="p-1">Grade</th>
+                        <th className="p-1">Fragmentation</th>
                         <th className="p-1 text-center">Thaw?</th>
                         <th className="p-1 text-center">Action</th>
                       </tr>
@@ -958,10 +983,11 @@ export const OcrVerification: React.FC = () => {
                           </td>
                           <td className="p-0.5">
                             <select
-                              value={st.colorTag || st.colorName || 'Pink'}
+                              value={st.colorTag || st.colorName || ''}
                               onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
                               className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
                             >
+                              <option value="">-- Select Straw Color --</option>
                               <option value="Pink">Pink</option>
                               <option value="Green">Green</option>
                               <option value="Blue">Blue</option>
@@ -995,6 +1021,17 @@ export const OcrVerification: React.FC = () => {
                               placeholder="4AA"
                               className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
                             />
+                          </td>
+                          <td className="p-0.5">
+                            <select
+                              value={st.fragmentation || 'No'}
+                              onChange={(e) => updateStrawRow(idx, 'fragmentation', e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
+                            >
+                              <option value="No">No</option>
+                              <option value="+">+</option>
+                              <option value="++">++</option>
+                            </select>
                           </td>
                           <td className="p-0.5 text-center">
                             <div className="flex items-center justify-center gap-1">

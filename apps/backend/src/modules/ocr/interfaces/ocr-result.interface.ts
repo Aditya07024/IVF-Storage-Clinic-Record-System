@@ -32,6 +32,7 @@ export interface VerifyOcrInput {
     colorTag?: string;
     embryoCount?: number;
     grade?: string;
+    fragmentation?: string;
     stage?: string;
     pgtTested?: boolean;
     aspirationDate?: string;
