@@ -1259,21 +1259,32 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
-            <DateInputDDMMYYYY
-              label="Patient Date of Birth (DOB)"
-              value={dob}
-              onChange={(val) => {
-                setDob(val);
-                setPatientAge(calculateAgeFromDob(val));
-              }}
-              extraBadge={
-                patientAge ? (
-                  <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11px] font-bold border border-emerald-300">
-                    Age: {patientAge}
-                  </span>
-                ) : undefined
-              }
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0 max-w-full">
+              <div className="sm:col-span-2">
+                <DateInputDDMMYYYY
+                  label="Patient Date of Birth (DOB)"
+                  value={dob}
+                  onChange={(val) => {
+                    setDob(val);
+                    if (val) {
+                      setPatientAge(calculateAgeFromDob(val));
+                    }
+                  }}
+                />
+              </div>
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Patient Age
+                </label>
+                <input
+                  type="text"
+                  value={patientAge}
+                  onChange={(e) => setPatientAge(e.target.value)}
+                  placeholder="e.g. 36 Yrs"
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
+                />
+              </div>
+            </div>
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -1315,21 +1326,32 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
-            <DateInputDDMMYYYY
-              label="Partner Date of Birth (DOB)"
-              value={partnerDob}
-              onChange={(val) => {
-                setPartnerDob(val);
-                setPartnerAge(calculateAgeFromDob(val));
-              }}
-              extraBadge={
-                partnerAge ? (
-                  <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11px] font-bold border border-emerald-300">
-                    Age: {partnerAge}
-                  </span>
-                ) : undefined
-              }
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0 max-w-full">
+              <div className="sm:col-span-2">
+                <DateInputDDMMYYYY
+                  label="Partner Date of Birth (DOB)"
+                  value={partnerDob}
+                  onChange={(val) => {
+                    setPartnerDob(val);
+                    if (val) {
+                      setPartnerAge(calculateAgeFromDob(val));
+                    }
+                  }}
+                />
+              </div>
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Partner Age
+                </label>
+                <input
+                  type="text"
+                  value={partnerAge}
+                  onChange={(e) => setPartnerAge(e.target.value)}
+                  placeholder="e.g. 36 Yrs"
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
+                />
+              </div>
+            </div>
 
             <div className="min-w-0 max-w-full">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">

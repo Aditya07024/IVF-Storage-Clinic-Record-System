@@ -762,8 +762,18 @@ export const OcrVerification: React.FC = () => {
                   label="Patient DOB"
                   value={dob}
                   onChange={(val) => setDob(val)}
-                  extraBadge={patientAge ? <span className="text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded text-[10px] font-bold border border-emerald-300">{patientAge}</span> : undefined}
                 />
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Patient Age</label>
+                  <input
+                    type="text"
+                    value={patientAge}
+                    onChange={(e) => setPatientAge(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                    placeholder="e.g. 36 Yrs"
+                  />
+                </div>
 
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-700">Patient Mobile Phone</label>
@@ -802,8 +812,18 @@ export const OcrVerification: React.FC = () => {
                   label="Partner DOB"
                   value={partnerDob}
                   onChange={(val) => setPartnerDob(val)}
-                  extraBadge={partnerAge ? <span className="text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded text-[10px] font-bold border border-emerald-300">{partnerAge}</span> : undefined}
                 />
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Partner Age</label>
+                  <input
+                    type="text"
+                    value={partnerAge}
+                    onChange={(e) => setPartnerAge(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
+                    placeholder="e.g. 36 Yrs"
+                  />
+                </div>
 
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-700">Partner Mobile Phone</label>
