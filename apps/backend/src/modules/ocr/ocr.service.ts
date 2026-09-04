@@ -116,7 +116,7 @@ export class OcrService {
   }
 
   private initGeminiClient() {
-    const key = CONFIG.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    const key = CONFIG.GEMINI_API_KEY || process.env.GEMINI_API_KEY || CONFIG.GOOGLE_VISION_API_KEY || process.env.GOOGLE_VISION_API_KEY;
     if (key && key !== 'mock_gemini_key') {
       this.genAI = new GoogleGenerativeAI(key);
       console.log('[OcrService] Google Gemini AI client initialized securely.');
