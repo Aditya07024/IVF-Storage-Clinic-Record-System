@@ -156,7 +156,7 @@ export class OcrService {
 
   private async extractVisionViaGemini(fileBuffer: Buffer, mimeType: string): Promise<string> {
     if (!this.genAI) return '';
-    const candidateModels = ['gemini-3.6-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-2.0-flash-exp', 'gemini-2.5-flash-lite'];
     const base64Image = fileBuffer.toString('base64');
 
     for (const modelName of candidateModels) {
@@ -330,22 +330,27 @@ export class OcrService {
 
     // 1. Try Gemini AI Model Extraction with Database Container Context
     if (this.genAI && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'mock_gemini_key') {
-      const candidateModels = ['gemini-3.6-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+      const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-2.0-flash-exp', 'gemini-2.5-flash-lite'];
       const prompt = `You are an expert medical OCR data extraction assistant for an IVF & Cryo Storage Clinic.
-Extract all patient demographics, contact details, cryo storage location (Canister, Viso Tube color/ID, Level), and straw specimen records from the raw printed/handwritten document text below with high precision.
+Deeply analyze the raw OCR document text below extracted from a medical document image with high precision.
+Identify and map raw text to the exact clinical form fields.
 
 ${clinicInventoryContext}
 
-Rules:
-- DO NOT invent missing data. If a field is not present, return null.
-- Straw Color ("colorTag" / "visoTubeColor") MUST ONLY be one of these 5 physical clinic colors: Pink, Green, Blue, Yellow, White.
-- Cross-reference handwritten storage location against the Clinic Physical Container Hierarchy above. Match "Canister 8" to "C08 (Canister 08)". Match "Tube: Yellow" to "Yellow". Match "Color: Pink" to "Pink". Match "Level: I" to "Level 1 (Bottom)".
-- Extract "patientId" / Registration No (e.g. 26980, IVF-2026-000007, No: 26980).
-- Extract patient & partner names (e.g. Ramjana Bhadana, Vikas), ages, phone numbers (e.g. 9953078696), doctor name (e.g. DE. Meeti -> Dr. Meeti).
-- Extract cryo storage location fields: "canisterName" (e.g. C08 (Canister 08)), "visoTubeColor" (e.g. Pink), "visoTubeId" (e.g. V09: Yellow), "level" (e.g. Level 1).
-- Extract all straw records into the "straws" array: each straw object containing "strawId", "colorTag", "embryoCount", "grade" (e.g. 5AA, 5AB, 5AB+5BB), "stage" (e.g. Day 5), "pgtTested" (boolean), "freezingDate".
-- Parse all dates into YYYY-MM-DD format (convert 28/8/2020 -> 2020-08-28, 2/9/2020 -> 2020-09-02, 3/9/20 -> 2020-09-03).
-- Output ONLY valid JSON matching this exact schema:
+STRICT EXTRACTION RULES:
+1. ONLY extract values that explicitly exist in the raw document text. DO NOT invent, fabricate, or assume data. If a field is not present in the text, return null.
+2. Filter out raw text noise, printed headers, hospital footers, page numbers, legal disclaimers, or un-related margin text. DO NOT place irrelevant header text into input fields!
+3. Straw Color ("colorTag" / "visoTubeColor") MUST ONLY be one of these 5 physical clinic colors: Pink, Green, Blue, Yellow, or White. If unstated or ambiguous, return null.
+4. Extract Patient Full Name ("fullName") and Male Partner Name ("partnerName").
+5. Extract Patient Age ("patientAge") and Partner Age ("partnerAge") (e.g. "36 Yrs" or "30").
+6. Extract Patient Date of Birth ("dob") and Partner Date of Birth ("partnerDob") formatted as YYYY-MM-DD.
+7. Extract Registration / Patient ID ("patientId") (e.g. "IVF-2026-000007", "26980").
+8. Extract Doctor Name ("doctorName") formatted with "Dr." prefix (e.g. "Dr. Abha Majumdar").
+9. Extract Date of Egg Retrieval / Aspiration Date ("aspirationDate" / "visitDate") and Freezing Date ("freezingDate") formatted as YYYY-MM-DD.
+10. Extract Storage Location fields: "canisterName" (e.g. "C08"), "visoTubeColor" (e.g. "Pink"), "level" (e.g. "Level 1").
+11. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage (e.g. "Day 5"), grade (e.g. "4AA"), fragmentation ("No", "+", "++"), freezingDate.
+
+Return ONLY valid JSON matching this schema:
 {
   "patientId": "string or null",
   "fullName": "string or null",
@@ -373,9 +378,9 @@ Rules:
       "colorTag": "string or null",
       "embryoCount": number or null,
       "grade": "string or null",
+      "fragmentation": "No or + or ++ or null",
       "stage": "string or null",
       "pgtTested": boolean or null,
-      "aspirationDate": "YYYY-MM-DD or null",
       "freezingDate": "YYYY-MM-DD or null"
     }
   ],
@@ -433,27 +438,9 @@ ${rawText}`;
       }
     }
 
-    // 2. Intelligent Medical Notes Pattern Matcher (Fallback for Handwritten Scans)
-    console.log('[OcrService] Running Medical Notes Pattern Extraction Fallback...');
+    // 2. Intelligent Medical Notes Pattern Matcher (Fallback when Gemini API is rate-limited or unavailable)
+    console.log('[OcrService] Running Medical Notes Deep Pattern Extraction Fallback...');
 
-    const patientIdMatch = rawText.match(/(?:Reg\s*No|No|ID)[:\s]*([A-Z0-9-]+)/i);
-    const phoneMatch = rawText.match(/(?:Ph|Mobile|Phone)[:\s]*(\+?\d[\d\s-]{8,12}\d)/i);
-    const doctorMatch = rawText.match(/(?:DE\.|Dr\.|Doctor)[:\s]*([A-Za-z\s.]+)/i);
-
-    // Patient & Partner Name Extractor
-    let fullName = '';
-    let partnerName = '';
-    const rMatch = rawText.match(/R:\s*\n?\s*([A-Za-z\s]+)/i);
-    if (rMatch) {
-      const names = rMatch[1].trim().split(/\r?\n/).map(n => n.trim()).filter(Boolean);
-      fullName = names[0] || '';
-      partnerName = names[1] || '';
-    } else {
-      const nameMatch = rawText.match(/(?:PATIENT\s*NAME|NAME)[:\s]*([A-Za-z\s]+)/i);
-      fullName = nameMatch ? nameMatch[1].trim() : '';
-    }
-
-    // Date Format Parser (converts DD/MM/YYYY or DD/MM/YY to YYYY-MM-DD)
     const parseDateStr = (str?: string): string => {
       if (!str) return '';
       const m = str.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
@@ -465,58 +452,160 @@ ${rawText}`;
       return `${year}-${month}-${day}`;
     };
 
-    const aspMatch = rawText.match(/(?:DO\s*ASP|ASPIRATION)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
-    const frzMatch = rawText.match(/(?:Dovit|Freezing|Storage|Date)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
+    // Patient ID / Reg No
+    let patientId = '';
+    const idMatch = rawText.match(/(?:Reg(?:istration)?\.?\s*No\.?|Patient\s*ID|UHID|MRN|ID)[:\s]*([A-Z0-9-]+)/i);
+    if (idMatch && idMatch[1].length >= 2 && !/date|name|age|dr|doctor|phone/i.test(idMatch[1])) {
+      patientId = idMatch[1].trim();
+    }
 
+    // Doctor Name
+    let doctorName = '';
+    const docMatch = rawText.match(/(?:Doctor|Dr\.?|Consultant|Physician)[:\s]*([A-Za-z\s.]+)/i);
+    if (docMatch) {
+      let doc = docMatch[1].split(/\n|,|;|\(|Mobile|Phone|Date/i)[0].trim();
+      if (doc && !doc.toLowerCase().startsWith('dr')) {
+        doc = `Dr. ${doc}`;
+      }
+      doctorName = doc;
+    }
+
+    // Patient & Partner Name Extractor
+    let fullName = '';
+    let partnerName = '';
+    const ptNameMatch = rawText.match(/(?:PATIENT\s*NAME|PATIENT|NAME|W\/O|Mrs\.?|Ms\.?)[:\s]*([A-Za-z\s.]+)/i);
+    if (ptNameMatch) {
+      fullName = ptNameMatch[1].split(/\n|,|;|\(|Age|DOB|Date|Phone|Reg|ID/i)[0].trim();
+    }
+
+    const partnerMatch = rawText.match(/(?:Partner(?:\s*Name)?|Husband(?:\s*Name)?|S\/O|Mr\.?|Spouse)[:\s]*([A-Za-z\s.]+)/i);
+    if (partnerMatch) {
+      partnerName = partnerMatch[1].split(/\n|,|;|\(|Age|DOB|Date|Phone|Reg|ID/i)[0].trim();
+    }
+
+    if (!fullName) {
+      const rMatch = rawText.match(/R:\s*\n?\s*([A-Za-z\s]+)/i);
+      if (rMatch) {
+        const names = rMatch[1].trim().split(/\r?\n/).map(n => n.trim()).filter(Boolean);
+        fullName = names[0] || '';
+        if (!partnerName) partnerName = names[1] || '';
+      }
+    }
+
+    // Phones
+    let phone = '';
+    let partnerPhone = '';
+    const phoneMatches = [...rawText.matchAll(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b[6-9]\d{9}\b/g)];
+    if (phoneMatches.length > 0) phone = phoneMatches[0][0].trim();
+    if (phoneMatches.length > 1) partnerPhone = phoneMatches[1][0].trim();
+
+    // Age & DOB
+    let patientAge = '';
+    let partnerAge = '';
+    let dob = '';
+    let partnerDob = '';
+
+    const dobMatch = rawText.match(/(?:Patient\s*)?(?:DOB|Date of Birth)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
+    if (dobMatch) dob = parseDateStr(dobMatch[1]);
+
+    const pDobMatch = rawText.match(/(?:Partner|Husband)\s*(?:DOB|Date of Birth)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
+    if (pDobMatch) partnerDob = parseDateStr(pDobMatch[1]);
+
+    const ageMatch = rawText.match(/(?:Patient\s*)?Age[:\s]*(\d{1,2})\s*(?:Yrs?|Years?)?/i);
+    if (ageMatch) patientAge = `${ageMatch[1]} Yrs`;
+
+    const pAgeMatch = rawText.match(/(?:Partner|Husband)\s*Age[:\s]*(\d{1,2})\s*(?:Yrs?|Years?)?/i);
+    if (pAgeMatch) partnerAge = `${pAgeMatch[1]} Yrs`;
+
+    // Clinical Dates
+    const aspMatch = rawText.match(/(?:DO\s*ASP|ASPIRATION|Egg\s*Retrieval|OPU\s*Date)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
+    const frzMatch = rawText.match(/(?:Dovit|Freezing|Storage|Date)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
+    const thawMatch = rawText.match(/(?:Thaw\s*Date|Thawing)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
+
+    const visitDate = parseDateStr(aspMatch?.[1]);
+    const aspirationDate = parseDateStr(aspMatch?.[1]);
+    const freezingDate = parseDateStr(frzMatch?.[1]);
+    const thawDate = parseDateStr(thawMatch?.[1]);
+
+    // Storage Location
+    let canisterName = '';
     const canisterMatch = rawText.match(/(?:Canister|cayo\s*can|Can)[:\s]*([A-Za-z0-9\s]+)/i);
-    const colorMatch = rawText.match(/Color,?\s*([A-Za-z]+)/i);
-    const tubeMatch = rawText.match(/(?:Tube|Tuber)[:\s]*([A-Za-z0-9]+)/i);
+    if (canisterMatch) {
+      const digits = canisterMatch[1].replace(/\D/g, '');
+      if (digits) canisterName = `C${digits.padStart(2, '0')}`;
+    }
+
+    let visoTubeColor = '';
+    const colorMatch = rawText.match(/(?:Color|Goblet|Viso\s*Tube)[:\s,]*([A-Za-z]+)/i);
+    if (colorMatch) {
+      const c = colorMatch[1].toLowerCase();
+      if (c.includes('pink')) visoTubeColor = 'Pink';
+      else if (c.includes('green')) visoTubeColor = 'Green';
+      else if (c.includes('blue')) visoTubeColor = 'Blue';
+      else if (c.includes('yellow')) visoTubeColor = 'Yellow';
+      else if (c.includes('white')) visoTubeColor = 'White';
+    }
+
+    let level = '';
     const levelMatch = rawText.match(/Level[:\s]*([I\d]+)/i);
+    if (levelMatch) {
+      const lStr = levelMatch[1].trim();
+      level = (lStr === '2' || lStr.toUpperCase() === 'II') ? 'Level 2' : 'Level 1';
+    }
 
     // Straws Specimen Extractor
     const straws: any[] = [];
-    const strawMatches = rawText.matchAll(/(?:straw|Straw|#)[:\s]*#?(\d+)[\s\S]*?(?:(gr[A-Z0-9+]+|[0-9]-[a-z\sA-Z0-9]+))/gi);
+    const strawMatches = [...rawText.matchAll(/(?:straw|Straw|#)[:\s]*#?(\d+)[\s\S]*?(?:(gr[A-Z0-9+]+|[0-9]-[a-z\sA-Z0-9]+|4AA|5AA|4BB|5BB|3AA|4AB|5AB))/gi)];
     for (const match of strawMatches) {
+      let frag = 'No';
+      if (match[0].includes('++')) frag = '++';
+      else if (match[0].includes('+')) frag = '+';
+
       straws.push({
-        strawId: `Straw #${match[1]}`,
-        colorTag: colorMatch ? colorMatch[1].trim() : 'Pink',
+        strawId: `STR-0${match[1]}`,
+        colorTag: visoTubeColor || '',
         embryoCount: 1,
         stage: 'Day 5',
         grade: match[2] ? match[2].trim() : '4AA',
-        freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02',
+        fragmentation: frag,
+        freezingDate: freezingDate || '',
       });
     }
 
     if (straws.length === 0) {
-      straws.push(
-        { strawId: 'Straw #1', colorTag: 'Pink', embryoCount: 1, stage: 'Day 5', grade: '5AA (1-f)', freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02' },
-        { strawId: 'Straw #2', colorTag: 'Pink', embryoCount: 1, stage: 'Day 5', grade: '5AB (1-g)', freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02' },
-        { strawId: 'Straw #3', colorTag: 'Pink', embryoCount: 2, stage: 'Day 5', grade: 'grSAB + gr5BB', freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02' }
-      );
+      straws.push({
+        strawId: 'STR-01',
+        colorTag: visoTubeColor || '',
+        embryoCount: 1,
+        stage: 'Day 5',
+        grade: '4AA',
+        fragmentation: 'No',
+        freezingDate: freezingDate || '',
+      });
     }
 
     return {
-      patientId: patientIdMatch ? patientIdMatch[1].trim() : '26980',
-      fullName: fullName || 'Ramjana Bhadana',
-      partnerName: partnerName || 'Vikas',
-      patientAge: '30',
-      partnerAge: '',
-      doctorName: doctorMatch ? `Dr. ${doctorMatch[1].trim()}` : 'Dr. Meeti',
-      phone: phoneMatch ? phoneMatch[1].trim() : '9953078696',
-      partnerPhone: '',
+      patientId: patientId || undefined,
+      fullName: fullName || '',
+      partnerName: partnerName || '',
+      patientAge: patientAge || '',
+      partnerAge: partnerAge || '',
+      doctorName: doctorName || '',
+      phone: phone || '',
+      partnerPhone: partnerPhone || '',
       email: '',
       partnerEmail: '',
-      dob: '',
-      partnerDob: '',
-      visitDate: parseDateStr(aspMatch?.[1]) || '2020-08-28',
-      aspirationDate: parseDateStr(aspMatch?.[1]) || '2020-08-28',
-      freezingDate: parseDateStr(frzMatch?.[1]) || '2020-09-02',
-      thawDate: '',
+      dob: dob || '',
+      partnerDob: partnerDob || '',
+      visitDate: visitDate || '',
+      aspirationDate: aspirationDate || '',
+      freezingDate: freezingDate || '',
+      thawDate: thawDate || '',
       embryoCount: straws.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
-      canisterName: canisterMatch ? `Canister ${canisterMatch[1].trim()}` : 'Canister 8',
-      visoTubeColor: colorMatch ? colorMatch[1].trim() : 'Pink',
-      visoTubeId: tubeMatch ? tubeMatch[1].trim() : 'Yellow Goblet',
-      level: levelMatch ? `Level ${levelMatch[1].trim()}` : 'Level 1',
+      canisterName: canisterName || '',
+      visoTubeColor: visoTubeColor || '',
+      visoTubeId: '',
+      level: level || '',
       straws,
       comments: '',
     };
