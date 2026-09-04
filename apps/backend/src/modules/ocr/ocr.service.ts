@@ -156,7 +156,7 @@ export class OcrService {
 
   private async extractVisionViaGemini(fileBuffer: Buffer, mimeType: string): Promise<string> {
     if (!this.genAI) return '';
-    const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-2.0-flash-exp', 'gemini-2.5-flash-lite'];
+    const candidateModels = ['gemini-3.6-flash', 'gemini-3.1-pro-preview', 'gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
     const base64Image = fileBuffer.toString('base64');
 
     for (const modelName of candidateModels) {
@@ -330,7 +330,7 @@ export class OcrService {
 
     // 1. Try Gemini AI Model Extraction with Database Container Context
     if (this.genAI && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'mock_gemini_key') {
-      const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-2.0-flash-exp', 'gemini-2.5-flash-lite'];
+      const candidateModels = ['gemini-3.6-flash', 'gemini-3.1-pro-preview', 'gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
       const prompt = `You are an expert medical OCR data extraction assistant for an IVF & Cryo Storage Clinic.
 Deeply analyze the raw OCR document text below extracted from a medical document image with high precision.
 Identify and map raw text to the exact clinical form fields.
