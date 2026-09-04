@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ThermometerSnowflake, Search, CheckCircle2, ShieldAlert, AlertTriangle, Layers, MoveRight, User, Calendar, Phone, RefreshCw, MapPin } from 'lucide-react';
-import { apiRequest, formatDateDDMMYYYY } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass } from './PatientForm';
 
@@ -330,7 +330,7 @@ export const ThawWorkflow: React.FC = () => {
                       <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
                         <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
                           <span className="font-mono font-bold text-emerald-800">Batch ID: {batch.batchId}</span>
-                          <span className="text-slate-600 font-medium">Date: {new Date(batch.storageDate).toISOString().split('T')[0]}</span>
+                          <span className="text-slate-600 font-medium">Date: {formatDateDDMMYYYY(batch.storageDate)}</span>
                         </div>
 
                         {/* Active Selectable Straws */}
@@ -450,7 +450,7 @@ export const ThawWorkflow: React.FC = () => {
                       {thawHistory.map((h) => (
                         <tr key={h.id} className="hover:bg-slate-50">
                           <td className="py-2 px-3 font-mono font-bold text-slate-800">{h.straw?.strawId || h.strawId}</td>
-                          <td className="py-2 px-3 text-slate-600">{new Date(h.thawDate).toLocaleString()}</td>
+                          <td className="py-2 px-3 text-slate-600">{formatTimestampDDMMYYYY(h.thawDate)}</td>
                           <td className="py-2 px-3 font-semibold text-slate-800">{h.doctorName}</td>
                           <td className="py-2 px-3 text-slate-500">{h.doctorNotes || '—'}</td>
                         </tr>

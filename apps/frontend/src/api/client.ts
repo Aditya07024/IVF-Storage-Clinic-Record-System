@@ -193,6 +193,26 @@ export function formatDateDDMMYYYY(dateInput: string | Date | null | undefined):
   return `${day}/${month}/${year}`;
 }
 
+export function formatTimestampDDMMYYYY(dateInput: string | Date | null | undefined, includeTime = true): string {
+  if (!dateInput) return 'N/A';
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return 'N/A';
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const dateStr = `${day}/${month}/${year}`;
+
+  if (!includeTime) return dateStr;
+
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const formattedHours = String(hours % 12 || 12).padStart(2, '0');
+
+  return `${dateStr}, ${formattedHours}:${minutes} ${ampm}`;
+}
+
 export function formatPhoneNumber(phoneInput?: string | null): string {
   if (!phoneInput) return '—';
   const cleaned = phoneInput.trim();

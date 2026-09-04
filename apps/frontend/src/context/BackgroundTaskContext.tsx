@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Loader2, CheckCircle2, AlertCircle, X, RefreshCw, Layers, Copy, Check, Mail, Send } from 'lucide-react';
-import { clearApiCache } from '../api/client';
+import { clearApiCache, formatTimestampDDMMYYYY } from '../api/client';
 
 export interface BackgroundTask {
   id: string;
@@ -46,7 +46,7 @@ export const BackgroundTaskProvider: React.FC<{ children: React.ReactNode }> = (
     const recipient = 'adityakumar07024@gmail.com';
     const subject = encodeURIComponent(`[IVF Clinic Record System Error] ${task.title}`);
     const body = encodeURIComponent(
-      `Hello Developer,\n\nAn operation encountered an error in the IVF Clinic System:\n\nTask: ${task.title}\nDescription: ${task.description || 'N/A'}\nTime: ${new Date(task.createdAt).toLocaleString()}\n\nExact Error Trace:\n${task.errorMessage || 'No message'}\n\nPlease review this issue.\n\nThank you!`
+      `Hello Developer,\n\nAn operation encountered an error in the IVF Clinic System:\n\nTask: ${task.title}\nDescription: ${task.description || 'N/A'}\nTime: ${formatTimestampDDMMYYYY(task.createdAt)}\n\nExact Error Trace:\n${task.errorMessage || 'No message'}\n\nPlease review this issue.\n\nThank you!`
     );
 
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${recipient}&su=${subject}&body=${body}`;

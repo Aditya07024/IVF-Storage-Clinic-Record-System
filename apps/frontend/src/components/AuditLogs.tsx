@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardList, Search, Filter, ShieldAlert, Code } from 'lucide-react';
-import { apiRequest } from '../api/client';
+import { apiRequest, formatTimestampDDMMYYYY } from '../api/client';
 
 export const AuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
@@ -98,7 +98,7 @@ export const AuditLogs: React.FC = () => {
               ) : (
                 logs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 font-mono text-slate-500">{new Date(log.createdAt).toLocaleString()}</td>
+                    <td className="px-6 py-4 font-mono text-slate-500">{formatTimestampDDMMYYYY(log.createdAt)}</td>
                     <td className="px-6 py-4 font-bold text-slate-900">{log.userName || log.user?.name || log.userId}</td>
                     <td className="px-6 py-4">
                       <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded font-mono font-bold border border-emerald-300">
@@ -142,7 +142,7 @@ export const AuditLogs: React.FC = () => {
 
             <div className="space-y-3">
               <div className="text-xs text-slate-600">
-                Logged By: <strong className="text-slate-900 font-bold">{selectedLog.userName}</strong> • Date: <strong className="text-slate-900 font-bold">{new Date(selectedLog.createdAt).toLocaleString()}</strong>
+                Logged By: <strong className="text-slate-900 font-bold">{selectedLog.userName}</strong> • Date: <strong className="text-slate-900 font-bold">{formatTimestampDDMMYYYY(selectedLog.createdAt)}</strong>
               </div>
 
               {selectedLog.oldData && (

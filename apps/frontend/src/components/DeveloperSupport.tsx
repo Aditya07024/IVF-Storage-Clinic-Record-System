@@ -13,7 +13,7 @@ import {
   Clock,
   ClipboardList,
 } from 'lucide-react';
-import { apiRequest } from '../api/client';
+import { apiRequest, formatTimestampDDMMYYYY } from '../api/client';
 
 export const DeveloperSupport: React.FC = () => {
   const [name, setName] = useState('');
@@ -449,7 +449,7 @@ export const DeveloperSupport: React.FC = () => {
                   return (
                     <tr key={t.id} className="hover:bg-slate-50">
                       <td className="py-3 px-3 font-bold text-slate-900">{t.entityId || details.ticketRef}</td>
-                      <td className="py-3 px-3 text-slate-600">{new Date(t.createdAt).toLocaleString()}</td>
+                      <td className="py-3 px-3 text-slate-600">{formatTimestampDDMMYYYY(t.createdAt)}</td>
                       <td className="py-3 px-3 font-semibold text-slate-900">
                         {details.name || t.userName}
                         {details.email && <div className="text-[10px] text-slate-500 font-normal">{details.email}</div>}

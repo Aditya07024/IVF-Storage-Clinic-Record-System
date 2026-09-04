@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Printer, Mail, Send, X, CheckCircle2, AlertCircle, RefreshCw, FileText, Sparkles, ShieldCheck, History } from 'lucide-react';
-import { apiRequest, getApiBaseUrl, openSecurePdfBlob } from '../api/client';
+import { apiRequest, getApiBaseUrl, openSecurePdfBlob, formatTimestampDDMMYYYY } from '../api/client';
 
 interface ReportPrintMailModalProps {
   isOpen: boolean;
@@ -463,7 +463,7 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
                       )}
                     </div>
                     <span className="text-[10px] text-slate-500 font-mono shrink-0">
-                      {new Date(log.sentAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                      {formatTimestampDDMMYYYY(log.sentAt)}
                     </span>
                   </div>
                 );

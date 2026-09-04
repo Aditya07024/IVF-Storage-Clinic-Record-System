@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye } from 'lucide-react';
-import { apiRequest, formatDateDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
@@ -817,7 +817,7 @@ export const PatientDirectory: React.FC = () => {
                   <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
                       {/* <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span> */}
-                      <span className="text-slate-600 font-mono">Stored: {new Date(batch.storageDate).toISOString().split('T')[0]}</span>
+                      <span className="text-slate-600 font-mono">Stored: {formatDateDDMMYYYY(batch.storageDate)}</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1658,7 +1658,7 @@ export const PatientDirectory: React.FC = () => {
                               )}
                             </div>
                           </td>
-                          <td className="py-2.5 px-3 text-slate-600 font-bold">{new Date(t.thawDate).toLocaleString()}</td>
+                          <td className="py-2.5 px-3 text-slate-600 font-bold">{formatTimestampDDMMYYYY(t.thawDate)}</td>
                           <td className="py-2.5 px-3 font-semibold text-slate-900">{t.doctorName}</td>
                           <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-slate-700">
                             {parseVisoTubeLocation(t.straw?.visoTube?.locationCode)}
@@ -1715,7 +1715,7 @@ export const PatientDirectory: React.FC = () => {
                           return (
                             <tr key={log.id} className="hover:bg-white">
                               <td className="py-2.5 px-3 text-slate-600 font-bold whitespace-nowrap">
-                                {new Date(log.createdAt).toLocaleString()}
+                                {formatTimestampDDMMYYYY(log.createdAt)}
                               </td>
                               <td className="py-2.5 px-3">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
@@ -1792,7 +1792,7 @@ export const PatientDirectory: React.FC = () => {
                           </td>
                           <td className="py-2.5 px-3 font-semibold text-slate-900">{log.recipientEmail}</td>
                           <td className="py-2.5 px-3 text-slate-600 font-bold whitespace-nowrap">
-                            {new Date(log.sentAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                            {formatTimestampDDMMYYYY(log.sentAt)}
                           </td>
                           <td className="py-2.5 px-3 text-slate-600 text-[11px]">
                             {log.messageId ? (
