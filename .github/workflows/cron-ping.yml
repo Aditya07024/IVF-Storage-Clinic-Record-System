@@ -1,4 +1,4 @@
-name: 5-Minute Keep-Alive Cron Ping
+name: Keep-Alive Cron
 
 on:
   schedule:
