@@ -1456,7 +1456,7 @@ export const PatientDirectory: React.FC = () => {
                       <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
                         <Mail className="w-3 h-3 text-slate-400" /> Email Address
                       </span>
-                      <span className="text-slate-800 font-medium block truncate">{selectedPatient.email || '—'}</span>
+                      <span className="text-slate-800 font-medium block break-all select-all">{selectedPatient.email || '—'}</span>
                     </div>
                   </div>
                 </div>
@@ -1497,7 +1497,7 @@ export const PatientDirectory: React.FC = () => {
                       <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
                         <Mail className="w-3 h-3 text-slate-400" /> Email Address
                       </span>
-                      <span className="text-slate-800 font-medium block truncate">{selectedPatient.partnerEmail || '—'}</span>
+                      <span className="text-slate-800 font-medium block break-all select-all">{selectedPatient.partnerEmail || '—'}</span>
                     </div>
                   </div>
                 </div>
