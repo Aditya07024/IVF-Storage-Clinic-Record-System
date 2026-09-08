@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, Mail, Send, X, CheckCircle2, AlertCircle, RefreshCw, FileText, Sparkles, ShieldCheck, History } from 'lucide-react';
+import { Printer, Mail, Send, X, CheckCircle2, AlertCircle, RefreshCw, FileText, Sparkles, ShieldCheck, History, Trash2 } from 'lucide-react';
 import { apiRequest, getApiBaseUrl, openSecurePdfBlob, formatTimestampDDMMYYYY } from '../api/client';
 
 interface ReportPrintMailModalProps {
@@ -56,6 +56,16 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
       console.error('Failed to fetch email logs:', err);
     } finally {
       setLoadingLogs(false);
+    }
+  };
+
+  const handleDeleteEmailLog = async (logId: string) => {
+    if (!confirm('Are you sure you want to delete this email log entry?')) return;
+    try {
+      await apiRequest(`/api/documents/email-logs/${logId}`, { method: 'DELETE' });
+      setEmailLogs((prev) => prev.filter((l) => l.id !== logId));
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete email log.');
     }
   };
 
@@ -462,9 +472,19 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
                         <div className="text-[10px] text-rose-600 font-medium">{log.errorMessage}</div>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono shrink-0">
-                      {formatTimestampDDMMYYYY(log.sentAt)}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        {formatTimestampDDMMYYYY(log.sentAt)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteEmailLog(log.id)}
+                        title="Delete email log entry"
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}

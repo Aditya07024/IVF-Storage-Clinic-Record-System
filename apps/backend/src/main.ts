@@ -872,6 +872,17 @@ app.get('/api/documents/email-logs/:patientId', accessKeyGuard, jwtAuthGuard, as
   }
 });
 
+app.delete('/api/documents/email-logs/:id', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
+  try {
+    await prisma.emailLog.delete({
+      where: { id: req.params.id },
+    });
+    return res.json({ success: true, message: 'Email log entry deleted successfully.' });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // --- DASHBOARD ROUTE ---
 app.get('/api/dashboard', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
   try {

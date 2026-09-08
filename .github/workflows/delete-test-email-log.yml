@@ -1,0 +1,23 @@
+name: Delete Test Email Log Record
+
+on:
+  workflow_dispatch: # Manual trigger from GitHub Actions UI
+
+jobs:
+  cleanup-email-log:
+    name: Delete Test Email Log from Database
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute Remote SQL Cleanup via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.IVF_HOST }}
+          username: ${{ secrets.IVF_USER }}
+          key: ${{ secrets.IVF_DEPLOY_KEY }}
+          script: |
+            echo "🗑️ Deleting test email log entries for adityakumar07024@gmail.com..."
+            sudo -u postgres psql -d ivf_production -c "DELETE FROM \"EmailLog\" WHERE LOWER(\"recipientEmail\") LIKE '%adityakumar07024@gmail.com%';"
+            
+            echo "📊 Verification - Remaining email log entries for adityakumar07024@gmail.com:"
+            sudo -u postgres psql -d ivf_production -c "SELECT id, \"recipientEmail\", subject, status, \"sentAt\" FROM \"EmailLog\" WHERE LOWER(\"recipientEmail\") LIKE '%adityakumar07024@gmail.com%';"
