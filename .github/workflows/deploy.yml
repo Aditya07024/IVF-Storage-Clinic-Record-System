@@ -23,8 +23,8 @@ jobs:
             git reset --hard origin/main
             npm ci
             npm run build
-            sudo pm2 restart ivf-backend
-            sudo pm2 status ivf-backend
+            sudo -n /usr/bin/pm2 restart ivf-backend
+            sudo -n /usr/bin/pm2 status ivf-backend
 
       - name: Non-blocking Health Check
         run: |
