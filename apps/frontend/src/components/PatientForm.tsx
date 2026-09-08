@@ -934,7 +934,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             <UserPlus className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Embryo Freezing & Storage Allocation</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Embryo/Oocyte/Sperm Freezing & Storage Allocation</h1>
             <p className="text-xs sm:text-sm text-slate-600 font-medium">
               Register new patient OR allocate a new embryo freezing batch for an existing patient
             </p>
@@ -2148,7 +2148,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 <span>
                   {selectedExistingPatient
                     ? `Save New Embryo Batch for ${selectedExistingPatient.fullName}`
-                    : 'Save & Allocate Embryo Storage Record'}
+                    : 'Save & Allocate Embryo/Egg Storage Record'}
                 </span>
               </>
             )}
