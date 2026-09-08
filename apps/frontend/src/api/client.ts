@@ -158,6 +158,14 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
 
   const data = await response.json().catch(() => ({}));
 
+  if (response.status === 401 && !isAuthEndpoint) {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    alert(data.error || 'Your session has expired. Click OK to refresh and log in again.');
+    window.location.reload();
+    throw new Error(data.error || 'Session expired.');
+  }
+
   if (response.status === 403 && data.error?.includes('Invalid site access key hash') && !(options as any)._isRetryKey) {
     localStorage.setItem('app_access_key', 'clinic2026');
     return apiRequest(endpoint, { ...options, _isRetryKey: true } as any);
