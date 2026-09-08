@@ -702,20 +702,39 @@ export const PatientDirectory: React.FC = () => {
 
                             const freezingDatesStr = Array.from(freezingDatesSet).join(', ');
 
+                            const specimenLabel = p.specimenType === 'OOCYTE'
+                              ? (totalEmbryos === 1 ? 'Egg' : 'Eggs')
+                              : p.specimenType === 'SPERM'
+                              ? 'Sperm'
+                              : (totalEmbryos === 1 ? 'Embryo' : 'Embryos');
+
+                            const specimenIcon = p.specimenType === 'OOCYTE' ? '🥚' : p.specimenType === 'SPERM' ? '🧪' : '🧬';
+
                             return (
-                              <div className="space-y-1 min-w-[220px]">
-                                {/* {freezingDatesStr && (
-                                  <div className="text-[11px] font-bold text-emerald-950 font-mono flex items-center gap-1">
-                                    <span className="text-slate-500 font-semibold uppercase text-[10px]">Freezing Dates:</span>
-                                    <span>{freezingDatesStr}</span>
+                              <div className="space-y-1.5 min-w-[220px]">
+                                {freezingDatesStr && (
+                                  <div className="text-[11px] font-bold text-slate-700 font-mono flex items-center gap-1">
+                                    <span className="text-slate-400 font-semibold uppercase text-[9.5px]">Freezing:</span>
+                                    <span className="text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">{freezingDatesStr}</span>
                                   </div>
-                                )} */}
-                                <div className="text-xs font-bold text-slate-900 bg-emerald-100/90 text-emerald-950 px-2.5 py-1 rounded-xl border border-emerald-300 shadow-2xs inline-block">
-                                  {totalStraws} {totalStraws === 1 ? 'straw' : 'straws'}, {totalEmbryos} {totalEmbryos === 1 ? 'embryo' : 'embryos'}
-                                  {stageBreakdown ? ` (${stageBreakdown})` : ''}
+                                )}
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-950 font-mono font-bold text-xs rounded-lg border border-emerald-300 shadow-2xs inline-flex items-center gap-1">
+                                    <span>🧪</span>
+                                    <span>{totalStraws} {totalStraws === 1 ? 'Straw' : 'Straws'}</span>
+                                  </span>
+                                  <span className="px-2.5 py-0.5 bg-teal-100 text-teal-950 font-mono font-bold text-xs rounded-lg border border-teal-300 shadow-2xs inline-flex items-center gap-1">
+                                    <span>{specimenIcon}</span>
+                                    <span>{totalEmbryos} {specimenLabel}</span>
+                                  </span>
                                 </div>
-                                <div className="flex items-center gap-1.5 pt-0.5">
-                                  <span className="px-2 py-0.5 bg-slate-100 text-slate-800 rounded-md text-[10px] font-bold font-mono border border-slate-200">
+                                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                                  {stageBreakdown && (
+                                    <span className="px-2 py-0.5 bg-amber-100/90 text-amber-950 text-[11px] font-bold rounded-lg border border-amber-300 font-mono shadow-2xs">
+                                      {stageBreakdown}
+                                    </span>
+                                  )}
+                                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold font-mono border border-slate-200">
                                     {activeBatches.length} {activeBatches.length === 1 ? 'Active Batch' : 'Active Batches'}
                                   </span>
                                 </div>
@@ -1306,14 +1325,14 @@ export const PatientDirectory: React.FC = () => {
 
                     {/* Specimen Type Badge */}
                     <span className="text-emerald-950 bg-emerald-100/90 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit flex items-center gap-1">
-                      <span>{selectedPatient.specimenType === 'OOCYTE' ? 'Egg (Oocyte)' : selectedPatient.specimenType === 'SPERM' ? 'Sperm' : 'Embryo'}</span>
+                      <span>{selectedPatient.specimenType === 'OOCYTE' ? '🥚 Egg (Oocyte)' : selectedPatient.specimenType === 'SPERM' ? '🧪 Sperm' : '🧬 Embryo'}</span>
                     </span>
 
                     {/* Cycle Classification Badge */}
                     {selectedPatient.cycleType === 'DONOR_RECIPIENT' || selectedPatient.donorName ? (
                       <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1">
                         <UserCheck className="w-3 h-3 text-purple-700" />
-                        <span>Donor Recipient Cycle {selectedPatient.donorName ? `(Donor: ${selectedPatient.donorName})` : ''}</span>
+                        <span>D-R Cycle {selectedPatient.donorName ? `(Donor: ${selectedPatient.donorName})` : ''}</span>
                       </span>
                     ) : (
                       <span className="text-blue-950 bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-300 w-fit font-bold flex items-center gap-1">
@@ -1517,7 +1536,7 @@ export const PatientDirectory: React.FC = () => {
                     <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
                       <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
                         <UserCheck className="w-4 h-4 text-amber-600" />
-                        <span>Egg / Oocyte Donor Profile (Donor Recipient Cycle)</span>
+                        <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
                       </span>
                       <span className="text-[11px] font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300">
                         Donor Record

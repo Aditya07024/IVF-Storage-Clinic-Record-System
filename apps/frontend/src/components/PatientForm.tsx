@@ -1331,7 +1331,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { id: 'SELF', label: 'Self Cycle (Autologous)', desc: 'Own eggs/specimens used' },
-                    { id: 'DONOR_RECIPIENT', label: 'Donor Recipient Cycle (Donor Eggs)', desc: 'Donor eggs/specimens used' },
+                    { id: 'DONOR_RECIPIENT', label: 'D-R Cycle (Donor Eggs)', desc: 'Donor eggs/specimens used' },
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -1353,13 +1353,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </div>
             </div>
 
-            {/* Donor Information Card (Shown if Donor Recipient Cycle) */}
+            {/* Donor Information Card (Shown if D-R Cycle) */}
             {cycleType === 'DONOR_RECIPIENT' && (
               <div className="p-3.5 bg-amber-50/90 rounded-xl border border-amber-300/80 space-y-3 mt-3 animate-fadeIn">
                 <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
                   <span className="text-xs font-extrabold text-amber-950 flex items-center gap-1.5 uppercase tracking-wider">
                     <UserCheck className="w-4 h-4 text-amber-600" />
-                    <span>Egg / Oocyte Donor Profile (Donor Recipient Cycle)</span>
+                    <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
                   </span>
                   <span className="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full border border-amber-400/60">
                     Donor Details
