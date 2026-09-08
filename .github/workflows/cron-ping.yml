@@ -2,9 +2,9 @@ name: Keep-Alive Cron
 
 on:
   schedule:
-    # Runs every 5 minutes automatically
-    - cron: '*/5 * * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+    # Runs every 5 minutes
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
 
 jobs:
   ping:
@@ -15,12 +15,19 @@ jobs:
       - name: Ping IVF Backend Health API
         run: |
           echo "📡 [$(date -u)] Hitting IVF server health endpoint..."
-          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}s" -m 15 https://api.sgrhivfcryo.in/api/health || true)
+
+          RESPONSE=$(curl -sS -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}s" \
+            --connect-timeout 10 \
+            --max-time 15 \
+            https://api.sgrhivfcryo.in/api/health || true)
+
           echo "$RESPONSE"
-          
-          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+
           if [ "$HTTP_STATUS" = "200" ]; then
             echo "✅ Server is alive and healthy (HTTP 200 OK)."
           else
-            echo "⚠️ Notice: Server returned HTTP status code '${HTTP_STATUS}'."
+            echo "❌ Server returned HTTP status code '${HTTP_STATUS}'."
+            exit 1
           fi
