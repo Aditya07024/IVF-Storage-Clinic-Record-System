@@ -1,7 +1,24 @@
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 
-dotenv.config({ path: process.env.NODE_ENV === 'test' ? '.env.test' : '../../.env' });
+// Multi-path dotenv loader to guarantee zero breaking changes across all dev/prod environments
+const envCandidates = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), 'apps/backend/.env'),
+  path.resolve(process.cwd(), '../.env'),
+  path.resolve(process.cwd(), '../../.env'),
+  path.resolve(__dirname, '../../../.env'),
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(__dirname, '../.env'),
+];
+
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
+}
 dotenv.config(); // fallback
 
 export function cleanDatabaseUrl(url: string | undefined): string {
