@@ -16,8 +16,12 @@ import {
   X,
   ThermometerSnowflake,
   RotateCw,
+  Eye,
+  Phone,
+  Mail,
+  UserCheck,
 } from 'lucide-react';
-import { apiRequest, clearApiCache } from '../api/client';
+import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatPhoneNumber, getImageUrl } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
@@ -64,6 +68,23 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
   const [selectedCanisterNum, setSelectedCanisterNum] = useState<number>(1);
   const [selectedLevelNum, setSelectedLevelNum] = useState<number>(1);
   const [selectedTube, setSelectedTube] = useState<any | null>(null);
+  const [viewingPatientModal, setViewingPatientModal] = useState<any | null>(null);
+  const [loadingPatientDetail, setLoadingPatientDetail] = useState(false);
+
+  const handleOpenPatientDetailModal = async (patientId: string) => {
+    if (!patientId) return;
+    setLoadingPatientDetail(true);
+    try {
+      const res = await apiRequest(`/api/patients/${patientId}`);
+      if (res.success && res.patient) {
+        setViewingPatientModal(res.patient);
+      }
+    } catch (err: any) {
+      alert('Failed to load patient details: ' + (err.message || err));
+    } finally {
+      setLoadingPatientDetail(false);
+    }
+  };
   
   // Overview Modes: honeycomb | matrix
   const [viewMode, setViewMode] = useState<OverviewMode>('honeycomb');
@@ -841,46 +862,57 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2 self-start sm:self-auto">
-                                <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold font-mono rounded-full">
-                                  Straw ID: {straw.strawId}
-                                </span>
-
+                              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
                                 {straw.status === 'OCCUPIED' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const targetStrawCode = straw.strawId;
-                                      const targetStrawId = straw.id;
-                                      const patientName = patient?.fullName || 'Patient Record';
+                                  <>
+                                    {patient?.id && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenPatientDetailModal(patient.id)}
+                                        disabled={loadingPatientDetail}
+                                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-full shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer active:scale-95"
+                                        title="Click to view complete patient details and record history"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>{loadingPatientDetail ? 'Loading...' : 'View Patient Details'}</span>
+                                      </button>
+                                    )}
 
-                                      // Close inspector modal immediately
-                                      setSelectedTube(null);
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const targetStrawCode = straw.strawId;
+                                        const targetStrawId = straw.id;
+                                        const patientName = patient?.fullName || 'Patient Record';
 
-                                      enqueueTask({
-                                        title: `Thawing Straw ${targetStrawCode}: ${patientName}`,
-                                        description: `Liberating physical storage capacity in ${selectedCanCode}`,
-                                        action: async () => {
-                                          const res = await apiRequest('/api/thaw', {
-                                            method: 'POST',
-                                            body: JSON.stringify({
-                                              strawIds: [targetStrawId],
-                                              doctorNotes: 'Thawed directly from Viso Tube Inspector modal',
-                                            }),
-                                          });
-                                          return res;
-                                        },
-                                        onSuccess: () => {
-                                          fetchHierarchy();
-                                          fetchGlobalOccupancy();
-                                        },
-                                      });
-                                    }}
-                                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-full shadow-xs flex items-center gap-1 transition-all shrink-0"
-                                  >
-                                    <ThermometerSnowflake className="w-3.5 h-3.5" />
-                                    <span>Thaw Straw</span>
-                                  </button>
+                                        // Close inspector modal immediately
+                                        setSelectedTube(null);
+
+                                        enqueueTask({
+                                          title: `Thawing Straw ${targetStrawCode}: ${patientName}`,
+                                          description: `Liberating physical storage capacity in ${selectedCanCode}`,
+                                          action: async () => {
+                                            const res = await apiRequest('/api/thaw', {
+                                              method: 'POST',
+                                              body: JSON.stringify({
+                                                strawIds: [targetStrawId],
+                                                doctorNotes: 'Thawed directly from Viso Tube Inspector modal',
+                                              }),
+                                            });
+                                            return res;
+                                          },
+                                          onSuccess: () => {
+                                            fetchHierarchy();
+                                            fetchGlobalOccupancy();
+                                          },
+                                        });
+                                      }}
+                                      className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-full shadow-xs flex items-center gap-1 transition-all shrink-0 cursor-pointer"
+                                    >
+                                      <ThermometerSnowflake className="w-3.5 h-3.5" />
+                                      <span>Thaw Straw</span>
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -910,14 +942,14 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                               <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 space-y-1">
                                 <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
                                   <Calendar className="w-3 h-3 text-emerald-600 shrink-0" />
-                                  <span>Storage Date</span>
+                                  <span>Freezing Date</span>
                                 </div>
                                 <div className="font-bold text-slate-900 font-mono">
-                                  {storageDate}
+                                  {formatDateDDMMYYYY(straw.batch?.freezingDate || straw.batch?.storageDate || storageDate)}
                                 </div>
                               </div>
 
-                              <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 space-y-1">
+                              {/* <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 space-y-1">
                                 <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
                                   <FileText className="w-3 h-3 text-emerald-600 shrink-0" />
                                   <span>Batch Code</span>
@@ -925,7 +957,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                                 <div className="font-bold text-slate-900 font-mono">
                                   {straw.batch?.batchId || 'BATCH-2026-01'}
                                 </div>
-                              </div>
+                              </div> */}
                             </div>
 
                             {/* Notes if available */}
@@ -949,6 +981,127 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm"
               >
                 Close Inspector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PATIENT DETAILS MODAL */}
+      {viewingPatientModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white flex items-center gap-2">
+                    <span>{viewingPatientModal.fullName}</span>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-400/30">
+                      ID: {viewingPatientModal.patientId}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-emerald-200/80">Complete Patient Specimen & Clinical Record Profile</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingPatientModal(null)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-700">
+              {/* Key Registration Details */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 space-y-0.5">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Registration ID</span>
+                  <span className="font-mono font-bold text-slate-900 text-sm block">{viewingPatientModal.patientId}</span>
+                </div>
+                <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200 space-y-0.5">
+                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">Egg Pick Up Date</span>
+                  <span className="font-mono font-bold text-amber-950 text-sm block">
+                    {formatDateDDMMYYYY(viewingPatientModal.aspirationDate || viewingPatientModal.batches?.[0]?.aspirationDate)}
+                  </span>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-2xl border border-blue-200 space-y-0.5">
+                  <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">Freezing Date</span>
+                  <span className="font-mono font-bold text-blue-950 text-sm block">
+                    {formatDateDDMMYYYY(viewingPatientModal.freezingDate || viewingPatientModal.batches?.[0]?.freezingDate || viewingPatientModal.batches?.[0]?.storageDate)}
+                  </span>
+                </div>
+                <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Attending Doctor</span>
+                  <span className="font-bold text-slate-900 text-sm block truncate">{viewingPatientModal.doctorName || 'N/A'}</span>
+                </div>
+              </div>
+
+              {/* Patient & Partner Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="font-bold text-slate-900 text-sm flex items-center justify-between">
+                    <span>Female Patient</span>
+                    {viewingPatientModal.isEmailVerified && (
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">✓ Verified</span>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 font-medium">
+                    <div><strong className="text-slate-900 font-semibold">Full Name:</strong> {viewingPatientModal.fullName}</div>
+                    <div><strong className="text-slate-900 font-semibold">DOB / Age:</strong> {viewingPatientModal.dob ? formatDateDDMMYYYY(viewingPatientModal.dob) : 'N/A'} {viewingPatientModal.patientAge ? `(${viewingPatientModal.patientAge})` : ''}</div>
+                    <div><strong className="text-slate-900 font-semibold">Phone:</strong> <span className="font-mono font-bold">{formatPhoneNumber(viewingPatientModal.phone)}</span></div>
+                    <div><strong className="text-slate-900 font-semibold">Email:</strong> {viewingPatientModal.email || '—'}</div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="font-bold text-slate-900 text-sm">Partner Information</div>
+                  <div className="space-y-1.5 font-medium">
+                    <div><strong className="text-slate-900 font-semibold">Partner Name:</strong> {viewingPatientModal.partnerName || '—'}</div>
+                    <div><strong className="text-slate-900 font-semibold">DOB / Age:</strong> {viewingPatientModal.partnerDob ? formatDateDDMMYYYY(viewingPatientModal.partnerDob) : 'N/A'} {viewingPatientModal.partnerAge ? `(${viewingPatientModal.partnerAge})` : ''}</div>
+                    <div><strong className="text-slate-900 font-semibold">Phone:</strong> <span className="font-mono font-bold">{formatPhoneNumber(viewingPatientModal.partnerPhone)}</span></div>
+                    <div><strong className="text-slate-900 font-semibold">Email:</strong> {viewingPatientModal.partnerEmail || '—'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Patient Photo preview if present */}
+              {viewingPatientModal.photoUrl && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3">
+                  <img
+                    src={getImageUrl(viewingPatientModal.photoUrl)}
+                    alt={viewingPatientModal.fullName}
+                    className="w-14 h-14 rounded-xl object-cover border-2 border-emerald-500 shadow-2xs"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-900 text-xs block">Patient Record Photo</span>
+                    <span className="text-[11px] text-slate-500 font-medium">Verified Identity Scan Attached</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Comments */}
+              {viewingPatientModal.comments && (
+                <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-1">
+                  <span className="font-bold uppercase text-[10px] tracking-wider block text-amber-950">Clinical Notes & Remarks</span>
+                  <p className="leading-relaxed font-medium">{viewingPatientModal.comments}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setViewingPatientModal(null)}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                Close Patient Details
               </button>
             </div>
           </div>
