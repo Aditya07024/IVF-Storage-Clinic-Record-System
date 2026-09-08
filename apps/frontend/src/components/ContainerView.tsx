@@ -1037,14 +1037,14 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
                     {/* Specimen Type Badge */}
                     <span className="text-emerald-950 bg-emerald-100/90 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit flex items-center gap-1">
-                      <span>{viewingPatientModal.specimenType === 'OOCYTE' ? '🥚 Egg (Oocyte)' : viewingPatientModal.specimenType === 'SPERM' ? '🧪 Sperm' : '🧬 Embryo'}</span>
+                      <span>{viewingPatientModal.specimenType === 'OOCYTE' ? 'Egg (Oocyte)' : viewingPatientModal.specimenType === 'SPERM' ? 'Sperm' : 'Embryo'}</span>
                     </span>
 
                     {/* Cycle Classification Badge */}
                     {viewingPatientModal.cycleType === 'DONOR_RECIPIENT' || viewingPatientModal.donorName ? (
                       <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1">
                         <UserCheck className="w-3 h-3 text-purple-700" />
-                        <span>D-R Cycle {viewingPatientModal.donorName ? `(Donor: ${viewingPatientModal.donorName})` : ''}</span>
+                        <span>Donor Recipient Cycle {viewingPatientModal.donorName ? `(Donor: ${viewingPatientModal.donorName})` : ''}</span>
                       </span>
                     ) : (
                       <span className="text-blue-950 bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-300 w-fit font-bold flex items-center gap-1">
@@ -1266,7 +1266,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
                       <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
                         <UserCheck className="w-4 h-4 text-amber-600" />
-                        <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
+                        <span>Egg / Oocyte Donor Profile (Donor Recipient Cycle)</span>
                       </span>
                       <span className="text-[11px] font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300">
                         Donor Record
