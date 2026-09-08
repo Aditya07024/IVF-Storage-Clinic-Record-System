@@ -1,0 +1,26 @@
+name: 5-Minute Keep-Alive Cron Ping
+
+on:
+  schedule:
+    # Runs every 5 minutes automatically
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+
+jobs:
+  ping:
+    name: Ping Server Health Endpoint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping IVF Backend Health API
+        run: |
+          echo "📡 [$(date -u)] Hitting IVF server health endpoint..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}s" -m 15 https://api.sgrhivfcryo.in/api/health || true)
+          echo "$RESPONSE"
+          
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Server is alive and healthy (HTTP 200 OK)."
+          else
+            echo "⚠️ Notice: Server returned HTTP status code '${HTTP_STATUS}'."
+          fi
