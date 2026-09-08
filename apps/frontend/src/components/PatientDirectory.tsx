@@ -712,12 +712,6 @@ export const PatientDirectory: React.FC = () => {
 
                             return (
                               <div className="space-y-1.5 min-w-[220px]">
-                                {freezingDatesStr && (
-                                  <div className="text-[11px] font-bold text-slate-700 font-mono flex items-center gap-1">
-                                    <span className="text-slate-400 font-semibold uppercase text-[9.5px]">Freezing:</span>
-                                    <span className="text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">{freezingDatesStr}</span>
-                                  </div>
-                                )}
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-950 font-mono font-bold text-xs rounded-lg border border-emerald-300 shadow-2xs inline-flex items-center gap-1">
                                     <span>🧪</span>

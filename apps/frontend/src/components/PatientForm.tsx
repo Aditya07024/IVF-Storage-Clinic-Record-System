@@ -1428,7 +1428,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       <option value="Social egg freezing">1. Social egg freezing</option>
                       <option value="Onco fertility preservation">2. Onco fertility preservation</option>
                       <option value="Emergency egg freezing">3. Emergency egg freezing</option>
-                      <option value="Other / N/A">4. Other / N/A</option>
                     </select>
                   </div>
                   <div>
@@ -1436,7 +1435,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       Stage of Oocytes
                     </label>
                     <div className="grid grid-cols-3 gap-1.5 h-10">
-                      {['MII', 'MI'].map((stage) => (
+                      {['MII', 'MI', 'GV'].map((stage) => (
                         <button
                           key={stage}
                           type="button"
