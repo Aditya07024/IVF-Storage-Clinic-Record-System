@@ -1,0 +1,32 @@
+name: Deploy IVF System to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Production VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.IVF_HOST }}
+          username: ${{ secrets.IVF_USER }}
+          key: ${{ secrets.IVF_DEPLOY_KEY }}
+          script: |
+            cd /var/www/ivf
+            git fetch origin main
+            git reset --hard origin/main
+            npm ci
+            npm run build
+            sudo pm2 restart ivf-backend
+            sudo pm2 status ivf-backend
+
+      - name: Non-blocking Health Check
+        run: |
+          echo "Executing health check against https://api.sgrhivfcryo.in/health..."
+          curl -s -m 10 https://api.sgrhivfcryo.in/health || echo "Health check completed (endpoint returned non-200 status or timed out, continuing)."
