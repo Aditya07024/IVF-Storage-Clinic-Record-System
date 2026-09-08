@@ -254,7 +254,7 @@ export function calculateEmbryoStage(retrievalDate?: string | Date | null, freez
   const diffDays = Math.round((fUtc - rUtc) / (1000 * 60 * 60 * 24));
 
   if (diffDays <= 0) {
-    return 'Day 0 / Oocyte Freezing';
+    return 'Day 0 / Oocyte';
   }
   return `Day ${diffDays}`;
 }

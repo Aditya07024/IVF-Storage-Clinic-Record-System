@@ -31,6 +31,7 @@ export interface CreatePatientInput {
   thawDate?: Date | string;
   comments?: string;
   photoUrl?: string;
+  isEmailVerified?: boolean;
 }
 
 export class PatientService {
@@ -107,6 +108,7 @@ export class PatientService {
             thawDate: input.thawDate ? new Date(input.thawDate) : null,
             comments: input.comments ? input.comments.trim() : null,
             photoUrl: input.photoUrl ? input.photoUrl.trim() : null,
+            isEmailVerified: Boolean(input.isEmailVerified),
           },
         });
       } catch (err: any) {
@@ -187,6 +189,7 @@ export class PatientService {
         thawDate: input.thawDate !== undefined ? (input.thawDate ? new Date(input.thawDate) : null) : existing.thawDate,
         comments: input.comments !== undefined ? input.comments.trim() : existing.comments,
         photoUrl: input.photoUrl !== undefined ? (input.photoUrl ? input.photoUrl.trim() : null) : existing.photoUrl,
+        isEmailVerified: input.isEmailVerified !== undefined ? Boolean(input.isEmailVerified) : existing.isEmailVerified,
       },
     });
 

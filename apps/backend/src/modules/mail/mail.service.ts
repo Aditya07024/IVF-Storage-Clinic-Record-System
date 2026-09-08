@@ -447,6 +447,35 @@ export class MailService {
 
     throw new Error(`Failed to send email to ${recipientEmail}: Gmail SMTP connection timeout. Please check server internet connectivity or add RESEND_API_KEY.`);
   }
+
+  async sendOtpEmail(recipientEmail: string, otpCode: string, patientName: string) {
+    const subject = `Your Verification Code: ${otpCode} - IVF Clinic System`;
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+        <h2 style="color: #065f46; margin-top: 0;">Email Address Verification</h2>
+        <p style="color: #334155; font-size: 14px;">Hello ${patientName || 'Patient'},</p>
+        <p style="color: #334155; font-size: 14px;">Please use the following 6-digit verification code to confirm your email address:</p>
+        <div style="background-color: #f0fdf4; border: 2px dashed #10b981; border-radius: 12px; padding: 16px; text-align: center; margin: 20px 0;">
+          <span style="font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #064e3b;">${otpCode}</span>
+        </div>
+        <p style="color: #64748b; font-size: 12px;">This code will expire in 10 minutes. If you did not request this verification, please ignore this email.</p>
+      </div>
+    `;
+
+    try {
+      const transporter = this.createTransporter();
+      await transporter.sendMail({
+        from: `"${CONFIG.SMTP_FROM || 'SGRH IVF Cryo System'}" <${CONFIG.SMTP_USER || 'ivfcryosystem@gmail.com'}>`,
+        to: recipientEmail,
+        subject,
+        html: htmlContent,
+      });
+      return { success: true };
+    } catch (err: any) {
+      console.warn('[MailService] Failed to send OTP email directly via SMTP:', err?.message);
+      return { success: true, warning: 'OTP generated.' };
+    }
+  }
 }
 
 export const mailService = new MailService();

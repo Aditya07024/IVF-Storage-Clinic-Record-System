@@ -314,6 +314,71 @@ app.post('/api/auth/access-key', handleAccessKeyVerification);
 app.post('/access-key', handleAccessKeyVerification);
 app.post('/api/access-key', handleAccessKeyVerification);
 
+// In-memory store for active OTP codes
+const activeOtpStore: Map<string, { code: string; expires: number }> = new Map();
+
+app.post('/api/auth/send-email-otp', accessKeyGuard, async (req, res) => {
+  try {
+    const { email, patientName } = req.body;
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ success: false, error: 'Valid email address is required.' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 10 * 60 * 1000; // 10 mins
+
+    activeOtpStore.set(cleanEmail, { code: otpCode, expires });
+
+    await mailService.sendOtpEmail(cleanEmail, otpCode, patientName || 'Patient');
+
+    return res.json({
+      success: true,
+      message: `Verification code sent to ${cleanEmail}`,
+    });
+  } catch (err: any) {
+    console.error('Failed to send OTP email:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to send OTP email.' });
+  }
+});
+
+app.post('/api/auth/verify-email-otp', accessKeyGuard, async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ success: false, error: 'Email and 6-digit OTP code are required.' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanCode = String(code).trim();
+    const record = activeOtpStore.get(cleanEmail);
+
+    if (!record) {
+      return res.status(400).json({ success: false, error: 'No verification code was sent to this email or code has expired.' });
+    }
+
+    if (Date.now() > record.expires) {
+      activeOtpStore.delete(cleanEmail);
+      return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new OTP.' });
+    }
+
+    if (record.code !== cleanCode) {
+      return res.status(400).json({ success: false, error: 'Invalid 6-digit verification code. Please check and try again.' });
+    }
+
+    // Mark verified and delete OTP
+    activeOtpStore.delete(cleanEmail);
+
+    return res.json({
+      success: true,
+      message: 'Email address verified successfully!',
+      verified: true,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'OTP verification failed.' });
+  }
+});
+
 app.post('/api/auth/login', accessKeyGuard, authLoginLimiter, async (req, res) => {
   try {
     const { staffId, password } = req.body;

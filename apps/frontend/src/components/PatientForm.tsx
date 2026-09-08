@@ -56,6 +56,8 @@ export const CLINIC_DOCTORS = [
   'Dr. Sakshi Nayar',
   'Dr. Bhawani Shekhar',
   'Dr. Tejashri Shrotri',
+  'GOPD Unit IVA',
+  'GOPD Unit IVB',
 ] as const;
 
 export const FRAGMENTATION_OPTIONS = ['No', '+', '++'] as const;
@@ -401,6 +403,68 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       setEmbryoStage(stage);
     }
   }, [aspirationDate, freezingDate]);
+
+  // Email OTP Verification States
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [showEmailOtpInput, setShowEmailOtpInput] = useState(false);
+  const [emailOtpCode, setEmailOtpCode] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpSuccessMsg, setOtpSuccessMsg] = useState<string | null>(null);
+
+  const handleSendEmailOtp = async () => {
+    if (!email || !email.includes('@')) {
+      setOtpError('Please enter a valid email address first.');
+      return;
+    }
+    setSendingOtp(true);
+    setOtpError(null);
+    setOtpSuccessMsg(null);
+    try {
+      const res = await apiRequest('/api/auth/send-email-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email, patientName: fullName || 'Patient' }),
+      });
+      if (res.success) {
+        setShowEmailOtpInput(true);
+        setOtpSuccessMsg(res.message || 'OTP verification code sent to email!');
+      } else {
+        setOtpError(res.error || 'Failed to send OTP.');
+      }
+    } catch (err: any) {
+      setOtpError(err.message || 'Failed to send OTP.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async () => {
+    if (!emailOtpCode || emailOtpCode.trim().length !== 6) {
+      setOtpError('Please enter the 6-digit OTP code.');
+      return;
+    }
+    setVerifyingOtp(true);
+    setOtpError(null);
+    setOtpSuccessMsg(null);
+    try {
+      const res = await apiRequest('/api/auth/verify-email-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email, code: emailOtpCode.trim() }),
+      });
+      if (res.success && res.verified) {
+        setIsEmailVerified(true);
+        setShowEmailOtpInput(false);
+        setOtpSuccessMsg('✓ Email verified successfully!');
+      } else {
+        setOtpError(res.error || 'Invalid OTP code.');
+      }
+    } catch (err: any) {
+      setOtpError(err.message || 'Verification failed.');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
   const [thawDate, setThawDate] = useState('');
   const [comments, setComments] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -481,6 +545,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setDoctorName(pt.doctorName || '');
     if (pt.comments) setComments(pt.comments);
     if (pt.aspirationDate) setAspirationDate(typeof pt.aspirationDate === 'string' ? pt.aspirationDate.split('T')[0] : '');
+    setIsEmailVerified(Boolean(pt.isEmailVerified));
   };
 
   // Select Existing Patient & Auto-Fill Fields
@@ -758,6 +823,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       strawsCount,
       strawItems: [...strawItems],
       totalEmbryosCount,
+      isEmailVerified,
     };
 
     // Reset photo state
@@ -797,6 +863,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               freezingDate: payload.freezingDate || undefined,
               thawDate: payload.thawDate || undefined,
               comments: payload.comments || undefined,
+              isEmailVerified: payload.isEmailVerified,
             }),
           });
           targetPatient = patientRes.patient;
@@ -818,6 +885,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               aspirationDate: payload.aspirationDate || undefined,
               freezingDate: payload.freezingDate || undefined,
               comments: payload.comments || undefined,
+              isEmailVerified: payload.isEmailVerified,
             }),
           });
         }
@@ -1307,16 +1375,63 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             </div>
 
             <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Patient Email Address
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Patient Email Address
+                </label>
+                {isEmailVerified ? (
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    Verified Email
+                  </span>
+                ) : email ? (
+                  <button
+                    type="button"
+                    onClick={handleSendEmailOtp}
+                    disabled={sendingOtp}
+                    className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-300 px-2.5 py-0.5 rounded-full transition-all active:scale-95 cursor-pointer"
+                  >
+                    {sendingOtp ? 'Sending OTP...' : 'Verify Email OTP'}
+                  </button>
+                ) : null}
+              </div>
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setIsEmailVerified(false);
+                }}
                 placeholder="e.g. patient@example.com"
                 className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
               />
+
+              {/* OTP Code Entry Drawer */}
+              {showEmailOtpInput && !isEmailVerified && (
+                <div className="mt-2.5 p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
+                  <div className="text-xs font-bold text-blue-900">Enter 6-Digit Email OTP Code</div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={emailOtpCode}
+                      onChange={(e) => setEmailOtpCode(e.target.value)}
+                      placeholder="e.g. 123456"
+                      className="w-32 h-9 bg-white border border-blue-300 rounded-lg px-3 text-xs font-mono font-bold text-slate-900 text-center tracking-widest"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyEmailOtp}
+                      disabled={verifyingOtp}
+                      className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs transition-all active:scale-95 cursor-pointer"
+                    >
+                      {verifyingOtp ? 'Verifying...' : 'Submit OTP'}
+                    </button>
+                  </div>
+                  {otpError && <div className="text-[11px] font-bold text-rose-600">{otpError}</div>}
+                  {otpSuccessMsg && <div className="text-[11px] font-bold text-emerald-700">{otpSuccessMsg}</div>}
+                </div>
+              )}
             </div>
 
             {/* PARTNER DEMOGRAPHICS */}
