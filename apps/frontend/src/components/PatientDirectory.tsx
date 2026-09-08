@@ -661,13 +661,59 @@ export const PatientDirectory: React.FC = () => {
                         {(() => {
                           const activeBatches = p.batches?.filter((b: any) =>
                             b.straws?.some((s: any) => s.status === 'OCCUPIED')
-                          ).length || 0;
+                          ) || [];
 
-                          if (activeBatches > 0) {
+                          if (activeBatches.length > 0) {
+                            const activeStraws: any[] = [];
+                            const freezingDatesSet = new Set<string>();
+
+                            if (p.freezingDate) {
+                              freezingDatesSet.add(formatDateDDMMYYYY(p.freezingDate));
+                            }
+
+                            activeBatches.forEach((batch: any) => {
+                              const fDate = batch.freezingDate || batch.storageDate;
+                              if (fDate) {
+                                freezingDatesSet.add(formatDateDDMMYYYY(fDate));
+                              }
+                              const occupied = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
+                              activeStraws.push(...occupied.map((s: any) => ({
+                                ...s,
+                                stage: s.stage || batch.embryoStage || 'Day 5'
+                              })));
+                            });
+
+                            const totalStraws = activeStraws.length;
+                            const totalEmbryos = activeStraws.reduce((sum, s) => sum + (s.embryoCount || 1), 0);
+
+                            // Stage breakdown calculation
+                            const stageCounts: Record<string, number> = {};
+                            activeStraws.forEach((s) => {
+                              const rawStage = s.stage || 'Day 5';
+                              const cleanStage = rawStage.split('(')[0].trim();
+                              const count = s.embryoCount || 1;
+                              stageCounts[cleanStage] = (stageCounts[cleanStage] || 0) + count;
+                            });
+
+                            const stageBreakdown = Object.entries(stageCounts)
+                              .map(([stage, count]) => `${count} ${stage}`)
+                              .join(' + ');
+
+                            const freezingDatesStr = Array.from(freezingDatesSet).join(', ');
+
                             return (
-                              <span className="px-2 py-1 bg-emerald-100 text-emerald-950 rounded-lg text-xs font-bold font-mono border border-emerald-300 whitespace-nowrap">
-                                {activeBatches} {activeBatches === 1 ? 'Active Batch' : 'Active Batches'}
-                              </span>
+                              <div className="space-y-1 min-w-[210px]">
+                                {freezingDatesStr && (
+                                  <div className="text-[11px] font-bold text-emerald-950 font-mono flex items-center gap-1">
+                                    <span className="text-slate-500 font-semibold uppercase text-[10px]">Freezing Dates:</span>
+                                    <span>{freezingDatesStr}</span>
+                                  </div>
+                                )}
+                                <div className="text-xs font-bold text-slate-900 bg-emerald-100/90 text-emerald-950 px-2.5 py-1 rounded-xl border border-emerald-300 shadow-2xs inline-block">
+                                  {totalStraws} {totalStraws === 1 ? 'straw' : 'straws'}, {totalEmbryos} {totalEmbryos === 1 ? 'embryo' : 'embryos'}
+                                  {stageBreakdown ? ` (${stageBreakdown})` : ''}
+                                </div>
+                              </div>
                             );
                           }
                           return (
@@ -1340,9 +1386,21 @@ export const PatientDirectory: React.FC = () => {
                 </div>
 
                 <div className="bg-blue-50/80 p-3 rounded-2xl border border-blue-200/80 shadow-2xs space-y-0.5">
-                  <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">Freezing Date</span>
-                  <span className="font-mono font-bold text-blue-950 text-sm block">
-                    {formatDateDDMMYYYY(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate || selectedPatient.batches?.[0]?.storageDate)}
+                  <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">Freezing Date(s)</span>
+                  <span className="font-mono font-bold text-blue-950 text-xs block">
+                    {(() => {
+                      const datesSet = new Set<string>();
+                      if (selectedPatient.freezingDate) {
+                        datesSet.add(formatDateDDMMYYYY(selectedPatient.freezingDate));
+                      }
+                      if (selectedPatient.batches && Array.isArray(selectedPatient.batches)) {
+                        selectedPatient.batches.forEach((b: any) => {
+                          const fDate = b.freezingDate || b.storageDate;
+                          if (fDate) datesSet.add(formatDateDDMMYYYY(fDate));
+                        });
+                      }
+                      return datesSet.size > 0 ? Array.from(datesSet).join(', ') : 'N/A';
+                    })()}
                   </span>
                 </div>
 
