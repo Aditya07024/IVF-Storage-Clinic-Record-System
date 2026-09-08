@@ -16,7 +16,7 @@ export function cleanDatabaseUrl(url: string | undefined): string {
 }
 
 export const CONFIG = {
-  PORT: process.env.PORT || 4000,
+  PORT: parseInt(process.env.PORT || '4000', 10),
   NODE_ENV: process.env.NODE_ENV || 'development',
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
   BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:4000',

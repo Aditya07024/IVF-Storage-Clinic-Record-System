@@ -969,7 +969,7 @@ async function startServer() {
     console.warn('[Storage/Auth Seeding Warning] Startup database seeding deferred due to network latency:', err.message);
   }
 
-  app.listen(CONFIG.PORT, () => {
+  app.listen(CONFIG.PORT, '127.0.0.1', () => {
     console.log(`[IVF Hardened Backend] Security Shields Active on ${CONFIG.BACKEND_URL} (Port ${CONFIG.PORT})`);
   });
 }
