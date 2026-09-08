@@ -46,6 +46,11 @@ export function parseLocationCode(code: string) {
   };
 }
 
+export function parseVisoTubeLocation(code?: string) {
+  if (!code) return 'Location Not Specified';
+  return parseLocationCode(code).formatted;
+}
+
 export type OverviewMode = 'honeycomb' | 'matrix';
 
 // Exact Physical Viso Tube Color Definitions (11 Tubes per Goblet with strict boundary stroke colors)
