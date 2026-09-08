@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check, Eye } from 'lucide-react';
-import { apiRequest, formatDateDDMMYYYY } from '../api/client';
+import { apiRequest, formatDateDDMMYYYY, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { rotateImageFile } from '../utils/imageUtils';
@@ -54,7 +54,7 @@ export const CLINIC_DOCTORS = [
   'Dr. Neeti Tiwari',
   'Dr. Ruma Satwik',
   'Dr. Sakshi Nayar',
-  'Dr. Bhawani shekhar',
+  'Dr. Bhawani Shekhar',
   'Dr. Tejashri Shrotri',
 ] as const;
 
@@ -393,7 +393,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [doctorName, setDoctorName] = useState('');
   const [aspirationDate, setAspirationDate] = useState(new Date().toISOString().split('T')[0]);
   const [freezingDate, setFreezingDate] = useState(new Date().toISOString().split('T')[0]);
-  const [embryoStage, setEmbryoStage] = useState('Day 5');
+  const [embryoStage, setEmbryoStage] = useState('Day 0 / Oocyte Freezing');
+
+  useEffect(() => {
+    if (aspirationDate && freezingDate) {
+      const stage = calculateEmbryoStage(aspirationDate, freezingDate);
+      setEmbryoStage(stage);
+    }
+  }, [aspirationDate, freezingDate]);
   const [thawDate, setThawDate] = useState('');
   const [comments, setComments] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -1465,7 +1472,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   <DateInputDDMMYYYY
                     label="Date of Egg Retrieval"
                     value={aspirationDate}
-                    onChange={(val) => setAspirationDate(val)}
+                    onChange={(val) => {
+                      setAspirationDate(val);
+                      if (val && freezingDate) {
+                        setEmbryoStage(calculateEmbryoStage(val, freezingDate));
+                      }
+                    }}
                   />
 
                   <DateInputDDMMYYYY
@@ -1475,25 +1487,24 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     onChange={(val) => {
                       setFreezingDate(val);
                       setStorageDate(val);
+                      if (aspirationDate && val) {
+                        setEmbryoStage(calculateEmbryoStage(aspirationDate, val));
+                      }
                     }}
                   />
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Stage of Embryo *
-                    </label>
-                    <select
-                      value={embryoStage}
-                      onChange={(e) => setEmbryoStage(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 h-11 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="Day 0">Day 0</option>
-                      <option value="Day 2">Day 2</option>
-                      <option value="Day 3">Day 3</option>
-                      <option value="Day 5">Day 5</option>
-                      <option value="Day 6">Day 6</option>
-
-                    </select>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                        Stage of Embryo / Oocyte
+                      </label>
+                      <span className="text-[9px] font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                        ⚡ Auto-Calculated
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 border border-slate-300 rounded-xl px-4 h-11 flex items-center text-xs font-bold text-emerald-950 font-mono shadow-2xs">
+                      {embryoStage}
+                    </div>
                   </div>
 
                   <div>

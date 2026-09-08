@@ -240,6 +240,25 @@ export function formatPhoneNumber(phoneInput?: string | null): string {
   return `+${digits}`;
 }
 
+export function calculateEmbryoStage(retrievalDate?: string | Date | null, freezingDate?: string | Date | null): string {
+  if (!retrievalDate || !freezingDate) return 'Day 5';
+
+  const rDate = new Date(retrievalDate);
+  const fDate = new Date(freezingDate);
+
+  if (isNaN(rDate.getTime()) || isNaN(fDate.getTime())) return 'Day 5';
+
+  const rUtc = Date.UTC(rDate.getFullYear(), rDate.getMonth(), rDate.getDate());
+  const fUtc = Date.UTC(fDate.getFullYear(), fDate.getMonth(), fDate.getDate());
+
+  const diffDays = Math.round((fUtc - rUtc) / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) {
+    return 'Day 0 / Oocyte Freezing';
+  }
+  return `Day ${diffDays}`;
+}
+
 export function getImageUrl(pathUrl: string | null | undefined): string {
   if (!pathUrl) return '';
   const trimmed = pathUrl.trim();
