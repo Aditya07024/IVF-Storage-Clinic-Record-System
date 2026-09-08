@@ -76,6 +76,13 @@ export interface AssignStorageInput {
   strawColors?: string[];
   straws?: StrawItemInput[];
   notes?: string;
+  specimenType?: string;
+  cycleType?: string;
+  donorName?: string;
+  donorAge?: string;
+  donorPhone?: string;
+  vitrificationIndication?: string;
+  oocyteStage?: string;
 }
 
 export class StorageService {
@@ -404,6 +411,13 @@ export class StorageService {
           freezingDate: freezingDateObj,
           aspirationDate: aspirationDateObj,
           embryoStage: input.embryoStage || null,
+          specimenType: input.specimenType || 'EMBRYO',
+          cycleType: input.cycleType || 'SELF',
+          donorName: input.donorName || null,
+          donorAge: input.donorAge || null,
+          donorPhone: input.donorPhone || null,
+          vitrificationIndication: input.vitrificationIndication || null,
+          oocyteStage: input.oocyteStage || null,
           totalStraws: requiredStraws,
           totalEmbryos: totalEmbryos,
           visoTubeId: input.visoTubeId,

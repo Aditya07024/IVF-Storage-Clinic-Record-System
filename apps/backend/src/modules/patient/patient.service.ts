@@ -32,6 +32,13 @@ export interface CreatePatientInput {
   comments?: string;
   photoUrl?: string;
   isEmailVerified?: boolean;
+  specimenType?: string;
+  cycleType?: string;
+  donorName?: string;
+  donorAge?: string;
+  donorPhone?: string;
+  vitrificationIndication?: string;
+  oocyteStage?: string;
 }
 
 export class PatientService {
@@ -109,6 +116,13 @@ export class PatientService {
             comments: input.comments ? input.comments.trim() : null,
             photoUrl: input.photoUrl ? input.photoUrl.trim() : null,
             isEmailVerified: Boolean(input.isEmailVerified),
+            specimenType: input.specimenType ? input.specimenType.trim() : 'EMBRYO',
+            cycleType: input.cycleType ? input.cycleType.trim() : 'SELF',
+            donorName: input.donorName ? input.donorName.trim() : null,
+            donorAge: input.donorAge ? input.donorAge.trim() : null,
+            donorPhone: input.donorPhone ? input.donorPhone.trim() : null,
+            vitrificationIndication: input.vitrificationIndication ? input.vitrificationIndication.trim() : null,
+            oocyteStage: input.oocyteStage ? input.oocyteStage.trim() : null,
           },
         });
       } catch (err: any) {
@@ -190,6 +204,13 @@ export class PatientService {
         comments: input.comments !== undefined ? input.comments.trim() : existing.comments,
         photoUrl: input.photoUrl !== undefined ? (input.photoUrl ? input.photoUrl.trim() : null) : existing.photoUrl,
         isEmailVerified: input.isEmailVerified !== undefined ? Boolean(input.isEmailVerified) : existing.isEmailVerified,
+        specimenType: input.specimenType !== undefined ? (input.specimenType ? input.specimenType.trim() : null) : existing.specimenType,
+        cycleType: input.cycleType !== undefined ? (input.cycleType ? input.cycleType.trim() : null) : existing.cycleType,
+        donorName: input.donorName !== undefined ? (input.donorName ? input.donorName.trim() : null) : existing.donorName,
+        donorAge: input.donorAge !== undefined ? (input.donorAge ? input.donorAge.trim() : null) : existing.donorAge,
+        donorPhone: input.donorPhone !== undefined ? (input.donorPhone ? input.donorPhone.trim() : null) : existing.donorPhone,
+        vitrificationIndication: input.vitrificationIndication !== undefined ? (input.vitrificationIndication ? input.vitrificationIndication.trim() : null) : existing.vitrificationIndication,
+        oocyteStage: input.oocyteStage !== undefined ? (input.oocyteStage ? input.oocyteStage.trim() : null) : existing.oocyteStage,
       },
     });
 

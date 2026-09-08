@@ -45,6 +45,13 @@ model Patient {
   isEmailVerified Boolean       @default(false)
   emailOtp       String?
   emailOtpExpires DateTime?
+  specimenType   String?       @default("EMBRYO")
+  cycleType      String?       @default("SELF")
+  donorName      String?
+  donorAge       String?
+  donorPhone     String?
+  vitrificationIndication String?
+  oocyteStage    String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -135,6 +142,13 @@ model StorageBatch {
   aspirationDate DateTime?
   freezingDate   DateTime?
   embryoStage    String?
+  specimenType   String?   @default("EMBRYO")
+  cycleType      String?   @default("SELF")
+  donorName      String?
+  donorAge       String?
+  donorPhone     String?
+  vitrificationIndication String?
+  oocyteStage    String?
   totalStraws    Int       @default(1)
   totalEmbryos   Int       @default(1)
   visoTubeId     String

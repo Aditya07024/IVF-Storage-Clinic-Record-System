@@ -1303,24 +1303,48 @@ export const PatientDirectory: React.FC = () => {
                     <span className="text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300 w-fit">
                       Egg Pick Up: {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate || selectedPatient.freezingDate)}
                     </span>
-                    {/* {(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate) && (
-                      <span className="text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit">
-                        Frozen: {formatDateDDMMYYYY(selectedPatient.freezingDate || selectedPatient.batches?.[0]?.freezingDate)}
+
+                    {/* Specimen Type Badge */}
+                    <span className="text-emerald-950 bg-emerald-100/90 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit flex items-center gap-1">
+                      <span>{selectedPatient.specimenType === 'OOCYTE' ? '🥚 Egg (Oocyte)' : selectedPatient.specimenType === 'SPERM' ? '🧪 Sperm' : '🧬 Embryo'}</span>
+                    </span>
+
+                    {/* Cycle Classification Badge */}
+                    {selectedPatient.cycleType === 'DONOR_RECIPIENT' || selectedPatient.donorName ? (
+                      <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1">
+                        <UserCheck className="w-3 h-3 text-purple-700" />
+                        <span>D-R Cycle {selectedPatient.donorName ? `(Donor: ${selectedPatient.donorName})` : ''}</span>
                       </span>
-                    )} */}
+                    ) : (
+                      <span className="text-blue-950 bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-300 w-fit font-bold flex items-center gap-1">
+                        <span>Self Cycle (Autologous)</span>
+                      </span>
+                    )}
+
+                    {/* Vitrification Indication & Oocyte Stage Badges */}
+                    {selectedPatient.vitrificationIndication && (
+                      <span className="text-teal-950 bg-teal-100 px-2.5 py-0.5 rounded-lg border border-teal-300 w-fit">
+                        {selectedPatient.vitrificationIndication}
+                      </span>
+                    )}
+
+                    {selectedPatient.oocyteStage && (
+                      <span className="text-indigo-950 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300 w-fit">
+                        Oocyte Stage: {selectedPatient.oocyteStage}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Right Column: Compact 2x2 Quad Grid Action Buttons */}
               <div className="grid grid-cols-2 gap-1.5 shrink-0 w-full sm:w-56 p-1 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
-                {/* Quadrant 1: Thaw Specimen */}
                 {selectedPatient.batches?.some((b: any) =>
                   b.straws?.some((s: any) => s.status === 'OCCUPIED')
                 ) ? (
                   <button
                     onClick={() => openQuickThawModal(selectedPatient.id)}
-                    className="w-full h-8 px-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 active:scale-95 whitespace-nowrap"
+                    className="w-full h-8 px-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 active:scale-95 whitespace-nowrap cursor-pointer"
                   >
                     <ThermometerSnowflake className="w-3 h-3" />
                     <span>Thaw</span>
@@ -1335,40 +1359,25 @@ export const PatientDirectory: React.FC = () => {
                   </button>
                 )}
 
-                {/* Quadrant 2: Edit Details */}
                 <button
                   onClick={() => openEditPatientModal(selectedPatient)}
-                  className="w-full h-8 px-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95"
+                  className="w-full h-8 px-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
                 >
                   <Edit3 className="w-3 h-3" />
                   <span>Edit</span>
                 </button>
 
-                {/* Quadrant 3: Print / Mail Report */}
-                {canPrintMail ? (
-                  <button
-                    onClick={() => setReportMailPatient(selectedPatient)}
-                    className="w-full h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95"
-                    title="Print or Send Email Report"
-                  >
-                    <Mail className="w-3 h-3" />
-                    <span>Print / Mail</span>
-                  </button>
-                ) : (
-                  <button
-                    disabled
-                    className="w-full h-8 px-2.5 bg-slate-200 text-slate-400 font-bold text-[11px] rounded-lg cursor-not-allowed opacity-70 flex items-center justify-center gap-1 whitespace-nowrap border border-slate-300/40"
-                    title="Printing & Emailing reports requires Admin permission"
-                  >
-                    <Lock className="w-3 h-3 text-slate-400" />
-                    <span>Print / Mail</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => setReportMailPatient(selectedPatient)}
+                  className="w-full h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
+                >
+                  <Mail className="w-3 h-3" />
+                  <span>Print / Mail</span>
+                </button>
 
-                {/* Quadrant 4: Close */}
                 <button
                   onClick={() => setSelectedPatient(null)}
-                  className="w-full h-8 px-2.5 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-[11px] rounded-lg transition-all whitespace-nowrap text-center active:scale-95"
+                  className="w-full h-8 px-2.5 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-[11px] rounded-lg transition-all whitespace-nowrap text-center active:scale-95 cursor-pointer"
                 >
                   Close
                 </button>
@@ -1425,7 +1434,7 @@ export const PatientDirectory: React.FC = () => {
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <User className="w-4 h-4 text-emerald-600" />
-                      <span>Patient Profile</span>
+                      <span>Patient Profile (Recipient)</span>
                     </span>
                     <span className="text-[11px] font-bold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                       Female
@@ -1466,7 +1475,7 @@ export const PatientDirectory: React.FC = () => {
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <User className="w-4 h-4 text-blue-600" />
-                      <span>Partner Profile</span>
+                      <span>Partner Profile (Recipient)</span>
                     </span>
                     <span className="text-[11px] font-bold text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-full border border-blue-300">
                       Male
@@ -1501,6 +1510,36 @@ export const PatientDirectory: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Egg / Oocyte Donor Card (Shown if D-R Cycle) */}
+                {(selectedPatient.cycleType === 'DONOR_RECIPIENT' || selectedPatient.donorName) && (
+                  <div className="md:col-span-2 bg-amber-50/90 p-4 rounded-2xl border border-amber-300/80 shadow-2xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <UserCheck className="w-4 h-4 text-amber-600" />
+                        <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
+                      </span>
+                      <span className="text-[11px] font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300">
+                        Donor Record
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Full Name</span>
+                        <strong className="text-amber-950 font-bold block">{selectedPatient.donorName || 'N/A'}</strong>
+                      </div>
+                      <div>
+                        <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Age</span>
+                        <span className="text-amber-950 font-mono font-bold block">{selectedPatient.donorAge || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Mobile Phone</span>
+                        <span className="text-amber-950 font-mono font-bold block">{formatPhoneNumber(selectedPatient.donorPhone)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

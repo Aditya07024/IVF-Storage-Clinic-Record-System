@@ -397,6 +397,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [freezingDate, setFreezingDate] = useState(new Date().toISOString().split('T')[0]);
   const [embryoStage, setEmbryoStage] = useState('Day 0 / Oocyte Freezing');
 
+  // Specimen & Cycle Classification States
+  const [specimenType, setSpecimenType] = useState<'EMBRYO' | 'OOCYTE' | 'SPERM'>('EMBRYO');
+  const [cycleType, setCycleType] = useState<'SELF' | 'DONOR_RECIPIENT'>('SELF');
+  const [donorName, setDonorName] = useState('');
+  const [donorAge, setDonorAge] = useState('');
+  const [donorPhone, setDonorPhone] = useState('');
+  const [vitrificationIndication, setVitrificationIndication] = useState('Social egg freezing');
+  const [oocyteStage, setOocyteStage] = useState('MII');
+
   useEffect(() => {
     if (aspirationDate && freezingDate) {
       const stage = calculateEmbryoStage(aspirationDate, freezingDate);
@@ -546,6 +555,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     if (pt.comments) setComments(pt.comments);
     if (pt.aspirationDate) setAspirationDate(typeof pt.aspirationDate === 'string' ? pt.aspirationDate.split('T')[0] : '');
     setIsEmailVerified(Boolean(pt.isEmailVerified));
+    setSpecimenType(pt.specimenType || 'EMBRYO');
+    setCycleType(pt.cycleType || 'SELF');
+    setDonorName(pt.donorName || '');
+    setDonorAge(pt.donorAge || '');
+    setDonorPhone(pt.donorPhone || '');
+    setVitrificationIndication(pt.vitrificationIndication || 'Social egg freezing');
+    setOocyteStage(pt.oocyteStage || 'MII');
   };
 
   // Select Existing Patient & Auto-Fill Fields
@@ -584,34 +600,35 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     // Immediately close modal & reset fields so user can continue working
     setThawModalStraw(null);
     setThawDoctorNotes('');
-    setThawSuccessMsg(`Thaw operation queued in background for Straw ${strawCode} (${patientName})`);
+    setThawSuccessMsg(null);
 
     enqueueTask({
       title: `Thawing Straw ${strawCode}: ${patientName}`,
-      description: `Freeing storage slot & logging clinical doctor remarks`,
+      description: `Thawing specimen for ${patientName}`,
       action: async () => {
         const res = await apiRequest('/api/thaw', {
           method: 'POST',
           body: JSON.stringify({
             strawIds: [targetStrawId],
-            doctorNotes: targetNotes || undefined,
+            doctorNotes: targetNotes || 'Thawed directly from Patient Record Form',
           }),
         });
         return res;
       },
       onSuccess: async () => {
+        setThawSuccessMsg(`Successfully thawed straw ${strawCode} for ${patientName}`);
         setReloadingPatientDetails(true);
         try {
-          const fullRes = await apiRequest(`/api/patients/${targetPatientId}`);
-          if (fullRes.success && fullRes.patient) {
-            setSelectedExistingPatient(fullRes.patient);
+          const res = await apiRequest(`/api/patients/${targetPatientId}`);
+          if (res.success && res.patient) {
+            setSelectedExistingPatient(res.patient);
+            populatePatientFields(res.patient);
           }
+        } catch (err: any) {
+          console.error('Failed to refresh patient detail after thaw:', err);
         } finally {
           setReloadingPatientDetails(false);
         }
-      },
-      onError: (err) => {
-        setError(err.message || 'Failed to thaw straw.');
       },
     });
   };
@@ -644,6 +661,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setStrawItems([{ color: '', embryoCount: 1, grade: '', comments: '', isPgt: false }]);
     setExistingSearchQuery('');
     setExistingSearchResults([]);
+    setSpecimenType('EMBRYO');
+    setCycleType('SELF');
+    setDonorName('');
+    setDonorAge('');
+    setDonorPhone('');
+    setVitrificationIndication('Social egg freezing');
+    setOocyteStage('MII');
     setError(null);
   };
 
@@ -824,6 +848,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       strawItems: [...strawItems],
       totalEmbryosCount,
       isEmailVerified,
+      specimenType,
+      cycleType,
+      donorName: donorName.trim(),
+      donorAge: donorAge.trim(),
+      donorPhone: donorPhone.trim(),
+      vitrificationIndication: vitrificationIndication.trim(),
+      oocyteStage: oocyteStage.trim(),
     };
 
     // Reset photo state
@@ -864,6 +895,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               thawDate: payload.thawDate || undefined,
               comments: payload.comments || undefined,
               isEmailVerified: payload.isEmailVerified,
+              specimenType: payload.specimenType,
+              cycleType: payload.cycleType,
+              donorName: payload.donorName || undefined,
+              donorAge: payload.donorAge || undefined,
+              donorPhone: payload.donorPhone || undefined,
+              vitrificationIndication: payload.vitrificationIndication || undefined,
+              oocyteStage: payload.oocyteStage || undefined,
             }),
           });
           targetPatient = patientRes.patient;
@@ -886,6 +924,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               freezingDate: payload.freezingDate || undefined,
               comments: payload.comments || undefined,
               isEmailVerified: payload.isEmailVerified,
+              specimenType: payload.specimenType,
+              cycleType: payload.cycleType,
+              donorName: payload.donorName || undefined,
+              donorAge: payload.donorAge || undefined,
+              donorPhone: payload.donorPhone || undefined,
+              vitrificationIndication: payload.vitrificationIndication || undefined,
+              oocyteStage: payload.oocyteStage || undefined,
             }),
           });
         }
@@ -910,6 +955,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               visoTubeId: payload.selectedVisoTubeId,
               straws: payload.strawItems,
               notes: payload.comments || undefined,
+              specimenType: payload.specimenType,
+              cycleType: payload.cycleType,
+              donorName: payload.donorName || undefined,
+              donorAge: payload.donorAge || undefined,
+              donorPhone: payload.donorPhone || undefined,
+              vitrificationIndication: payload.vitrificationIndication || undefined,
+              oocyteStage: payload.oocyteStage || undefined,
             }),
           });
         }
@@ -1237,6 +1289,173 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               )}
             </div>
           </h2>
+
+          {/* Cycle Type & Specimen Type Selector */}
+          <div className="bg-gradient-to-r from-emerald-50/90 via-teal-50/90 to-blue-50/90 p-4 sm:p-5 rounded-2xl border border-emerald-200/80 space-y-4 shadow-2xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Specimen Type Selection */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Dna className="w-4 h-4 text-emerald-600" />
+                  <span>Specimen Type Frozen</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'EMBRYO', label: 'Embryo', icon: '🧬' },
+                    { id: 'OOCYTE', label: 'Egg (Oocyte)', icon: '🥚' },
+                    { id: 'SPERM', label: 'Sperm', icon: '🧪' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSpecimenType(item.id as any)}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                        specimenType === item.id
+                          ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs scale-102 font-extrabold'
+                          : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-300'
+                      }`}
+                    >
+                      <span className="text-sm">{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cycle Classification (Self vs Donor-Recipient) */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  <span>Cycle Classification</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'SELF', label: 'Self Cycle (Autologous)', desc: 'Own eggs/specimens used' },
+                    { id: 'DONOR_RECIPIENT', label: 'D-R Cycle (Donor Eggs)', desc: 'Donor eggs/specimens used' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setCycleType(item.id as any)}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start justify-center gap-0.5 text-left cursor-pointer ${
+                        cycleType === item.id
+                          ? 'bg-blue-600 text-white border-blue-700 shadow-xs scale-102'
+                          : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-300'
+                      }`}
+                    >
+                      <span className="font-extrabold">{item.label}</span>
+                      <span className={`text-[9.5px] font-normal ${cycleType === item.id ? 'text-blue-100' : 'text-slate-500'}`}>
+                        {item.desc}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Donor Information Card (Shown if D-R Cycle) */}
+            {cycleType === 'DONOR_RECIPIENT' && (
+              <div className="p-3.5 bg-amber-50/90 rounded-xl border border-amber-300/80 space-y-3 mt-3 animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                  <span className="text-xs font-extrabold text-amber-950 flex items-center gap-1.5 uppercase tracking-wider">
+                    <UserCheck className="w-4 h-4 text-amber-600" />
+                    <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full border border-amber-400/60">
+                    Donor Details
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                      Donor Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={donorName}
+                      onChange={(e) => setDonorName(e.target.value)}
+                      placeholder="e.g. Anjali Sharma"
+                      className="w-full h-10 bg-white border border-amber-300 rounded-lg px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                      Donor Age
+                    </label>
+                    <input
+                      type="text"
+                      value={donorAge}
+                      onChange={(e) => setDonorAge(e.target.value)}
+                      placeholder="e.g. 24 Yrs"
+                      className="w-full h-10 bg-white border border-amber-300 rounded-lg px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                      Donor Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      value={donorPhone}
+                      onChange={(e) => setDonorPhone(e.target.value)}
+                      placeholder="e.g. +91 98765 43210"
+                      className="w-full h-10 bg-white border border-amber-300 rounded-lg px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Oocyte Vitrification Fields (Shown if Oocyte or Egg vitrification) */}
+            {specimenType === 'OOCYTE' && (
+              <div className="p-3.5 bg-emerald-50/90 rounded-xl border border-emerald-300/80 space-y-3 mt-3 animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2">
+                  <span className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5 uppercase tracking-wider">
+                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                    <span>Indication for Oocyte Vitrification & Stage</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-900 uppercase tracking-wider mb-1">
+                      Indication for Oocyte Vitrification
+                    </label>
+                    <select
+                      value={vitrificationIndication}
+                      onChange={(e) => setVitrificationIndication(e.target.value)}
+                      className="w-full h-10 bg-white border border-emerald-300 rounded-lg px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="Social egg freezing">1. Social egg freezing</option>
+                      <option value="Onco fertility preservation">2. Onco fertility preservation</option>
+                      <option value="Emergency egg freezing">3. Emergency egg freezing</option>
+                      <option value="Other / N/A">4. Other / N/A</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-900 uppercase tracking-wider mb-1">
+                      Stage of Oocytes
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5 h-10">
+                      {['MII', 'MI', 'GV'].map((stage) => (
+                        <button
+                          key={stage}
+                          type="button"
+                          onClick={() => setOocyteStage(stage)}
+                          className={`h-full rounded-lg text-xs font-bold transition-all border flex items-center justify-center cursor-pointer ${
+                            oocyteStage === stage
+                              ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs font-extrabold'
+                              : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-300'
+                          }`}
+                        >
+                          {stage}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-full">
             {/* PATIENT PHOTO UPLOADER BOX */}
@@ -1611,11 +1830,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                        Stage of Embryo / Oocyte
+                        Stage of Embryo
                       </label>
-                      <span className="text-[9px] font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                        ⚡ Auto-Calculated
-                      </span>
+                      
                     </div>
                     <div className="w-full bg-slate-100 border border-slate-300 rounded-xl px-4 h-11 flex items-center text-xs font-bold text-emerald-950 font-mono shadow-2xs">
                       {embryoStage}

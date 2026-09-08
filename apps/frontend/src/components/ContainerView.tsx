@@ -1034,6 +1034,36 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     <span className="text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300 w-fit">
                       Egg Pick Up: {formatDateDDMMYYYY(viewingPatientModal.aspirationDate || viewingPatientModal.batches?.[0]?.aspirationDate || viewingPatientModal.freezingDate)}
                     </span>
+
+                    {/* Specimen Type Badge */}
+                    <span className="text-emerald-950 bg-emerald-100/90 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit flex items-center gap-1">
+                      <span>{viewingPatientModal.specimenType === 'OOCYTE' ? '🥚 Egg (Oocyte)' : viewingPatientModal.specimenType === 'SPERM' ? '🧪 Sperm' : '🧬 Embryo'}</span>
+                    </span>
+
+                    {/* Cycle Classification Badge */}
+                    {viewingPatientModal.cycleType === 'DONOR_RECIPIENT' || viewingPatientModal.donorName ? (
+                      <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1">
+                        <UserCheck className="w-3 h-3 text-purple-700" />
+                        <span>D-R Cycle {viewingPatientModal.donorName ? `(Donor: ${viewingPatientModal.donorName})` : ''}</span>
+                      </span>
+                    ) : (
+                      <span className="text-blue-950 bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-300 w-fit font-bold flex items-center gap-1">
+                        <span>Self Cycle (Autologous)</span>
+                      </span>
+                    )}
+
+                    {/* Vitrification Indication & Oocyte Stage Badges */}
+                    {viewingPatientModal.vitrificationIndication && (
+                      <span className="text-teal-950 bg-teal-100 px-2.5 py-0.5 rounded-lg border border-teal-300 w-fit">
+                        {viewingPatientModal.vitrificationIndication}
+                      </span>
+                    )}
+
+                    {viewingPatientModal.oocyteStage && (
+                      <span className="text-indigo-950 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300 w-fit">
+                        Oocyte Stage: {viewingPatientModal.oocyteStage}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1154,7 +1184,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <User className="w-4 h-4 text-emerald-600" />
-                      <span>Patient Profile</span>
+                      <span>Patient Profile (Recipient)</span>
                     </span>
                     <span className="text-[11px] font-bold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                       Female
@@ -1194,7 +1224,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <User className="w-4 h-4 text-blue-600" />
-                      <span>Partner Profile</span>
+                      <span>Partner Profile (Recipient)</span>
                     </span>
                     <span className="text-[11px] font-bold text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-full border border-blue-300">
                       Male
@@ -1229,6 +1259,36 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     </div>
                   </div>
                 </div>
+
+                {/* Egg / Oocyte Donor Card (Shown if D-R Cycle) */}
+                {(viewingPatientModal.cycleType === 'DONOR_RECIPIENT' || viewingPatientModal.donorName) && (
+                  <div className="md:col-span-2 bg-amber-50/90 p-4 rounded-2xl border border-amber-300/80 shadow-2xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <UserCheck className="w-4 h-4 text-amber-600" />
+                        <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
+                      </span>
+                      <span className="text-[11px] font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300">
+                        Donor Record
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Full Name</span>
+                        <strong className="text-amber-950 font-bold block">{viewingPatientModal.donorName || 'N/A'}</strong>
+                      </div>
+                      <div>
+                        <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Age</span>
+                        <span className="text-amber-950 font-mono font-bold block">{viewingPatientModal.donorAge || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Mobile Phone</span>
+                        <span className="text-amber-950 font-mono font-bold block">{formatPhoneNumber(viewingPatientModal.donorPhone)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
