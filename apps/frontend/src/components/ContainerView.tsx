@@ -1007,7 +1007,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
       {/* PATIENT DETAILS MODAL DRAWER */}
       {viewingPatientModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex justify-end overflow-y-auto">
+        <div className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-xs flex justify-end overflow-y-auto">
           <div className="w-full max-w-2xl bg-white min-h-screen sm:min-h-0 sm:h-full border-l border-slate-200 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
               {/* Left Column: Patient Photo & Demographics */}
@@ -1082,7 +1082,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 )}
 
                 <button
-                  onClick={handleCloseModal}
+                  onClick={() => setViewingPatientModal(null)}
                   className="w-full h-8 px-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
                 >
                   <Edit3 className="w-3 h-3" />
@@ -1090,7 +1090,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 </button>
 
                 <button
-                  onClick={handleCloseModal}
+                  onClick={() => setViewingPatientModal(null)}
                   className="w-full h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
                 >
                   <Mail className="w-3 h-3" />
@@ -1098,7 +1098,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 </button>
 
                 <button
-                  onClick={handleCloseModal}
+                  onClick={() => setViewingPatientModal(null)}
                   className="w-full h-8 px-2.5 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-[11px] rounded-lg transition-all whitespace-nowrap text-center active:scale-95 cursor-pointer"
                 >
                   Close
