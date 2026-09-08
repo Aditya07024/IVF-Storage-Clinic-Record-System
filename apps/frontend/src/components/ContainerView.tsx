@@ -20,9 +20,14 @@ import {
   Phone,
   Mail,
   UserCheck,
+  Camera,
+  Edit3,
+  Lock,
+  Printer,
 } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatPhoneNumber, getImageUrl } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
+import { getStrawColorBadgeClass } from './PatientForm';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
 export function parseLocationCode(code: string) {
@@ -987,122 +992,341 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
         </div>
       )}
 
-      {/* PATIENT DETAILS MODAL */}
+      {/* PATIENT DETAILS MODAL DRAWER */}
       {viewingPatientModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-2xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
-                  <UserCheck className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex justify-end overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white min-h-screen sm:min-h-0 sm:h-full border-l border-slate-200 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              {/* Left Column: Patient Photo & Demographics */}
+              <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                <div className="relative group shrink-0">
+                  {viewingPatientModal.photoUrl ? (
+                    <img
+                      src={getImageUrl(viewingPatientModal.photoUrl)}
+                      alt={viewingPatientModal.fullName}
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-center p-1 text-slate-400 font-bold text-xs shadow-2xs">
+                      <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 shrink-0" />
+                      <span className="text-[9px] text-slate-500 font-semibold text-center leading-tight mt-0.5 w-full block truncate sm:whitespace-normal">Tap for Photo</span>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <h3 className="font-bold text-base text-white flex items-center gap-2">
-                    <span>{viewingPatientModal.fullName}</span>
-                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-400/30">
-                      ID: {viewingPatientModal.patientId}
+
+                <div className="flex-1 min-w-0 space-y-1">
+                  <span className="text-xs font-mono font-bold text-emerald-700 block">{viewingPatientModal.patientId}</span>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight truncate">{viewingPatientModal.fullName}</h2>
+                  <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-1.5 sm:gap-x-2.5 mt-1">
+                    <span className="text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300 w-fit">
+                      Egg Pick Up: {formatDateDDMMYYYY(viewingPatientModal.aspirationDate || viewingPatientModal.batches?.[0]?.aspirationDate || viewingPatientModal.freezingDate)}
                     </span>
-                  </h3>
-                  <p className="text-xs text-emerald-200/80">Complete Patient Specimen & Clinical Record Profile</p>
+                  </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setViewingPatientModal(null)}
-                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              {/* Right Column: Quad Grid Action Buttons */}
+              <div className="grid grid-cols-2 gap-1.5 shrink-0 w-full sm:w-56 p-1 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
+                {viewingPatientModal.batches?.some((b: any) =>
+                  b.straws?.some((s: any) => s.status === 'OCCUPIED')
+                ) ? (
+                  <button
+                    onClick={() => {
+                      const firstOccupied = viewingPatientModal.batches
+                        ?.flatMap((b: any) => b.straws || [])
+                        .find((s: any) => s.status === 'OCCUPIED');
+                      if (firstOccupied) {
+                        enqueueTask({
+                          title: `Thawing Specimen: ${viewingPatientModal.fullName}`,
+                          description: `Liberating capacity for ${viewingPatientModal.fullName}`,
+                          action: async () => {
+                            return await apiRequest('/api/thaw', {
+                              method: 'POST',
+                              body: JSON.stringify({
+                                strawIds: [firstOccupied.id],
+                                doctorNotes: 'Thawed from patient drawer',
+                              }),
+                            });
+                          },
+                          onSuccess: () => fetchHierarchy(),
+                        });
+                      }
+                      setViewingPatientModal(null);
+                    }}
+                    className="w-full h-8 px-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 active:scale-95 whitespace-nowrap cursor-pointer"
+                  >
+                    <ThermometerSnowflake className="w-3 h-3" />
+                    <span>Thaw</span>
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="w-full h-8 px-2.5 bg-slate-200/80 text-slate-400 font-bold text-[11px] rounded-lg cursor-not-allowed opacity-60 flex items-center justify-center gap-1 whitespace-nowrap border border-slate-300/40"
+                  >
+                    <ThermometerSnowflake className="w-3 h-3 text-slate-400" />
+                    <span>All Thawed</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setViewingPatientModal(null)}
+                  className="w-full h-8 px-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>Edit</span>
+                </button>
+
+                <button
+                  onClick={() => setViewingPatientModal(null)}
+                  className="w-full h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
+                >
+                  <Mail className="w-3 h-3" />
+                  <span>Print / Mail</span>
+                </button>
+
+                <button
+                  onClick={() => setViewingPatientModal(null)}
+                  className="w-full h-8 px-2.5 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-[11px] rounded-lg transition-all whitespace-nowrap text-center active:scale-95 cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-700">
-              {/* Key Registration Details */}
+            {/* Redesigned Clinical Summary & Patient/Partner Profile Cards */}
+            <div className="space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 space-y-0.5">
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Registration ID</span>
+                <div className="bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200/80 shadow-2xs space-y-0.5">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">REGISTRATION ID</span>
                   <span className="font-mono font-bold text-slate-900 text-sm block">{viewingPatientModal.patientId}</span>
                 </div>
-                <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200 space-y-0.5">
-                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">Egg Pick Up Date</span>
+
+                <div className="bg-amber-50/80 p-3 rounded-2xl border border-amber-200/80 shadow-2xs space-y-0.5">
+                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">EGG PICK UP DATE</span>
                   <span className="font-mono font-bold text-amber-950 text-sm block">
-                    {formatDateDDMMYYYY(viewingPatientModal.aspirationDate || viewingPatientModal.batches?.[0]?.aspirationDate)}
+                    {formatDateDDMMYYYY(viewingPatientModal.aspirationDate || viewingPatientModal.batches?.[0]?.aspirationDate || viewingPatientModal.freezingDate)}
                   </span>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-2xl border border-blue-200 space-y-0.5">
-                  <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">Freezing Date</span>
-                  <span className="font-mono font-bold text-blue-950 text-sm block">
-                    {formatDateDDMMYYYY(viewingPatientModal.freezingDate || viewingPatientModal.batches?.[0]?.freezingDate || viewingPatientModal.batches?.[0]?.storageDate)}
+
+                <div className="bg-blue-50/80 p-3 rounded-2xl border border-blue-200/80 shadow-2xs space-y-0.5">
+                  <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">FREEZING DATE(S)</span>
+                  <span className="font-mono font-bold text-blue-950 text-xs block">
+                    {(() => {
+                      const datesSet = new Set<string>();
+                      if (viewingPatientModal.freezingDate) {
+                        datesSet.add(formatDateDDMMYYYY(viewingPatientModal.freezingDate));
+                      }
+                      if (viewingPatientModal.batches && Array.isArray(viewingPatientModal.batches)) {
+                        viewingPatientModal.batches.forEach((b: any) => {
+                          const fDate = b.freezingDate || b.storageDate;
+                          if (fDate) datesSet.add(formatDateDDMMYYYY(fDate));
+                        });
+                      }
+                      return datesSet.size > 0 ? Array.from(datesSet).join(', ') : 'N/A';
+                    })()}
                   </span>
                 </div>
-                <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 space-y-0.5">
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Attending Doctor</span>
-                  <span className="font-bold text-slate-900 text-sm block truncate">{viewingPatientModal.doctorName || 'N/A'}</span>
+
+                <div className="bg-slate-100/80 p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">ATTENDING DOCTOR</span>
+                  <span className="font-bold text-slate-900 text-sm block truncate">
+                    {viewingPatientModal.doctorName || 'N/A'}
+                  </span>
                 </div>
               </div>
 
-              {/* Patient & Partner Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                  <div className="font-bold text-slate-900 text-sm flex items-center justify-between">
-                    <span>Female Patient</span>
-                    {viewingPatientModal.isEmailVerified && (
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">✓ Verified</span>
-                    )}
+              {/* Side-by-Side Patient & Partner Details Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-emerald-600" />
+                      <span>Patient Profile</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                      Female
+                    </span>
                   </div>
-                  <div className="space-y-1.5 font-medium">
-                    <div><strong className="text-slate-900 font-semibold">Full Name:</strong> {viewingPatientModal.fullName}</div>
-                    <div><strong className="text-slate-900 font-semibold">DOB / Age:</strong> {viewingPatientModal.dob ? formatDateDDMMYYYY(viewingPatientModal.dob) : 'N/A'} {viewingPatientModal.patientAge ? `(${viewingPatientModal.patientAge})` : ''}</div>
-                    <div><strong className="text-slate-900 font-semibold">Phone:</strong> <span className="font-mono font-bold">{formatPhoneNumber(viewingPatientModal.phone)}</span></div>
-                    <div><strong className="text-slate-900 font-semibold">Email:</strong> {viewingPatientModal.email || '—'}</div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">FULL NAME</span>
+                      <strong className="text-slate-900 font-bold block">{viewingPatientModal.fullName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">DATE OF BIRTH & AGE</span>
+                      <span className="text-slate-800 font-mono font-bold block">
+                        {viewingPatientModal.dob ? formatDateDDMMYYYY(viewingPatientModal.dob) : 'N/A'} {viewingPatientModal.patientAge ? `(${viewingPatientModal.patientAge})` : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-slate-400" /> MOBILE PHONE
+                      </span>
+                      <span className="text-slate-900 font-mono font-bold block">{formatPhoneNumber(viewingPatientModal.phone)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
+                        <Mail className="w-3 h-3 text-slate-400" /> EMAIL ADDRESS
+                      </span>
+                      <span className="text-slate-800 font-medium block truncate">{viewingPatientModal.email || '—'}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                  <div className="font-bold text-slate-900 text-sm">Partner Information</div>
-                  <div className="space-y-1.5 font-medium">
-                    <div><strong className="text-slate-900 font-semibold">Partner Name:</strong> {viewingPatientModal.partnerName || '—'}</div>
-                    <div><strong className="text-slate-900 font-semibold">DOB / Age:</strong> {viewingPatientModal.partnerDob ? formatDateDDMMYYYY(viewingPatientModal.partnerDob) : 'N/A'} {viewingPatientModal.partnerAge ? `(${viewingPatientModal.partnerAge})` : ''}</div>
-                    <div><strong className="text-slate-900 font-semibold">Phone:</strong> <span className="font-mono font-bold">{formatPhoneNumber(viewingPatientModal.partnerPhone)}</span></div>
-                    <div><strong className="text-slate-900 font-semibold">Email:</strong> {viewingPatientModal.partnerEmail || '—'}</div>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-blue-600" />
+                      <span>Partner Profile</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-full border border-blue-300">
+                      Male
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">PARTNER NAME</span>
+                      <strong className="text-slate-900 font-bold block">{viewingPatientModal.partnerName || 'N/A'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block">DATE OF BIRTH & AGE</span>
+                      <span className="text-slate-800 font-mono font-bold block">
+                        {viewingPatientModal.partnerDob ? formatDateDDMMYYYY(viewingPatientModal.partnerDob) : 'N/A'} {viewingPatientModal.partnerAge ? `(${viewingPatientModal.partnerAge})` : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-slate-400" /> MOBILE PHONE
+                      </span>
+                      <span className="text-slate-900 font-mono font-bold block">{formatPhoneNumber(viewingPatientModal.partnerPhone)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] uppercase font-semibold block flex items-center gap-1">
+                        <Mail className="w-3 h-3 text-slate-400" /> EMAIL ADDRESS
+                      </span>
+                      <span className="text-slate-800 font-medium block truncate">{viewingPatientModal.partnerEmail || '—'}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Patient Photo preview if present */}
-              {viewingPatientModal.photoUrl && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3">
-                  <img
-                    src={getImageUrl(viewingPatientModal.photoUrl)}
-                    alt={viewingPatientModal.fullName}
-                    className="w-14 h-14 rounded-xl object-cover border-2 border-emerald-500 shadow-2xs"
-                  />
-                  <div>
-                    <span className="font-bold text-slate-900 text-xs block">Patient Record Photo</span>
-                    <span className="text-[11px] text-slate-500 font-medium">Verified Identity Scan Attached</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Comments */}
-              {viewingPatientModal.comments && (
-                <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-1">
-                  <span className="font-bold uppercase text-[10px] tracking-wider block text-amber-950">Clinical Notes & Remarks</span>
-                  <p className="leading-relaxed font-medium">{viewingPatientModal.comments}</p>
-                </div>
-              )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setViewingPatientModal(null)}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
-              >
-                Close Patient Details
-              </button>
+            {/* Active Storage Batches Section */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-emerald-600" />
+                  <span>Active Cryo Storage Specimen Batches</span>
+                </span>
+                {(() => {
+                  const activeCount = viewingPatientModal.batches?.filter((b: any) =>
+                    b.straws?.some((s: any) => s.status === 'OCCUPIED')
+                  ).length || 0;
+                  return (
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold border ${activeCount > 0 ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-300'}`}>
+                      {activeCount} Active Batches
+                    </span>
+                  );
+                })()}
+              </h3>
+
+              {(() => {
+                const activeBatches = viewingPatientModal.batches?.filter((batch: any) =>
+                  batch.straws?.some((straw: any) => straw.status === 'OCCUPIED')
+                ) || [];
+
+                if (activeBatches.length === 0) {
+                  return (
+                    <div className="text-xs text-slate-600 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center font-medium">
+                      0 Active Specimen Batches in Storage (All specimen have been thawed & withdrawn)
+                    </div>
+                  );
+                }
+
+                return activeBatches.map((batch: any) => {
+                  const activeStraws = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
+
+                  return (
+                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-3 shadow-2xs">
+                      <div className="flex flex-wrap items-center justify-between text-xs border-b border-slate-200 pb-2 gap-2">
+                        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700">
+                          {batch.aspirationDate && (
+                            <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 font-bold">
+                              Egg Retrieval: {formatDateDDMMYYYY(batch.aspirationDate)}
+                            </span>
+                          )}
+                          <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 font-bold">
+                            Frozen: {formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}
+                          </span>
+                          {batch.embryoStage && (
+                            <span className="bg-blue-100 text-blue-900 px-2 py-0.5 rounded border border-blue-300 font-bold">
+                              Stage: {batch.embryoStage}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Active Straws List */}
+                      <div className="space-y-2">
+                        <div className="text-xs font-bold text-slate-800">
+                          Embryo Details ({activeStraws.length} Straw(s) - {activeStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0)} Embryo(s))
+                        </div>
+                        {activeStraws.map((straw: any, sIdx: number) => {
+                          const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
+                          const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
+                          const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
+
+                          const eGrade = (straw.grade || '').trim().toUpperCase();
+                          const eFrag = (straw.fragmentation || '').trim();
+                          const eComment = (straw.comments || '').trim();
+
+                          const gradeStr = eGrade ? eGrade : 'N/A';
+                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
+                          const commentStr = eComment ? ` - (${eComment})` : '';
+
+                          return (
+                            <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                              <div className="font-mono font-bold text-slate-800 flex items-center gap-2 flex-wrap">
+                                <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold text-xs">
+                                  {displayLabel}
+                                </span>
+                                <span className="text-slate-700 font-bold text-xs">
+                                  ({embryoCount} Embryo(s))
+                                </span>
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
+                                  {straw.color || 'Pink'}
+                                </span>
+                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
+                                  Embryo grade: {gradeStr}{fragStr}{commentStr}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Physical Location Guide */}
+                      {(() => {
+                        const locCode = activeStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
+                        return (
+                          <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
+                            <div className="text-[10px] text-slate-500 font-semibold uppercase">PHYSICAL LOCATION GUIDE:</div>
+                            <div className="text-slate-900 font-bold">{parseVisoTubeLocation(locCode)}</div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
