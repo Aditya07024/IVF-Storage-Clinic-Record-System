@@ -704,12 +704,12 @@ export const PatientDirectory: React.FC = () => {
 
                             return (
                               <div className="space-y-1 min-w-[220px]">
-                                {freezingDatesStr && (
+                                {/* {freezingDatesStr && (
                                   <div className="text-[11px] font-bold text-emerald-950 font-mono flex items-center gap-1">
                                     <span className="text-slate-500 font-semibold uppercase text-[10px]">Freezing Dates:</span>
                                     <span>{freezingDatesStr}</span>
                                   </div>
-                                )}
+                                )} */}
                                 <div className="text-xs font-bold text-slate-900 bg-emerald-100/90 text-emerald-950 px-2.5 py-1 rounded-xl border border-emerald-300 shadow-2xs inline-block">
                                   {totalStraws} {totalStraws === 1 ? 'straw' : 'straws'}, {totalEmbryos} {totalEmbryos === 1 ? 'embryo' : 'embryos'}
                                   {stageBreakdown ? ` (${stageBreakdown})` : ''}

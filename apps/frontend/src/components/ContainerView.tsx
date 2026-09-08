@@ -95,6 +95,14 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
       setLoadingPatientDetail(false);
     }
   };
+
+  const handleCloseModal = () => {
+    setSelectedTube(null);
+    setViewingPatientModal(null);
+    clearApiCache();
+    fetchGlobalOccupancy();
+    fetchHierarchy();
+  };
   
   // Overview Modes: honeycomb | matrix
   const [viewMode, setViewMode] = useState<OverviewMode>('honeycomb');
@@ -802,7 +810,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
               </div>
 
               <button
-                onClick={() => setSelectedTube(null)}
+                onClick={handleCloseModal}
                 className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
@@ -987,7 +995,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
             {/* Modal Footer (FIXED PINNED AT BOTTOM) */}
             <div className="p-4 sm:p-5 border-t border-slate-200 flex items-center justify-end z-10 shrink-0 bg-white">
               <button
-                onClick={() => setSelectedTube(null)}
+                onClick={handleCloseModal}
                 className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm"
               >
                 Close Inspector
@@ -1074,7 +1082,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 )}
 
                 <button
-                  onClick={() => setViewingPatientModal(null)}
+                  onClick={handleCloseModal}
                   className="w-full h-8 px-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
                 >
                   <Edit3 className="w-3 h-3" />
@@ -1082,7 +1090,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 </button>
 
                 <button
-                  onClick={() => setViewingPatientModal(null)}
+                  onClick={handleCloseModal}
                   className="w-full h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
                 >
                   <Mail className="w-3 h-3" />
@@ -1090,7 +1098,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 </button>
 
                 <button
-                  onClick={() => setViewingPatientModal(null)}
+                  onClick={handleCloseModal}
                   className="w-full h-8 px-2.5 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-[11px] rounded-lg transition-all whitespace-nowrap text-center active:scale-95 cursor-pointer"
                 >
                   Close
