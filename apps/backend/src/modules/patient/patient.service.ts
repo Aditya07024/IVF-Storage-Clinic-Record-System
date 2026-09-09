@@ -83,6 +83,13 @@ export class PatientService {
     const isCustomId = Boolean(input.patientId && input.patientId.trim());
     let patientId = isCustomId ? input.patientId!.trim() : '';
 
+    if (!input.fullName || !input.fullName.trim()) {
+      throw new Error('Patient Full Name is required.');
+    }
+    if (!input.email || !input.email.trim()) {
+      throw new Error('Patient Email Address is required.');
+    }
+
     if (isCustomId) {
       const existing = await prisma.patient.findUnique({ where: { patientId } });
       if (existing) {
