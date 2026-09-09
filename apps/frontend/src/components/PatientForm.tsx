@@ -154,17 +154,12 @@ export function getStrawStageSummary(item: any, specimenType?: string): string {
     for (let i = 0; i < count; i++) {
       const eGradeKey = `grade${i + 1}`;
       let stg = (item[eGradeKey] || (i === 0 ? (item.grade || item.embryoStage || item.stage) : '') || 'MII').toString().trim().toUpperCase();
-      if (!stg || stg === 'UNDEFINED' || stg === 'NULL') stg = 'MII';
+      if (!['MII', 'MI', 'GV'].includes(stg)) stg = 'MII';
       stageCounts[stg] = (stageCounts[stg] || 0) + 1;
     }
     const parts: string[] = [];
     ['MII', 'MI', 'GV'].forEach((stg) => {
       if (stageCounts[stg]) {
-        parts.push(`${stageCounts[stg]} ${stg}`);
-      }
-    });
-    Object.keys(stageCounts).forEach((stg) => {
-      if (!['MII', 'MI', 'GV'].includes(stg)) {
         parts.push(`${stageCounts[stg]} ${stg}`);
       }
     });
@@ -197,7 +192,7 @@ export function getBatchSummaryText(strawItems: any[], specimenType?: string): s
       for (let i = 0; i < cnt; i++) {
         const eGradeKey = `grade${i + 1}`;
         let stg = (item[eGradeKey] || (i === 0 ? (item.grade || item.embryoStage || item.stage) : '') || 'MII').toString().trim().toUpperCase();
-        if (!stg || stg === 'UNDEFINED' || stg === 'NULL') stg = 'MII';
+        if (!['MII', 'MI', 'GV'].includes(stg)) stg = 'MII';
         totalStages[stg] = (totalStages[stg] || 0) + 1;
       }
     });
@@ -802,8 +797,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       if (prev.length < validCount) {
         const next = [...prev];
         const primaryColor = prev[0]?.color || '';
+        const defaultGrade = specimenType === 'OOCYTE' ? 'MII' : '';
         for (let i = prev.length; i < validCount; i++) {
-          next.push({ color: primaryColor, embryoCount: 1, grade: '4AA', comments: '', isPgt: false });
+          next.push({ color: primaryColor, embryoCount: 1, grade: defaultGrade, comments: '', isPgt: false });
         }
         return next;
       }
@@ -2232,7 +2228,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                             const eGradeKey = `grade${eIdx + 1}`;
                             const eFragKey = `frag${eIdx + 1}`;
                             const eCommentKey = `comment${eIdx + 1}`;
-                            const currentGradeVal = (item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '') || (specimenType === 'OOCYTE' ? 'MII' : '');
+                            const rawGradeVal = ((item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '') || '').toString().trim().toUpperCase();
+                            const currentGradeVal = specimenType === 'OOCYTE'
+                              ? (['MII', 'MI', 'GV'].includes(rawGradeVal) ? rawGradeVal : 'MII')
+                              : rawGradeVal;
 
                             return (
                               <div key={eIdx} className={`bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-1 ${specimenType === 'OOCYTE' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-2.5 items-center`}>
