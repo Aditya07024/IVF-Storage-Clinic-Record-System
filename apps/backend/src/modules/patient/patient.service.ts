@@ -36,6 +36,7 @@ export interface CreatePatientInput {
   specimenType?: string;
   cycleType?: string;
   donorName?: string;
+  donorRegNo?: string;
   donorAge?: string;
   donorPhone?: string;
   vitrificationIndication?: string;
@@ -131,6 +132,7 @@ export class PatientService {
             specimenType: input.specimenType ? input.specimenType.trim() : 'EMBRYO',
             cycleType: input.cycleType ? input.cycleType.trim() : 'SELF',
             donorName: input.donorName ? input.donorName.trim() : null,
+            donorRegNo: input.donorRegNo ? input.donorRegNo.trim() : null,
             donorAge: input.donorAge ? input.donorAge.trim() : null,
             donorPhone: input.donorPhone ? input.donorPhone.trim() : null,
             vitrificationIndication: input.vitrificationIndication ? input.vitrificationIndication.trim() : null,
@@ -220,6 +222,7 @@ export class PatientService {
         specimenType: input.specimenType !== undefined ? (input.specimenType ? input.specimenType.trim() : null) : existing.specimenType,
         cycleType: input.cycleType !== undefined ? (input.cycleType ? input.cycleType.trim() : null) : existing.cycleType,
         donorName: input.donorName !== undefined ? (input.donorName ? input.donorName.trim() : null) : existing.donorName,
+        donorRegNo: input.donorRegNo !== undefined ? (input.donorRegNo ? input.donorRegNo.trim() : null) : existing.donorRegNo,
         donorAge: input.donorAge !== undefined ? (input.donorAge ? input.donorAge.trim() : null) : existing.donorAge,
         donorPhone: input.donorPhone !== undefined ? (input.donorPhone ? input.donorPhone.trim() : null) : existing.donorPhone,
         vitrificationIndication: input.vitrificationIndication !== undefined ? (input.vitrificationIndication ? input.vitrificationIndication.trim() : null) : existing.vitrificationIndication,

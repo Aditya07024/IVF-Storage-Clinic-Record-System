@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import brandLogo from '../assets/image.png';
 import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check, Eye, Dna } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
@@ -183,7 +184,7 @@ export function getBatchSummaryText(strawItems: any[], specimenType?: string, cy
   const countsPerStraw = strawItems.map((s) => s.embryoCount || (s.embryos ? s.embryos.length : 1));
   const countsStr = countsPerStraw.join(' + ');
   const unitLabel = isOocyte
-    ? (isDonor ? (totalCount === 1 ? 'Donor Egg' : 'Donor Eggs') : (totalCount === 1 ? 'Self Egg' : 'Self Eggs'))
+    ? (totalCount === 1 ? 'oocyte' : 'oocytes')
     : totalCount === 1 ? 'embryo' : 'embryos';
 
   if (isOocyte) {
@@ -473,6 +474,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [specimenType, setSpecimenType] = useState<'EMBRYO' | 'OOCYTE' | 'SPERM'>('EMBRYO');
   const [cycleType, setCycleType] = useState<'SELF' | 'DONOR_RECIPIENT'>('SELF');
   const [donorName, setDonorName] = useState('');
+  const [donorRegNo, setDonorRegNo] = useState('');
   const [donorAge, setDonorAge] = useState('');
   const [donorPhone, setDonorPhone] = useState('');
   const [vitrificationIndication, setVitrificationIndication] = useState('Social egg freezing');
@@ -633,6 +635,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setSpecimenType(pt.specimenType || 'EMBRYO');
     setCycleType(pt.cycleType || 'SELF');
     setDonorName(pt.donorName || '');
+    setDonorRegNo(pt.donorRegNo || '');
     setDonorAge(pt.donorAge || '');
     setDonorPhone(pt.donorPhone || '');
     setVitrificationIndication(pt.vitrificationIndication || 'Social egg freezing');
@@ -741,6 +744,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setSpecimenType('EMBRYO');
     setCycleType('SELF');
     setDonorName('');
+    setDonorRegNo('');
     setDonorAge('');
     setDonorPhone('');
     setVitrificationIndication('Social egg freezing');
@@ -860,22 +864,39 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     e.preventDefault();
     setError(null);
 
+    const isSupernumeraryDonor = specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing';
+
     if (formMode === 'new') {
-      if (!fullName.trim() || !doctorName.trim()) {
-        setError('Patient Full Name and Doctor Name are required.');
-        return;
-      }
-      if (!dob.trim()) {
-        setError('Patient Date of Birth (DOB) is required.');
-        return;
-      }
-      if (!email.trim()) {
-        setError('Patient Email Address is required.');
-        return;
-      }
-      if (!phone.trim() && !partnerPhone.trim()) {
-        setError('Please enter at least 1 Mobile Phone number (Patient or Partner).');
-        return;
+      if (isSupernumeraryDonor) {
+        if (!donorRegNo.trim()) {
+          setError('Donor Reg No. / Code is required.');
+          return;
+        }
+        if (!donorName.trim()) {
+          setError('Donor Name is required.');
+          return;
+        }
+        if (!doctorName.trim()) {
+          setError('Doctor Name is required.');
+          return;
+        }
+      } else {
+        if (!fullName.trim() || !doctorName.trim()) {
+          setError('Patient Full Name and Doctor Name are required.');
+          return;
+        }
+        if (!dob.trim()) {
+          setError('Patient Date of Birth (DOB) is required.');
+          return;
+        }
+        if (!email.trim()) {
+          setError('Patient Email Address is required.');
+          return;
+        }
+        if (!phone.trim() && !partnerPhone.trim()) {
+          setError('Please enter at least 1 Mobile Phone number (Patient or Partner).');
+          return;
+        }
       }
     } else {
       if (!selectedExistingPatient) {
@@ -901,23 +922,30 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setShowConfirmationModal(false);
     setError(null);
 
-    const patientName = fullName.trim() || selectedExistingPatient?.fullName || 'Patient Record';
+    const isSupernumerary = specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing';
+    const effectivePatientId = isSupernumerary ? (customPatientId.trim() || donorRegNo.trim()) : customPatientId.trim();
+    const effectiveFullName = isSupernumerary ? (donorName.trim() ? `${donorName.trim()} (Donor)` : `Donor ${donorRegNo.trim()}`) : fullName.trim();
+    const effectiveEmail = isSupernumerary ? (email.trim() || `${(donorRegNo.trim() || 'donor').toLowerCase()}@clinic.local`) : email.trim();
+    const effectivePhone = isSupernumerary ? (donorPhone.trim() || 'N/A') : phone.trim();
+    const effectiveDob = isSupernumerary ? (dob.trim() || '1995-01-01') : dob.trim();
+
+    const patientName = effectiveFullName || selectedExistingPatient?.fullName || 'Patient Record';
     const totalEmbryosCount = strawItems.reduce((acc, item) => acc + (item.embryoCount || 1), 0);
 
     // Capture current form inputs before clearing
     const payload = {
       formMode,
       selectedExistingPatient,
-      customPatientId: customPatientId.trim(),
-      fullName: fullName.trim(),
+      customPatientId: effectivePatientId,
+      fullName: effectiveFullName,
       partnerName: partnerName.trim(),
-      phone: phone.trim(),
+      phone: effectivePhone,
       partnerPhone: partnerPhone.trim(),
-      email: email.trim(),
+      email: effectiveEmail,
       partnerEmail: partnerEmail.trim(),
-      dob: dob.trim(),
+      dob: effectiveDob,
       partnerDob: partnerDob.trim(),
-      patientAge: patientAge.trim() || calculateAgeFromDob(dob),
+      patientAge: patientAge.trim() || (dob ? calculateAgeFromDob(dob) : donorAge.trim()),
       partnerAge: partnerAge.trim() || calculateAgeFromDob(partnerDob),
       doctorName: doctorName.trim(),
       aspirationDate,
@@ -938,6 +966,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       specimenType,
       cycleType,
       donorName: donorName.trim(),
+      donorRegNo: donorRegNo.trim(),
       donorAge: donorAge.trim(),
       donorPhone: donorPhone.trim(),
       vitrificationIndication: vitrificationIndication.trim(),
@@ -1081,13 +1110,18 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     <div className="p-3 sm:p-8 max-w-4xl mx-auto space-y-6 sm:space-y-8 bg-slate-50 min-h-screen w-full overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 text-emerald-600 shrink-0">
-            <UserPlus className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="w-11 h-11 sm:w-13 sm:h-13 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-xs overflow-hidden p-1 shrink-0">
+            <img src={brandLogo} alt="IVF Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Embryo/Oocyte/Sperm Freezing & Storage Allocation</h1>
-            <p className="text-xs sm:text-sm text-slate-600 font-medium">
-              Register new patient OR allocate a new embryo freezing batch for an existing patient
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">IVF Storage</h1>
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                Clinic Record System
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">
+              Embryo/Oocyte/Sperm Freezing & Storage Allocation
             </p>
           </div>
         </div>
@@ -1435,7 +1469,19 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setCycleType(item.id as any)}
+                      onClick={() => {
+                        const newCycle = item.id as 'SELF' | 'DONOR_RECIPIENT';
+                        setCycleType(newCycle);
+                        if (newCycle === 'SELF') {
+                          if (vitrificationIndication === 'Supernumerary donor egg freezing') {
+                            setVitrificationIndication('Social egg freezing');
+                          }
+                        } else if (newCycle === 'DONOR_RECIPIENT') {
+                          if (vitrificationIndication === 'Social egg freezing' || vitrificationIndication === 'Onco fertility preservation') {
+                            setVitrificationIndication('Supernumerary donor egg freezing');
+                          }
+                        }
+                      }}
                       className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start justify-center gap-0.5 text-left cursor-pointer ${
                         cycleType === item.id
                           ? 'bg-blue-600 text-white border-blue-700 shadow-xs scale-102'
@@ -1452,8 +1498,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </div>
             </div>
 
-            {/* Donor Information Card (Shown if D-R Cycle) */}
-            {cycleType === 'DONOR_RECIPIENT' && (
+            {/* Donor Information Card (Shown if D-R Cycle or Supernumerary Donor Egg Freezing) */}
+            {(cycleType === 'DONOR_RECIPIENT' || (specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing')) && (
               <div className="p-3.5 bg-amber-50/90 rounded-xl border border-amber-300/80 space-y-3 mt-3 animate-fadeIn">
                 <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
                   <span className="text-xs font-extrabold text-amber-950 flex items-center gap-1.5 uppercase tracking-wider">
@@ -1464,7 +1510,19 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     Donor Details
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                      Donor Reg No. *
+                    </label>
+                    <input
+                      type="text"
+                      value={donorRegNo}
+                      onChange={(e) => setDonorRegNo(e.target.value)}
+                      placeholder="e.g. DON-2026-8901"
+                      className="w-full h-10 bg-white border border-amber-300 rounded-lg px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
                   <div>
                     <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
                       Donor Name *
@@ -1520,19 +1578,21 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   </label>
                   <select
                     value={vitrificationIndication}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setVitrificationIndication(val);
-                      if (val === 'Supernumerary donor egg freezing') {
-                        setCycleType('DONOR_RECIPIENT');
-                      }
-                    }}
+                    onChange={(e) => setVitrificationIndication(e.target.value)}
                     className="w-full h-10 bg-white border border-emerald-300 rounded-lg px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500 cursor-pointer"
                   >
-                    <option value="Social egg freezing">1. Social egg freezing</option>
-                    <option value="Onco fertility preservation">2. Onco fertility preservation</option>
-                    <option value="Emergency egg freezing">3. Emergency egg freezing</option>
-                    <option value="Supernumerary donor egg freezing">4. Supernumerary donor egg freezing</option>
+                    {cycleType === 'SELF' ? (
+                      <>
+                        <option value="Social egg freezing">Social egg freezing</option>
+                        <option value="Onco fertility preservation">Onco fertility preservation</option>
+                        <option value="Emergency egg freezing">Emergency egg freezing</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Emergency egg freezing">Emergency egg freezing</option>
+                        <option value="Supernumerary donor egg freezing">Supernumerary donor egg freezing</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -1540,28 +1600,34 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-full">
-            {/* REGISTRATION ID (UNIQUE KEY) */}
-            <div className="md:col-span-2 min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                <span>Registration ID (Unique Key) <span className="text-rose-600 font-bold">*</span></span>
-              </label>
-              <input
-                type="text"
-                value={customPatientId}
-                onChange={(e) => setCustomPatientId(e.target.value)}
-                readOnly={!!selectedExistingPatient}
-                placeholder="e.g. IVF-2026-000001"
-                required
-                className={`w-full min-w-0 max-w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
-                  selectedExistingPatient
-                    ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
-                    : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
-                }`}
-              />
-            </div>
+            {(() => {
+              const isSupernumeraryDonorEgg = specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing';
+              return null;
+            })()}
+            {/* REGISTRATION ID (UNIQUE KEY) - Hidden ONLY for Supernumerary Donor Egg Freezing */}
+            {!(specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing') && (
+              <div className="md:col-span-2 min-w-0 max-w-full">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Registration ID (Unique Key) <span className="text-rose-600 font-bold">*</span></span>
+                </label>
+                <input
+                  type="text"
+                  value={customPatientId}
+                  onChange={(e) => setCustomPatientId(e.target.value)}
+                  readOnly={!!selectedExistingPatient}
+                  placeholder="e.g. IVF-2026-000001"
+                  required
+                  className={`w-full min-w-0 max-w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
+                    selectedExistingPatient
+                      ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
+                      : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
+                  }`}
+                />
+              </div>
+            )}
 
-            {/* DUAL PATIENT & PARTNER PHOTO UPLOADER BOXES */}
-            {!selectedExistingPatient && (
+            {/* DUAL PATIENT & PARTNER PHOTO UPLOADER BOXES (Hidden ONLY for Supernumerary Donor Egg Freezing) */}
+            {!selectedExistingPatient && !(specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing') && (
               <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
                 {/* WIFE / FEMALE PATIENT PHOTO */}
                 <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-3 shadow-2xs">
@@ -1691,211 +1757,215 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </div>
             )}
 
-            {/* PATIENT DEMOGRAPHICS CONTAINER */}
-            <div className="p-4 bg-emerald-50/40 border border-emerald-200/80 rounded-2xl space-y-4 min-w-0 max-w-full">
-              <div className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider border-b border-emerald-200/80 pb-2 flex items-center gap-1.5">
-                <User className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Patient Demographics (Wife / Female Patient)</span>
-              </div>
-
-              {/* Patient Name */}
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Patient Full Name <span className="text-rose-600 font-bold">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(capitalizeWords(e.target.value))}
-                  placeholder="e.g. Sunita Verma"
-                  required
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
-                />
-              </div>
-
-              {/* Patient DOB */}
-              <div className="min-w-0 max-w-full">
-                <DateInputDDMMYYYY
-                  label="Patient Date of Birth (DOB)"
-                  value={dob}
-                  required
-                  onChange={(val) => {
-                    setDob(val);
-                    if (val) {
-                      setPatientAge(calculateAgeFromDob(val));
-                    }
-                  }}
-                />
-              </div>
-
-              {/* Patient Age */}
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Patient Age
-                </label>
-                <input
-                  type="text"
-                  value={patientAge}
-                  onChange={(e) => setPatientAge(e.target.value)}
-                  placeholder="e.g. 36 Yrs"
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
-                />
-              </div>
-
-              {/* Patient Phone */}
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Patient Mobile Phone <span className="text-rose-600 font-bold">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. +91 98260 78901"
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
-                />
-              </div>
-
-              {/* Patient Email */}
-              <div className="min-w-0 max-w-full">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Patient Email Address <span className="text-rose-600 font-bold">*</span>
-                  </label>
-                  {isEmailVerified ? (
-                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                      Verified Email
-                    </span>
-                  ) : email ? (
-                    <button
-                      type="button"
-                      onClick={handleSendEmailOtp}
-                      disabled={sendingOtp}
-                      className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-300 px-2.5 py-0.5 rounded-full transition-all active:scale-95 cursor-pointer"
-                    >
-                      {sendingOtp ? 'Sending OTP...' : 'Verify Email OTP'}
-                    </button>
-                  ) : null}
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setIsEmailVerified(false);
-                  }}
-                  placeholder="e.g. patient@example.com"
-                  required
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
-                />
-
-                {/* OTP Code Entry Drawer */}
-                {showEmailOtpInput && !isEmailVerified && (
-                  <div className="mt-2.5 p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
-                    <div className="text-xs font-bold text-blue-900">Enter 6-Digit Email OTP Code</div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        maxLength={6}
-                        value={emailOtpCode}
-                        onChange={(e) => setEmailOtpCode(e.target.value)}
-                        placeholder="e.g. 123456"
-                        className="w-32 h-9 bg-white border border-blue-300 rounded-lg px-3 text-xs font-mono font-bold text-slate-900 text-center tracking-widest"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleVerifyEmailOtp}
-                        disabled={verifyingOtp}
-                        className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs transition-all active:scale-95 cursor-pointer"
-                      >
-                        {verifyingOtp ? 'Verifying...' : 'Submit OTP'}
-                      </button>
-                    </div>
-                    {otpError && <div className="text-[11px] font-bold text-rose-600">{otpError}</div>}
-                    {otpSuccessMsg && <div className="text-[11px] font-bold text-emerald-700">{otpSuccessMsg}</div>}
+            {/* PATIENT & PARTNER DEMOGRAPHICS CONTAINERS (Hidden ONLY for Supernumerary Donor Egg Freezing) */}
+            {!(specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing') && (
+              <>
+                {/* PATIENT DEMOGRAPHICS CONTAINER */}
+                <div className="p-4 bg-emerald-50/40 border border-emerald-200/80 rounded-2xl space-y-4 min-w-0 max-w-full">
+                  <div className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider border-b border-emerald-200/80 pb-2 flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Patient Demographics (Wife / Female Patient)</span>
                   </div>
-                )}
-              </div>
-            </div>
 
-            {/* PARTNER DEMOGRAPHICS CONTAINER */}
-            <div className="p-4 bg-blue-50/40 border border-blue-200/80 rounded-2xl space-y-4 min-w-0 max-w-full">
-              <div className="text-xs font-extrabold text-blue-950 uppercase tracking-wider border-b border-blue-200/80 pb-2 flex items-center gap-1.5">
-                <UserCheck className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>Partner Demographics (Husband / Male Partner)</span>
-              </div>
+                  {/* Patient Name */}
+                  <div className="min-w-0 max-w-full">
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Patient Full Name <span className="text-rose-600 font-bold">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(capitalizeWords(e.target.value))}
+                      placeholder="e.g. Sunita Verma"
+                      required
+                      className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
+                    />
+                  </div>
 
-              {/* Partner Name */}
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Partner Name
-                </label>
-                <input
-                  type="text"
-                  value={partnerName}
-                  onChange={(e) => setPartnerName(capitalizeWords(e.target.value))}
-                  placeholder="e.g. Deepak Verma"
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block font-medium"
-                />
-              </div>
+                  {/* Patient DOB */}
+                  <div className="min-w-0 max-w-full">
+                    <DateInputDDMMYYYY
+                      label="Patient Date of Birth (DOB)"
+                      value={dob}
+                      required
+                      onChange={(val) => {
+                        setDob(val);
+                        if (val) {
+                          setPatientAge(calculateAgeFromDob(val));
+                        }
+                      }}
+                    />
+                  </div>
 
-              {/* Partner DOB */}
-              <div className="min-w-0 max-w-full">
-                <DateInputDDMMYYYY
-                  label="Partner Date of Birth (DOB)"
-                  value={partnerDob}
-                  onChange={(val) => {
-                    setPartnerDob(val);
-                    if (val) {
-                      setPartnerAge(calculateAgeFromDob(val));
-                    }
-                  }}
-                />
-              </div>
+                  {/* Patient Age */}
+                  <div className="min-w-0 max-w-full">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Patient Age
+                    </label>
+                    <input
+                      type="text"
+                      value={patientAge}
+                      onChange={(e) => setPatientAge(e.target.value)}
+                      placeholder="e.g. 36 Yrs"
+                      className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
+                    />
+                  </div>
 
-              {/* Partner Age */}
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Partner Age
-                </label>
-                <input
-                  type="text"
-                  value={partnerAge}
-                  onChange={(e) => setPartnerAge(e.target.value)}
-                  placeholder="e.g. 36 Yrs"
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
-                />
-              </div>
+                  {/* Patient Phone */}
+                  <div className="min-w-0 max-w-full">
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Patient Mobile Phone <span className="text-rose-600 font-bold">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. +91 98260 78901"
+                      className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+                    />
+                  </div>
 
-              {/* Partner Phone */}
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Partner Mobile Phone
-                </label>
-                <input
-                  type="text"
-                  value={partnerPhone}
-                  onChange={(e) => setPartnerPhone(e.target.value)}
-                  placeholder="e.g. +91 98260 12345"
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
-                />
-              </div>
+                  {/* Patient Email */}
+                  <div className="min-w-0 max-w-full">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                        Patient Email Address <span className="text-rose-600 font-bold">*</span>
+                      </label>
+                      {isEmailVerified ? (
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Verified Email
+                        </span>
+                      ) : email ? (
+                        <button
+                          type="button"
+                          onClick={handleSendEmailOtp}
+                          disabled={sendingOtp}
+                          className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-300 px-2.5 py-0.5 rounded-full transition-all active:scale-95 cursor-pointer"
+                        >
+                          {sendingOtp ? 'Sending OTP...' : 'Verify Email OTP'}
+                        </button>
+                      ) : null}
+                    </div>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setIsEmailVerified(false);
+                      }}
+                      placeholder="e.g. patient@example.com"
+                      required
+                      className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+                    />
 
-              {/* Partner Email */}
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Partner Email Address
-                </label>
-                <input
-                  type="email"
-                  value={partnerEmail}
-                  onChange={(e) => setPartnerEmail(e.target.value)}
-                  placeholder="e.g. partner@example.com"
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
-                />
-              </div>
-            </div>
+                    {/* OTP Code Entry Drawer */}
+                    {showEmailOtpInput && !isEmailVerified && (
+                      <div className="mt-2.5 p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
+                        <div className="text-xs font-bold text-blue-900">Enter 6-Digit Email OTP Code</div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            maxLength={6}
+                            value={emailOtpCode}
+                            onChange={(e) => setEmailOtpCode(e.target.value.replace(/\D/g, ''))}
+                            placeholder="123456"
+                            className="w-28 h-9 border border-blue-300 rounded-lg px-3 text-center text-sm font-mono font-bold tracking-widest bg-white focus:outline-none focus:border-blue-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleVerifyEmailOtp}
+                            disabled={verifyingOtp || emailOtpCode.length !== 6}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition-all cursor-pointer"
+                          >
+                            {verifyingOtp ? 'Verifying...' : 'Submit OTP'}
+                          </button>
+                        </div>
+                        {otpError && <div className="text-[11px] text-rose-600 font-semibold">{otpError}</div>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* PARTNER DEMOGRAPHICS */}
+                <div className="p-4 bg-blue-50/40 border border-blue-200/80 rounded-2xl space-y-4 min-w-0 max-w-full">
+                  <div className="text-xs font-extrabold text-blue-950 uppercase tracking-wider border-b border-blue-200/80 pb-2 flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>Partner Demographics (Husband / Male Partner)</span>
+                  </div>
+
+                  {/* Partner Name */}
+                  <div className="min-w-0 max-w-full">
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Partner Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={partnerName}
+                      onChange={(e) => setPartnerName(capitalizeWords(e.target.value))}
+                      placeholder="e.g. Rajesh Verma"
+                      className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
+                    />
+                  </div>
+
+                  {/* Partner DOB */}
+                  <div className="min-w-0 max-w-full">
+                    <DateInputDDMMYYYY
+                      label="Partner Date of Birth (DOB)"
+                      value={partnerDob}
+                      onChange={(val) => {
+                        setPartnerDob(val);
+                        if (val) {
+                          setPartnerAge(calculateAgeFromDob(val));
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Partner Age */}
+                  <div className="min-w-0 max-w-full">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Partner Age
+                    </label>
+                    <input
+                      type="text"
+                      value={partnerAge}
+                      onChange={(e) => setPartnerAge(e.target.value)}
+                      placeholder="e.g. 36 Yrs"
+                      className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
+                    />
+                  </div>
+
+                  {/* Partner Phone */}
+                  <div className="min-w-0 max-w-full">
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Partner Mobile Phone
+                    </label>
+                    <input
+                      type="text"
+                      value={partnerPhone}
+                      onChange={(e) => setPartnerPhone(e.target.value)}
+                      placeholder="e.g. +91 98260 12345"
+                      className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+                    />
+                  </div>
+
+                  {/* Partner Email */}
+                  <div className="min-w-0 max-w-full">
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Partner Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={partnerEmail}
+                      onChange={(e) => setPartnerEmail(e.target.value)}
+                      placeholder="e.g. partner@example.com"
+                      className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* CLINICAL PHYSICIAN */}
             <div className="md:col-span-2 min-w-0 max-w-full">
@@ -2007,12 +2077,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                        Stage of Ooctye
+                        {specimenType === 'OOCYTE' ? 'Stage of Oocyte' : 'Stage of Embryo'}
                       </label>
-                      
                     </div>
                     <div className="w-full bg-slate-100 border border-slate-300 rounded-xl px-4 h-11 flex items-center text-xs font-bold text-emerald-950 font-mono shadow-2xs">
-                      {embryoStage}
+                      {specimenType === 'OOCYTE'
+                        ? (embryoStage === 'Day 0' || embryoStage === 'Day 0 / Oocyte Freezing' ? 'Day 0 / Oocyte Vitrification' : embryoStage)
+                        : (embryoStage || 'Day 5')}
                     </div>
                   </div>
 
@@ -2920,91 +2991,148 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </button>
             </div>
 
-            {/* Patient & Partner Complete Demographics */}
+            {/* Patient & Partner / Donor Profile Summary */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
               <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between border-b border-slate-200 pb-2">
-                <span>1. Patient & Partner Profile Summary</span>
+                <span>
+                  {specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing'
+                    ? '1. Egg / Oocyte Donor Profile Summary'
+                    : '1. Patient & Partner Profile Summary'}
+                </span>
                 <span className="bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold border border-emerald-300">
-                  Reg ID: {customPatientId || selectedExistingPatient?.patientId || 'Auto-Generated'}
+                  {specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing'
+                    ? `Donor Reg ID: ${donorRegNo || 'N/A'}`
+                    : `Reg ID: ${customPatientId || selectedExistingPatient?.patientId || 'Auto-Generated'}`}
                 </span>
               </div>
 
-              <div className="flex items-start gap-4">
-                {/* Photo Thumbnails */}
-                <div className="shrink-0 flex items-center gap-2">
-                  {/* Wife Photo */}
-                  {photoPreviewUrl || selectedExistingPatient?.photoUrl ? (
-                    <div className="text-center">
-                      <img
-                        src={photoPreviewUrl || getImageUrl(selectedExistingPatient?.photoUrl)}
-                        alt="Wife Profile"
-                        className="w-14 h-14 rounded-xl object-cover border-2 border-emerald-500 shadow-2xs"
-                      />
-                      <span className="text-[9px] font-bold text-emerald-800 uppercase block mt-0.5">Wife</span>
+              {specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing' ? (
+                /* Donor Egg Cycle: Show ONLY Donor Profile Details */
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-1.5">
+                  <div className="text-[10px] font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Egg / Oocyte Donor Profile</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
+                    <div>
+                      <span className="text-amber-800 font-semibold block text-[10px]">Donor Reg No:</span>
+                      <strong className="font-mono text-amber-950 text-xs">{donorRegNo || 'N/A'}</strong>
                     </div>
-                  ) : null}
-
-                  {/* Husband Photo */}
-                  {partnerPhotoPreviewUrl || selectedExistingPatient?.partnerPhotoUrl ? (
-                    <div className="text-center">
-                      <img
-                        src={partnerPhotoPreviewUrl || getImageUrl(selectedExistingPatient?.partnerPhotoUrl)}
-                        alt="Husband Profile"
-                        className="w-14 h-14 rounded-xl object-cover border-2 border-blue-500 shadow-2xs"
-                      />
-                      <span className="text-[9px] font-bold text-blue-800 uppercase block mt-0.5">Husband</span>
+                    <div>
+                      <span className="text-amber-800 font-semibold block text-[10px]">Donor Name:</span>
+                      <strong className="text-amber-950 text-xs">{donorName || 'N/A'}</strong>
                     </div>
-                  ) : null}
-
-                  {!photoPreviewUrl && !selectedExistingPatient?.photoUrl && !partnerPhotoPreviewUrl && !selectedExistingPatient?.partnerPhotoUrl && (
-                    <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-400">
-                      <User className="w-7 h-7 text-slate-300" />
+                    <div>
+                      <span className="text-amber-800 font-semibold block text-[10px]">Donor Age:</span>
+                      <span className="font-mono font-bold text-amber-950">{donorAge || 'N/A'}</span>
                     </div>
-                  )}
+                    <div>
+                      <span className="text-amber-800 font-semibold block text-[10px]">Donor Phone:</span>
+                      <span className="font-mono font-bold text-amber-950">{donorPhone || 'N/A'}</span>
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                /* Patient & Partner Standard Cycle */
+                <>
+                  <div className="flex items-start gap-4">
+                    {/* Photo Thumbnails */}
+                    <div className="shrink-0 flex items-center gap-2">
+                      {/* Wife Photo */}
+                      {photoPreviewUrl || selectedExistingPatient?.photoUrl ? (
+                        <div className="text-center">
+                          <img
+                            src={photoPreviewUrl || getImageUrl(selectedExistingPatient?.photoUrl)}
+                            alt="Wife Profile"
+                            className="w-14 h-14 rounded-xl object-cover border-2 border-emerald-500 shadow-2xs"
+                          />
+                          <span className="text-[9px] font-bold text-emerald-800 uppercase block mt-0.5">Wife</span>
+                        </div>
+                      ) : null}
 
-                {/* Demographics Grid */}
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="space-y-1">
-                    <span className="text-slate-500 text-[10px] uppercase font-semibold block">Patient Name:</span>
-                    <strong className="text-slate-900 font-bold text-sm block">{fullName || selectedExistingPatient?.fullName}</strong>
-                    {/* <div className="text-slate-600 space-y-0.5 text-[11px]">
-                      <div><span className="font-semibold text-slate-700">DOB:</span> {formatDateDDMMYYYY(dob || selectedExistingPatient?.dob)} {patientAge || selectedExistingPatient?.patientAge ? `(Age: ${patientAge || selectedExistingPatient?.patientAge})` : ''}</div>
-                      <div><span className="font-semibold text-slate-700">Phone:</span> {phone || selectedExistingPatient?.phone || 'N/A'}</div>
-                      {(email || selectedExistingPatient?.email) && <div><span className="font-semibold text-slate-700">Email:</span> {email || selectedExistingPatient?.email}</div>}
-                    </div> */}
+                      {/* Husband Photo */}
+                      {partnerPhotoPreviewUrl || selectedExistingPatient?.partnerPhotoUrl ? (
+                        <div className="text-center">
+                          <img
+                            src={partnerPhotoPreviewUrl || getImageUrl(selectedExistingPatient?.partnerPhotoUrl)}
+                            alt="Husband Profile"
+                            className="w-14 h-14 rounded-xl object-cover border-2 border-blue-500 shadow-2xs"
+                          />
+                          <span className="text-[9px] font-bold text-blue-800 uppercase block mt-0.5">Husband</span>
+                        </div>
+                      ) : null}
+
+                      {!photoPreviewUrl && !selectedExistingPatient?.photoUrl && !partnerPhotoPreviewUrl && !selectedExistingPatient?.partnerPhotoUrl && (
+                        <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-400">
+                          <User className="w-7 h-7 text-slate-300" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Demographics Grid */}
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="space-y-1">
+                        <span className="text-emerald-800 text-[10px] uppercase font-bold block">Patient Demographics (Wife):</span>
+                        <strong className="text-slate-900 font-bold text-sm block">{fullName || selectedExistingPatient?.fullName || 'N/A'}</strong>
+                        <div className="text-slate-600 space-y-0.5 text-[11px]">
+                          <div><span className="font-semibold text-slate-700">DOB:</span> {formatDateDDMMYYYY(dob || selectedExistingPatient?.dob) || 'N/A'} {patientAge || selectedExistingPatient?.patientAge ? `(Age: ${patientAge || selectedExistingPatient?.patientAge})` : ''}</div>
+                          <div><span className="font-semibold text-slate-700">Phone:</span> {phone || selectedExistingPatient?.phone || 'N/A'}</div>
+                          {(email || selectedExistingPatient?.email) && <div><span className="font-semibold text-slate-700">Email:</span> {email || selectedExistingPatient?.email}</div>}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-blue-800 text-[10px] uppercase font-bold block">Partner Demographics (Husband):</span>
+                        <strong className="text-slate-900 font-bold text-sm block">{partnerName || selectedExistingPatient?.partnerName || 'N/A'}</strong>
+                        <div className="text-slate-600 space-y-0.5 text-[11px]">
+                          <div><span className="font-semibold text-slate-700">DOB:</span> {formatDateDDMMYYYY(partnerDob || selectedExistingPatient?.partnerDob) || 'N/A'} {partnerAge || selectedExistingPatient?.partnerAge ? `(Age: ${partnerAge || selectedExistingPatient?.partnerAge})` : ''}</div>
+                          <div><span className="font-semibold text-slate-700">Phone:</span> {partnerPhone || selectedExistingPatient?.partnerPhone || 'N/A'}</div>
+                          {(partnerEmail || selectedExistingPatient?.partnerEmail) && <div><span className="font-semibold text-slate-700">Email:</span> {partnerEmail || selectedExistingPatient?.partnerEmail}</div>}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* <div className="space-y-1">
-                    <span className="text-slate-500 text-[10px] uppercase font-semibold block">Partner Demographics:</span>
-                    <strong className="text-slate-900 font-bold text-sm block">{partnerName || selectedExistingPatient?.partnerName || 'N/A'}</strong>
-                    <div className="text-slate-600 space-y-0.5 text-[11px]">
-                      <div><span className="font-semibold text-slate-700">DOB:</span> {formatDateDDMMYYYY(partnerDob || selectedExistingPatient?.partnerDob)} {partnerAge || selectedExistingPatient?.partnerAge ? `(Age: ${partnerAge || selectedExistingPatient?.partnerAge})` : ''}</div>
-                      <div><span className="font-semibold text-slate-700">Phone:</span> {partnerPhone || selectedExistingPatient?.partnerPhone || 'N/A'}</div>
-                      {(partnerEmail || selectedExistingPatient?.partnerEmail) && <div><span className="font-semibold text-slate-700">Email:</span> {partnerEmail || selectedExistingPatient?.partnerEmail}</div>}
+                  {/* Additional Egg Donor Profile Summary (if Donor details filled in standard cycle) */}
+                  {(donorRegNo || donorName || cycleType === 'DONOR_RECIPIENT') && (
+                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-1.5 mt-2">
+                      <div className="text-[10px] font-bold text-amber-900 uppercase tracking-wider">Egg / Oocyte Donor Profile</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                        <div><span className="text-amber-800 font-semibold block text-[10px]">Donor Reg No:</span> <strong className="font-mono text-amber-950">{donorRegNo || 'N/A'}</strong></div>
+                        <div><span className="text-amber-800 font-semibold block text-[10px]">Donor Name:</span> <strong className="text-amber-950">{donorName || 'N/A'}</strong></div>
+                        <div><span className="text-amber-800 font-semibold block text-[10px]">Donor Age:</span> <span className="font-mono text-amber-950">{donorAge || 'N/A'}</span></div>
+                        <div><span className="text-amber-800 font-semibold block text-[10px]">Donor Phone:</span> <span className="font-mono text-amber-950">{donorPhone || 'N/A'}</span></div>
+                      </div>
                     </div>
-                  </div> */}
-                </div>
-              </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Clinical & Physician Information */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
-              <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider border-b border-slate-200 pb-2">
+              <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
                 <span>2. Clinical & Physician Information</span>
+                {specimenType === 'OOCYTE' && vitrificationIndication && (
+                  <span className="bg-emerald-100 text-emerald-950 px-2.5 py-0.5 rounded font-mono text-[10px] font-bold border border-emerald-300">
+                    Indication: {vitrificationIndication}
+                  </span>
+                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div>
                   <span className="text-slate-500 text-[10px] uppercase font-semibold block">Attending Physician:</span>
-                  <strong className="text-emerald-900 font-bold text-sm">{doctorName}</strong>
+                  <strong className="text-emerald-900 font-bold text-sm">{doctorName || 'N/A'}</strong>
                 </div>
                 <div>
                   <span className="text-slate-500 text-[10px] uppercase font-semibold block">Date of Egg Retrieval:</span>
-                  <strong className="text-slate-900 font-bold">{formatDateDDMMYYYY(aspirationDate)}</strong>
+                  <strong className="text-slate-900 font-bold">{formatDateDDMMYYYY(aspirationDate) || 'N/A'}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-500 text-[10px] uppercase font-semibold block">Embryo Stage:</span>
-                  <strong className="text-blue-900 font-bold bg-blue-100 px-2 py-0.5 rounded border border-blue-300 text-[11px]">{embryoStage || 'Day 5'}</strong>
+                  <span className="text-slate-500 text-[10px] uppercase font-semibold block">{specimenType === 'OOCYTE' ? 'Specimen Type:' : 'Embryo Stage:'}</span>
+                  <strong className="text-blue-900 font-bold bg-blue-100 px-2 py-0.5 rounded border border-blue-300 text-[11px]">
+                    {specimenType === 'OOCYTE' ? 'OOCYTE (Egg)' : (embryoStage || 'Day 5')}
+                  </strong>
                 </div>
               </div>
 
@@ -3016,101 +3144,107 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               )}
             </div>
 
-            {/* Cryo Storage Destination */}
-            {assignStorageEnabled && (
-              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 space-y-2">
-                <div className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center justify-between">
-                  <span>3. Cryo Storage Physical Destination</span>
-                  <span className="bg-emerald-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">
-                    Freezing Date: {formatDateDDMMYYYY(freezingDate)}
-                  </span>
+            {/* Cryo Storage Destination & Specimen Straw Details */}
+            {assignStorageEnabled ? (
+              <>
+                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 space-y-2">
+                  <div className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center justify-between">
+                    <span>3. Cryo Storage Physical Destination</span>
+                    <span className="bg-emerald-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                      Freezing Date: {formatDateDDMMYYYY(freezingDate)}
+                    </span>
+                  </div>
+                  <div className="text-xs font-mono font-bold text-emerald-950 bg-white p-3 rounded-xl border border-emerald-300 flex items-center justify-between">
+                    <span>{selectedLocationCode ? parseLocationCode(selectedLocationCode).formatted : 'Auto-Allocating Best Storage Slot'}</span>
+                  </div>
                 </div>
-                <div className="text-xs font-mono font-bold text-emerald-950 bg-white p-3 rounded-xl border border-emerald-300 flex items-center justify-between">
-                  <span>{selectedLocationCode ? parseLocationCode(selectedLocationCode).formatted : 'Auto-Allocating Best Storage Slot'}</span>
+
+                {/* Granular Specimen Details Table */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="text-xs font-bold text-slate-800 flex items-center justify-between flex-wrap gap-2">
+                    <span>4. {specimenType === 'OOCYTE' ? 'Oocyte' : 'Embryo'} Details</span>
+                    <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 font-bold">
+                      {getBatchSummaryText(strawItems, specimenType)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {strawItems.map((item, sIdx) => {
+                      const existingOffset = selectedExistingPatient?.batches?.reduce(
+                        (acc: number, b: any) => acc + (b.straws ? b.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0),
+                        0
+                      ) || 0;
+                      const strawDisplayNum = existingOffset + sIdx + 1;
+                      const badgeClass = getStrawColorBadgeClass(item.color);
+                      const count = item.embryoCount || 1;
+                      const stageSummary = getStrawStageSummary(item, specimenType);
+
+                      return (
+                        <div key={sIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-2 shadow-2xs">
+                          <div className="flex items-center justify-between font-bold flex-wrap gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded-lg font-mono font-bold text-xs">
+                                Straw #{strawDisplayNum}
+                              </span>
+                              <span className="text-slate-800 font-bold text-xs font-mono bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                                {(() => {
+                                  const label = specimenType === 'OOCYTE'
+                                    ? (count === 1 ? 'oocyte' : 'oocytes')
+                                    : (count === 1 ? 'Embryo' : 'Embryos');
+                                  return `${count} ${label} (${stageSummary})`;
+                                })()}
+                              </span>
+                              {item.color && <span className={`px-2 py-0.5 rounded-full text-[10px] border ${badgeClass}`}>{item.color}</span>}
+                            </div>
+                            {item.isPgt && specimenType !== 'OOCYTE' && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-900 border border-purple-300 font-bold">
+                                PGT TESTED
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Per-Item Details */}
+                          <div className="space-y-1 text-xs font-medium">
+                            {Array.from({ length: count }).map((_, eIdx) => {
+                              const eGradeKey = `grade${eIdx + 1}`;
+                              const eFragKey = `frag${eIdx + 1}`;
+                              const eCommentKey = `comment${eIdx + 1}`;
+                              const eGrade = ((item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '') || (specimenType === 'OOCYTE' ? 'MII' : '')).trim().toUpperCase();
+                              const eFrag = ((item as any)[eFragKey] || '').trim();
+                              const eComment = ((item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '') || '').trim();
+
+                              const gradeStr = eGrade ? eGrade : 'N/A';
+                              const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
+                              const commentStr = eComment ? ` - (${eComment})` : '';
+                              const itemTypeLabel = specimenType === 'OOCYTE' ? 'Oocyte' : 'Embryo';
+                              const stageTypeLabel = specimenType === 'OOCYTE' ? 'Stage' : 'Grade';
+
+                              return (
+                                <div key={eIdx} className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
+                                  <span className="font-mono font-bold text-slate-900">
+                                    {(() => {
+                                      const prevCount = strawItems.slice(0, sIdx).reduce((sum, s) => sum + (s.embryoCount || 1), 0);
+                                      const globalIdx = prevCount + eIdx + 1;
+                                      const totalCount = strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0);
+                                      return totalCount > 1 ? `${itemTypeLabel} #${globalIdx} ${stageTypeLabel}: ` : `${itemTypeLabel} ${stageTypeLabel}: `;
+                                    })()}{gradeStr}{fragStr}{commentStr}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
+              </>
+            ) : (
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-600 font-medium">
+                <span className="font-bold text-slate-800 uppercase block mb-1">3. Cryo Storage & Straw Allocation</span>
+                <p>No storage slot allocated for this entry (Registering patient record only).</p>
               </div>
             )}
-
-            {/* Granular Specimen Details Table */}
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-              <div className="text-xs font-bold text-slate-800 flex items-center justify-between flex-wrap gap-2">
-                <span>4. {specimenType === 'OOCYTE' ? 'Oocyte' : 'Embryo'} Details</span>
-                <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 font-bold">
-                  {getBatchSummaryText(strawItems, specimenType)}
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {strawItems.map((item, sIdx) => {
-                  const existingOffset = selectedExistingPatient?.batches?.reduce(
-                    (acc: number, b: any) => acc + (b.straws ? b.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0),
-                    0
-                  ) || 0;
-                  const strawDisplayNum = existingOffset + sIdx + 1;
-                  const badgeClass = getStrawColorBadgeClass(item.color);
-                  const count = item.embryoCount || 1;
-                  const stageSummary = getStrawStageSummary(item, specimenType);
-
-                  return (
-                    <div key={sIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-2 shadow-2xs">
-                      <div className="flex items-center justify-between font-bold flex-wrap gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded-lg font-mono font-bold text-xs">
-                            Straw #{strawDisplayNum}
-                          </span>
-                          <span className="text-slate-800 font-bold text-xs font-mono bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                            {(() => {
-                              const isDonorEgg = specimenType === 'OOCYTE' && cycleType === 'DONOR_RECIPIENT';
-                              const label = specimenType === 'OOCYTE'
-                                ? (isDonorEgg ? (count === 1 ? 'Donor Egg' : 'Donor Eggs') : (count === 1 ? 'Self Egg' : 'Self Eggs'))
-                                : (count === 1 ? 'Embryo' : 'Embryos');
-                              return `${count} ${label} (${stageSummary})`;
-                            })()}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] border ${badgeClass}`}>{item.color}</span>
-                        </div>
-                        {item.isPgt && specimenType !== 'OOCYTE' && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-900 border border-purple-300 font-bold">
-                            PGT TESTED
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Per-Item Details */}
-                      <div className="space-y-1 text-xs font-medium">
-                        {Array.from({ length: count }).map((_, eIdx) => {
-                          const eGradeKey = `grade${eIdx + 1}`;
-                          const eFragKey = `frag${eIdx + 1}`;
-                          const eCommentKey = `comment${eIdx + 1}`;
-                          const eGrade = ((item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '') || (specimenType === 'OOCYTE' ? 'MII' : '')).trim().toUpperCase();
-                          const eFrag = ((item as any)[eFragKey] || '').trim();
-                          const eComment = ((item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '') || '').trim();
-
-                          const gradeStr = eGrade ? eGrade : 'N/A';
-                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
-                          const commentStr = eComment ? ` - (${eComment})` : '';
-                          const itemTypeLabel = specimenType === 'OOCYTE' ? 'Oocyte' : 'Embryo';
-                          const stageTypeLabel = specimenType === 'OOCYTE' ? 'Stage' : 'Grade';
-
-                          return (
-                            <div key={eIdx} className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
-                              <span className="font-mono font-bold text-slate-900">
-                                {(() => {
-                                  const prevCount = strawItems.slice(0, sIdx).reduce((sum, s) => sum + (s.embryoCount || 1), 0);
-                                  const globalIdx = prevCount + eIdx + 1;
-                                  const totalCount = strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0);
-                                  return totalCount > 1 ? `${itemTypeLabel} #${globalIdx} ${stageTypeLabel}: ` : `${itemTypeLabel} ${stageTypeLabel}: `;
-                                })()}{gradeStr}{fragStr}{commentStr}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Action Buttons */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">

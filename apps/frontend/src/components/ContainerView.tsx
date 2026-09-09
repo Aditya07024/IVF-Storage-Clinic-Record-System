@@ -1273,7 +1273,11 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Reg No. / Code</span>
+                        <strong className="text-amber-950 font-mono font-bold block">{viewingPatientModal.donorRegNo || 'N/A'}</strong>
+                      </div>
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Full Name</span>
                         <strong className="text-amber-950 font-bold block">{viewingPatientModal.donorName || 'N/A'}</strong>

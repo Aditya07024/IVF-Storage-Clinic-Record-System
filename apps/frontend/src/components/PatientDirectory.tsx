@@ -24,6 +24,15 @@ function parseVisoTubeLocation(code?: string) {
   return `Can ${canNum} • Canister ${canisterNum} • ${levelName} • Viso Tube - ${tubeColor}`;
 }
 
+export function formatAgeWithY(ageStr?: string | number | null): string {
+  if (!ageStr) return '';
+  const str = String(ageStr).trim();
+  if (!str) return '';
+  const clean = str.replace(/yrs?/gi, 'y').trim();
+  if (clean.toLowerCase().endsWith('y')) return clean.toLowerCase();
+  return `${clean}y`;
+}
+
 export const PatientDirectory: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -654,11 +663,16 @@ export const PatientDirectory: React.FC = () => {
                           </div>
                           <div className="min-w-0 space-y-0.5">
                             <div className="font-bold text-slate-900 text-sm whitespace-nowrap">
-                              {p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}
+                              {p.fullName} {p.patientAge ? `(${formatAgeWithY(p.patientAge)})` : ''}
                             </div>
+                            {(p.cycleType === 'DONOR_RECIPIENT' || p.donorName || p.donorRegNo || (p.vitrificationIndication && p.vitrificationIndication.toLowerCase().includes('donor'))) && (
+                              <div className="text-xs font-bold text-purple-900 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 inline-block whitespace-nowrap">
+                                D-R, Donor: <span className="text-purple-950 font-extrabold">{p.donorName || 'N/A'}</span> {p.donorAge ? `(${formatAgeWithY(p.donorAge)})` : ''}
+                              </div>
+                            )}
                             {p.partnerName && (
                               <div className="text-xs text-slate-600 font-medium whitespace-nowrap">
-                                Partner: <span className="font-semibold text-slate-800">{p.partnerName}</span> {p.partnerAge ? `(${p.partnerAge})` : ''}
+                                Partner: <span className="font-semibold text-slate-800">{p.partnerName}</span> {p.partnerAge ? `(${formatAgeWithY(p.partnerAge)})` : ''}
                               </div>
                             )}
                             {p.doctorName && (
@@ -738,7 +752,7 @@ export const PatientDirectory: React.FC = () => {
 
                             const isDonor = p.cycleType === 'DONOR_RECIPIENT';
                             const specimenLabel = p.specimenType === 'OOCYTE'
-                              ? (isDonor ? (totalEmbryos === 1 ? 'Donor Egg' : 'Donor Eggs') : (totalEmbryos === 1 ? 'Self Egg' : 'Self Eggs'))
+                              ? (totalEmbryos === 1 ? 'oocyte' : 'oocytes')
                               : p.specimenType === 'SPERM'
                               ? 'Sperm'
                               : (totalEmbryos === 1 ? 'Embryo' : 'Embryos');
@@ -1468,10 +1482,10 @@ export const PatientDirectory: React.FC = () => {
                     </span>
 
                     {/* Cycle Classification Badge */}
-                    {selectedPatient.cycleType === 'DONOR_RECIPIENT' || selectedPatient.donorName ? (
+                    {selectedPatient.cycleType === 'DONOR_RECIPIENT' || selectedPatient.donorName || selectedPatient.donorRegNo ? (
                       <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1">
                         <UserCheck className="w-3 h-3 text-purple-700" />
-                        <span>D-R Cycle {selectedPatient.donorName ? `(Donor: ${selectedPatient.donorName})` : ''}</span>
+                        <span>D-R, Donor: {selectedPatient.donorName || 'N/A'} {selectedPatient.donorAge ? `(${formatAgeWithY(selectedPatient.donorAge)})` : ''}</span>
                       </span>
                     ) : (
                       <span className="text-blue-950 bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-300 w-fit font-bold flex items-center gap-1">
@@ -1480,13 +1494,13 @@ export const PatientDirectory: React.FC = () => {
                     )}
 
                     {/* Vitrification Indication & Oocyte Stage Badges */}
-                    {selectedPatient.vitrificationIndication && (
+                    {selectedPatient.specimenType === 'OOCYTE' && selectedPatient.vitrificationIndication && (
                       <span className="text-teal-950 bg-teal-100 px-2.5 py-0.5 rounded-lg border border-teal-300 w-fit">
                         {selectedPatient.vitrificationIndication}
                       </span>
                     )}
 
-                    {selectedPatient.oocyteStage && (
+                    {selectedPatient.specimenType === 'OOCYTE' && selectedPatient.oocyteStage && (
                       <span className="text-indigo-950 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300 w-fit">
                         Oocyte Stage: {selectedPatient.oocyteStage}
                       </span>
@@ -1682,7 +1696,11 @@ export const PatientDirectory: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Reg No. / Code</span>
+                        <strong className="text-amber-950 font-mono font-bold block">{selectedPatient.donorRegNo || 'N/A'}</strong>
+                      </div>
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Full Name</span>
                         <strong className="text-amber-950 font-bold block">{selectedPatient.donorName || 'N/A'}</strong>

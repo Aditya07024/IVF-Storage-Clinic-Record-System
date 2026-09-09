@@ -49,6 +49,7 @@ model Patient {
   specimenType   String?       @default("EMBRYO")
   cycleType      String?       @default("SELF")
   donorName      String?
+  donorRegNo     String?
   donorAge       String?
   donorPhone     String?
   vitrificationIndication String?
@@ -146,6 +147,7 @@ model StorageBatch {
   specimenType   String?   @default("EMBRYO")
   cycleType      String?   @default("SELF")
   donorName      String?
+  donorRegNo     String?
   donorAge       String?
   donorPhone     String?
   vitrificationIndication String?
