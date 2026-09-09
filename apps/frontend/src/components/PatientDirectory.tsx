@@ -550,12 +550,12 @@ export const PatientDirectory: React.FC = () => {
           <table className="w-full text-left text-sm text-slate-800">
             <thead className="bg-slate-100 text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4">Registration ID</th>
-                <th className="px-6 py-4">Full Name</th>
-                <th className="px-6 py-4">Date of Egg Retrieval</th>
-                <th className="px-6 py-4">Mobile Phone</th>
-                <th className="px-6 py-4">Storage Batches</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-4 py-3.5">Registration ID</th>
+                <th className="px-4 py-3.5">Full Name</th>
+                <th className="px-4 py-3.5">Date of Egg Retrieval</th>
+                <th className="px-4 py-3.5">Mobile Phone</th>
+                <th className="px-4 py-3.5">Storage Batches</th>
+                <th className="px-4 py-3.5 text-right sticky right-0 bg-slate-100 z-10 shadow-2xs">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -563,7 +563,7 @@ export const PatientDirectory: React.FC = () => {
                 <>
                   {/* Real-time Loader Progress Notice Banner */}
                   <tr>
-                    <td colSpan={6} className="bg-emerald-50/70 px-6 py-3 border-b border-emerald-100">
+                    <td colSpan={6} className="bg-emerald-50/70 px-4 py-3 border-b border-emerald-100">
                       <div className="flex items-center justify-between text-xs font-mono">
                         <div className="flex items-center gap-2 text-emerald-900 font-bold">
                           <span className="w-3.5 h-3.5 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
@@ -579,23 +579,23 @@ export const PatientDirectory: React.FC = () => {
                   {/* 5 Shimmer Skeleton Rows */}
                   {[1, 2, 3, 4, 5].map((idx) => (
                     <tr key={idx} className="animate-pulse bg-white">
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         <div className="h-4 bg-slate-200 rounded-md w-24" />
                       </td>
-                      <td className="px-6 py-4 space-y-2">
+                      <td className="px-4 py-3.5 space-y-2">
                         <div className="h-4 bg-slate-200 rounded-md w-36" />
                         <div className="h-3 bg-slate-100 rounded-md w-24" />
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         <div className="h-6 bg-slate-100 rounded-xl w-32" />
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         <div className="h-4 bg-slate-200 rounded-md w-28" />
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         <div className="h-6 bg-slate-100 rounded-lg w-28" />
                       </td>
-                      <td className="px-6 py-4 flex justify-end gap-2">
+                      <td className="px-4 py-3.5 flex justify-end gap-2 sticky right-0 bg-white shadow-2xs z-10">
                         <div className="h-8 bg-slate-200 rounded-xl w-24" />
                       </td>
                     </tr>
@@ -603,7 +603,7 @@ export const PatientDirectory: React.FC = () => {
                 </>
               ) : patients.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
+                  <td colSpan={6} className="px-4 py-12 text-center text-slate-500 font-medium">
                     No matching patient records found. Click "Search" button above.
                   </td>
                 </tr>
@@ -620,11 +620,11 @@ export const PatientDirectory: React.FC = () => {
                     <tr
                       key={p.id}
                       onClick={() => handleSelectPatient(p.id)}
-                      className={`hover:bg-emerald-50/40 cursor-pointer transition-colors relative ${
+                      className={`hover:bg-emerald-50/40 cursor-pointer transition-colors relative group ${
                         isOpeningDetail ? 'bg-emerald-50/80' : ''
                       }`}
                     >
-                      <td className="px-6 py-4 font-mono font-bold text-emerald-700 whitespace-nowrap">
+                      <td className="px-4 py-3.5 font-mono font-bold text-emerald-700 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           {isOpeningDetail && (
                             <span className="w-3.5 h-3.5 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
@@ -632,7 +632,7 @@ export const PatientDirectory: React.FC = () => {
                           <span>{p.patientId}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center -space-x-2 shrink-0">
                             {p.photoUrl && (
@@ -675,15 +675,15 @@ export const PatientDirectory: React.FC = () => {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-xl text-xs font-bold font-mono border inline-block ${isDuplicateName ? 'bg-amber-100 text-amber-950 border-amber-400' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
                           {eggRetrievalDateStr}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-slate-700 font-mono text-xs font-semibold whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-slate-700 font-mono text-xs font-semibold whitespace-nowrap">
                         {formatPhoneNumber(p.phone)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5">
                         {(() => {
                           const activeBatches = p.batches?.filter((b: any) =>
                             b.straws?.some((s: any) => s.status === 'OCCUPIED')
@@ -697,29 +697,39 @@ export const PatientDirectory: React.FC = () => {
                               freezingDatesSet.add(formatDateDDMMYYYY(p.freezingDate));
                             }
 
+                            const stageCounts: Record<string, number> = {};
+
                             activeBatches.forEach((batch: any) => {
                               const fDate = batch.freezingDate || batch.storageDate;
                               if (fDate) {
                                 freezingDatesSet.add(formatDateDDMMYYYY(fDate));
                               }
                               const occupied = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
-                              activeStraws.push(...occupied.map((s: any) => ({
-                                ...s,
-                                stage: s.stage || batch.embryoStage || 'Day 5'
-                              })));
+                              occupied.forEach((s: any) => {
+                                activeStraws.push({
+                                  ...s,
+                                  stage: s.stage || batch.oocyteStage || batch.embryoStage || (p.specimenType === 'OOCYTE' ? 'MII' : 'Day 5'),
+                                });
+
+                                if (s.embryos && s.embryos.length > 0) {
+                                  s.embryos.forEach((emb: any) => {
+                                    if (emb.status === 'FROZEN') {
+                                      const stg = emb.grade || s.grade || batch.oocyteStage || batch.embryoStage || (p.specimenType === 'OOCYTE' ? 'MII' : 'Day 5');
+                                      const cleanStg = stg.split('(')[0].trim().replace(/\bDay\s+(\d+)/gi, 'Day$1');
+                                      stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + 1;
+                                    }
+                                  });
+                                } else {
+                                  const stg = s.grade || batch.oocyteStage || batch.embryoStage || (p.specimenType === 'OOCYTE' ? 'MII' : 'Day 5');
+                                  const cleanStg = stg.split('(')[0].trim().replace(/\bDay\s+(\d+)/gi, 'Day$1');
+                                  const count = s.embryoCount || 1;
+                                  stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + count;
+                                }
+                              });
                             });
 
                             const totalStraws = activeStraws.length;
                             const totalEmbryos = activeStraws.reduce((sum, s) => sum + (s.embryoCount || 1), 0);
-
-                            // Stage breakdown calculation
-                            const stageCounts: Record<string, number> = {};
-                            activeStraws.forEach((s) => {
-                              const rawStage = s.stage || 'Day 5';
-                              const cleanStage = rawStage.split('(')[0].trim().replace(/\bDay\s+(\d+)/gi, 'Day$1');
-                              const count = s.embryoCount || 1;
-                              stageCounts[cleanStage] = (stageCounts[cleanStage] || 0) + count;
-                            });
 
                             const stageBreakdown = Object.entries(stageCounts)
                               .sort(([a], [b]) => a.localeCompare(b))
@@ -766,7 +776,7 @@ export const PatientDirectory: React.FC = () => {
                           );
                         })()}
                       </td>
-                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap sticky right-0 bg-white group-hover:bg-emerald-50/40 shadow-2xs z-10">
                         <div className="flex items-center justify-end gap-2 shrink-0">
                           {/* Direct 1-Click Thaw Button */}
                           {(() => {
@@ -1831,9 +1841,13 @@ export const PatientDirectory: React.FC = () => {
                           const gradeStr = eGrade ? eGrade : 'N/A';
                           const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
                           const commentStr = eComment ? ` - (${eComment})` : '';
+                          const prevCount = activeStraws.slice(0, sIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
+                          const startNum = prevCount + 1;
+                          const endNum = prevCount + embryoCount;
+                          const numRangeStr = embryoCount === 1 ? `#${startNum}` : `#${startNum}–#${endNum}`;
                           const countLabel = isOocyte
-                            ? (embryoCount === 1 ? '1 oocyte' : `${embryoCount} oocytes`)
-                            : (embryoCount === 1 ? '1 embryo' : `${embryoCount} embryos`);
+                            ? (embryoCount === 1 ? `1 oocyte (${numRangeStr})` : `${embryoCount} oocytes (${numRangeStr})`)
+                            : (embryoCount === 1 ? `1 embryo (${numRangeStr})` : `${embryoCount} embryos (${numRangeStr})`);
 
                           return (
                             <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
