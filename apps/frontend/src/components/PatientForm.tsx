@@ -175,14 +175,15 @@ export function getStrawStageSummary(item: any, specimenType?: string): string {
   }
 }
 
-export function getBatchSummaryText(strawItems: any[], specimenType?: string): string {
+export function getBatchSummaryText(strawItems: any[], specimenType?: string, cycleType?: string): string {
   if (!strawItems || strawItems.length === 0) return '';
   const isOocyte = specimenType === 'OOCYTE';
+  const isDonor = cycleType === 'DONOR_RECIPIENT';
   const totalCount = strawItems.reduce((sum, s) => sum + (s.embryoCount || (s.embryos ? s.embryos.length : 1)), 0);
   const countsPerStraw = strawItems.map((s) => s.embryoCount || (s.embryos ? s.embryos.length : 1));
   const countsStr = countsPerStraw.join(' + ');
   const unitLabel = isOocyte
-    ? totalCount === 1 ? 'oocyte' : 'oocytes'
+    ? (isDonor ? (totalCount === 1 ? 'Donor Egg' : 'Donor Eggs') : (totalCount === 1 ? 'Self Egg' : 'Self Eggs'))
     : totalCount === 1 ? 'embryo' : 'embryos';
 
   if (isOocyte) {
@@ -3054,7 +3055,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                             Straw #{strawDisplayNum}
                           </span>
                           <span className="text-slate-800 font-bold text-xs font-mono bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                            {count} {specimenType === 'OOCYTE' ? (count === 1 ? 'Oocyte' : 'Oocytes') : (count === 1 ? 'Embryo' : 'Embryos')} ({stageSummary})
+                            {(() => {
+                              const isDonorEgg = specimenType === 'OOCYTE' && cycleType === 'DONOR_RECIPIENT';
+                              const label = specimenType === 'OOCYTE'
+                                ? (isDonorEgg ? (count === 1 ? 'Donor Egg' : 'Donor Eggs') : (count === 1 ? 'Self Egg' : 'Self Eggs'))
+                                : (count === 1 ? 'Embryo' : 'Embryos');
+                              return `${count} ${label} (${stageSummary})`;
+                            })()}
                           </span>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] border ${badgeClass}`}>{item.color}</span>
                         </div>

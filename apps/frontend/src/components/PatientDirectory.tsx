@@ -736,8 +736,9 @@ export const PatientDirectory: React.FC = () => {
                               .map(([stage, count]) => `${count} ${stage}`)
                               .join(' + ');
 
+                            const isDonor = p.cycleType === 'DONOR_RECIPIENT';
                             const specimenLabel = p.specimenType === 'OOCYTE'
-                              ? (totalEmbryos === 1 ? 'Egg' : 'Eggs')
+                              ? (isDonor ? (totalEmbryos === 1 ? 'Donor Egg' : 'Donor Eggs') : (totalEmbryos === 1 ? 'Self Egg' : 'Self Eggs'))
                               : p.specimenType === 'SPERM'
                               ? 'Sperm'
                               : (totalEmbryos === 1 ? 'Embryo' : 'Embryos');
@@ -1845,8 +1846,11 @@ export const PatientDirectory: React.FC = () => {
                           const startNum = prevCount + 1;
                           const endNum = prevCount + embryoCount;
                           const numRangeStr = embryoCount === 1 ? `#${startNum}` : `#${startNum}–#${endNum}`;
+                          const isDonorEgg = isOocyte && (selectedPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
+                          const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
+                          const eggTypeNamePlural = isDonorEgg ? 'donor eggs' : 'self eggs';
                           const countLabel = isOocyte
-                            ? (embryoCount === 1 ? `1 oocyte (${numRangeStr})` : `${embryoCount} oocytes (${numRangeStr})`)
+                            ? (embryoCount === 1 ? `1 ${eggTypeName} (${numRangeStr})` : `${embryoCount} ${eggTypeNamePlural} (${numRangeStr})`)
                             : (embryoCount === 1 ? `1 embryo (${numRangeStr})` : `${embryoCount} embryos (${numRangeStr})`);
 
                           return (

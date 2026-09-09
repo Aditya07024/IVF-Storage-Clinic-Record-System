@@ -486,21 +486,25 @@ export class DocumentService {
           doc.fillColor('#0f172a').font('Helvetica-Bold').text('Date of Thaw: ', 312, reportBoxY + 35, { continued: true });
           doc.font('Helvetica-Bold').fillColor('#dc2626').text(latestThawDateStr);
         } else {
+          const isOocyteDoc = patient.specimenType === 'OOCYTE';
+          const isDonorDoc = patient.cycleType === 'DONOR_RECIPIENT';
+          const eggLabel = isDonorDoc ? 'Donor Eggs' : 'Self Eggs';
+
           // Left Column
-          doc.font('Helvetica-Bold').text('Number: ', 44, reportBoxY + 9, { continued: true });
+          doc.font('Helvetica-Bold').text(isOocyteDoc ? `${eggLabel} Count: ` : 'Number: ', 44, reportBoxY + 9, { continued: true });
           doc.font('Helvetica').fillColor('#0369a1').text(numberStr);
 
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Developmental Stage: ', 44, reportBoxY + 35, { continued: true });
-          doc.font('Helvetica-Bold').fillColor('#047857').text(batchStage);
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text(isOocyteDoc ? 'Oocyte Stage: ' : 'Developmental Stage: ', 44, reportBoxY + 35, { continued: true });
+          doc.font('Helvetica-Bold').fillColor('#047857').text(isOocyteDoc ? (patient.oocyteStage || batchStage || 'MII') : batchStage);
 
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Embryo Score*: ', 44, reportBoxY + 61, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text(isOocyteDoc ? 'Stage Breakdown*: ' : 'Embryo Score*: ', 44, reportBoxY + 61, { continued: true });
           doc.font('Helvetica').fillColor('#047857').text(formattedScores);
 
           // Right Column
           doc.fillColor('#0f172a').font('Helvetica-Bold').text('Freezing Method: ', 312, reportBoxY + 9, { continued: true });
           doc.font('Helvetica').fillColor('#0284c7').text('Vitrification');
 
-          doc.fillColor('#0f172a').font('Helvetica-Bold').text('Embryos frozen till: ', 312, reportBoxY + 35, { continued: true });
+          doc.fillColor('#0f172a').font('Helvetica-Bold').text(isOocyteDoc ? `${eggLabel} frozen till: ` : 'Embryos frozen till: ', 312, reportBoxY + 35, { continued: true });
           doc.font('Helvetica-Bold').fillColor('#047857').text(batchExpiryStr);
         }
 
