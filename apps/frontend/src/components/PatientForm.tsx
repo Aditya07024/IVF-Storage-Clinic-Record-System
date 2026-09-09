@@ -2234,7 +2234,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                             const currentGradeVal = (item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '') || (specimenType === 'OOCYTE' ? 'MII' : '');
 
                             return (
-                              <div key={eIdx} className="bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center">
+                              <div key={eIdx} className={`bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-1 ${specimenType === 'OOCYTE' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-2.5 items-center`}>
                                 <div>
                                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                                     {specimenType === 'OOCYTE' ? (item.embryoCount > 1 ? `Oocyte #${eIdx + 1} Stage` : 'Oocyte Stage') : (item.embryoCount > 1 ? `Embryo #${eIdx + 1} Grade` : 'Grade')}
@@ -2312,23 +2312,25 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                                   )}
                                 </div>
 
-                                <div>
-                                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    {specimenType === 'OOCYTE' ? 'Straw Notes' : 'Comment'}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={(item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '')}
-                                    onChange={(e) => {
-                                      const next = [...strawItems];
-                                      (next[idx] as any)[eCommentKey] = e.target.value;
-                                      if (eIdx === 0) next[idx].comments = e.target.value;
-                                      setStrawItems(next);
-                                    }}
-                                    placeholder="Specific remarks..."
-                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 text-xs focus:outline-none focus:border-emerald-500"
-                                  />
-                                </div>
+                                {specimenType !== 'OOCYTE' && (
+                                  <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                      Comment
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={(item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '')}
+                                      onChange={(e) => {
+                                        const next = [...strawItems];
+                                        (next[idx] as any)[eCommentKey] = e.target.value;
+                                        if (eIdx === 0) next[idx].comments = e.target.value;
+                                        setStrawItems(next);
+                                      }}
+                                      placeholder="Specific remarks..."
+                                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 text-xs focus:outline-none focus:border-emerald-500"
+                                    />
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
