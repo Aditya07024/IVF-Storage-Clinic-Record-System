@@ -1429,13 +1429,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => {
-                        const newCycle = item.id as any;
-                        setCycleType(newCycle);
-                        if (newCycle === 'DONOR_RECIPIENT' && specimenType === 'OOCYTE') {
-                          setVitrificationIndication('Supernumerary donor egg freezing');
-                        }
-                      }}
+                      onClick={() => setCycleType(item.id as any)}
                       className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start justify-center gap-0.5 text-left cursor-pointer ${
                         cycleType === item.id
                           ? 'bg-blue-600 text-white border-blue-700 shadow-xs scale-102'
@@ -1686,184 +1680,208 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
-            {/* PATIENT DEMOGRAPHICS */}
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Patient Full Name <span className="text-rose-600 font-bold">*</span>
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(capitalizeWords(e.target.value))}
-                placeholder="e.g. Sunita Verma"
-                required
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
-              />
-            </div>
-
-            <div className="min-w-0 max-w-full">
-              <DateInputDDMMYYYY
-                label="Patient Date of Birth (DOB)"
-                value={dob}
-                onChange={(val) => {
-                  setDob(val);
-                  if (val) {
-                    setPatientAge(calculateAgeFromDob(val));
-                  }
-                }}
-              />
-            </div>
-
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Patient Age
-              </label>
-              <input
-                type="text"
-                value={patientAge}
-                onChange={(e) => setPatientAge(e.target.value)}
-                placeholder="e.g. 36 Yrs"
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
-              />
-            </div>
-
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Patient Mobile Phone <span className="text-rose-600 font-bold">*</span>
-              </label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g. +91 98260 78901"
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
-              />
-            </div>
-
-            <div className="min-w-0 max-w-full">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                  Patient Email Address
-                </label>
-                {isEmailVerified ? (
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    Verified Email
-                  </span>
-                ) : email ? (
-                  <button
-                    type="button"
-                    onClick={handleSendEmailOtp}
-                    disabled={sendingOtp}
-                    className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-300 px-2.5 py-0.5 rounded-full transition-all active:scale-95 cursor-pointer"
-                  >
-                    {sendingOtp ? 'Sending OTP...' : 'Verify Email OTP'}
-                  </button>
-                ) : null}
+            {/* PATIENT DEMOGRAPHICS CONTAINER */}
+            <div className="p-4 bg-emerald-50/40 border border-emerald-200/80 rounded-2xl space-y-4 min-w-0 max-w-full">
+              <div className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider border-b border-emerald-200/80 pb-2 flex items-center gap-1.5">
+                <User className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Patient Demographics (Wife / Female Patient)</span>
               </div>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setIsEmailVerified(false);
-                }}
-                placeholder="e.g. patient@example.com"
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
-              />
 
-              {/* OTP Code Entry Drawer */}
-              {showEmailOtpInput && !isEmailVerified && (
-                <div className="mt-2.5 p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
-                  <div className="text-xs font-bold text-blue-900">Enter 6-Digit Email OTP Code</div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={emailOtpCode}
-                      onChange={(e) => setEmailOtpCode(e.target.value)}
-                      placeholder="e.g. 123456"
-                      className="w-32 h-9 bg-white border border-blue-300 rounded-lg px-3 text-xs font-mono font-bold text-slate-900 text-center tracking-widest"
-                    />
+              {/* Patient Name */}
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Patient Full Name <span className="text-rose-600 font-bold">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(capitalizeWords(e.target.value))}
+                  placeholder="e.g. Sunita Verma"
+                  required
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 font-bold block"
+                />
+              </div>
+
+              {/* Patient DOB */}
+              <div className="min-w-0 max-w-full">
+                <DateInputDDMMYYYY
+                  label="Patient Date of Birth (DOB)"
+                  value={dob}
+                  onChange={(val) => {
+                    setDob(val);
+                    if (val) {
+                      setPatientAge(calculateAgeFromDob(val));
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Patient Age */}
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Patient Age
+                </label>
+                <input
+                  type="text"
+                  value={patientAge}
+                  onChange={(e) => setPatientAge(e.target.value)}
+                  placeholder="e.g. 36 Yrs"
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
+                />
+              </div>
+
+              {/* Patient Phone */}
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Patient Mobile Phone <span className="text-rose-600 font-bold">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. +91 98260 78901"
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+                />
+              </div>
+
+              {/* Patient Email */}
+              <div className="min-w-0 max-w-full">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    Patient Email Address
+                  </label>
+                  {isEmailVerified ? (
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      Verified Email
+                    </span>
+                  ) : email ? (
                     <button
                       type="button"
-                      onClick={handleVerifyEmailOtp}
-                      disabled={verifyingOtp}
-                      className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs transition-all active:scale-95 cursor-pointer"
+                      onClick={handleSendEmailOtp}
+                      disabled={sendingOtp}
+                      className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-300 px-2.5 py-0.5 rounded-full transition-all active:scale-95 cursor-pointer"
                     >
-                      {verifyingOtp ? 'Verifying...' : 'Submit OTP'}
+                      {sendingOtp ? 'Sending OTP...' : 'Verify Email OTP'}
                     </button>
-                  </div>
-                  {otpError && <div className="text-[11px] font-bold text-rose-600">{otpError}</div>}
-                  {otpSuccessMsg && <div className="text-[11px] font-bold text-emerald-700">{otpSuccessMsg}</div>}
+                  ) : null}
                 </div>
-              )}
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setIsEmailVerified(false);
+                  }}
+                  placeholder="e.g. patient@example.com"
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+                />
+
+                {/* OTP Code Entry Drawer */}
+                {showEmailOtpInput && !isEmailVerified && (
+                  <div className="mt-2.5 p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
+                    <div className="text-xs font-bold text-blue-900">Enter 6-Digit Email OTP Code</div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={emailOtpCode}
+                        onChange={(e) => setEmailOtpCode(e.target.value)}
+                        placeholder="e.g. 123456"
+                        className="w-32 h-9 bg-white border border-blue-300 rounded-lg px-3 text-xs font-mono font-bold text-slate-900 text-center tracking-widest"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyEmailOtp}
+                        disabled={verifyingOtp}
+                        className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs transition-all active:scale-95 cursor-pointer"
+                      >
+                        {verifyingOtp ? 'Verifying...' : 'Submit OTP'}
+                      </button>
+                    </div>
+                    {otpError && <div className="text-[11px] font-bold text-rose-600">{otpError}</div>}
+                    {otpSuccessMsg && <div className="text-[11px] font-bold text-emerald-700">{otpSuccessMsg}</div>}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* PARTNER DEMOGRAPHICS */}
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Partner Name
-              </label>
-              <input
-                type="text"
-                value={partnerName}
-                onChange={(e) => setPartnerName(capitalizeWords(e.target.value))}
-                placeholder="e.g. Deepak Verma"
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block font-medium"
-              />
-            </div>
+            {/* PARTNER DEMOGRAPHICS CONTAINER */}
+            <div className="p-4 bg-blue-50/40 border border-blue-200/80 rounded-2xl space-y-4 min-w-0 max-w-full">
+              <div className="text-xs font-extrabold text-blue-950 uppercase tracking-wider border-b border-blue-200/80 pb-2 flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Partner Demographics (Husband / Male Partner)</span>
+              </div>
 
-            <div className="min-w-0 max-w-full">
-              <DateInputDDMMYYYY
-                label="Partner Date of Birth (DOB)"
-                value={partnerDob}
-                onChange={(val) => {
-                  setPartnerDob(val);
-                  if (val) {
-                    setPartnerAge(calculateAgeFromDob(val));
-                  }
-                }}
-              />
-            </div>
+              {/* Partner Name */}
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Partner Name
+                </label>
+                <input
+                  type="text"
+                  value={partnerName}
+                  onChange={(e) => setPartnerName(capitalizeWords(e.target.value))}
+                  placeholder="e.g. Deepak Verma"
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 block font-medium"
+                />
+              </div>
 
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Partner Age
-              </label>
-              <input
-                type="text"
-                value={partnerAge}
-                onChange={(e) => setPartnerAge(e.target.value)}
-                placeholder="e.g. 36 Yrs"
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
-              />
-            </div>
+              {/* Partner DOB */}
+              <div className="min-w-0 max-w-full">
+                <DateInputDDMMYYYY
+                  label="Partner Date of Birth (DOB)"
+                  value={partnerDob}
+                  onChange={(val) => {
+                    setPartnerDob(val);
+                    if (val) {
+                      setPartnerAge(calculateAgeFromDob(val));
+                    }
+                  }}
+                />
+              </div>
 
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Partner Mobile Phone
-              </label>
-              <input
-                type="text"
-                value={partnerPhone}
-                onChange={(e) => setPartnerPhone(e.target.value)}
-                placeholder="e.g. +91 98260 12345"
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
-              />
-            </div>
+              {/* Partner Age */}
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Partner Age
+                </label>
+                <input
+                  type="text"
+                  value={partnerAge}
+                  onChange={(e) => setPartnerAge(e.target.value)}
+                  placeholder="e.g. 36 Yrs"
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
+                />
+              </div>
 
-            <div className="min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Partner Email Address
-              </label>
-              <input
-                type="email"
-                value={partnerEmail}
-                onChange={(e) => setPartnerEmail(e.target.value)}
-                placeholder="e.g. partner@example.com"
-                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
-              />
+              {/* Partner Phone */}
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Partner Mobile Phone
+                </label>
+                <input
+                  type="text"
+                  value={partnerPhone}
+                  onChange={(e) => setPartnerPhone(e.target.value)}
+                  placeholder="e.g. +91 98260 12345"
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+                />
+              </div>
+
+              {/* Partner Email */}
+              <div className="min-w-0 max-w-full">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Partner Email Address
+                </label>
+                <input
+                  type="email"
+                  value={partnerEmail}
+                  onChange={(e) => setPartnerEmail(e.target.value)}
+                  placeholder="e.g. partner@example.com"
+                  className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
+                />
+              </div>
             </div>
 
             {/* CLINICAL PHYSICIAN */}
