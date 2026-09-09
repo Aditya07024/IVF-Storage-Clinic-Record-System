@@ -144,6 +144,81 @@ export function getStrawColorBadgeClass(colorName?: string): string {
   }
 }
 
+export function getStrawStageSummary(item: any, specimenType?: string): string {
+  if (!item) return '';
+  const count = item.embryoCount || (item.embryos ? item.embryos.length : 1);
+  const isOocyte = specimenType === 'OOCYTE' || item.specimenType === 'OOCYTE';
+
+  if (isOocyte) {
+    const stageCounts: Record<string, number> = {};
+    for (let i = 0; i < count; i++) {
+      const eGradeKey = `grade${i + 1}`;
+      let stg = (item[eGradeKey] || (i === 0 ? (item.grade || item.embryoStage || item.stage) : '') || 'MII').toString().trim().toUpperCase();
+      if (!stg || stg === 'UNDEFINED' || stg === 'NULL') stg = 'MII';
+      stageCounts[stg] = (stageCounts[stg] || 0) + 1;
+    }
+    const parts: string[] = [];
+    ['MII', 'MI', 'GV'].forEach((stg) => {
+      if (stageCounts[stg]) {
+        parts.push(`${stageCounts[stg]} ${stg}`);
+      }
+    });
+    Object.keys(stageCounts).forEach((stg) => {
+      if (!['MII', 'MI', 'GV'].includes(stg)) {
+        parts.push(`${stageCounts[stg]} ${stg}`);
+      }
+    });
+    return parts.length > 0 ? parts.join(' + ') : `${count} MII`;
+  } else {
+    const grades: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const eGradeKey = `grade${i + 1}`;
+      const g = (item[eGradeKey] || (i === 0 ? item.grade : '') || '').toString().trim().toUpperCase();
+      if (g) grades.push(g);
+    }
+    return grades.length > 0 ? grades.join(', ') : (item.grade || 'N/A');
+  }
+}
+
+export function getBatchSummaryText(strawItems: any[], specimenType?: string): string {
+  if (!strawItems || strawItems.length === 0) return '';
+  const isOocyte = specimenType === 'OOCYTE';
+  const totalCount = strawItems.reduce((sum, s) => sum + (s.embryoCount || (s.embryos ? s.embryos.length : 1)), 0);
+  const countsPerStraw = strawItems.map((s) => s.embryoCount || (s.embryos ? s.embryos.length : 1));
+  const countsStr = countsPerStraw.join(' + ');
+  const unitLabel = isOocyte
+    ? totalCount === 1 ? 'oocyte' : 'oocytes'
+    : totalCount === 1 ? 'embryo' : 'embryos';
+
+  if (isOocyte) {
+    const totalStages: Record<string, number> = {};
+    strawItems.forEach((item) => {
+      const cnt = item.embryoCount || (item.embryos ? item.embryos.length : 1);
+      for (let i = 0; i < cnt; i++) {
+        const eGradeKey = `grade${i + 1}`;
+        let stg = (item[eGradeKey] || (i === 0 ? (item.grade || item.embryoStage || item.stage) : '') || 'MII').toString().trim().toUpperCase();
+        if (!stg || stg === 'UNDEFINED' || stg === 'NULL') stg = 'MII';
+        totalStages[stg] = (totalStages[stg] || 0) + 1;
+      }
+    });
+    const stageParts: string[] = [];
+    ['MII', 'MI', 'GV'].forEach((stg) => {
+      if (totalStages[stg]) {
+        stageParts.push(`${totalStages[stg]} ${stg}`);
+      }
+    });
+    Object.keys(totalStages).forEach((stg) => {
+      if (!['MII', 'MI', 'GV'].includes(stg)) {
+        stageParts.push(`${totalStages[stg]} ${stg}`);
+      }
+    });
+    const stageSummary = stageParts.length > 0 ? ` (${stageParts.join(', ')})` : '';
+    return `${totalCount} ${unitLabel} frozen in ${strawItems.length} straw${strawItems.length > 1 ? 's' : ''} (${countsStr})${stageSummary}`;
+  } else {
+    return `${totalCount} ${unitLabel} frozen in ${strawItems.length} straw${strawItems.length > 1 ? 's' : ''} (${countsStr})`;
+  }
+}
+
 function parseLocationCode(code: string) {
   if (!code) return { raw: '', formatted: '' };
   const match = code.match(/CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)/i);
@@ -478,7 +553,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [comments, setComments] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [partnerPhotoFile, setPartnerPhotoFile] = useState<File | null>(null);
+  const [partnerPhotoPreviewUrl, setPartnerPhotoPreviewUrl] = useState<string | null>(null);
   const [cropModalFile, setCropModalFile] = useState<File | null>(null);
+  const [croppingTarget, setCroppingTarget] = useState<'patient' | 'partner'>('patient');
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -562,6 +640,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     setDonorPhone(pt.donorPhone || '');
     setVitrificationIndication(pt.vitrificationIndication || 'Social egg freezing');
     setOocyteStage(pt.oocyteStage || 'MII');
+    if (pt.photoUrl) setPhotoPreviewUrl(pt.photoUrl);
+    if (pt.partnerPhotoUrl) setPartnerPhotoPreviewUrl(pt.partnerPhotoUrl);
   };
 
   // Select Existing Patient & Auto-Fill Fields
@@ -840,6 +920,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       thawDate,
       comments: comments.trim(),
       photoFile,
+      partnerPhotoFile,
       assignStorageEnabled,
       selectedVisoTubeId,
       selectedLocationCode,
@@ -860,6 +941,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     // Reset photo state
     setPhotoFile(null);
     setPhotoPreviewUrl(null);
+    setPartnerPhotoFile(null);
+    setPartnerPhotoPreviewUrl(null);
 
     if (formMode === 'new') {
       handleClearSelectedExisting();
@@ -939,6 +1022,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           const formData = new FormData();
           formData.append('photo', payload.photoFile);
           await apiRequest(`/api/patients/${targetPatient.id}/photo`, {
+            method: 'POST',
+            body: formData,
+          });
+        }
+
+        if (payload.partnerPhotoFile && targetPatient) {
+          const formData = new FormData();
+          formData.append('photo', payload.partnerPhotoFile);
+          formData.append('type', 'partner');
+          await apiRequest(`/api/patients/${targetPatient.id}/partner-photo`, {
             method: 'POST',
             body: formData,
           });
@@ -1412,108 +1505,155 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2">
                   <span className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5 uppercase tracking-wider">
                     <Sparkles className="w-4 h-4 text-emerald-600" />
-                    <span>Indication for Oocyte Vitrification & Stage</span>
+                    <span>Indication for Oocyte Vitrification</span>
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-900 uppercase tracking-wider mb-1">
-                      Indication for Oocyte Vitrification
-                    </label>
-                    <select
-                      value={vitrificationIndication}
-                      onChange={(e) => setVitrificationIndication(e.target.value)}
-                      className="w-full h-10 bg-white border border-emerald-300 rounded-lg px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="Social egg freezing">1. Social egg freezing</option>
-                      <option value="Onco fertility preservation">2. Onco fertility preservation</option>
-                      <option value="Emergency egg freezing">3. Emergency egg freezing</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-900 uppercase tracking-wider mb-1">
-                      Stage of Oocytes
-                    </label>
-                    <div className="grid grid-cols-3 gap-1.5 h-10">
-                      {['MII', 'MI', 'GV'].map((stage) => (
-                        <button
-                          key={stage}
-                          type="button"
-                          onClick={() => setOocyteStage(stage)}
-                          className={`h-full rounded-lg text-xs font-bold transition-all border flex items-center justify-center cursor-pointer ${
-                            oocyteStage === stage
-                              ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs font-extrabold'
-                              : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-300'
-                          }`}
-                        >
-                          {stage}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-emerald-900 uppercase tracking-wider mb-1">
+                    Indication for Oocyte Vitrification
+                  </label>
+                  <select
+                    value={vitrificationIndication}
+                    onChange={(e) => setVitrificationIndication(e.target.value)}
+                    className="w-full h-10 bg-white border border-emerald-300 rounded-lg px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="Social egg freezing">1. Social egg freezing</option>
+                    <option value="Onco fertility preservation">2. Onco fertility preservation</option>
+                    <option value="Emergency egg freezing">3. Emergency egg freezing</option>
+                  </select>
                 </div>
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-full">
-            {/* PATIENT PHOTO UPLOADER BOX */}
+            {/* DUAL PATIENT & PARTNER PHOTO UPLOADER BOXES */}
             {!selectedExistingPatient && (
-              <div className="md:col-span-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
-                <div
-                  className="relative group shrink-0 cursor-pointer"
-                  onClick={() => {
-                    if (photoFile) {
-                      setCropModalFile(photoFile);
-                    } else if (photoPreviewUrl) {
-                      fetch(photoPreviewUrl)
-                        .then((res) => res.blob())
-                        .then((blob) => {
-                          const file = new File([blob], 'patient-photo.jpg', { type: 'image/jpeg' });
-                          setCropModalFile(file);
-                        })
-                        .catch((err) => console.error('Error fetching photo for crop:', err));
-                    } else {
-                      document.getElementById('patient-form-photo-input')?.click();
-                    }
-                  }}
-                  title="Click/Tap photo to Crop, Rotate, or Change Image"
-                >
-                  {photoPreviewUrl ? (
-                    <div className="relative">
-                      <img
-                        src={photoPreviewUrl}
-                        alt="Patient Preview"
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md transition-transform active:scale-95"
-                      />
-                      <div className="absolute inset-0 bg-slate-950/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera className="w-5 h-5 text-white" />
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                {/* WIFE / FEMALE PATIENT PHOTO */}
+                <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-3 shadow-2xs">
+                  <div
+                    className="relative group shrink-0 cursor-pointer"
+                    onClick={() => {
+                      setCroppingTarget('patient');
+                      if (photoFile) {
+                        setCropModalFile(photoFile);
+                      } else if (photoPreviewUrl) {
+                        fetch(photoPreviewUrl)
+                          .then((res) => res.blob())
+                          .then((blob) => {
+                            const file = new File([blob], 'patient-photo.jpg', { type: 'image/jpeg' });
+                            setCropModalFile(file);
+                          })
+                          .catch((err) => console.error('Error fetching photo for crop:', err));
+                      } else {
+                        document.getElementById('patient-form-photo-input')?.click();
+                      }
+                    }}
+                    title="Click/Tap photo to Crop, Rotate, or Change Wife Photo"
+                  >
+                    {photoPreviewUrl ? (
+                      <div className="relative">
+                        <img
+                          src={photoPreviewUrl}
+                          alt="Wife / Patient Preview"
+                          className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover border-2 border-emerald-500 shadow-md transition-transform active:scale-95"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Camera className="w-4 h-4 text-white" />
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-center p-1 text-slate-400 font-bold text-xs hover:border-emerald-500 hover:text-emerald-600 transition-all active:scale-95 shadow-2xs">
-                      <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 shrink-0" />
-                      <span className="text-[9px] text-slate-500 font-semibold text-center leading-tight mt-0.5 w-full block truncate sm:whitespace-normal">Tap for Photo</span>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-50 border-2 border-dashed border-emerald-300 flex flex-col items-center justify-center text-center p-1 text-slate-400 font-bold text-xs hover:border-emerald-500 hover:text-emerald-600 transition-all active:scale-95 shadow-2xs">
+                        <Camera className="w-5 h-5 text-emerald-600 shrink-0" />
+                        <span className="text-[9px] text-emerald-800 font-bold text-center leading-tight mt-0.5 w-full block truncate">Wife Photo</span>
+                      </div>
+                    )}
 
-                  <input
-                    id="patient-form-photo-input"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePhotoSelect}
-                  />
+                    <input
+                      id="patient-form-photo-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        setCroppingTarget('patient');
+                        handlePhotoSelect(e);
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="font-extrabold text-emerald-950 text-xs flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Wife / Patient Photo</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                      {photoPreviewUrl ? 'Tap to edit/rotate photo' : 'Select or capture Wife photo'}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex-1 space-y-0.5 text-center sm:text-left min-w-0">
-                  <div className="font-bold text-slate-800 text-xs sm:text-sm flex items-center justify-center sm:justify-start gap-1.5">
-                    <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Patient Profile Photo</span>
+                {/* HUSBAND / MALE PARTNER PHOTO */}
+                <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-3 shadow-2xs">
+                  <div
+                    className="relative group shrink-0 cursor-pointer"
+                    onClick={() => {
+                      setCroppingTarget('partner');
+                      if (partnerPhotoFile) {
+                        setCropModalFile(partnerPhotoFile);
+                      } else if (partnerPhotoPreviewUrl) {
+                        fetch(partnerPhotoPreviewUrl)
+                          .then((res) => res.blob())
+                          .then((blob) => {
+                            const file = new File([blob], 'partner-photo.jpg', { type: 'image/jpeg' });
+                            setCropModalFile(file);
+                          })
+                          .catch((err) => console.error('Error fetching partner photo for crop:', err));
+                      } else {
+                        document.getElementById('patient-form-partner-photo-input')?.click();
+                      }
+                    }}
+                    title="Click/Tap photo to Crop, Rotate, or Change Husband Photo"
+                  >
+                    {partnerPhotoPreviewUrl ? (
+                      <div className="relative">
+                        <img
+                          src={partnerPhotoPreviewUrl}
+                          alt="Husband / Partner Preview"
+                          className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover border-2 border-blue-500 shadow-md transition-transform active:scale-95"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Camera className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-50 border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-center p-1 text-slate-400 font-bold text-xs hover:border-blue-500 hover:text-blue-600 transition-all active:scale-95 shadow-2xs">
+                        <Camera className="w-5 h-5 text-blue-600 shrink-0" />
+                        <span className="text-[9px] text-blue-800 font-bold text-center leading-tight mt-0.5 w-full block truncate">Husband Photo</span>
+                      </div>
+                    )}
+
+                    <input
+                      id="patient-form-partner-photo-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        setCroppingTarget('partner');
+                        handlePhotoSelect(e);
+                      }}
+                    />
                   </div>
-                  <p className="text-xs text-slate-500 font-medium">
-                    {photoPreviewUrl ? 'Tap photo to crop 1:1, rotate 90°, or change image' : 'Tap photo icon to select or capture patient picture'}
-                  </p>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="font-extrabold text-blue-950 text-xs flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span>Husband / Partner Photo</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                      {partnerPhotoPreviewUrl ? 'Tap to edit/rotate photo' : 'Select or capture Husband photo'}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -1552,31 +1692,30 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0 max-w-full">
-              <div className="sm:col-span-2">
-                <DateInputDDMMYYYY
-                  label="Patient Date of Birth (DOB)"
-                  value={dob}
-                  onChange={(val) => {
-                    setDob(val);
-                    if (val) {
-                      setPatientAge(calculateAgeFromDob(val));
-                    }
-                  }}
-                />
-              </div>
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Patient Age
-                </label>
-                <input
-                  type="text"
-                  value={patientAge}
-                  onChange={(e) => setPatientAge(e.target.value)}
-                  placeholder="e.g. 36 Yrs"
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
-                />
-              </div>
+            <div className="min-w-0 max-w-full">
+              <DateInputDDMMYYYY
+                label="Patient Date of Birth (DOB)"
+                value={dob}
+                onChange={(val) => {
+                  setDob(val);
+                  if (val) {
+                    setPatientAge(calculateAgeFromDob(val));
+                  }
+                }}
+              />
+            </div>
+
+            <div className="min-w-0 max-w-full">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Patient Age
+              </label>
+              <input
+                type="text"
+                value={patientAge}
+                onChange={(e) => setPatientAge(e.target.value)}
+                placeholder="e.g. 36 Yrs"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
+              />
             </div>
 
             <div className="min-w-0 max-w-full">
@@ -1666,31 +1805,30 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0 max-w-full">
-              <div className="sm:col-span-2">
-                <DateInputDDMMYYYY
-                  label="Partner Date of Birth (DOB)"
-                  value={partnerDob}
-                  onChange={(val) => {
-                    setPartnerDob(val);
-                    if (val) {
-                      setPartnerAge(calculateAgeFromDob(val));
-                    }
-                  }}
-                />
-              </div>
-              <div className="min-w-0 max-w-full">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Partner Age
-                </label>
-                <input
-                  type="text"
-                  value={partnerAge}
-                  onChange={(e) => setPartnerAge(e.target.value)}
-                  placeholder="e.g. 36 Yrs"
-                  className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
-                />
-              </div>
+            <div className="min-w-0 max-w-full">
+              <DateInputDDMMYYYY
+                label="Partner Date of Birth (DOB)"
+                value={partnerDob}
+                onChange={(val) => {
+                  setPartnerDob(val);
+                  if (val) {
+                    setPartnerAge(calculateAgeFromDob(val));
+                  }
+                }}
+              />
+            </div>
+
+            <div className="min-w-0 max-w-full">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Partner Age
+              </label>
+              <input
+                type="text"
+                value={partnerAge}
+                onChange={(e) => setPartnerAge(e.target.value)}
+                placeholder="e.g. 36 Yrs"
+                className="w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
+              />
             </div>
 
             <div className="min-w-0 max-w-full">
@@ -1829,7 +1967,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                        Stage of Embryo
+                        Stage of Ooctye
                       </label>
                       
                     </div>
@@ -1872,12 +2010,18 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
               {/* GRANULAR PER-STRAW ALLOCATION TABLE / CARDS */}
               <div className="space-y-3 pt-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                     <span className="uppercase tracking-wider">Straw Configuration</span>
-                    <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-bold normal-case">
-                      TOTAL {strawsCount} STRAWS - {strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0)} EMBRYO(s)
-                    </span>
+                    {specimenType === 'OOCYTE' ? (
+                      <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 font-bold normal-case shadow-2xs">
+                        TOTAL: {getBatchSummaryText(strawItems, specimenType)}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-bold normal-case">
+                        TOTAL {strawsCount} STRAWS - {strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0)} EMBRYO(s)
+                      </span>
+                    )}
                   </h4>
                 </div>
 
@@ -1892,7 +2036,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     return (
                       <div key={idx} className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-mono font-bold text-xs">
                               #{strawDisplayNum}
                             </span>
@@ -1903,6 +2047,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                             ) : (
                               <span className="text-[10px] px-2 py-0.5 rounded-full border border-amber-300 bg-amber-50 text-amber-900 font-bold">
                                 Color Unselected
+                              </span>
+                            )}
+                            {specimenType === 'OOCYTE' && (
+                              <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200 font-mono">
+                                {item.embryoCount || 1} {(item.embryoCount || 1) === 1 ? 'oocyte' : 'oocytes'} ({getStrawStageSummary(item, specimenType)})
                               </span>
                             )}
                           </div>
@@ -1959,105 +2108,184 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                           <div className="sm:col-span-3">
                             <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              {strawDisplayNum} No of Embryo(s) 
+                              {strawDisplayNum} {specimenType === 'OOCYTE' ? 'No. of Oocyte(s)' : 'No of Embryo(s)'}
                             </label>
-                            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = [...strawItems];
-                                  next[idx].embryoCount = 1;
-                                  setStrawItems(next);
-                                }}
-                                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-                                  item.embryoCount === 1
-                                    ? 'bg-emerald-600 text-white shadow-xs font-mono font-bold'
-                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
-                                }`}
-                              >
-                                1 Embryo
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = [...strawItems];
-                                  next[idx].embryoCount = 2;
-                                  setStrawItems(next);
-                                }}
-                                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-                                  item.embryoCount === 2
-                                    ? 'bg-emerald-600 text-white shadow-xs font-mono font-bold'
-                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
-                                }`}
-                              >
-                                2 Embryos
-                              </button>
-                            </div>
+                            {specimenType === 'OOCYTE' ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                {/* Per-straw dropdown */}
+                                <select
+                                  value={item.embryoCount || 1}
+                                  onChange={(e) => {
+                                    const count = parseInt(e.target.value, 10) || 1;
+                                    const next = [...strawItems];
+                                    next[idx].embryoCount = count;
+                                    setStrawItems(next);
+                                  }}
+                                  className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-bold text-slate-900 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
+                                >
+                                  {[1, 2, 3, 4, 5, 6].map((num) => (
+                                    <option key={num} value={num}>
+                                      {num} {num === 1 ? 'oocyte' : 'oocytes'} / straw
+                                    </option>
+                                  ))}
+                                </select>
+
+                                {/* Quick selector buttons */}
+                                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 flex-1 min-w-[200px]">
+                                  {[1, 2, 3, 4].map((count) => {
+                                    const labelText = `${count} ${count === 1 ? 'oocyte' : 'oocytes'}`;
+                                    return (
+                                      <button
+                                        key={count}
+                                        type="button"
+                                        onClick={() => {
+                                          const next = [...strawItems];
+                                          next[idx].embryoCount = count;
+                                          setStrawItems(next);
+                                        }}
+                                        className={`flex-1 py-1 px-1.5 rounded-lg text-xs font-bold transition-all ${
+                                          item.embryoCount === count
+                                            ? 'bg-emerald-600 text-white shadow-xs font-mono font-bold'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                                        }`}
+                                      >
+                                        {labelText}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...strawItems];
+                                    next[idx].embryoCount = 1;
+                                    setStrawItems(next);
+                                  }}
+                                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                    item.embryoCount === 1
+                                      ? 'bg-emerald-600 text-white shadow-xs font-mono font-bold'
+                                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  1 Embryo
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...strawItems];
+                                    next[idx].embryoCount = 2;
+                                    setStrawItems(next);
+                                  }}
+                                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                    item.embryoCount === 2
+                                      ? 'bg-emerald-600 text-white shadow-xs font-mono font-bold'
+                                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  2 Embryos
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        {/* Granular Per-Embryo Breakdown (1 or 2 Embryos) */}
+                        {/* Granular Per-Embryo/Oocyte Breakdown (1, 2, 3, or 4 Items) */}
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
                           <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                            <span>Embryo Details</span>
+                            <span>{specimenType === 'OOCYTE' ? 'Oocyte Stage & Details for Freezing' : 'Embryo Details'}</span>
                           </div>
 
                           {Array.from({ length: item.embryoCount || 1 }).map((_, eIdx) => {
-                            const eGradeKey = eIdx === 0 ? 'grade1' : 'grade2';
-                            const eFragKey = eIdx === 0 ? 'frag1' : 'frag2';
-                            const eCommentKey = eIdx === 0 ? 'comment1' : 'comment2';
-
-                            const gradeLabel = item.embryoCount > 1
-                              ? `Straw #${strawDisplayNum} • Embryo #${eIdx + 1} Grade`
-                              : `Straw #${strawDisplayNum} Grade`;
-
-                            const commentLabel = item.embryoCount > 1
-                              ? `Straw #${strawDisplayNum} • Embryo #${eIdx + 1} Comment`
-                              : `Straw #${strawDisplayNum} Comment`;
+                            const eGradeKey = `grade${eIdx + 1}`;
+                            const eFragKey = `frag${eIdx + 1}`;
+                            const eCommentKey = `comment${eIdx + 1}`;
+                            const currentGradeVal = (item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '') || (specimenType === 'OOCYTE' ? 'MII' : '');
 
                             return (
                               <div key={eIdx} className="bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center">
                                 <div>
                                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Grade
+                                    {specimenType === 'OOCYTE' ? (item.embryoCount > 1 ? `Oocyte #${eIdx + 1} Stage` : 'Oocyte Stage') : (item.embryoCount > 1 ? `Embryo #${eIdx + 1} Grade` : 'Grade')}
                                   </label>
-                                  <input
-                                    type="text"
-                                    value={(item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '')}
-                                    onChange={(e) => {
-                                      const upperGrade = e.target.value.toUpperCase();
-                                      const next = [...strawItems];
-                                      (next[idx] as any)[eGradeKey] = upperGrade;
-                                      if (eIdx === 0) next[idx].grade = upperGrade;
-                                      setStrawItems(next);
-                                    }}
-                                    placeholder="e.g. 5AA, 4BB"
-                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono font-bold text-slate-900 text-xs focus:outline-none focus:border-emerald-500 uppercase"
-                                  />
+                                  {specimenType === 'OOCYTE' ? (
+                                    <div className="grid grid-cols-3 gap-1 h-9">
+                                      {['MII', 'MI', 'GV'].map((stg) => (
+                                        <button
+                                          key={stg}
+                                          type="button"
+                                          onClick={() => {
+                                            const next = [...strawItems];
+                                            (next[idx] as any)[eGradeKey] = stg;
+                                            if (eIdx === 0) next[idx].grade = stg;
+                                            setStrawItems(next);
+                                          }}
+                                          className={`h-full rounded-md text-xs font-extrabold transition-all border flex items-center justify-center cursor-pointer ${
+                                            currentGradeVal === stg
+                                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                                              : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-300'
+                                          }`}
+                                        >
+                                          {stg}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={currentGradeVal}
+                                      onChange={(e) => {
+                                        const upperGrade = e.target.value.toUpperCase();
+                                        const next = [...strawItems];
+                                        (next[idx] as any)[eGradeKey] = upperGrade;
+                                        if (eIdx === 0) next[idx].grade = upperGrade;
+                                        setStrawItems(next);
+                                      }}
+                                      placeholder="e.g. 5AA, 4BB"
+                                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono font-bold text-slate-900 text-xs focus:outline-none focus:border-emerald-500 uppercase"
+                                    />
+                                  )}
                                 </div>
 
                                 <div>
                                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Fragmentation
+                                    {specimenType === 'OOCYTE' ? 'Oocyte Remarks' : 'Fragmentation'}
                                   </label>
-                                  <select
-                                    value={(item as any)[eFragKey] || 'No'}
-                                    onChange={(e) => {
-                                      const next = [...strawItems];
-                                      (next[idx] as any)[eFragKey] = e.target.value;
-                                      setStrawItems(next);
-                                    }}
-                                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
-                                  >
-                                    <option value="No">No</option>
-                                    <option value="+">+</option>
-                                    <option value="++">++</option>
-                                  </select>
+                                  {specimenType === 'OOCYTE' ? (
+                                    <input
+                                      type="text"
+                                      value={(item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '')}
+                                      onChange={(e) => {
+                                        const next = [...strawItems];
+                                        (next[idx] as any)[eCommentKey] = e.target.value;
+                                        if (eIdx === 0) next[idx].comments = e.target.value;
+                                        setStrawItems(next);
+                                      }}
+                                      placeholder="e.g. Normal morphology"
+                                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 text-xs focus:outline-none focus:border-emerald-500"
+                                    />
+                                  ) : (
+                                    <select
+                                      value={(item as any)[eFragKey] || 'No'}
+                                      onChange={(e) => {
+                                        const next = [...strawItems];
+                                        (next[idx] as any)[eFragKey] = e.target.value;
+                                        setStrawItems(next);
+                                      }}
+                                      className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
+                                    >
+                                      <option value="No">No</option>
+                                      <option value="+">+</option>
+                                      <option value="++">++</option>
+                                    </select>
+                                  )}
                                 </div>
 
                                 <div>
                                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Comment
+                                    {specimenType === 'OOCYTE' ? 'Straw Notes' : 'Comment'}
                                   </label>
                                   <input
                                     type="text"
@@ -2592,11 +2820,17 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       <ImageCropRotateModal
         isOpen={Boolean(cropModalFile)}
         imageFile={cropModalFile}
-        title="Adjust & Rotate Patient Profile Picture"
+        title={croppingTarget === 'partner' ? "Adjust & Rotate Husband Profile Picture" : "Adjust & Rotate Wife Profile Picture"}
         onClose={() => setCropModalFile(null)}
         onConfirm={(processedFile, dataUrl) => {
-          setPhotoFile(processedFile);
-          setPhotoPreviewUrl(dataUrl);
+          if (croppingTarget === 'partner') {
+            setPartnerPhotoFile(processedFile);
+            setPartnerPhotoPreviewUrl(dataUrl);
+          } else {
+            setPhotoFile(processedFile);
+            setPhotoPreviewUrl(dataUrl);
+          }
+          setCropModalFile(null);
         }}
       />
 
@@ -2640,17 +2874,35 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </div>
 
               <div className="flex items-start gap-4">
-                {/* Photo Thumbnail */}
-                <div className="shrink-0">
+                {/* Photo Thumbnails */}
+                <div className="shrink-0 flex items-center gap-2">
+                  {/* Wife Photo */}
                   {photoPreviewUrl || selectedExistingPatient?.photoUrl ? (
-                    <img
-                      src={photoPreviewUrl || getImageUrl(selectedExistingPatient?.photoUrl)}
-                      alt="Patient Profile"
-                      className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-sm"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-2xl bg-white border border-slate-300 flex items-center justify-center text-slate-400">
-                      <User className="w-8 h-8 text-slate-300" />
+                    <div className="text-center">
+                      <img
+                        src={photoPreviewUrl || getImageUrl(selectedExistingPatient?.photoUrl)}
+                        alt="Wife Profile"
+                        className="w-14 h-14 rounded-xl object-cover border-2 border-emerald-500 shadow-2xs"
+                      />
+                      <span className="text-[9px] font-bold text-emerald-800 uppercase block mt-0.5">Wife</span>
+                    </div>
+                  ) : null}
+
+                  {/* Husband Photo */}
+                  {partnerPhotoPreviewUrl || selectedExistingPatient?.partnerPhotoUrl ? (
+                    <div className="text-center">
+                      <img
+                        src={partnerPhotoPreviewUrl || getImageUrl(selectedExistingPatient?.partnerPhotoUrl)}
+                        alt="Husband Profile"
+                        className="w-14 h-14 rounded-xl object-cover border-2 border-blue-500 shadow-2xs"
+                      />
+                      <span className="text-[9px] font-bold text-blue-800 uppercase block mt-0.5">Husband</span>
+                    </div>
+                  ) : null}
+
+                  {!photoPreviewUrl && !selectedExistingPatient?.photoUrl && !partnerPhotoPreviewUrl && !selectedExistingPatient?.partnerPhotoUrl && (
+                    <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-400">
+                      <User className="w-7 h-7 text-slate-300" />
                     </div>
                   )}
                 </div>
@@ -2723,10 +2975,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               </div>
             )}
 
-            {/* Granular Embryo Details Table */}
+            {/* Granular Specimen Details Table */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-              <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                <span>4. Embryo Details ({strawItems.length} Straw(s) - {strawItems.reduce((acc, s) => acc + (s.embryoCount || 1), 0)} Embryo(s))</span>
+              <div className="text-xs font-bold text-slate-800 flex items-center justify-between flex-wrap gap-2">
+                <span>4. {specimenType === 'OOCYTE' ? 'Oocyte' : 'Embryo'} Details</span>
+                <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 font-bold">
+                  {getBatchSummaryText(strawItems, specimenType)}
+                </span>
               </div>
 
               <div className="space-y-2.5">
@@ -2737,17 +2992,18 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   ) || 0;
                   const strawDisplayNum = existingOffset + sIdx + 1;
                   const badgeClass = getStrawColorBadgeClass(item.color);
-                  const embryoCount = item.embryoCount || 1;
+                  const count = item.embryoCount || 1;
+                  const stageSummary = getStrawStageSummary(item, specimenType);
 
                   return (
                     <div key={sIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-2 shadow-2xs">
-                      <div className="flex items-center justify-between font-bold">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between font-bold flex-wrap gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded-lg font-mono font-bold text-xs">
                             Straw #{strawDisplayNum}
                           </span>
-                          <span className="text-slate-700 font-bold text-xs">
-                            ({embryoCount} Embryo(s))
+                          <span className="text-slate-800 font-bold text-xs font-mono bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                            {count} {specimenType === 'OOCYTE' ? (count === 1 ? 'Oocyte' : 'Oocytes') : (count === 1 ? 'Embryo' : 'Embryos')} ({stageSummary})
                           </span>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] border ${badgeClass}`}>{item.color}</span>
                         </div>
@@ -2758,24 +3014,26 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         )}
                       </div>
 
-                      {/* Per-Embryo Details */}
+                      {/* Per-Item Details */}
                       <div className="space-y-1 text-xs font-medium">
-                        {Array.from({ length: embryoCount }).map((_, eIdx) => {
-                          const eGrade = ((item as any)[eIdx === 0 ? 'grade1' : 'grade2'] || (eIdx === 0 ? item.grade : '') || '').trim().toUpperCase();
-                          const eFrag = ((item as any)[eIdx === 0 ? 'frag1' : 'frag2'] || '').trim();
-                          const eComment = ((item as any)[eIdx === 0 ? 'comment1' : 'comment2'] || (eIdx === 0 ? item.comments : '') || '').trim();
+                        {Array.from({ length: count }).map((_, eIdx) => {
+                          const eGradeKey = `grade${eIdx + 1}`;
+                          const eFragKey = `frag${eIdx + 1}`;
+                          const eCommentKey = `comment${eIdx + 1}`;
+                          const eGrade = ((item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '') || (specimenType === 'OOCYTE' ? 'MII' : '')).trim().toUpperCase();
+                          const eFrag = ((item as any)[eFragKey] || '').trim();
+                          const eComment = ((item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '') || '').trim();
 
                           const gradeStr = eGrade ? eGrade : 'N/A';
                           const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
                           const commentStr = eComment ? ` - (${eComment})` : '';
+                          const itemTypeLabel = specimenType === 'OOCYTE' ? 'Oocyte' : 'Embryo';
+                          const stageTypeLabel = specimenType === 'OOCYTE' ? 'Stage' : 'Grade';
 
                           return (
                             <div key={eIdx} className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
-                              {/* {embryoCount > 1 && (
-                                <span className="font-bold text-slate-700">Embryo #{eIdx + 1}: </span>
-                              )} */}
                               <span className="font-mono font-bold text-slate-900">
-                                Embryo grade: {gradeStr}{fragStr}{commentStr}
+                                {count > 1 ? `${itemTypeLabel} #${eIdx + 1} ${stageTypeLabel}: ` : `${itemTypeLabel} ${stageTypeLabel}: `}{gradeStr}{fragStr}{commentStr}
                               </span>
                             </div>
                           );

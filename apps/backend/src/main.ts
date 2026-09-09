@@ -582,7 +582,7 @@ app.put('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: Authentic
   }
 });
 
-app.post('/api/patients/:id/photo', accessKeyGuard, jwtAuthGuard, (req: Request, res: Response, next: NextFunction) => {
+app.post(['/api/patients/:id/photo', '/api/patients/:id/partner-photo'], accessKeyGuard, jwtAuthGuard, (req: Request, res: Response, next: NextFunction) => {
   upload.any()(req, res, (err: any) => {
     if (err) {
       if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
@@ -598,12 +598,20 @@ app.post('/api/patients/:id/photo', accessKeyGuard, jwtAuthGuard, (req: Request,
     const file = req.file || files[0];
     if (!file) return res.status(400).json({ success: false, error: 'No photo image file received.' });
 
+    const isPartner = req.path.includes('partner-photo') || 
+                      req.query.type === 'partner' || 
+                      req.query.target === 'partner' || 
+                      req.body.type === 'partner' || 
+                      req.body.photoType === 'partner' || 
+                      (file.fieldname && file.fieldname.toLowerCase().includes('partner'));
+
     const uploadDirectory = path.resolve(CONFIG.STORAGE_LOCAL_DIR || './uploads');
     if (!fs.existsSync(uploadDirectory)) {
       fs.mkdirSync(uploadDirectory, { recursive: true });
     }
 
-    const filename = `patient_photo_${req.params.id}_${Date.now()}.jpg`;
+    const prefix = isPartner ? 'partner_photo' : 'patient_photo';
+    const filename = `${prefix}_${req.params.id}_${Date.now()}.jpg`;
     const targetPath = path.join(uploadDirectory, filename);
 
     // Resilient Sharp conversion to JPEG buffer
@@ -627,22 +635,31 @@ app.post('/api/patients/:id/photo', accessKeyGuard, jwtAuthGuard, (req: Request,
 
     // Generate base64 Data URI for 100% permanent cross-platform image rendering
     const mimeType = file.mimetype && file.mimetype.startsWith('image/') ? file.mimetype : 'image/jpeg';
-    const photoUrl = `data:${mimeType};base64,${jpegBuffer.toString('base64')}`;
+    const uploadedPhotoUrl = `data:${mimeType};base64,${jpegBuffer.toString('base64')}`;
 
     const staffUserId = req.user?.userId || '00000000-0000-0000-0000-000000000000';
     const staffName = req.user?.name || req.user?.staffId || 'ADMIN001';
 
+    const updatePayload = isPartner ? { partnerPhotoUrl: uploadedPhotoUrl } : { photoUrl: uploadedPhotoUrl };
+
     const patient = await patientService.updatePatient(
       req.params.id,
-      { photoUrl },
+      updatePayload,
       staffUserId,
       staffName
     );
     serverCache.clear();
-    return res.json({ success: true, photoUrl, patient });
+    return res.json({ 
+      success: true, 
+      photoUrl: isPartner ? patient.partnerPhotoUrl : patient.photoUrl,
+      patientPhotoUrl: patient.photoUrl,
+      partnerPhotoUrl: patient.partnerPhotoUrl,
+      isPartner,
+      patient 
+    });
   } catch (err: any) {
     console.error('Patient photo upload error:', err);
-    return res.status(400).json({ success: false, error: err?.message || 'Failed to update patient photo.' });
+    return res.status(400).json({ success: false, error: err?.message || 'Failed to update photo.' });
   }
 });
 app.delete('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {

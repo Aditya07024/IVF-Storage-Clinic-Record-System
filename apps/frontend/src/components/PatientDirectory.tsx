@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
@@ -43,7 +43,7 @@ export const PatientDirectory: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [showAuditLogs, setShowAuditLogs] = useState(false);
   const [reportMailPatient, setReportMailPatient] = useState<any | null>(null);
-  const [cropModalFile, setCropModalFile] = useState<{ patientId: string; file: File } | null>(null);
+  const [cropModalFile, setCropModalFile] = useState<{ patientId: string; file: File; target?: 'patient' | 'partner' } | null>(null);
 
   useEffect(() => {
     apiRequest('/api/auth/me')
@@ -157,25 +157,38 @@ export const PatientDirectory: React.FC = () => {
     }
   };
 
-  const handleUploadPatientPhoto = async (patientId: string, file: File) => {
+  const handleUploadPatientPhoto = async (patientId: string, file: File, target: 'patient' | 'partner' = 'patient') => {
     setUploadingPhoto(true);
     setError(null);
 
     try {
       const formData = new FormData();
       formData.append('photo', file);
+      if (target === 'partner') {
+        formData.append('type', 'partner');
+      }
 
-      const json = await apiRequest(`/api/patients/${patientId}/photo`, {
+      const endpoint = target === 'partner' ? `/api/patients/${patientId}/partner-photo` : `/api/patients/${patientId}/photo`;
+
+      const json = await apiRequest(endpoint, {
         method: 'POST',
         body: formData,
       });
 
       if (json.success) {
         if (selectedPatient && selectedPatient.id === patientId) {
-          setSelectedPatient({ ...selectedPatient, photoUrl: json.photoUrl });
+          setSelectedPatient({
+            ...selectedPatient,
+            photoUrl: json.patientPhotoUrl || (target === 'patient' ? json.photoUrl : selectedPatient.photoUrl),
+            partnerPhotoUrl: json.partnerPhotoUrl || (target === 'partner' ? json.photoUrl : selectedPatient.partnerPhotoUrl),
+          });
         }
         if (editingPatient && editingPatient.id === patientId) {
-          setEditingPatient({ ...editingPatient, photoUrl: json.photoUrl });
+          setEditingPatient({
+            ...editingPatient,
+            photoUrl: json.patientPhotoUrl || (target === 'patient' ? json.photoUrl : editingPatient.photoUrl),
+            partnerPhotoUrl: json.partnerPhotoUrl || (target === 'partner' ? json.photoUrl : editingPatient.partnerPhotoUrl),
+          });
         }
         fetchPatients();
       } else {
@@ -188,13 +201,13 @@ export const PatientDirectory: React.FC = () => {
     }
   };
 
-  const handleEditExistingPhotoCrop = async (patientId: string, photoUrl: string) => {
+  const handleEditExistingPhotoCrop = async (patientId: string, photoUrl: string, target: 'patient' | 'partner' = 'patient') => {
     try {
       const fullUrl = getImageUrl(photoUrl);
       const res = await fetch(fullUrl);
       const blob = await res.blob();
-      const file = new File([blob], `patient-${patientId}-photo.jpg`, { type: 'image/jpeg' });
-      setCropModalFile({ patientId, file });
+      const file = new File([blob], `${target}-${patientId}-photo.jpg`, { type: 'image/jpeg' });
+      setCropModalFile({ patientId, file, target });
     } catch (err) {
       console.error('Failed to load existing photo for crop studio:', err);
     }
@@ -619,13 +632,24 @@ export const PatientDirectory: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          {p.photoUrl && (
-                            <img
-                              src={getImageUrl(p.photoUrl)}
-                              alt={p.fullName}
-                              className="w-10 h-10 rounded-xl object-cover border-2 border-emerald-500 shadow-2xs shrink-0"
-                            />
-                          )}
+                          <div className="flex items-center -space-x-2 shrink-0">
+                            {p.photoUrl && (
+                              <img
+                                src={getImageUrl(p.photoUrl)}
+                                alt={`Wife: ${p.fullName}`}
+                                title={`Wife: ${p.fullName}`}
+                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover border-2 border-emerald-500 shadow-2xs shrink-0 z-10"
+                              />
+                            )}
+                            {p.partnerPhotoUrl && (
+                              <img
+                                src={getImageUrl(p.partnerPhotoUrl)}
+                                alt={`Husband: ${p.partnerName || 'Partner'}`}
+                                title={`Husband: ${p.partnerName || 'Partner'}`}
+                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover border-2 border-blue-500 shadow-2xs shrink-0 z-0"
+                              />
+                            )}
+                          </div>
                           <div className="min-w-0">
                             <div className="font-bold text-slate-900 text-sm flex items-center gap-2 flex-wrap">
                               <span>{p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}</span>
@@ -1019,61 +1043,120 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
-                <div className="sm:col-span-2 flex flex-col sm:flex-row items-center gap-3.5 bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 shadow-2xs">
-                  <div
-                    className="relative shrink-0 cursor-pointer group"
-                    onClick={() => {
-                      if (editingPatient?.photoUrl) {
-                        handleEditExistingPhotoCrop(editingPatient.id, editingPatient.photoUrl);
-                      } else {
-                        document.getElementById('edit-patient-photo-input')?.click();
-                      }
-                    }}
-                    title="Click/Tap to Crop, Rotate, or Upload Photo"
-                  >
-                    {editingPatient?.photoUrl ? (
-                      <div className="relative">
-                        <img
-                          src={getImageUrl(editingPatient.photoUrl)}
-                          alt="Patient Profile"
-                          className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl border-2 border-amber-500 object-cover shadow-md transition-transform active:scale-95"
-                        />
-                        <div className="absolute inset-0 bg-slate-950/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Camera className="w-5 h-5 text-white" />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-white border-2 border-dashed border-amber-400 flex flex-col items-center justify-center text-center p-1 text-amber-700 font-bold text-xs hover:bg-amber-100/50 transition-all active:scale-95 shadow-2xs">
-                        <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 shrink-0" />
-                        <span className="text-[9px] text-amber-800 font-semibold text-center leading-tight mt-0.5 w-full block truncate sm:whitespace-normal">Tap for Photo</span>
-                      </div>
-                    )}
-
-                    <input
-                      id="edit-patient-photo-input"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file && editingPatient) {
-                          setCropModalFile({ patientId: editingPatient.id, file });
+                {/* DUAL PHOTO UPLOADER IN EDIT MODAL */}
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 shadow-2xs">
+                  {/* Wife Photo */}
+                  <div className="p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-3 shadow-2xs">
+                    <div
+                      className="relative shrink-0 cursor-pointer group"
+                      onClick={() => {
+                        if (editingPatient?.photoUrl) {
+                          handleEditExistingPhotoCrop(editingPatient.id, editingPatient.photoUrl, 'patient');
+                        } else {
+                          document.getElementById('edit-patient-photo-input')?.click();
                         }
-                        e.target.value = '';
                       }}
-                    />
+                      title="Click/Tap to Crop, Rotate, or Upload Wife Photo"
+                    >
+                      {editingPatient?.photoUrl ? (
+                        <div className="relative">
+                          <img
+                            src={getImageUrl(editingPatient.photoUrl)}
+                            alt="Wife Profile"
+                            className="w-14 h-14 rounded-xl border-2 border-emerald-500 object-cover shadow-md transition-transform active:scale-95"
+                          />
+                          <div className="absolute inset-0 bg-slate-950/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-slate-50 border-2 border-dashed border-emerald-300 flex flex-col items-center justify-center text-center p-1 text-emerald-700 font-bold text-xs hover:bg-emerald-100/50 transition-all active:scale-95 shadow-2xs">
+                          <Camera className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <span className="text-[9px] text-emerald-800 font-semibold text-center leading-tight mt-0.5 w-full block truncate">Wife Photo</span>
+                        </div>
+                      )}
+
+                      <input
+                        id="edit-patient-photo-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && editingPatient) {
+                            setCropModalFile({ patientId: editingPatient.id, file, target: 'patient' });
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-slate-800 text-xs flex items-center gap-1">
+                        <Camera className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Wife Photo</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                        {editingPatient?.photoUrl ? 'Tap to edit/crop photo' : 'Upload Wife picture'}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="space-y-0.5 text-center sm:text-left flex-1 min-w-0">
-                    <div className="font-bold text-slate-800 text-xs sm:text-sm flex items-center justify-center sm:justify-start gap-1.5">
-                      <Camera className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span>Patient Profile Photo</span>
+                  {/* Husband Photo */}
+                  <div className="p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-3 shadow-2xs">
+                    <div
+                      className="relative shrink-0 cursor-pointer group"
+                      onClick={() => {
+                        if (editingPatient?.partnerPhotoUrl) {
+                          handleEditExistingPhotoCrop(editingPatient.id, editingPatient.partnerPhotoUrl, 'partner');
+                        } else {
+                          document.getElementById('edit-partner-photo-input')?.click();
+                        }
+                      }}
+                      title="Click/Tap to Crop, Rotate, or Upload Husband Photo"
+                    >
+                      {editingPatient?.partnerPhotoUrl ? (
+                        <div className="relative">
+                          <img
+                            src={getImageUrl(editingPatient.partnerPhotoUrl)}
+                            alt="Husband Profile"
+                            className="w-14 h-14 rounded-xl border-2 border-blue-500 object-cover shadow-md transition-transform active:scale-95"
+                          />
+                          <div className="absolute inset-0 bg-slate-950/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-slate-50 border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-center p-1 text-blue-700 font-bold text-xs hover:bg-blue-100/50 transition-all active:scale-95 shadow-2xs">
+                          <Camera className="w-5 h-5 text-blue-600 shrink-0" />
+                          <span className="text-[9px] text-blue-800 font-semibold text-center leading-tight mt-0.5 w-full block truncate">Husband Photo</span>
+                        </div>
+                      )}
+
+                      <input
+                        id="edit-partner-photo-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && editingPatient) {
+                            setCropModalFile({ patientId: editingPatient.id, file, target: 'partner' });
+                          }
+                          e.target.value = '';
+                        }}
+                      />
                     </div>
-                    <p className="text-xs text-amber-900 font-medium">
-                      {editingPatient?.photoUrl
-                        ? 'Tap profile photo to crop 1:1, rotate 90°, or change image'
-                        : 'Tap photo icon to upload or capture patient picture'}
-                    </p>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-slate-800 text-xs flex items-center gap-1">
+                        <Camera className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <span>Husband Photo</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                        {editingPatient?.partnerPhotoUrl ? 'Tap to edit/crop photo' : 'Upload Husband picture'}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -1264,49 +1347,98 @@ export const PatientDirectory: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
               {/* Left Column: Patient Photo & Demographics */}
               <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                <div
-                  className="relative group shrink-0 cursor-pointer"
-                  onClick={() => {
-                    if (selectedPatient.photoUrl) {
-                      handleEditExistingPhotoCrop(selectedPatient.id, selectedPatient.photoUrl);
-                    } else {
-                      document.getElementById('drawer-patient-photo-input')?.click();
-                    }
-                  }}
-                  title="Click/Tap photo to Crop, Rotate, or Change Image"
-                >
-                  {selectedPatient.photoUrl ? (
-                    <div className="relative">
-                      <img
-                        src={getImageUrl(selectedPatient.photoUrl)}
-                        alt={selectedPatient.fullName}
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-md transition-transform active:scale-95"
-                      />
-                      <div className="absolute inset-0 bg-slate-950/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera className="w-5 h-5 text-white" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-center p-1 text-slate-400 font-bold text-xs hover:border-emerald-500 hover:text-emerald-600 transition-all active:scale-95 shadow-2xs">
-                      <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 shrink-0" />
-                      <span className="text-[9px] text-slate-500 font-semibold text-center leading-tight mt-0.5 w-full block truncate sm:whitespace-normal">Tap for Photo</span>
-                    </div>
-                  )}
-
-                  <input
-                    id="drawer-patient-photo-input"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={uploadingPhoto}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file && selectedPatient) {
-                        setCropModalFile({ patientId: selectedPatient.id, file });
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Wife Photo */}
+                  <div
+                    className="relative group cursor-pointer text-center"
+                    onClick={() => {
+                      if (selectedPatient.photoUrl) {
+                        handleEditExistingPhotoCrop(selectedPatient.id, selectedPatient.photoUrl, 'patient');
+                      } else {
+                        document.getElementById('drawer-patient-photo-input')?.click();
                       }
-                      e.target.value = '';
                     }}
-                  />
+                    title="Click/Tap photo to Crop, Rotate, or Change Wife Image"
+                  >
+                    {selectedPatient.photoUrl ? (
+                      <div className="relative">
+                        <img
+                          src={getImageUrl(selectedPatient.photoUrl)}
+                          alt={`Wife: ${selectedPatient.fullName}`}
+                          className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-md transition-transform active:scale-95"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Camera className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white border-2 border-dashed border-emerald-300 flex flex-col items-center justify-center text-center p-1 text-emerald-600 font-bold text-xs hover:border-emerald-500 transition-all active:scale-95 shadow-2xs">
+                        <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="text-[8px] text-emerald-800 font-bold text-center leading-tight mt-0.5 w-full block truncate">Wife</span>
+                      </div>
+                    )}
+
+                    <input
+                      id="drawer-patient-photo-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingPhoto}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && selectedPatient) {
+                          setCropModalFile({ patientId: selectedPatient.id, file, target: 'patient' });
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
+
+                  {/* Husband Photo */}
+                  <div
+                    className="relative group cursor-pointer text-center"
+                    onClick={() => {
+                      if (selectedPatient.partnerPhotoUrl) {
+                        handleEditExistingPhotoCrop(selectedPatient.id, selectedPatient.partnerPhotoUrl, 'partner');
+                      } else {
+                        document.getElementById('drawer-partner-photo-input')?.click();
+                      }
+                    }}
+                    title="Click/Tap photo to Crop, Rotate, or Change Husband Image"
+                  >
+                    {selectedPatient.partnerPhotoUrl ? (
+                      <div className="relative">
+                        <img
+                          src={getImageUrl(selectedPatient.partnerPhotoUrl)}
+                          alt={`Husband: ${selectedPatient.partnerName || 'Partner'}`}
+                          className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-blue-500 shadow-md transition-transform active:scale-95"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Camera className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-center p-1 text-blue-600 font-bold text-xs hover:border-blue-500 transition-all active:scale-95 shadow-2xs">
+                        <Camera className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span className="text-[8px] text-blue-800 font-bold text-center leading-tight mt-0.5 w-full block truncate">Husband</span>
+                      </div>
+                    )}
+
+                    <input
+                      id="drawer-partner-photo-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingPhoto}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && selectedPatient) {
+                          setCropModalFile({ patientId: selectedPatient.id, file, target: 'partner' });
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex-1 min-w-0 space-y-1">
@@ -1568,36 +1700,51 @@ export const PatientDirectory: React.FC = () => {
               </div>
             )}
 
-            {/* Attached Scanned Document & Verification Record Image */}
-            {selectedPatient.photoUrl && (
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+            {/* Attached Scanned Document & Verification Record Images */}
+            {(selectedPatient.photoUrl || selectedPatient.partnerPhotoUrl) && (
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-emerald-600" />
-                    <span>Attached Scanned Document & Verification Record</span>
+                    <span>Attached Photos & Verification Records</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPreviewImageModalUrl(getImageUrl(selectedPatient.photoUrl));
-                      setPreviewImageTitle(`Scanned Document - ${selectedPatient.fullName}`);
-                    }}
-                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>View Full Image</span>
-                  </button>
                 </div>
-                <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-2xs flex justify-center">
-                  <img
-                    src={getImageUrl(selectedPatient.photoUrl)}
-                    alt={`Scanned Document for ${selectedPatient.fullName}`}
-                    className="max-h-64 w-auto object-contain rounded-lg border border-slate-100 shadow-sm cursor-pointer hover:opacity-95 transition-all"
-                    onClick={() => {
-                      setPreviewImageModalUrl(getImageUrl(selectedPatient.photoUrl));
-                      setPreviewImageTitle(`Scanned Document - ${selectedPatient.fullName}`);
-                    }}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedPatient.photoUrl && (
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs flex flex-col items-center gap-2">
+                      <span className="text-xs font-extrabold text-emerald-800 flex items-center gap-1">
+                        <User className="w-3.5 h-3.5 text-emerald-600" />
+                        Wife Photo
+                      </span>
+                      <img
+                        src={getImageUrl(selectedPatient.photoUrl)}
+                        alt={`Wife Photo - ${selectedPatient.fullName}`}
+                        className="max-h-48 w-auto object-contain rounded-lg border border-slate-100 shadow-sm cursor-pointer hover:opacity-95 transition-all"
+                        onClick={() => {
+                          setPreviewImageModalUrl(getImageUrl(selectedPatient.photoUrl));
+                          setPreviewImageTitle(`Wife Photo - ${selectedPatient.fullName}`);
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {selectedPatient.partnerPhotoUrl && (
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs flex flex-col items-center gap-2">
+                      <span className="text-xs font-extrabold text-blue-800 flex items-center gap-1">
+                        <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                        Husband Photo
+                      </span>
+                      <img
+                        src={getImageUrl(selectedPatient.partnerPhotoUrl)}
+                        alt={`Husband Photo - ${selectedPatient.partnerName || 'Partner'}`}
+                        className="max-h-48 w-auto object-contain rounded-lg border border-slate-100 shadow-sm cursor-pointer hover:opacity-95 transition-all"
+                        onClick={() => {
+                          setPreviewImageModalUrl(getImageUrl(selectedPatient.partnerPhotoUrl));
+                          setPreviewImageTitle(`Husband Photo - ${selectedPatient.partnerName || 'Partner'}`);
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1662,14 +1809,19 @@ export const PatientDirectory: React.FC = () => {
 
                       {/* Active Straws List */}
                       <div className="space-y-2">
-                        <div className="text-xs font-bold text-slate-800">
-                          Embryo Details ({activeStraws.length} Straw(s) - {activeStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0)} Embryo(s))
+                        <div className="text-xs font-bold text-slate-800 flex items-center justify-between flex-wrap gap-2">
+                          <span>{selectedPatient.specimenType === 'OOCYTE' ? 'Oocyte Details' : 'Embryo Details'}</span>
+                          <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-bold">
+                            {getBatchSummaryText(activeStraws, selectedPatient.specimenType)}
+                          </span>
                         </div>
                         {activeStraws.map((straw: any, sIdx: number) => {
                           const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
                           const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
+                          const isOocyte = selectedPatient.specimenType === 'OOCYTE';
 
+                          const stageSummary = getStrawStageSummary(straw, selectedPatient.specimenType);
                           const eGrade = (straw.grade || '').trim().toUpperCase();
                           const eFrag = (straw.fragmentation || '').trim();
                           const eComment = (straw.comments || '').trim();
@@ -1677,6 +1829,9 @@ export const PatientDirectory: React.FC = () => {
                           const gradeStr = eGrade ? eGrade : 'N/A';
                           const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
                           const commentStr = eComment ? ` - (${eComment})` : '';
+                          const countLabel = isOocyte
+                            ? (embryoCount === 1 ? '1 oocyte' : `${embryoCount} oocytes`)
+                            : (embryoCount === 1 ? '1 embryo' : `${embryoCount} embryos`);
 
                           return (
                             <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
@@ -1684,15 +1839,17 @@ export const PatientDirectory: React.FC = () => {
                                 <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold text-xs">
                                   {displayLabel}
                                 </span>
-                                <span className="text-slate-700 font-bold text-xs">
-                                  ({embryoCount} Embryo(s))
+                                <span className="text-slate-800 font-bold text-xs bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                                  ({countLabel} • {stageSummary})
                                 </span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
                                   {straw.color || 'Pink'}
                                 </span>
-                                <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
-                                  Embryo grade: {gradeStr}{fragStr}{commentStr}
-                                </span>
+                                {(!isOocyte || (eFrag || eComment)) && (
+                                  <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
+                                    {isOocyte ? 'Notes' : 'Grade'}: {gradeStr}{fragStr}{commentStr}
+                                  </span>
+                                )}
                               </div>
                               <div className="flex items-center gap-2 text-xs font-medium text-slate-700 flex-wrap">
                                 {straw.isPgt && (
@@ -2143,15 +2300,15 @@ export const PatientDirectory: React.FC = () => {
         patient={reportMailPatient}
       />
 
-      {/* Adjust Patient Profile Picture Modal */}
+      {/* Adjust Profile Picture Modal */}
       <ImageCropRotateModal
         isOpen={Boolean(cropModalFile)}
         imageFile={cropModalFile?.file || null}
-        title="Adjust & Rotate Patient Profile Picture"
+        title={cropModalFile?.target === 'partner' ? "Adjust & Rotate Husband Profile Picture" : "Adjust & Rotate Wife Profile Picture"}
         onClose={() => setCropModalFile(null)}
         onConfirm={(processedFile) => {
           if (cropModalFile) {
-            handleUploadPatientPhoto(cropModalFile.patientId, processedFile);
+            handleUploadPatientPhoto(cropModalFile.patientId, processedFile, cropModalFile.target || 'patient');
             setCropModalFile(null);
           }
         }}

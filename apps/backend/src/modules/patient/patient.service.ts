@@ -31,6 +31,7 @@ export interface CreatePatientInput {
   thawDate?: Date | string;
   comments?: string;
   photoUrl?: string;
+  partnerPhotoUrl?: string;
   isEmailVerified?: boolean;
   specimenType?: string;
   cycleType?: string;
@@ -115,6 +116,7 @@ export class PatientService {
             thawDate: input.thawDate ? new Date(input.thawDate) : null,
             comments: input.comments ? input.comments.trim() : null,
             photoUrl: input.photoUrl ? input.photoUrl.trim() : null,
+            partnerPhotoUrl: input.partnerPhotoUrl ? input.partnerPhotoUrl.trim() : null,
             isEmailVerified: Boolean(input.isEmailVerified),
             specimenType: input.specimenType ? input.specimenType.trim() : 'EMBRYO',
             cycleType: input.cycleType ? input.cycleType.trim() : 'SELF',
@@ -203,6 +205,7 @@ export class PatientService {
         thawDate: input.thawDate !== undefined ? (input.thawDate ? new Date(input.thawDate) : null) : existing.thawDate,
         comments: input.comments !== undefined ? input.comments.trim() : existing.comments,
         photoUrl: input.photoUrl !== undefined ? (input.photoUrl ? input.photoUrl.trim() : null) : existing.photoUrl,
+        partnerPhotoUrl: input.partnerPhotoUrl !== undefined ? (input.partnerPhotoUrl ? input.partnerPhotoUrl.trim() : null) : existing.partnerPhotoUrl,
         isEmailVerified: input.isEmailVerified !== undefined ? Boolean(input.isEmailVerified) : existing.isEmailVerified,
         specimenType: input.specimenType !== undefined ? (input.specimenType ? input.specimenType.trim() : null) : existing.specimenType,
         cycleType: input.cycleType !== undefined ? (input.cycleType ? input.cycleType.trim() : null) : existing.cycleType,

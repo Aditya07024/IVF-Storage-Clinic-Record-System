@@ -256,13 +256,14 @@ export class DocumentService {
         doc.font('Helvetica').fillColor('#334155').text(freezeDateStr);
       }
 
-      // Render Patient Photo if uploaded (Supports Data URI & local disk path)
-      let photoInputBuffer: Buffer | string | null = null;
-      if (patient.photoUrl) {
-        if (patient.photoUrl.startsWith('data:image/')) {
-          photoInputBuffer = Buffer.from(patient.photoUrl.split(',')[1], 'base64');
-        } else {
-          const basename = path.basename(patient.photoUrl);
+      // Render Patient & Partner Photos if uploaded (Supports Data URI & local disk path)
+      const parsePhotoBuffer = async (urlStr?: string | null): Promise<Buffer | null> => {
+        if (!urlStr) return null;
+        try {
+          if (urlStr.startsWith('data:image/')) {
+            return Buffer.from(urlStr.split(',')[1], 'base64');
+          }
+          const basename = path.basename(urlStr);
           const checkPaths = [
             path.join(path.resolve(CONFIG.STORAGE_LOCAL_DIR), basename),
             path.join(process.cwd(), 'uploads', basename),
@@ -270,31 +271,53 @@ export class DocumentService {
           ];
           for (const p of checkPaths) {
             if (fs.existsSync(p)) {
-              photoInputBuffer = p;
-              break;
+              return fs.readFileSync(p);
             }
           }
+        } catch {
+          return null;
         }
-      }
+        return null;
+      };
 
-      if (photoInputBuffer) {
+      const wifePhotoRaw = await parsePhotoBuffer(patient.photoUrl);
+      const husbandPhotoRaw = await parsePhotoBuffer((patient as any).partnerPhotoUrl);
+
+      const pWidth = 46;
+      const pHeight = 56;
+      const pY = demoStartY + 14;
+
+      if (wifePhotoRaw && husbandPhotoRaw) {
+        // Both photos present side-by-side
         try {
-          const pWidth = 60;
-          const pHeight = 72;
-          const pX = 492;
-          const pY = demoStartY + 8;
+          const wJpeg = await sharp(wifePhotoRaw).resize(200, 240, { fit: 'cover' }).jpeg({ quality: 90 }).toBuffer();
+          doc.rect(438, pY - 1, pWidth + 2, pHeight + 2).lineWidth(1).stroke('#047857');
+          doc.image(wJpeg, 439, pY, { fit: [pWidth, pHeight], align: 'center', valign: 'center' });
+          doc.fillColor('#047857').fontSize(7).font('Helvetica-Bold').text('WIFE', 438, pY - 10, { width: pWidth + 2, align: 'center' });
+        } catch (err) {}
 
-          // Convert photo to clean baseline JPEG Buffer using Sharp (handles WebP, PNG, HEIC, Base64)
-          const jpegBuffer = await sharp(photoInputBuffer)
-            .resize(240, 288, { fit: 'cover' })
-            .jpeg({ quality: 90 })
-            .toBuffer();
-
-          doc.rect(pX - 1, pY - 1, pWidth + 2, pHeight + 2).lineWidth(1).stroke('#047857');
-          doc.image(jpegBuffer, pX, pY, { fit: [pWidth, pHeight], align: 'center', valign: 'center' });
-        } catch (photoErr) {
-          console.error('[PDF Patient Photo Render Error]', photoErr);
-        }
+        try {
+          const hJpeg = await sharp(husbandPhotoRaw).resize(200, 240, { fit: 'cover' }).jpeg({ quality: 90 }).toBuffer();
+          doc.rect(494, pY - 1, pWidth + 2, pHeight + 2).lineWidth(1).stroke('#0284c7');
+          doc.image(hJpeg, 495, pY, { fit: [pWidth, pHeight], align: 'center', valign: 'center' });
+          doc.fillColor('#0284c7').fontSize(7).font('Helvetica-Bold').text('HUSBAND', 494, pY - 10, { width: pWidth + 2, align: 'center' });
+        } catch (err) {}
+      } else if (wifePhotoRaw) {
+        // Only Wife Photo
+        try {
+          const wJpeg = await sharp(wifePhotoRaw).resize(200, 240, { fit: 'cover' }).jpeg({ quality: 90 }).toBuffer();
+          doc.rect(494, pY - 1, pWidth + 2, pHeight + 2).lineWidth(1).stroke('#047857');
+          doc.image(wJpeg, 495, pY, { fit: [pWidth, pHeight], align: 'center', valign: 'center' });
+          doc.fillColor('#047857').fontSize(7).font('Helvetica-Bold').text('PATIENT', 494, pY - 10, { width: pWidth + 2, align: 'center' });
+        } catch (err) {}
+      } else if (husbandPhotoRaw) {
+        // Only Husband Photo
+        try {
+          const hJpeg = await sharp(husbandPhotoRaw).resize(200, 240, { fit: 'cover' }).jpeg({ quality: 90 }).toBuffer();
+          doc.rect(494, pY - 1, pWidth + 2, pHeight + 2).lineWidth(1).stroke('#0284c7');
+          doc.image(hJpeg, 495, pY, { fit: [pWidth, pHeight], align: 'center', valign: 'center' });
+          doc.fillColor('#0284c7').fontSize(7).font('Helvetica-Bold').text('HUSBAND', 494, pY - 10, { width: pWidth + 2, align: 'center' });
+        } catch (err) {}
       }
 
       

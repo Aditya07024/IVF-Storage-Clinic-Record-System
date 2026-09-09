@@ -42,6 +42,7 @@ model Patient {
   thawDate       DateTime?
   comments       String?
   photoUrl       String?
+  partnerPhotoUrl String?
   isEmailVerified Boolean       @default(false)
   emailOtp       String?
   emailOtpExpires DateTime?
