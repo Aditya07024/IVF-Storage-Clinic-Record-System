@@ -1429,7 +1429,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setCycleType(item.id as any)}
+                      onClick={() => {
+                        const newCycle = item.id as any;
+                        setCycleType(newCycle);
+                        if (newCycle === 'DONOR_RECIPIENT' && specimenType === 'OOCYTE') {
+                          setVitrificationIndication('Supernumerary donor egg freezing');
+                        }
+                      }}
                       className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start justify-center gap-0.5 text-left cursor-pointer ${
                         cycleType === item.id
                           ? 'bg-blue-600 text-white border-blue-700 shadow-xs scale-102'
@@ -1520,6 +1526,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     <option value="Social egg freezing">1. Social egg freezing</option>
                     <option value="Onco fertility preservation">2. Onco fertility preservation</option>
                     <option value="Emergency egg freezing">3. Emergency egg freezing</option>
+                    {cycleType === 'DONOR_RECIPIENT' && (
+                      <option value="Supernumerary donor egg freezing">4. Supernumerary donor egg freezing</option>
+                    )}
                   </select>
                 </div>
               </div>
