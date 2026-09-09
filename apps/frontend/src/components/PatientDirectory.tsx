@@ -624,11 +624,13 @@ export const PatientDirectory: React.FC = () => {
                         isOpeningDetail ? 'bg-emerald-50/80' : ''
                       }`}
                     >
-                      <td className="px-6 py-4 font-mono font-bold text-emerald-700 flex items-center gap-2">
-                        {isOpeningDetail && (
-                          <span className="w-3.5 h-3.5 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
-                        )}
-                        <span>{p.patientId}</span>
+                      <td className="px-6 py-4 font-mono font-bold text-emerald-700 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {isOpeningDetail && (
+                            <span className="w-3.5 h-3.5 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
+                          )}
+                          <span>{p.patientId}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -650,30 +652,30 @@ export const PatientDirectory: React.FC = () => {
                               />
                             )}
                           </div>
-                          <div className="min-w-0">
-                            <div className="font-bold text-slate-900 text-sm flex items-center gap-2 flex-wrap">
-                              <span>{p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}</span>
-                              {p.partnerName && (
-                                <>
-                                  <span>Partner: {p.partnerName} {p.partnerAge ? `(${p.partnerAge})` : ''}</span>
-                                </>
-                              )}
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="font-bold text-slate-900 text-sm whitespace-nowrap">
+                              {p.fullName} {p.patientAge ? `(${p.patientAge})` : ''}
                             </div>
+                            {p.partnerName && (
+                              <div className="text-xs text-slate-600 font-medium whitespace-nowrap">
+                                Partner: <span className="font-semibold text-slate-800">{p.partnerName}</span> {p.partnerAge ? `(${p.partnerAge})` : ''}
+                              </div>
+                            )}
                             {p.doctorName && (
-                              <div className="text-xs text-emerald-800 font-bold mt-0.5">
+                              <div className="text-xs text-emerald-800 font-bold whitespace-nowrap">
                                 {p.doctorName}
                               </div>
                             )}
                           </div>
                         </div>
                         {isDuplicateName && (
-                          <div className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 mt-1 inline-flex items-center gap-1">
+                          <div className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 mt-1 inline-flex items-center gap-1 whitespace-nowrap">
                             <AlertTriangle className="w-3 h-3 text-amber-700" />
                             <span>Same Name Account — Check Egg Retrieval Date: {eggRetrievalDateStr}</span>
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-xl text-xs font-bold font-mono border inline-block ${isDuplicateName ? 'bg-amber-100 text-amber-950 border-amber-400' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
                           {eggRetrievalDateStr}
                         </span>
@@ -724,8 +726,6 @@ export const PatientDirectory: React.FC = () => {
                               .map(([stage, count]) => `${count} ${stage}`)
                               .join(' + ');
 
-                            const freezingDatesStr = Array.from(freezingDatesSet).join(', ');
-
                             const specimenLabel = p.specimenType === 'OOCYTE'
                               ? (totalEmbryos === 1 ? 'Egg' : 'Eggs')
                               : p.specimenType === 'SPERM'
@@ -735,8 +735,8 @@ export const PatientDirectory: React.FC = () => {
                             const specimenIcon = p.specimenType === 'OOCYTE' ? '🥚' : p.specimenType === 'SPERM' ? '🧪' : '🧬';
 
                             return (
-                              <div className="space-y-1.5 min-w-[220px]">
-                                <div className="flex flex-wrap items-center gap-1.5">
+                              <div className="space-y-1 whitespace-nowrap min-w-[200px]">
+                                <div className="flex items-center gap-1.5">
                                   <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-950 font-mono font-bold text-xs rounded-lg border border-emerald-300 shadow-2xs inline-flex items-center gap-1">
                                     <span>🧪</span>
                                     <span>{totalStraws} {totalStraws === 1 ? 'Straw' : 'Straws'}</span>
@@ -746,7 +746,7 @@ export const PatientDirectory: React.FC = () => {
                                     <span>{totalEmbryos} {specimenLabel}</span>
                                   </span>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                                <div className="flex items-center gap-1.5 pt-0.5">
                                   {stageBreakdown && (
                                     <span className="px-2 py-0.5 bg-amber-100/90 text-amber-950 text-[11px] font-bold rounded-lg border border-amber-300 font-mono shadow-2xs">
                                       {stageBreakdown}
@@ -766,64 +766,66 @@ export const PatientDirectory: React.FC = () => {
                           );
                         })()}
                       </td>
-                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                        {/* Direct 1-Click Thaw Button */}
-                        {(() => {
-                          const hasActiveStraws = p.batches?.some((b: any) =>
-                            b.straws?.some((s: any) => s.status === 'OCCUPIED')
-                          );
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2 shrink-0">
+                          {/* Direct 1-Click Thaw Button */}
+                          {(() => {
+                            const hasActiveStraws = p.batches?.some((b: any) =>
+                              b.straws?.some((s: any) => s.status === 'OCCUPIED')
+                            );
 
-                          if (hasActiveStraws) {
+                            if (hasActiveStraws) {
+                              return (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openQuickThawModal(p.id);
+                                  }}
+                                  className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl border border-rose-200 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs active:scale-95"
+                                  title="Execute Thaw for this patient"
+                                >
+                                  <ThermometerSnowflake className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>Thaw</span>
+                                </button>
+                              );
+                            }
+
                             return (
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openQuickThawModal(p.id);
-                                }}
-                                className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl border border-rose-200 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs active:scale-95"
-                                title="Execute Thaw for this patient"
+                                disabled
+                                className="p-2 bg-slate-100 text-slate-400 rounded-xl border border-slate-200 cursor-not-allowed inline-flex items-center gap-1.5 text-xs font-bold opacity-60"
+                                title="No active straws available for thawing"
                               >
-                                <ThermometerSnowflake className="w-3.5 h-3.5 text-rose-600" />
-                                <span>Thaw</span>
+                                <ThermometerSnowflake className="w-3.5 h-3.5 text-slate-400" />
+                                <span>All Thawed</span>
                               </button>
                             );
-                          }
+                          })()}
 
-                          return (
+                          {canPrintMail ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReportMailPatient(p);
+                              }}
+                              className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 transition-all inline-flex items-center gap-1 text-xs font-bold shadow-xs active:scale-95"
+                              title="Print or Send Email Report"
+                            >
+                              <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Print / Mail</span>
+                            </button>
+                          ) : (
                             <button
                               disabled
-                              className="p-2 bg-slate-100 text-slate-400 rounded-xl border border-slate-200 cursor-not-allowed inline-flex items-center gap-1.5 text-xs font-bold opacity-60"
-                              title="No active straws available for thawing"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-2 bg-slate-100 text-slate-400 rounded-xl border border-slate-200 cursor-not-allowed inline-flex items-center gap-1 text-xs font-bold opacity-60"
+                              title="Printing & Emailing reports requires Admin permission"
                             >
-                              <ThermometerSnowflake className="w-3.5 h-3.5 text-slate-400" />
-                              <span>All Thawed</span>
+                              <Lock className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Print / Mail</span>
                             </button>
-                          );
-                        })()}
-
-                        {canPrintMail ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setReportMailPatient(p);
-                            }}
-                            className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 transition-all inline-flex items-center gap-1 text-xs font-bold shadow-xs active:scale-95"
-                            title="Print or Send Email Report"
-                          >
-                            <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Print / Mail</span>
-                          </button>
-                        ) : (
-                          <button
-                            disabled
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-2 bg-slate-100 text-slate-400 rounded-xl border border-slate-200 cursor-not-allowed inline-flex items-center gap-1 text-xs font-bold opacity-60"
-                            title="Printing & Emailing reports requires Admin permission"
-                          >
-                            <Lock className="w-3.5 h-3.5 text-slate-400" />
-                            <span>Print / Mail</span>
-                          </button>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
