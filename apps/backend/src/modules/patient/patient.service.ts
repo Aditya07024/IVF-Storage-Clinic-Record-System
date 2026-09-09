@@ -86,6 +86,9 @@ export class PatientService {
     if (!input.fullName || !input.fullName.trim()) {
       throw new Error('Patient Full Name is required.');
     }
+    if (!input.dob || !input.dob.trim()) {
+      throw new Error('Patient Date of Birth (DOB) is required.');
+    }
     if (!input.email || !input.email.trim()) {
       throw new Error('Patient Email Address is required.');
     }

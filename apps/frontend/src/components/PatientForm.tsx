@@ -400,6 +400,7 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
           onBlur={handleBlur}
           placeholder="DD/MM/YYYY"
           maxLength={10}
+          required={required}
           className={`w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 pr-10 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block ${className || ''}`}
         />
         <button
@@ -861,6 +862,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     if (formMode === 'new') {
       if (!fullName.trim() || !doctorName.trim()) {
         setError('Patient Full Name and Doctor Name are required.');
+        return;
+      }
+      if (!dob.trim()) {
+        setError('Patient Date of Birth (DOB) is required.');
         return;
       }
       if (!email.trim()) {
@@ -1708,6 +1713,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 <DateInputDDMMYYYY
                   label="Patient Date of Birth (DOB)"
                   value={dob}
+                  required
                   onChange={(val) => {
                     setDob(val);
                     if (val) {
