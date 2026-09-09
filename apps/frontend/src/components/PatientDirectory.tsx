@@ -1852,7 +1852,7 @@ export const PatientDirectory: React.FC = () => {
                                 )}
                               </div>
                               <div className="flex items-center gap-2 text-xs font-medium text-slate-700 flex-wrap">
-                                {straw.isPgt && (
+                                {straw.isPgt && !isOocyte && (
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
                                     PGT TESTED
                                   </span>
@@ -2236,19 +2236,21 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
-                <div className="pt-4">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={editStrawIsPgt}
-                      onChange={(e) => setEditStrawIsPgt(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-xs font-bold text-purple-900 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
-                      PGT Biopsy Tested
-                    </span>
-                  </label>
-                </div>
+                {selectedPatient?.specimenType !== 'OOCYTE' && (
+                  <div className="pt-4">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editStrawIsPgt}
+                        onChange={(e) => setEditStrawIsPgt(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <span className="text-xs font-bold text-purple-900 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
+                        PGT Biopsy Tested
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div>

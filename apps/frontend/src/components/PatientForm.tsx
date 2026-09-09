@@ -2056,24 +2056,26 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                             )}
                           </div>
 
-                          {/* PGT Tested Tick Checkbox */}
-                          <label className={`flex items-center gap-2 px-3 py-1 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                            item.isPgt
-                              ? 'bg-purple-100 text-purple-950 border-purple-300 shadow-2xs'
-                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                          }`}>
-                            <input
-                              type="checkbox"
-                              checked={item.isPgt}
-                              onChange={(e) => {
-                                const next = [...strawItems];
-                                next[idx].isPgt = e.target.checked;
-                                setStrawItems(next);
-                              }}
-                              className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                            />
-                            <span>PGT Tested</span>
-                          </label>
+                          {/* PGT Tested Tick Checkbox (Only for Embryo, hidden for Egg/Oocyte) */}
+                          {specimenType !== 'OOCYTE' && (
+                            <label className={`flex items-center gap-2 px-3 py-1 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                              item.isPgt
+                                ? 'bg-purple-100 text-purple-950 border-purple-300 shadow-2xs'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={item.isPgt}
+                                onChange={(e) => {
+                                  const next = [...strawItems];
+                                  next[idx].isPgt = e.target.checked;
+                                  setStrawItems(next);
+                                }}
+                                className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                              />
+                              <span>PGT Tested</span>
+                            </label>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
@@ -2694,7 +2696,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStrawColorBadgeClass(viewDetailStraw.color)}`}>
                   {viewDetailStraw.color || 'Pink'}
                 </span>
-                {viewDetailStraw.isPgt && (
+                {viewDetailStraw.isPgt && specimenType !== 'OOCYTE' && (
                   <span className="px-2.5 py-0.5 rounded-full text-xs bg-purple-100 text-purple-900 border border-purple-300 font-bold">
                     PGT TESTED
                   </span>
@@ -3007,7 +3009,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                           </span>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] border ${badgeClass}`}>{item.color}</span>
                         </div>
-                        {item.isPgt && (
+                        {item.isPgt && specimenType !== 'OOCYTE' && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-900 border border-purple-300 font-bold">
                             PGT TESTED
                           </span>
