@@ -1530,6 +1530,26 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-full">
+            {/* REGISTRATION ID (UNIQUE KEY) */}
+            <div className="md:col-span-2 min-w-0 max-w-full">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <span>Registration ID (Unique Key) <span className="text-rose-600 font-bold">*</span></span>
+              </label>
+              <input
+                type="text"
+                value={customPatientId}
+                onChange={(e) => setCustomPatientId(e.target.value)}
+                readOnly={!!selectedExistingPatient}
+                placeholder="e.g. IVF-2026-000001"
+                required
+                className={`w-full min-w-0 max-w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
+                  selectedExistingPatient
+                    ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
+                    : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
+                }`}
+              />
+            </div>
+
             {/* DUAL PATIENT & PARTNER PHOTO UPLOADER BOXES */}
             {!selectedExistingPatient && (
               <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
@@ -1660,25 +1680,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                 </div>
               </div>
             )}
-
-            <div className="md:col-span-2 min-w-0 max-w-full">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                <span>Registration ID (Unique Key) <span className="text-rose-600 font-bold">*</span></span>
-              </label>
-              <input
-                type="text"
-                value={customPatientId}
-                onChange={(e) => setCustomPatientId(e.target.value)}
-                readOnly={!!selectedExistingPatient}
-                placeholder="e.g. IVF-2026-000001"
-                required
-                className={`w-full min-w-0 max-w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
-                  selectedExistingPatient
-                    ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
-                    : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
-                }`}
-              />
-            </div>
 
             {/* PATIENT DEMOGRAPHICS CONTAINER */}
             <div className="p-4 bg-emerald-50/40 border border-emerald-200/80 rounded-2xl space-y-4 min-w-0 max-w-full">
