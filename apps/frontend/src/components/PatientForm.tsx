@@ -1520,15 +1520,19 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                   </label>
                   <select
                     value={vitrificationIndication}
-                    onChange={(e) => setVitrificationIndication(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setVitrificationIndication(val);
+                      if (val === 'Supernumerary donor egg freezing') {
+                        setCycleType('DONOR_RECIPIENT');
+                      }
+                    }}
                     className="w-full h-10 bg-white border border-emerald-300 rounded-lg px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500 cursor-pointer"
                   >
                     <option value="Social egg freezing">1. Social egg freezing</option>
                     <option value="Onco fertility preservation">2. Onco fertility preservation</option>
                     <option value="Emergency egg freezing">3. Emergency egg freezing</option>
-                    {cycleType === 'DONOR_RECIPIENT' && (
-                      <option value="Supernumerary donor egg freezing">4. Supernumerary donor egg freezing</option>
-                    )}
+                    <option value="Supernumerary donor egg freezing">4. Supernumerary donor egg freezing</option>
                   </select>
                 </div>
               </div>
