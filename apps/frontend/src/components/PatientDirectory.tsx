@@ -716,7 +716,7 @@ export const PatientDirectory: React.FC = () => {
                             const stageCounts: Record<string, number> = {};
                             activeStraws.forEach((s) => {
                               const rawStage = s.stage || 'Day 5';
-                              const cleanStage = rawStage.split('(')[0].trim();
+                              const cleanStage = rawStage.split('(')[0].trim().replace(/\bDay\s+(\d+)/gi, 'Day$1');
                               const count = s.embryoCount || 1;
                               stageCounts[cleanStage] = (stageCounts[cleanStage] || 0) + count;
                             });
