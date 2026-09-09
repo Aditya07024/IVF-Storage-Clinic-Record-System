@@ -439,6 +439,7 @@ export class StorageService {
         where: { batch: { patientId: input.patientId } },
       });
 
+      let totalEmbryosSoFar = 0;
       for (let i = 0; i < requiredStraws; i++) {
         const item = strawItems[i];
         const embryosInThisStraw = item.embryoCount || 1;
@@ -458,19 +459,25 @@ export class StorageService {
             grade: item.grade ? item.grade.trim() : null,
             comments: item.comments ? item.comments.trim() : null,
             isPgt: item.isPgt ?? false,
-            maxCapacity: 2,
+            maxCapacity: 3,
             status: 'OCCUPIED',
           },
         });
 
         // Create Embryo entities inside straw
         for (let e = 1; e <= embryosInThisStraw; e++) {
+          totalEmbryosSoFar++;
+          const eGradeKey = `grade${e}`;
+          const eCommentKey = `comment${e}`;
+          const eGrade = ((item as any)[eGradeKey] || (e === 1 ? item.grade : '') || '').toString();
+          const eComment = ((item as any)[eCommentKey] || (e === 1 ? item.comments : '') || '').toString();
+
           await tx.embryo.create({
             data: {
               strawId: straw.id,
-              embryoNumber: e,
-              grade: item.grade ? item.grade.trim() : '',
-              notes: item.comments ? item.comments.trim() : null,
+              embryoNumber: totalEmbryosSoFar,
+              grade: eGrade.trim(),
+              notes: eComment.trim() || null,
               status: 'FROZEN',
             },
           });

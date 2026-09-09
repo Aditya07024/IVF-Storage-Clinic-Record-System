@@ -2242,7 +2242,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                               <div key={eIdx} className={`bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-1 ${specimenType === 'OOCYTE' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-2.5 items-center`}>
                                 <div>
                                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    {specimenType === 'OOCYTE' ? (item.embryoCount > 1 ? `Oocyte #${eIdx + 1} Stage` : 'Oocyte Stage') : (item.embryoCount > 1 ? `Embryo #${eIdx + 1} Grade` : 'Grade')}
+                                    {(() => {
+                                      const prevCount = strawItems.slice(0, idx).reduce((sum, s) => sum + (s.embryoCount || 1), 0);
+                                      const globalIdx = prevCount + eIdx + 1;
+                                      const totalCount = strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0);
+                                      if (specimenType === 'OOCYTE') {
+                                        return totalCount > 1 ? `Oocyte #${globalIdx} Stage` : 'Oocyte Stage';
+                                      } else {
+                                        return totalCount > 1 ? `Embryo #${globalIdx} Grade` : 'Grade';
+                                      }
+                                    })()}
                                   </label>
                                   {specimenType === 'OOCYTE' ? (
                                     <div className="grid grid-cols-3 gap-1 h-9">
@@ -3069,7 +3078,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                           return (
                             <div key={eIdx} className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
                               <span className="font-mono font-bold text-slate-900">
-                                {count > 1 ? `${itemTypeLabel} #${eIdx + 1} ${stageTypeLabel}: ` : `${itemTypeLabel} ${stageTypeLabel}: `}{gradeStr}{fragStr}{commentStr}
+                                {(() => {
+                                  const prevCount = strawItems.slice(0, sIdx).reduce((sum, s) => sum + (s.embryoCount || 1), 0);
+                                  const globalIdx = prevCount + eIdx + 1;
+                                  const totalCount = strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0);
+                                  return totalCount > 1 ? `${itemTypeLabel} #${globalIdx} ${stageTypeLabel}: ` : `${itemTypeLabel} ${stageTypeLabel}: `;
+                                })()}{gradeStr}{fragStr}{commentStr}
                               </span>
                             </div>
                           );
