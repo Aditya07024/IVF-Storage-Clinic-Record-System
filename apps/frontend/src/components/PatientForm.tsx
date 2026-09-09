@@ -863,6 +863,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         setError('Patient Full Name and Doctor Name are required.');
         return;
       }
+      if (!email.trim()) {
+        setError('Patient Email Address is required.');
+        return;
+      }
       if (!phone.trim() && !partnerPhone.trim()) {
         setError('Please enter at least 1 Mobile Phone number (Patient or Partner).');
         return;
@@ -1745,7 +1749,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               <div className="min-w-0 max-w-full">
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Patient Email Address
+                    Patient Email Address <span className="text-rose-600 font-bold">*</span>
                   </label>
                   {isEmailVerified ? (
                     <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
@@ -1771,6 +1775,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     setIsEmailVerified(false);
                   }}
                   placeholder="e.g. patient@example.com"
+                  required
                   className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
                 />
 
