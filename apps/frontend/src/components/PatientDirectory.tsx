@@ -576,7 +576,7 @@ export const PatientDirectory: React.FC = () => {
                 <th className="px-4 py-3.5">Date of Egg Retrieval</th>
                 <th className="px-4 py-3.5">Mobile Phone</th>
                 <th className="px-4 py-3.5">Storage Batches</th>
-                <th className="px-4 py-3.5 text-right sticky right-0 bg-slate-100 z-10 shadow-2xs">Actions</th>
+                <th className="px-4 py-3.5 text-right md:sticky md:right-0 bg-slate-100 z-10 shadow-2xs">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -616,7 +616,7 @@ export const PatientDirectory: React.FC = () => {
                       <td className="px-4 py-3.5">
                         <div className="h-6 bg-slate-100 rounded-lg w-28" />
                       </td>
-                      <td className="px-4 py-3.5 flex justify-end gap-2 sticky right-0 bg-white shadow-2xs z-10">
+                      <td className="px-4 py-3.5 flex justify-end gap-2 md:sticky md:right-0 bg-white shadow-2xs z-10">
                         <div className="h-8 bg-slate-200 rounded-xl w-24" />
                       </td>
                     </tr>
@@ -844,7 +844,7 @@ export const PatientDirectory: React.FC = () => {
                           );
                         })()}
                       </td>
-                      <td className="px-4 py-3.5 text-right whitespace-nowrap sticky right-0 bg-white group-hover:bg-emerald-50/40 shadow-2xs z-10">
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap md:sticky md:right-0 bg-white group-hover:bg-emerald-50/40 shadow-2xs z-10">
                         <div className="flex items-center justify-end gap-2 shrink-0">
                           {/* Direct 1-Click Thaw Button */}
                           {(() => {
