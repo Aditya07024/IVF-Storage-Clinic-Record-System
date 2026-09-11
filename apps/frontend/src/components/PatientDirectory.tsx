@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
@@ -83,6 +83,10 @@ export const PatientDirectory: React.FC = () => {
   const [editPartnerAge, setEditPartnerAge] = useState('');
   const [editPartnerPhone, setEditPartnerPhone] = useState('');
   const [editPartnerEmail, setEditPartnerEmail] = useState('');
+  const [editDonorName, setEditDonorName] = useState('');
+  const [editDonorRegNo, setEditDonorRegNo] = useState('');
+  const [editDonorAge, setEditDonorAge] = useState('');
+  const [editDonorPhone, setEditDonorPhone] = useState('');
   const [editDoctorName, setEditDoctorName] = useState('');
   const [editComments, setEditComments] = useState('');
   const [editFreezingDate, setEditFreezingDate] = useState('');
@@ -235,6 +239,10 @@ export const PatientDirectory: React.FC = () => {
     setEditPartnerAge(patient.partnerAge || calculateAgeFromDob(patient.partnerDob));
     setEditPartnerPhone(patient.partnerPhone || '');
     setEditPartnerEmail(patient.partnerEmail || '');
+    setEditDonorName(patient.donorName || '');
+    setEditDonorRegNo(patient.donorRegNo || '');
+    setEditDonorAge(patient.donorAge || '');
+    setEditDonorPhone(patient.donorPhone || '');
     setEditDoctorName(patient.doctorName || '');
     setEditComments(patient.comments || '');
     setEditFreezingDate(patient.freezingDate ? new Date(patient.freezingDate).toISOString().split('T')[0] : '');
@@ -263,6 +271,10 @@ export const PatientDirectory: React.FC = () => {
         partnerAge: editPartnerAge.trim() || calculateAgeFromDob(editPartnerDob),
         partnerPhone: editPartnerPhone.trim(),
         partnerEmail: editPartnerEmail.trim(),
+        donorName: editDonorName.trim(),
+        donorRegNo: editDonorRegNo.trim(),
+        donorAge: editDonorAge.trim(),
+        donorPhone: editDonorPhone.trim(),
         doctorName: editDoctorName.trim(),
         comments: editComments.trim(),
         freezingDate: editFreezingDate ? editFreezingDate : null,
@@ -372,12 +384,12 @@ export const PatientDirectory: React.FC = () => {
     }
   };
 
-  const openQuickThawModal = async (patientId: string) => {
+  const openQuickThawModal = async (patientId: string, preselectedStrawId?: string) => {
     try {
       const res = await apiRequest(`/api/patients/${patientId}`);
       if (res.success) {
         setQuickThawPatient(res.patient);
-        setSelectedStrawIds([]);
+        setSelectedStrawIds(preselectedStrawId ? [preselectedStrawId] : []);
         setDoctorNotes('');
       }
     } catch (err: any) {
@@ -665,14 +677,14 @@ export const PatientDirectory: React.FC = () => {
                             <div className="font-bold text-slate-900 text-sm whitespace-nowrap">
                               {p.fullName} {p.patientAge ? `(${formatAgeWithY(p.patientAge)})` : ''}
                             </div>
-                            {(p.cycleType === 'DONOR_RECIPIENT' || p.donorName || p.donorRegNo || (p.vitrificationIndication && p.vitrificationIndication.toLowerCase().includes('donor'))) && (
-                              <div className="text-xs font-bold text-purple-900 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 inline-block whitespace-nowrap">
-                                D-R, Donor: <span className="text-purple-950 font-extrabold">{p.donorName || 'N/A'}</span> {p.donorAge ? `(${formatAgeWithY(p.donorAge)})` : ''}
-                              </div>
-                            )}
                             {p.partnerName && (
                               <div className="text-xs text-slate-600 font-medium whitespace-nowrap">
                                 Partner: <span className="font-semibold text-slate-800">{p.partnerName}</span> {p.partnerAge ? `(${formatAgeWithY(p.partnerAge)})` : ''}
+                              </div>
+                            )}
+                            {(p.cycleType === 'DONOR_RECIPIENT' || p.donorName || p.donorRegNo || (p.vitrificationIndication && p.vitrificationIndication.toLowerCase().includes('donor'))) && (
+                              <div className="text-xs text-amber-600 font-semibold whitespace-nowrap">
+                                Donor: <span className="font-bold text-amber-700">{p.donorName || 'N/A'}</span> {p.donorAge ? `(${formatAgeWithY(p.donorAge)})` : ''}
                               </div>
                             )}
                             {p.doctorName && (
@@ -699,65 +711,101 @@ export const PatientDirectory: React.FC = () => {
                       </td>
                       <td className="px-4 py-3.5">
                         {(() => {
-                          const activeBatches = p.batches?.filter((b: any) =>
-                            b.straws?.some((s: any) => s.status === 'OCCUPIED')
-                          ) || [];
+                          const allBatches = p.batches || [];
+                          const allStraws: any[] = [];
+                          
+                          allBatches.forEach((batch: any) => {
+                            (batch.straws || []).forEach((s: any) => {
+                              const pIsOocyte = p.specimenType === 'OOCYTE' || (p.vitrificationIndication && /egg\s*freezing|oocyte/i.test(p.vitrificationIndication));
+                              allStraws.push({
+                                ...s,
+                                batchEmbryoStage: batch.embryoStage,
+                                batchOocyteStage: batch.oocyteStage,
+                                stage: s.stage || batch.oocyteStage || batch.embryoStage || (pIsOocyte ? 'MII' : 'Day 5'),
+                              });
+                            });
+                          });
 
-                          if (activeBatches.length > 0) {
-                            const activeStraws: any[] = [];
-                            const freezingDatesSet = new Set<string>();
-
-                            if (p.freezingDate) {
-                              freezingDatesSet.add(formatDateDDMMYYYY(p.freezingDate));
-                            }
+                          if (allStraws.length > 0) {
+                            const activeStraws = allStraws.filter((s: any) => s.status === 'OCCUPIED');
+                            const thawedStraws = allStraws.filter((s: any) => s.status !== 'OCCUPIED');
+                            const isAllThawed = activeStraws.length === 0;
+                            const displayStraws = isAllThawed ? allStraws : activeStraws;
 
                             const stageCounts: Record<string, number> = {};
-
-                            activeBatches.forEach((batch: any) => {
-                              const fDate = batch.freezingDate || batch.storageDate;
-                              if (fDate) {
-                                freezingDatesSet.add(formatDateDDMMYYYY(fDate));
-                              }
-                              const occupied = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
-                              occupied.forEach((s: any) => {
-                                activeStraws.push({
-                                  ...s,
-                                  stage: s.stage || batch.oocyteStage || batch.embryoStage || (p.specimenType === 'OOCYTE' ? 'MII' : 'Day 5'),
-                                });
-
+                            displayStraws.forEach((s: any) => {
+                              const pIsOocyte = p.specimenType === 'OOCYTE' || (p.vitrificationIndication && /egg\s*freezing|oocyte/i.test(p.vitrificationIndication));
+                              if (pIsOocyte) {
                                 if (s.embryos && s.embryos.length > 0) {
                                   s.embryos.forEach((emb: any) => {
-                                    if (emb.status === 'FROZEN') {
-                                      const stg = emb.grade || s.grade || batch.oocyteStage || batch.embryoStage || (p.specimenType === 'OOCYTE' ? 'MII' : 'Day 5');
-                                      const cleanStg = stg.split('(')[0].trim().replace(/\bDay\s+(\d+)/gi, 'Day$1');
-                                      stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + 1;
-                                    }
+                                    const stg = emb.grade || s.grade || s.batchOocyteStage || 'MII';
+                                    const cleanStg = stg.split('(')[0].trim();
+                                    stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + 1;
                                   });
                                 } else {
-                                  const stg = s.grade || batch.oocyteStage || batch.embryoStage || (p.specimenType === 'OOCYTE' ? 'MII' : 'Day 5');
-                                  const cleanStg = stg.split('(')[0].trim().replace(/\bDay\s+(\d+)/gi, 'Day$1');
+                                  const stg = s.grade || s.batchOocyteStage || 'MII';
+                                  const cleanStg = stg.split('(')[0].trim();
                                   const count = s.embryoCount || 1;
                                   stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + count;
                                 }
-                              });
+                              } else {
+                                const stg = s.stage || s.batchEmbryoStage || 'Day 5';
+                                const cleanStg = stg.split('(')[0].trim().replace(/\bDay\s+(\d+)/gi, 'Day $1');
+                                const count = (s.embryos && Array.isArray(s.embryos) && s.embryos.length > 0)
+                                  ? s.embryos.length
+                                  : (typeof s.embryoCount === 'number' ? s.embryoCount : (parseInt(s.embryoCount, 10) || 1));
+                                stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + count;
+                              }
                             });
 
-                            const totalStraws = activeStraws.length;
-                            const totalEmbryos = activeStraws.reduce((sum, s) => sum + (s.embryoCount || 1), 0);
+                            const totalStraws = displayStraws.length;
+                            const totalEmbryos = displayStraws.reduce((sum, s) => {
+                              if (s.embryos && Array.isArray(s.embryos) && s.embryos.length > 0) {
+                                return sum + s.embryos.length;
+                              }
+                              return sum + (typeof s.embryoCount === 'number' ? s.embryoCount : (parseInt(s.embryoCount, 10) || 1));
+                            }, 0);
 
                             const stageBreakdown = Object.entries(stageCounts)
                               .sort(([a], [b]) => a.localeCompare(b))
                               .map(([stage, count]) => `${count} ${stage}`)
                               .join(' + ');
 
-                            const isDonor = p.cycleType === 'DONOR_RECIPIENT';
-                            const specimenLabel = p.specimenType === 'OOCYTE'
-                              ? (totalEmbryos === 1 ? 'oocyte' : 'oocytes')
+                            const isOocyte = p.specimenType === 'OOCYTE' || (p.vitrificationIndication && /egg\s*freezing|oocyte/i.test(p.vitrificationIndication));
+                            const specimenLabel = isOocyte
+                              ? (totalEmbryos === 1 ? 'Oocyte' : 'Oocytes')
                               : p.specimenType === 'SPERM'
                               ? 'Sperm'
                               : (totalEmbryos === 1 ? 'Embryo' : 'Embryos');
 
-                            const specimenIcon = p.specimenType === 'OOCYTE' ? '🥚' : p.specimenType === 'SPERM' ? '🧪' : '🧬';
+                            const specimenIcon = isOocyte ? '🥚' : p.specimenType === 'SPERM' ? '🧪' : '🧬';
+
+                            if (isAllThawed) {
+                              return (
+                                <div className="space-y-1 whitespace-nowrap min-w-[200px] opacity-70 group/thawed filter blur-[0.3px] grayscale contrast-75 hover:opacity-100 hover:blur-none hover:grayscale-0 hover:contrast-100 transition-all duration-300 cursor-pointer">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="px-2.5 py-0.5 bg-slate-200/90 group-hover/thawed:bg-slate-100 text-slate-800 font-mono font-bold text-xs rounded-lg border border-slate-300 shadow-2xs inline-flex items-center gap-1 transition-all">
+                                      <span>🧪</span>
+                                      <span>{totalStraws} {totalStraws === 1 ? 'Straw' : 'Straws'} (Thawed)</span>
+                                    </span>
+                                    <span className="px-2.5 py-0.5 bg-slate-200/90 group-hover/thawed:bg-slate-100 text-slate-800 font-mono font-bold text-xs rounded-lg border border-slate-300 shadow-2xs inline-flex items-center gap-1 transition-all">
+                                      <span>{specimenIcon}</span>
+                                      <span>{totalEmbryos} {specimenLabel}</span>
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 pt-0.5">
+                                    {stageBreakdown && (
+                                      <span className="px-2 py-0.5 bg-slate-200/90 group-hover/thawed:bg-amber-100 group-hover/thawed:text-amber-950 text-slate-800 text-[11px] font-bold rounded-lg border border-slate-300 font-mono shadow-2xs transition-all">
+                                        {stageBreakdown} (Thawed)
+                                      </span>
+                                    )}
+                                    <span className="px-2 py-0.5 bg-rose-100 text-rose-900 rounded-lg text-[10px] font-bold font-mono border border-rose-300">
+                                      0 Active (All Thawed)
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            }
 
                             return (
                               <div className="space-y-1 whitespace-nowrap min-w-[200px]">
@@ -778,15 +826,20 @@ export const PatientDirectory: React.FC = () => {
                                     </span>
                                   )}
                                   <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold font-mono border border-slate-200">
-                                    {activeBatches.length} {activeBatches.length === 1 ? 'Active Batch' : 'Active Batches'}
+                                    {allBatches.filter((b: any) => b.straws?.some((s: any) => s.status === 'OCCUPIED')).length} Active Batch
                                   </span>
+                                  {thawedStraws.length > 0 && (
+                                    <span className="px-2 py-0.5 bg-rose-50 text-rose-800 rounded-lg text-[10px] font-bold font-mono border border-rose-200">
+                                      {thawedStraws.length} Thawed
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             );
                           }
                           return (
                             <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold font-mono border border-slate-300 whitespace-nowrap">
-                              0 Active (All Thawed)
+                              No Specimen Storage
                             </span>
                           );
                         })()}
@@ -898,24 +951,56 @@ export const PatientDirectory: React.FC = () => {
       {quickThawPatient && (
         <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
           <div className="w-full h-full sm:h-auto max-h-[100dvh] sm:max-h-[90vh] max-w-2xl bg-white p-5 sm:p-6 rounded-t-3xl sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl space-y-4 sm:space-y-6 text-slate-900 overflow-y-auto flex flex-col justify-between">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-700">
-                  <ThermometerSnowflake className="w-6 h-6" />
+            <div className="border-b border-slate-200 pb-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-700 shrink-0">
+                    <ThermometerSnowflake className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">Execute Thaw / Warming Operation</h2>
+                    <p className="text-xs text-slate-500 font-mono font-bold">
+                      Patient: <span className="text-slate-900 font-bold">{quickThawPatient.fullName}</span> • Reg ID: <span className="text-emerald-700 font-bold">{quickThawPatient.patientId}</span>
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Execute Thaw / Warming Operation</h2>
-                  <p className="text-xs text-slate-500 font-mono font-bold">
-                    Patient: {quickThawPatient.fullName} • Reg ID: {quickThawPatient.patientId}
-                  </p>
+                <button
+                  onClick={() => setQuickThawPatient(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Comprehensive Clinical Verification Banner */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs space-y-2 font-mono">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-900 text-sm">{quickThawPatient.fullName}</span>
+                    {quickThawPatient.partnerName && (
+                      <span className="text-slate-600 font-medium">Partner: {quickThawPatient.partnerName}</span>
+                    )}
+                  </div>
+                  <span className="bg-emerald-100 text-emerald-950 px-2.5 py-0.5 rounded-lg border border-emerald-300 font-bold text-[11px]">
+                    Doctor: {quickThawPatient.doctorName || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {quickThawPatient.aspirationDate && (
+                      <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-lg border border-amber-300 font-bold">
+                        Egg Pick Up: {formatDateDDMMYYYY(quickThawPatient.aspirationDate)}
+                      </span>
+                    )}
+                    <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-lg border border-blue-300 font-bold">
+                      Freezing Date(s): {getSortedFreezingDates(quickThawPatient)}
+                    </span>
+                  </div>
+                  <span className="bg-purple-100 text-purple-950 px-2 py-0.5 rounded-lg border border-purple-300 font-bold">
+                    {(quickThawPatient.specimenType === 'OOCYTE' || (quickThawPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(quickThawPatient.vitrificationIndication))) ? '🥚 OOCYTE' : '🧬 EMBRYO'} ({quickThawPatient.cycleType === 'DONOR_RECIPIENT' ? 'DONOR' : 'AUTOLOGOUS'})
+                  </span>
                 </div>
               </div>
-              <button
-                onClick={() => setQuickThawPatient(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
             {/* Straw Selection */}
@@ -926,45 +1011,118 @@ export const PatientDirectory: React.FC = () => {
 
               {quickThawPatient.batches?.length === 0 ? (
                 <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 border border-slate-200 text-center">
-                  No active cryo storage batches found for this patient.
+                  No cryo storage batches found for this patient.
                 </div>
               ) : (
                 quickThawPatient.batches?.map((batch: any) => (
                   <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
-                      {/* <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span> */}
-                      <span className="text-slate-600 font-mono">Stored: {formatDateDDMMYYYY(batch.storageDate)}</span>
+                    <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2 flex-wrap gap-2">
+                      <span className="text-slate-700 font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+                        Batch Stored: {formatDateDDMMYYYY(batch.storageDate || batch.freezingDate)}
+                      </span>
+                      {batch.embryoStage && (
+                        <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 font-mono font-bold text-[11px]">
+                          Stage: {batch.embryoStage}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {batch.straws?.map((straw: any) => {
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {([...(batch.straws || [])]
+                        .map((straw: any, sIdx: number) => ({ straw, sIdx }))
+                        .sort((a, b) => {
+                          const aThawed = a.straw.status === 'THAWED' || a.straw.status === 'VACANT';
+                          const bThawed = b.straw.status === 'THAWED' || b.straw.status === 'VACANT';
+                          if (aThawed !== bThawed) return aThawed ? 1 : -1;
+                          return a.sIdx - b.sIdx;
+                        })
+                      ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
                         const isSelected = selectedStrawIds.includes(straw.id);
                         const isThawed = straw.status === 'THAWED' || straw.status === 'VACANT';
+                        const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
+                        const isOocyte = quickThawPatient.specimenType === 'OOCYTE' || (quickThawPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(quickThawPatient.vitrificationIndication));
+
+                        const strawWithBatchStage = {
+                          ...straw,
+                          embryoStage: straw.embryoStage || straw.stage || batch.embryoStage
+                        };
+                        const stageSummary = getStrawStageSummary(strawWithBatchStage, quickThawPatient.specimenType, quickThawPatient.vitrificationIndication);
+                        const eGrade = (straw.grade || '').trim().toUpperCase();
+                        const eFrag = (straw.fragmentation || '').trim();
+                        const eComment = (straw.comments || '').trim();
+
+                        const gradeStr = eGrade ? eGrade : 'N/A';
+                        const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
+                        const commentStr = eComment ? ` - (${eComment})` : '';
+
+                        const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
+                        const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
+                        const isDonorEgg = isOocyte && (quickThawPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
+                        const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
+                        const countLabel = isOocyte
+                          ? `${embryoCount} ${eggTypeName}`
+                          : (embryoCount === 1 ? `1 embryo` : `${embryoCount} embryos`);
+
+                        const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
 
                         return (
                           <div
                             key={straw.id}
                             onClick={() => !isThawed && toggleStrawSelection(straw.id)}
-                            className={`p-3 rounded-xl border transition-all ${
+                            className={`p-3.5 rounded-2xl border transition-all duration-300 ${
                               isThawed
-                                ? 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
+                                ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale filter blur-[0.4px] select-none cursor-not-allowed hover:opacity-100 hover:grayscale-0 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
                                 : isSelected
-                                ? 'bg-rose-100/90 border-rose-500 ring-2 ring-rose-500/30 cursor-pointer shadow-xs'
-                                : 'bg-white border-slate-200 hover:border-rose-300 cursor-pointer'
+                                ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500/40 cursor-pointer shadow-md'
+                                : 'bg-white border-slate-200 hover:border-rose-300 cursor-pointer shadow-2xs'
                             }`}
                           >
-                            <div className="flex items-center justify-between text-xs font-bold">
-                              <span className="font-mono text-slate-900">{straw.strawId}</span>
-                              <span className={`px-2 py-0.5 rounded text-[10px] ${isThawed ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-900 border border-emerald-300'}`}>
-                                {straw.status}
-                              </span>
+                            <div className="flex items-center justify-between text-xs font-bold flex-wrap gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  disabled={isThawed}
+                                  onChange={() => {}}
+                                  className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
+                                />
+                                <span className={`font-mono px-2.5 py-0.5 rounded-lg text-xs font-bold ${isThawed ? 'bg-slate-700 text-slate-300 line-through group-hover/thawed:no-underline group-hover/thawed:bg-slate-900 group-hover/thawed:text-white' : 'bg-slate-900 text-white'}`}>
+                                  {displayLabel}
+                                </span>
+                                <span className={`bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200 text-xs font-mono font-bold ${isThawed ? 'line-through text-slate-500 group-hover/thawed:no-underline group-hover/thawed:text-slate-800' : ''}`}>
+                                  ({countLabel}{stageSummary ? ` • ${stageSummary}` : ''})
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${isThawed ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>
+                                  {straw.color || 'Pink'}
+                                </span>
+                                <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold border ${isThawed ? 'bg-rose-100 text-rose-950 border-rose-300 font-extrabold' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
+                                  {isThawed ? 'THAWED' : 'OCCUPIED'}
+                                </span>
+                              </div>
                             </div>
-                            <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
-                              <span className={`px-2 py-0.5 rounded border text-[10px] ${getStrawColorBadgeClass(straw.color)}`}>
-                                Straw Color: {straw.color || 'Pink'}
-                              </span>
-                              <span className="font-mono font-bold text-slate-800">{straw.embryos?.length || 0} Embryos</span>
+
+                            {/* Detailed Embryo Grade & Notes */}
+                            <div className="mt-2.5 flex items-center gap-2 text-xs flex-wrap font-mono font-bold">
+                              {(!isOocyte || (eFrag || eComment)) && (
+                                <span className="bg-amber-100/90 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
+                                  {isOocyte ? 'Notes' : 'Grade'}: {gradeStr}{fragStr}{commentStr}
+                                </span>
+                              )}
+                              {straw.isPgt && !isOocyte && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
+                                  PGT TESTED
+                                </span>
+                              )}
                             </div>
+
+                            {/* Storage Location Guide */}
+                            {locCode && (
+                              <div className="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600 flex items-center justify-between font-mono">
+                                <span>📍 Location: <strong className="text-slate-900">{parseVisoTubeLocation(locCode)}</strong></span>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -1302,6 +1460,69 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
+                {/* Egg / Oocyte Donor Profile (D-R Cycle) */}
+                <div className="sm:col-span-2 p-3.5 bg-amber-50/90 rounded-2xl border border-amber-300/80 space-y-3">
+                  <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                    <span className="text-xs font-extrabold text-amber-950 flex items-center gap-1.5 uppercase tracking-wider">
+                      <UserCheck className="w-4 h-4 text-amber-600" />
+                      <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full border border-amber-400/60">
+                      Donor Details
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                        Donor Reg No.
+                      </label>
+                      <input
+                        type="text"
+                        value={editDonorRegNo}
+                        onChange={(e) => setEditDonorRegNo(e.target.value)}
+                        placeholder="e.g. DON-2026-8901"
+                        className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                        Donor Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editDonorName}
+                        onChange={(e) => setEditDonorName(capitalizeWords(e.target.value))}
+                        placeholder="e.g. Anjali"
+                        className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                        Donor Age
+                      </label>
+                      <input
+                        type="text"
+                        value={editDonorAge}
+                        onChange={(e) => setEditDonorAge(e.target.value)}
+                        placeholder="e.g. 32y"
+                        className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                        Donor Mobile Phone
+                      </label>
+                      <input
+                        type="text"
+                        value={editDonorPhone}
+                        onChange={(e) => setEditDonorPhone(e.target.value)}
+                        placeholder="e.g. +91 98765 43210"
+                        className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="sm:col-span-2">
                   <DoctorSelect
                     label="Doctor Name / Attending Physician"
@@ -1478,14 +1699,14 @@ export const PatientDirectory: React.FC = () => {
 
                     {/* Specimen Type Badge */}
                     <span className="text-emerald-950 bg-emerald-100/90 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit flex items-center gap-1">
-                      <span>{selectedPatient.specimenType === 'OOCYTE' ? '🥚 Egg (Oocyte)' : selectedPatient.specimenType === 'SPERM' ? '🧪 Sperm' : '🧬 Embryo'}</span>
+                      <span>{(selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication))) ? '🥚 Egg (Oocyte)' : selectedPatient.specimenType === 'SPERM' ? '🧪 Sperm' : '🧬 Embryo'}</span>
                     </span>
 
                     {/* Cycle Classification Badge */}
                     {selectedPatient.cycleType === 'DONOR_RECIPIENT' || selectedPatient.donorName || selectedPatient.donorRegNo ? (
                       <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1">
                         <UserCheck className="w-3 h-3 text-purple-700" />
-                        <span>D-R, Donor: {selectedPatient.donorName || 'N/A'} {selectedPatient.donorAge ? `(${formatAgeWithY(selectedPatient.donorAge)})` : ''}</span>
+                        <span>Donor: {selectedPatient.donorName || 'N/A'} {selectedPatient.donorAge ? `(${formatAgeWithY(selectedPatient.donorAge)})` : ''}</span>
                       </span>
                     ) : (
                       <span className="text-blue-950 bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-300 w-fit font-bold flex items-center gap-1">
@@ -1494,13 +1715,13 @@ export const PatientDirectory: React.FC = () => {
                     )}
 
                     {/* Vitrification Indication & Oocyte Stage Badges */}
-                    {selectedPatient.specimenType === 'OOCYTE' && selectedPatient.vitrificationIndication && (
+                    {(selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication))) && selectedPatient.vitrificationIndication && (
                       <span className="text-teal-950 bg-teal-100 px-2.5 py-0.5 rounded-lg border border-teal-300 w-fit">
                         {selectedPatient.vitrificationIndication}
                       </span>
                     )}
 
-                    {selectedPatient.specimenType === 'OOCYTE' && selectedPatient.oocyteStage && (
+                    {(selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication))) && selectedPatient.oocyteStage && (
                       <span className="text-indigo-950 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300 w-fit">
                         Oocyte Stage: {selectedPatient.oocyteStage}
                       </span>
@@ -1509,49 +1730,34 @@ export const PatientDirectory: React.FC = () => {
                 </div>
               </div>
 
-              {/* Right Column: Compact 2x2 Quad Grid Action Buttons */}
-              <div className="grid grid-cols-2 gap-1.5 shrink-0 w-full sm:w-56 p-1 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
-                {selectedPatient.batches?.some((b: any) =>
-                  b.straws?.some((s: any) => s.status === 'OCCUPIED')
-                ) ? (
+              {/* Action Buttons (Left: Edit & Print/Mail stacked, Right: Close) */}
+              <div className="flex items-center gap-1.5 shrink-0 w-auto p-1 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
+                {/* Left Side: Vertical Stack (Edit above, Print / Mail below) */}
+                <div className="flex flex-col gap-1.5 w-24 sm:w-28">
                   <button
-                    onClick={() => openQuickThawModal(selectedPatient.id)}
-                    className="w-full h-8 px-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 active:scale-95 whitespace-nowrap cursor-pointer"
+                    onClick={() => openEditPatientModal(selectedPatient)}
+                    className="w-full h-8 px-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
                   >
-                    <ThermometerSnowflake className="w-3 h-3" />
-                    <span>Thaw</span>
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
                   </button>
-                ) : (
+
                   <button
-                    disabled
-                    className="w-full h-8 px-2.5 bg-slate-200/80 text-slate-400 font-bold text-[11px] rounded-lg cursor-not-allowed opacity-60 flex items-center justify-center gap-1 whitespace-nowrap border border-slate-300/40"
+                    onClick={() => setReportMailPatient(selectedPatient)}
+                    className="w-full h-8 px-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
                   >
-                    <ThermometerSnowflake className="w-3 h-3 text-slate-400" />
-                    <span>All Thawed</span>
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Print / Mail</span>
                   </button>
-                )}
+                </div>
 
-                <button
-                  onClick={() => openEditPatientModal(selectedPatient)}
-                  className="w-full h-8 px-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  <span>Edit</span>
-                </button>
-
-                <button
-                  onClick={() => setReportMailPatient(selectedPatient)}
-                  className="w-full h-8 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
-                >
-                  <Mail className="w-3 h-3" />
-                  <span>Print / Mail</span>
-                </button>
-
+                {/* Right Side: Tall Close Button */}
                 <button
                   onClick={() => setSelectedPatient(null)}
-                  className="w-full h-8 px-2.5 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-[11px] rounded-lg transition-all whitespace-nowrap text-center active:scale-95 cursor-pointer"
+                  className="h-[71px] px-3 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-xs rounded-lg transition-all whitespace-nowrap text-center active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
                 >
-                  Close
+                  <X className="w-4 h-4 text-slate-500" />
+                  <span>Close</span>
                 </button>
               </div>
             </div>
@@ -1575,19 +1781,7 @@ export const PatientDirectory: React.FC = () => {
                 <div className="bg-blue-50/80 p-3 rounded-2xl border border-blue-200/80 shadow-2xs space-y-0.5">
                   <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">Freezing Date(s)</span>
                   <span className="font-mono font-bold text-blue-950 text-xs block">
-                    {(() => {
-                      const datesSet = new Set<string>();
-                      if (selectedPatient.freezingDate) {
-                        datesSet.add(formatDateDDMMYYYY(selectedPatient.freezingDate));
-                      }
-                      if (selectedPatient.batches && Array.isArray(selectedPatient.batches)) {
-                        selectedPatient.batches.forEach((b: any) => {
-                          const fDate = b.freezingDate || b.storageDate;
-                          if (fDate) datesSet.add(formatDateDDMMYYYY(fDate));
-                        });
-                      }
-                      return datesSet.size > 0 ? Array.from(datesSet).join(', ') : 'N/A';
-                    })()}
+                    {getSortedFreezingDates(selectedPatient)}
                   </span>
                 </div>
 
@@ -1800,26 +1994,25 @@ export const PatientDirectory: React.FC = () => {
               </h3>
 
               {(() => {
-                const activeBatches = selectedPatient.batches?.filter((batch: any) =>
-                  batch.straws?.some((straw: any) => straw.status === 'OCCUPIED')
-                ) || [];
+                const allBatches = selectedPatient.batches || [];
 
-                if (activeBatches.length === 0) {
+                if (allBatches.length === 0) {
                   return (
                     <div className="text-xs text-slate-600 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center font-medium">
-                      0 Active Specimen Batches in Storage (All specimen have been thawed & withdrawn)
+                      No specimen batches recorded for this patient.
                     </div>
                   );
                 }
 
-                return activeBatches.map((batch: any) => {
-                  const activeStraws = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
+                return allBatches.map((batch: any) => {
+                  const allStraws = batch.straws || [];
+                  const activeStraws = allStraws.filter((s: any) => s.status === 'OCCUPIED');
+                  const isAllThawed = allStraws.length > 0 && activeStraws.length === 0;
 
                   return (
-                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-3 shadow-2xs">
+                    <div key={batch.id} className={`p-4 rounded-2xl border space-y-3 shadow-2xs ${isAllThawed ? 'bg-slate-100/70 border-slate-300' : 'bg-slate-50 border-slate-300'}`}>
                       <div className="flex flex-wrap items-center justify-between text-xs border-b border-slate-200 pb-2 gap-2">
-                        {/* <span className="font-mono font-bold text-emerald-800">Batch Code: {batch.batchId}</span> */}
-                        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700">
+                        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700 flex-wrap">
                           {batch.aspirationDate && (
                             <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 font-bold">
                               Egg Retrieval: {formatDateDDMMYYYY(batch.aspirationDate)}
@@ -1833,26 +2026,43 @@ export const PatientDirectory: React.FC = () => {
                               Stage: {batch.embryoStage}
                             </span>
                           )}
+                          {isAllThawed && (
+                            <span className="bg-rose-100 text-rose-950 px-2 py-0.5 rounded border border-rose-300 font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-rose-700" />
+                              All Straws Thawed
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      
-
-                      {/* Active Straws List */}
+                      {/* Straws List */}
                       <div className="space-y-2">
                         <div className="text-xs font-bold text-slate-800 flex items-center justify-between flex-wrap gap-2">
-                          <span>{selectedPatient.specimenType === 'OOCYTE' ? 'Oocyte Details' : 'Embryo Details'}</span>
+                          <span>{(selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication))) ? 'Oocyte Details' : 'Embryo Details'}</span>
                           <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-bold">
-                            {getBatchSummaryText(activeStraws, selectedPatient.specimenType)}
+                            {getBatchSummaryText(allStraws, selectedPatient.specimenType, selectedPatient.cycleType, selectedPatient.vitrificationIndication)}
                           </span>
                         </div>
-                        {activeStraws.map((straw: any, sIdx: number) => {
+                        {([...allStraws]
+                          .map((straw: any, sIdx: number) => ({ straw, sIdx }))
+                          .sort((a, b) => {
+                            const aThawed = a.straw.status !== 'OCCUPIED';
+                            const bThawed = b.straw.status !== 'OCCUPIED';
+                            if (aThawed !== bThawed) return aThawed ? 1 : -1;
+                            return a.sIdx - b.sIdx;
+                          })
+                        ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
+                          const isOccupied = straw.status === 'OCCUPIED';
                           const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
                           const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
-                          const isOocyte = selectedPatient.specimenType === 'OOCYTE';
+                          const isOocyte = selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication));
 
-                          const stageSummary = getStrawStageSummary(straw, selectedPatient.specimenType);
+                          const strawWithBatchStage = {
+                            ...straw,
+                            embryoStage: straw.embryoStage || straw.stage || batch.embryoStage
+                          };
+                          const stageSummary = getStrawStageSummary(strawWithBatchStage, selectedPatient.specimenType, selectedPatient.vitrificationIndication);
                           const eGrade = (straw.grade || '').trim().toUpperCase();
                           const eFrag = (straw.fragmentation || '').trim();
                           const eComment = (straw.comments || '').trim();
@@ -1860,7 +2070,7 @@ export const PatientDirectory: React.FC = () => {
                           const gradeStr = eGrade ? eGrade : 'N/A';
                           const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
                           const commentStr = eComment ? ` - (${eComment})` : '';
-                          const prevCount = activeStraws.slice(0, sIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
+                          const prevCount = allStraws.slice(0, sIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
                           const startNum = prevCount + 1;
                           const endNum = prevCount + embryoCount;
                           const numRangeStr = embryoCount === 1 ? `#${startNum}` : `#${startNum}–#${endNum}`;
@@ -1871,41 +2081,70 @@ export const PatientDirectory: React.FC = () => {
                             ? (embryoCount === 1 ? `1 ${eggTypeName} (${numRangeStr})` : `${embryoCount} ${eggTypeNamePlural} (${numRangeStr})`)
                             : (embryoCount === 1 ? `1 embryo (${numRangeStr})` : `${embryoCount} embryos (${numRangeStr})`);
 
+                          const thawRec = selectedPatient.thawRecords?.find((tr: any) => tr.strawId === straw.id);
+
                           return (
-                            <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                            <div
+                              key={straw.id}
+                              className={`text-xs p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-2 transition-all duration-300 cursor-pointer ${
+                                isOccupied
+                                  ? 'bg-white border-slate-200 shadow-2xs'
+                                  : 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
+                              }`}
+                            >
                               <div className="font-mono font-bold text-slate-800 flex items-center gap-2 flex-wrap">
-                                <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold text-xs">
+                                <span className={`px-2.5 py-0.5 rounded-lg text-white font-bold text-xs ${isOccupied ? 'bg-slate-900' : 'bg-slate-700 line-through group-hover/thawed:no-underline group-hover/thawed:bg-slate-900 group-hover/thawed:text-white'}`}>
                                   {displayLabel}
                                 </span>
-                                <span className="text-slate-800 font-bold text-xs bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                                  ({countLabel} • {stageSummary})
+                                <span className={`text-slate-800 font-bold text-xs bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 ${!isOccupied ? 'line-through text-slate-500 group-hover/thawed:no-underline group-hover/thawed:text-slate-800' : ''}`}>
+                                  ({countLabel}{stageSummary ? ` • ${stageSummary}` : ''})
                                 </span>
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)}`}>
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${!isOccupied ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>
                                   {straw.color || 'Pink'}
                                 </span>
                                 {(!isOocyte || (eFrag || eComment)) && (
-                                  <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
+                                  <span className={`font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 ${!isOccupied ? 'text-slate-500 line-through bg-slate-200/60 group-hover/thawed:no-underline group-hover/thawed:text-slate-900 group-hover/thawed:bg-slate-100' : 'text-slate-900'}`}>
                                     {isOocyte ? 'Notes' : 'Grade'}: {gradeStr}{fragStr}{commentStr}
                                   </span>
                                 )}
                               </div>
                               <div className="flex items-center gap-2 text-xs font-medium text-slate-700 flex-wrap">
                                 {straw.isPgt && !isOocyte && (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300 ${!isOccupied ? 'opacity-50 line-through' : ''}`}>
                                     PGT TESTED
                                   </span>
                                 )}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openEditStrawModal(straw);
-                                  }}
-                                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg border border-amber-300 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs active:scale-95 ml-1"
-                                  title="Edit Freezed Straw Properties (Grade, ID, Tag Color, PGT, Count)"
-                                >
-                                  <Edit3 className="w-3 h-3 text-amber-700" />
-                                  <span>Edit Straw</span>
-                                </button>
+                                {isOccupied ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openQuickThawModal(selectedPatient.id, straw.id);
+                                      }}
+                                      className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-lg border border-rose-200 transition-all flex items-center gap-1.5 text-xs font-bold shadow-2xs active:scale-95"
+                                      title="Execute Thaw for this straw"
+                                    >
+                                      <ThermometerSnowflake className="w-3.5 h-3.5 text-rose-600" />
+                                      <span>Thaw</span>
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openEditStrawModal(straw);
+                                      }}
+                                      className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-300 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs active:scale-95"
+                                      title="Edit Straw Properties"
+                                    >
+                                      <Edit3 className="w-3 h-3 text-slate-600" />
+                                      <span>Edit</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="px-3 py-1 bg-rose-100/90 text-rose-950 rounded-lg text-[11px] font-extrabold font-mono border border-rose-300 flex items-center gap-1.5 shadow-2xs">
+                                    <ThermometerSnowflake className="w-3.5 h-3.5 text-rose-700" />
+                                    <span>THAWED{thawRec?.thawDate ? ` (${formatDateDDMMYYYY(thawRec.thawDate)})` : ''}</span>
+                                  </span>
+                                )}
                               </div>
                             </div>
                           );
@@ -1914,11 +2153,19 @@ export const PatientDirectory: React.FC = () => {
 
                       {/* Physical Location Breakdown */}
                       {(() => {
-                        const locCode = activeStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
+                        const locCode = allStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
                         return (
-                          <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
-                            <div className="text-[10px] text-slate-500 font-semibold uppercase">Physical Location Guide:</div>
-                            <div className="text-slate-900 font-bold">{parseVisoTubeLocation(locCode)}</div>
+                          <div className={`text-xs p-3 rounded-xl border space-y-0.5 transition-all duration-300 ${
+                            isAllThawed
+                              ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md cursor-pointer'
+                              : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
+                          }`}>
+                            <div className="text-[10px] text-slate-500 font-semibold uppercase">
+                              Physical Location Guide: {isAllThawed ? '(Capacity Liberated / Thawed)' : ''}
+                            </div>
+                            <div className={`font-bold ${isAllThawed ? 'text-slate-600 line-through group-hover/thawed:no-underline group-hover/thawed:text-slate-900' : 'text-slate-900'}`}>
+                              {parseVisoTubeLocation(locCode)}
+                            </div>
                             {batch.notes && (
                               <div className="text-[11px] text-slate-600 italic mt-1 font-mono">
                                 Batch Comment: {batch.notes}
@@ -1950,6 +2197,7 @@ export const PatientDirectory: React.FC = () => {
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px]">
                         <th className="py-2 px-3">Straw ID & Colour</th>
+                        <th className="py-2 px-3">Embryos / Eggs Thawed</th>
                         <th className="py-2 px-3">Thaw Date & Time</th>
                         <th className="py-2 px-3">Executing Doctor / Staff</th>
                         <th className="py-2 px-3">Freed Storage Location</th>
@@ -1957,26 +2205,40 @@ export const PatientDirectory: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 text-slate-800">
-                      {selectedPatient.thawRecords.map((t: any) => (
-                        <tr key={t.id} className="hover:bg-white">
-                          <td className="py-2.5 px-3 font-bold text-slate-900">
-                            <div className="flex items-center gap-1.5">
-                              <span>{t.straw?.strawId || t.strawId}</span>
-                              {t.straw?.color && (
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStrawColorBadgeClass(t.straw.color)}`}>
-                                  {t.straw.color}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-3 text-slate-600 font-bold">{formatTimestampDDMMYYYY(t.thawDate)}</td>
-                          <td className="py-2.5 px-3 font-semibold text-slate-900">{t.doctorName}</td>
-                          <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-slate-700">
-                            {parseVisoTubeLocation(t.straw?.visoTube?.locationCode)}
-                          </td>
-                          <td className="py-2.5 px-3 font-sans text-slate-700">{t.doctorNotes || '—'}</td>
-                        </tr>
-                      ))}
+                      {selectedPatient.thawRecords.map((t: any) => {
+                        const eCount = t.straw?.embryoCount || t.straw?.embryos?.length || 1;
+                        const isOocyte = selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication));
+                        const isDonorEgg = isOocyte && (selectedPatient.cycleType === 'DONOR_RECIPIENT' || t.straw?.cycleType === 'DONOR_RECIPIENT');
+                        const specimenLabel = isOocyte
+                          ? (isDonorEgg ? (eCount === 1 ? '1 Donor Egg' : `${eCount} Donor Eggs`) : (eCount === 1 ? '1 Self Egg' : `${eCount} Self Eggs`))
+                          : (eCount === 1 ? '1 Embryo' : `${eCount} Embryos`);
+
+                        return (
+                          <tr key={t.id} className="hover:bg-white">
+                            <td className="py-2.5 px-3 font-bold text-slate-900">
+                              <div className="flex items-center gap-1.5">
+                                <span>{t.straw?.strawId || t.strawId}</span>
+                                {t.straw?.color && (
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStrawColorBadgeClass(t.straw.color)}`}>
+                                    {t.straw.color}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="px-2 py-0.5 bg-rose-100 text-rose-900 rounded-md border border-rose-300 text-[11px] font-bold inline-flex items-center gap-1">
+                                <span>{specimenLabel}</span>
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 font-bold">{formatTimestampDDMMYYYY(t.thawDate)}</td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-900">{t.doctorName}</td>
+                            <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-slate-700">
+                              {parseVisoTubeLocation(t.straw?.visoTube?.locationCode)}
+                            </td>
+                            <td className="py-2.5 px-3 font-sans text-slate-700">{t.doctorNotes || '—'}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

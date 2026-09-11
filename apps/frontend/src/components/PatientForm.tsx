@@ -145,10 +145,10 @@ export function getStrawColorBadgeClass(colorName?: string): string {
   }
 }
 
-export function getStrawStageSummary(item: any, specimenType?: string): string {
+export function getStrawStageSummary(item: any, specimenType?: string, vitrificationIndication?: string): string {
   if (!item) return '';
   const count = item.embryoCount || (item.embryos ? item.embryos.length : 1);
-  const isOocyte = specimenType === 'OOCYTE' || item.specimenType === 'OOCYTE';
+  const isOocyte = specimenType === 'OOCYTE' || item.specimenType === 'OOCYTE' || (vitrificationIndication && /egg\s*freezing|oocyte/i.test(vitrificationIndication));
 
   if (isOocyte) {
     const stageCounts: Record<string, number> = {};
@@ -166,19 +166,49 @@ export function getStrawStageSummary(item: any, specimenType?: string): string {
     });
     return parts.length > 0 ? parts.join(' + ') : `${count} MII`;
   } else {
-    const grades: string[] = [];
-    for (let i = 0; i < count; i++) {
-      const eGradeKey = `grade${i + 1}`;
-      const g = (item[eGradeKey] || (i === 0 ? item.grade : '') || '').toString().trim().toUpperCase();
-      if (g) grades.push(g);
-    }
-    return grades.length > 0 ? grades.join(', ') : (item.grade || 'N/A');
+    const stg = (item.embryoStage || item.stage || '').toString().trim();
+    return stg;
   }
 }
 
-export function getBatchSummaryText(strawItems: any[], specimenType?: string, cycleType?: string): string {
+export function getSortedFreezingDates(patient: any): string {
+  if (!patient) return 'N/A';
+  const dates: { dateObj: Date; formatted: string }[] = [];
+
+  const addDate = (dStr: any) => {
+    if (!dStr) return;
+    const d = new Date(dStr);
+    if (!isNaN(d.getTime())) {
+      dates.push({ dateObj: d, formatted: formatDateDDMMYYYY(dStr) });
+    }
+  };
+
+  if (patient.batches && Array.isArray(patient.batches) && patient.batches.length > 0) {
+    patient.batches.forEach((b: any) => {
+      addDate(b.freezingDate || b.storageDate);
+    });
+  }
+  if (dates.length === 0 && patient.freezingDate) {
+    addDate(patient.freezingDate);
+  }
+
+  if (dates.length === 0) return 'N/A';
+
+  dates.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+
+  const uniqueFormatted: string[] = [];
+  dates.forEach((item) => {
+    if (!uniqueFormatted.includes(item.formatted)) {
+      uniqueFormatted.push(item.formatted);
+    }
+  });
+
+  return uniqueFormatted.length > 0 ? uniqueFormatted.join(', ') : 'N/A';
+}
+
+export function getBatchSummaryText(strawItems: any[], specimenType?: string, cycleType?: string, vitrificationIndication?: string): string {
   if (!strawItems || strawItems.length === 0) return '';
-  const isOocyte = specimenType === 'OOCYTE';
+  const isOocyte = specimenType === 'OOCYTE' || (vitrificationIndication && /egg\s*freezing|oocyte/i.test(vitrificationIndication));
   const isDonor = cycleType === 'DONOR_RECIPIENT';
   const totalCount = strawItems.reduce((sum, s) => sum + (s.embryoCount || (s.embryos ? s.embryos.length : 1)), 0);
   const countsPerStraw = strawItems.map((s) => s.embryoCount || (s.embryos ? s.embryos.length : 1));
@@ -1014,8 +1044,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               comments: payload.comments || undefined,
               isEmailVerified: payload.isEmailVerified,
               specimenType: payload.specimenType,
-              cycleType: payload.cycleType,
+              cycleType: (payload.donorName || payload.donorRegNo) ? 'DONOR_RECIPIENT' : payload.cycleType,
               donorName: payload.donorName || undefined,
+              donorRegNo: payload.donorRegNo || undefined,
               donorAge: payload.donorAge || undefined,
               donorPhone: payload.donorPhone || undefined,
               vitrificationIndication: payload.vitrificationIndication || undefined,
@@ -1043,8 +1074,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               comments: payload.comments || undefined,
               isEmailVerified: payload.isEmailVerified,
               specimenType: payload.specimenType,
-              cycleType: payload.cycleType,
+              cycleType: (payload.donorName || payload.donorRegNo) ? 'DONOR_RECIPIENT' : payload.cycleType,
               donorName: payload.donorName || undefined,
+              donorRegNo: payload.donorRegNo || undefined,
               donorAge: payload.donorAge || undefined,
               donorPhone: payload.donorPhone || undefined,
               vitrificationIndication: payload.vitrificationIndication || undefined,

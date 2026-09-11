@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatPhoneNumber, getImageUrl } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass } from './PatientForm';
+import { getStrawColorBadgeClass, getSortedFreezingDates } from './PatientForm';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
 export function parseLocationCode(code: string) {
@@ -1154,19 +1154,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 <div className="bg-blue-50/80 p-3 rounded-2xl border border-blue-200/80 shadow-2xs space-y-0.5">
                   <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">FREEZING DATE(S)</span>
                   <span className="font-mono font-bold text-blue-950 text-xs block">
-                    {(() => {
-                      const datesSet = new Set<string>();
-                      if (viewingPatientModal.freezingDate) {
-                        datesSet.add(formatDateDDMMYYYY(viewingPatientModal.freezingDate));
-                      }
-                      if (viewingPatientModal.batches && Array.isArray(viewingPatientModal.batches)) {
-                        viewingPatientModal.batches.forEach((b: any) => {
-                          const fDate = b.freezingDate || b.storageDate;
-                          if (fDate) datesSet.add(formatDateDDMMYYYY(fDate));
-                        });
-                      }
-                      return datesSet.size > 0 ? Array.from(datesSet).join(', ') : 'N/A';
-                    })()}
+                    {getSortedFreezingDates(viewingPatientModal)}
                   </span>
                 </div>
 
@@ -1316,23 +1304,23 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
               </h3>
 
               {(() => {
-                const activeBatches = viewingPatientModal.batches?.filter((batch: any) =>
-                  batch.straws?.some((straw: any) => straw.status === 'OCCUPIED')
-                ) || [];
+                const allBatches = viewingPatientModal.batches || [];
 
-                if (activeBatches.length === 0) {
+                if (allBatches.length === 0) {
                   return (
                     <div className="text-xs text-slate-600 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center font-medium">
-                      0 Active Specimen Batches in Storage (All specimen have been thawed & withdrawn)
+                      No specimen batches recorded for this patient.
                     </div>
                   );
                 }
 
-                return activeBatches.map((batch: any) => {
-                  const activeStraws = batch.straws?.filter((s: any) => s.status === 'OCCUPIED') || [];
+                return allBatches.map((batch: any) => {
+                  const allStraws = batch.straws || [];
+                  const activeStraws = allStraws.filter((s: any) => s.status === 'OCCUPIED');
+                  const isAllThawed = allStraws.length > 0 && activeStraws.length === 0;
 
                   return (
-                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-300 space-y-3 shadow-2xs">
+                    <div key={batch.id} className={`p-4 rounded-2xl border space-y-3 shadow-2xs ${isAllThawed ? 'bg-slate-100/70 border-slate-300' : 'bg-slate-50 border-slate-300'}`}>
                       <div className="flex flex-wrap items-center justify-between text-xs border-b border-slate-200 pb-2 gap-2">
                         <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700">
                           {batch.aspirationDate && (
@@ -1348,15 +1336,29 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                               Stage: {batch.embryoStage}
                             </span>
                           )}
+                          {isAllThawed && (
+                            <span className="bg-rose-100 text-rose-950 px-2 py-0.5 rounded border border-rose-300 font-bold">
+                              All Straws Thawed
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      {/* Active Straws List */}
+                      {/* Straws List */}
                       <div className="space-y-2">
                         <div className="text-xs font-bold text-slate-800">
-                          Embryo Details ({activeStraws.length} Straw(s) - {activeStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0)} Embryo(s))
+                          Embryo Details ({allStraws.length} Straw(s) - {allStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0)} Embryo(s))
                         </div>
-                        {activeStraws.map((straw: any, sIdx: number) => {
+                        {([...allStraws]
+                          .map((straw: any, sIdx: number) => ({ straw, sIdx }))
+                          .sort((a, b) => {
+                            const aThawed = a.straw.status !== 'OCCUPIED';
+                            const bThawed = b.straw.status !== 'OCCUPIED';
+                            if (aThawed !== bThawed) return aThawed ? 1 : -1;
+                            return a.sIdx - b.sIdx;
+                          })
+                        ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
+                          const isOccupied = straw.status === 'OCCUPIED';
                           const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
                           const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
@@ -1370,9 +1372,16 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           const commentStr = eComment ? ` - (${eComment})` : '';
 
                           return (
-                            <div key={straw.id} className="text-xs bg-white p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                            <div
+                              key={straw.id}
+                              className={`text-xs p-3 rounded-xl border flex flex-wrap items-center justify-between gap-2 transition-all duration-300 cursor-pointer ${
+                                isOccupied
+                                  ? 'bg-white border-slate-200 shadow-2xs'
+                                  : 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
+                              }`}
+                            >
                               <div className="font-mono font-bold text-slate-800 flex items-center gap-2 flex-wrap">
-                                <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-bold text-xs">
+                                <span className={`px-2.5 py-0.5 rounded-lg text-white font-bold text-xs ${isOccupied ? 'bg-slate-900' : 'bg-slate-600'}`}>
                                   {displayLabel}
                                 </span>
                                 <span className="text-slate-700 font-bold text-xs">
@@ -1385,6 +1394,13 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                                   Embryo grade: {gradeStr}{fragStr}{commentStr}
                                 </span>
                               </div>
+                              <div>
+                                {!isOccupied && (
+                                  <span className="px-2.5 py-1 bg-slate-200/90 text-slate-700 rounded-lg text-[11px] font-bold font-mono border border-slate-300">
+                                    THAWED
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -1392,11 +1408,17 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
                       {/* Physical Location Guide */}
                       {(() => {
-                        const locCode = activeStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
+                        const locCode = allStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
                         return (
-                          <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 space-y-0.5 shadow-2xs">
+                          <div className={`text-xs p-3 rounded-xl border space-y-0.5 transition-all duration-300 ${
+                            isAllThawed
+                              ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md cursor-pointer'
+                              : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
+                          }`}>
                             <div className="text-[10px] text-slate-500 font-semibold uppercase">PHYSICAL LOCATION GUIDE:</div>
-                            <div className="text-slate-900 font-bold">{parseVisoTubeLocation(locCode)}</div>
+                            <div className={`font-bold ${isAllThawed ? 'text-slate-600 line-through group-hover/thawed:no-underline group-hover/thawed:text-slate-900' : 'text-slate-900'}`}>
+                              {parseVisoTubeLocation(locCode)}
+                            </div>
                           </div>
                         );
                       })()}
