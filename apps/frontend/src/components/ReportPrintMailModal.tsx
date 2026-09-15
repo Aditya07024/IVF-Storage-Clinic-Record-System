@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Printer, Mail, Send, X, CheckCircle2, AlertCircle, RefreshCw, FileText, Sparkles, ShieldCheck, History, Trash2 } from 'lucide-react';
 import { apiRequest, getApiBaseUrl, openSecurePdfBlob, formatTimestampDDMMYYYY } from '../api/client';
+import { isOocyteSpecimen } from './PatientForm';
 
 interface ReportPrintMailModalProps {
   isOpen: boolean;
@@ -69,9 +70,26 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
     }
   };
 
-  const getReportTypeName = (typeOrSubject: string) => {
-    if (!typeOrSubject) return 'Day Report';
-    const str = typeOrSubject.toUpperCase();
+  const getReportTypeName = (type: string) => {
+    switch (type) {
+      case 'OOCYTE':
+        return 'Day 0 Oocyte Freezing Report';
+      case 'DAY3':
+        return 'Day 3 Cleavage Freezing Report';
+      case 'DAY5':
+        return 'Day 5 Blastocyst Freezing Report';
+      case 'THAW':
+        return 'Thaw / Warming Operation Report';
+      case 'GENERAL':
+        return 'General Specimen Summary Report';
+      default:
+        return 'IVF Specimen Storage Report';
+    }
+  };
+
+  const parseReportTypeFromSubject = (subj: string) => {
+    if (!subj) return 'Day Report';
+    const str = subj.toUpperCase();
     if (str.includes('DAY 5') || str.includes('DAY 6') || str.includes('DAY5') || str.includes('DAY6') || str.includes('BLASTOCYST') || str.includes('DAY 5/6')) {
       return 'Day 5/6 Report';
     }
@@ -95,7 +113,7 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
       setEmailErrorMsg(null);
 
       // Auto-detect report type according to embryo stage
-      let autoType: 'OOCYTE' | 'DAY3' | 'DAY5' | 'GENERAL' = 'OOCYTE';
+      let autoType: 'OOCYTE' | 'DAY3' | 'DAY5' | 'GENERAL' = isOocyteSpecimen(patient) ? 'OOCYTE' : 'DAY5';
       if ((patient as any).batches && Array.isArray((patient as any).batches)) {
         for (const b of (patient as any).batches) {
           const stage = (b.embryoStage || '').toUpperCase();

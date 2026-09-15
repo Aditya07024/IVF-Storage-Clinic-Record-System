@@ -145,10 +145,32 @@ export function getStrawColorBadgeClass(colorName?: string): string {
   }
 }
 
+export function isOocyteSpecimen(obj?: any, specimenTypeParam?: string, vitrificationIndicationParam?: string): boolean {
+  if (specimenTypeParam === 'OOCYTE') return true;
+  if (specimenTypeParam === 'EMBRYO' || specimenTypeParam === 'SPERM') return false;
+
+  const specType = obj?.specimenType || obj?.patient?.specimenType;
+  if (specType === 'OOCYTE') return true;
+  if (specType === 'EMBRYO' || specType === 'SPERM') return false;
+
+  const indication = vitrificationIndicationParam || obj?.vitrificationIndication || obj?.patient?.vitrificationIndication;
+  if (indication) {
+    const indLower = indication.toLowerCase();
+    if (indLower.includes('recipient') || indLower.includes('donor oocyte recipient') || indLower.includes('donor egg recipient') || indLower.includes('embryo')) {
+      return false;
+    }
+    if (/(?:egg|oocyte)\s*freezing|social\s*egg|onco\s*fertility|supernumerary\s*donor\s*egg\s*freezing/i.test(indication)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function getStrawStageSummary(item: any, specimenType?: string, vitrificationIndication?: string): string {
   if (!item) return '';
   const count = item.embryoCount || (item.embryos ? item.embryos.length : 1);
-  const isOocyte = specimenType === 'OOCYTE' || item.specimenType === 'OOCYTE' || (vitrificationIndication && /egg\s*freezing|oocyte/i.test(vitrificationIndication));
+  const isOocyte = isOocyteSpecimen(item, specimenType, vitrificationIndication);
 
   if (isOocyte) {
     const stageCounts: Record<string, number> = {};
@@ -208,8 +230,7 @@ export function getSortedFreezingDates(patient: any): string {
 
 export function getBatchSummaryText(strawItems: any[], specimenType?: string, cycleType?: string, vitrificationIndication?: string): string {
   if (!strawItems || strawItems.length === 0) return '';
-  const isOocyte = specimenType === 'OOCYTE' || (vitrificationIndication && /egg\s*freezing|oocyte/i.test(vitrificationIndication));
-  const isDonor = cycleType === 'DONOR_RECIPIENT';
+  const isOocyte = isOocyteSpecimen(null, specimenType, vitrificationIndication);
   const totalCount = strawItems.reduce((sum, s) => sum + (s.embryoCount || (s.embryos ? s.embryos.length : 1)), 0);
   const countsPerStraw = strawItems.map((s) => s.embryoCount || (s.embryos ? s.embryos.length : 1));
   const countsStr = countsPerStraw.join(' + ');

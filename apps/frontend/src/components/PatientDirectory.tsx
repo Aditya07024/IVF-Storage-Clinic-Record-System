@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
@@ -141,14 +141,14 @@ export const PatientDirectory: React.FC = () => {
     try {
       const res = await apiRequest(`/api/storage/straws/${editingStraw.id}`, {
         method: 'PUT',
-        body: {
+        body: JSON.stringify({
           strawCustomId: editStrawCustomId.trim(),
           color: editStrawColor,
           grade: editStrawGrade.trim(),
           embryoCount: editStrawEmbryoCount,
           isPgt: editStrawIsPgt,
           comments: editStrawComments.trim(),
-        },
+        }),
       });
 
       if (res.success) {
@@ -283,7 +283,7 @@ export const PatientDirectory: React.FC = () => {
 
       const res = await apiRequest(`/api/patients/${editingPatient.id}`, {
         method: 'PUT',
-        body: payload,
+        body: JSON.stringify(payload),
       });
 
       if (res.success) {
@@ -716,7 +716,7 @@ export const PatientDirectory: React.FC = () => {
                           
                           allBatches.forEach((batch: any) => {
                             (batch.straws || []).forEach((s: any) => {
-                              const pIsOocyte = p.specimenType === 'OOCYTE' || (p.vitrificationIndication && /egg\s*freezing|oocyte/i.test(p.vitrificationIndication));
+                              const pIsOocyte = isOocyteSpecimen(p);
                               allStraws.push({
                                 ...s,
                                 batchEmbryoStage: batch.embryoStage,
@@ -734,7 +734,7 @@ export const PatientDirectory: React.FC = () => {
 
                             const stageCounts: Record<string, number> = {};
                             displayStraws.forEach((s: any) => {
-                              const pIsOocyte = p.specimenType === 'OOCYTE' || (p.vitrificationIndication && /egg\s*freezing|oocyte/i.test(p.vitrificationIndication));
+                              const pIsOocyte = isOocyteSpecimen(p);
                               if (pIsOocyte) {
                                 if (s.embryos && s.embryos.length > 0) {
                                   s.embryos.forEach((emb: any) => {
@@ -771,7 +771,7 @@ export const PatientDirectory: React.FC = () => {
                               .map(([stage, count]) => `${count} ${stage}`)
                               .join(' + ');
 
-                            const isOocyte = p.specimenType === 'OOCYTE' || (p.vitrificationIndication && /egg\s*freezing|oocyte/i.test(p.vitrificationIndication));
+                            const isOocyte = isOocyteSpecimen(p);
                             const specimenLabel = isOocyte
                               ? (totalEmbryos === 1 ? 'Oocyte' : 'Oocytes')
                               : p.specimenType === 'SPERM'
@@ -997,7 +997,7 @@ export const PatientDirectory: React.FC = () => {
                     </span>
                   </div>
                   <span className="bg-purple-100 text-purple-950 px-2 py-0.5 rounded-lg border border-purple-300 font-bold">
-                    {(quickThawPatient.specimenType === 'OOCYTE' || (quickThawPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(quickThawPatient.vitrificationIndication))) ? '🥚 OOCYTE' : '🧬 EMBRYO'} ({quickThawPatient.cycleType === 'DONOR_RECIPIENT' ? 'DONOR' : 'AUTOLOGOUS'})
+                    {isOocyteSpecimen(quickThawPatient) ? '🥚 OOCYTE' : '🧬 EMBRYO'} ({quickThawPatient.cycleType === 'DONOR_RECIPIENT' ? 'DONOR' : 'AUTOLOGOUS'})
                   </span>
                 </div>
               </div>
@@ -1040,7 +1040,7 @@ export const PatientDirectory: React.FC = () => {
                         const isSelected = selectedStrawIds.includes(straw.id);
                         const isThawed = straw.status === 'THAWED' || straw.status === 'VACANT';
                         const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
-                        const isOocyte = quickThawPatient.specimenType === 'OOCYTE' || (quickThawPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(quickThawPatient.vitrificationIndication));
+                        const isOocyte = isOocyteSpecimen(quickThawPatient);
 
                         const strawWithBatchStage = {
                           ...straw,
@@ -1699,7 +1699,7 @@ export const PatientDirectory: React.FC = () => {
 
                     {/* Specimen Type Badge */}
                     <span className="text-emerald-950 bg-emerald-100/90 px-2.5 py-0.5 rounded-lg border border-emerald-300 w-fit flex items-center gap-1">
-                      <span>{(selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication))) ? '🥚 Egg (Oocyte)' : selectedPatient.specimenType === 'SPERM' ? '🧪 Sperm' : '🧬 Embryo'}</span>
+                      <span>{isOocyteSpecimen(selectedPatient) ? '🥚 Egg (Oocyte)' : selectedPatient.specimenType === 'SPERM' ? '🧪 Sperm' : '🧬 Embryo'}</span>
                     </span>
 
                     {/* Cycle Classification Badge */}
@@ -1715,13 +1715,13 @@ export const PatientDirectory: React.FC = () => {
                     )}
 
                     {/* Vitrification Indication & Oocyte Stage Badges */}
-                    {(selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication))) && selectedPatient.vitrificationIndication && (
+                    {isOocyteSpecimen(selectedPatient) && selectedPatient.vitrificationIndication && (
                       <span className="text-teal-950 bg-teal-100 px-2.5 py-0.5 rounded-lg border border-teal-300 w-fit">
                         {selectedPatient.vitrificationIndication}
                       </span>
                     )}
 
-                    {(selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication))) && selectedPatient.oocyteStage && (
+                    {isOocyteSpecimen(selectedPatient) && selectedPatient.oocyteStage && (
                       <span className="text-indigo-950 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300 w-fit">
                         Oocyte Stage: {selectedPatient.oocyteStage}
                       </span>
@@ -2038,7 +2038,7 @@ export const PatientDirectory: React.FC = () => {
                       {/* Straws List */}
                       <div className="space-y-2">
                         <div className="text-xs font-bold text-slate-800 flex items-center justify-between flex-wrap gap-2">
-                          <span>{(selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication))) ? 'Oocyte Details' : 'Embryo Details'}</span>
+                          <span>{isOocyteSpecimen(selectedPatient) ? 'Oocyte Details' : 'Embryo Details'}</span>
                           <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-bold">
                             {getBatchSummaryText(allStraws, selectedPatient.specimenType, selectedPatient.cycleType, selectedPatient.vitrificationIndication)}
                           </span>
@@ -2056,7 +2056,7 @@ export const PatientDirectory: React.FC = () => {
                           const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
                           const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
-                          const isOocyte = selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication));
+                          const isOocyte = isOocyteSpecimen(selectedPatient);
 
                           const strawWithBatchStage = {
                             ...straw,
@@ -2207,7 +2207,7 @@ export const PatientDirectory: React.FC = () => {
                     <tbody className="divide-y divide-slate-200 text-slate-800">
                       {selectedPatient.thawRecords.map((t: any) => {
                         const eCount = t.straw?.embryoCount || t.straw?.embryos?.length || 1;
-                        const isOocyte = selectedPatient.specimenType === 'OOCYTE' || (selectedPatient.vitrificationIndication && /egg\s*freezing|oocyte/i.test(selectedPatient.vitrificationIndication));
+                        const isOocyte = isOocyteSpecimen(selectedPatient);
                         const isDonorEgg = isOocyte && (selectedPatient.cycleType === 'DONOR_RECIPIENT' || t.straw?.cycleType === 'DONOR_RECIPIENT');
                         const specimenLabel = isOocyte
                           ? (isDonorEgg ? (eCount === 1 ? '1 Donor Egg' : `${eCount} Donor Eggs`) : (eCount === 1 ? '1 Self Egg' : `${eCount} Self Eggs`))
@@ -2536,7 +2536,7 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
-                {selectedPatient?.specimenType !== 'OOCYTE' && (
+                {!isOocyteSpecimen(selectedPatient) && (
                   <div className="pt-4">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input

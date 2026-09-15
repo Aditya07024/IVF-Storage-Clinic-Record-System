@@ -65,7 +65,7 @@ export class DocumentService {
       if (patient.thawRecords && patient.thawRecords.length > 0) {
         activeReportType = 'THAW';
       } else {
-        activeReportType = 'OOCYTE'; // Default fallback
+        activeReportType = patient.specimenType === 'OOCYTE' ? 'OOCYTE' : 'DAY5'; // Default fallback based on specimenType
         for (const b of patient.batches) {
           const stage = (b.embryoStage || '').toUpperCase();
           if (stage.includes('DAY 5') || stage.includes('DAY 6') || stage.includes('DAY5') || stage.includes('DAY6') || stage.includes('BLAST')) {
