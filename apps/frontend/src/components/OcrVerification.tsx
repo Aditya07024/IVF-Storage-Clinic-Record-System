@@ -550,7 +550,7 @@ export const OcrVerification: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
             <FileScan className="w-7 h-7 text-emerald-600" />
-            <span>AI Vision Document OCR Scanner & Verification</span>
+            <span>Scan Past Patient and add their data in the platform</span>
           </h1>
           <p className="text-sm text-slate-600 mt-1 font-medium">
             Upload scanned document or photo for automated structured patient & specimen extraction.

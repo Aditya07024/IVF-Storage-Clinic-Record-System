@@ -98,7 +98,10 @@ export class OcrService {
           process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
           const ClientClass = visionModule?.ImageAnnotatorClient || visionModule?.default?.ImageAnnotatorClient;
           if (ClientClass) {
-            this.visionClient = new ClientClass({ keyFilename: credPath });
+            this.visionClient = new ClientClass({
+              keyFilename: credPath,
+              projectId: CONFIG.GOOGLE_CLOUD_PROJECT_ID || 'evident-torus-506910-h7',
+            });
             console.log('[OcrService] Google Cloud Vision Service Account client initialized.');
             return;
           }
@@ -156,7 +159,7 @@ export class OcrService {
 
   private async extractVisionViaGemini(fileBuffer: Buffer, mimeType: string): Promise<string> {
     if (!this.genAI) return '';
-    const candidateModels = ['gemini-3.6-flash', 'gemini-3.1-pro-preview', 'gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    const candidateModels = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
     const base64Image = fileBuffer.toString('base64');
 
     for (const modelName of candidateModels) {
@@ -330,7 +333,7 @@ export class OcrService {
 
     // 1. Try Gemini AI Model Extraction with Database Container Context
     if (this.genAI && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'mock_gemini_key') {
-      const candidateModels = ['gemini-3.6-flash', 'gemini-3.1-pro-preview', 'gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+      const candidateModels = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
       const prompt = `You are an expert medical OCR data extraction assistant for an IVF & Cryo Storage Clinic.
 Deeply analyze the raw OCR document text below extracted from a medical document image with high precision.
 Identify and map raw text to the exact clinical form fields.
