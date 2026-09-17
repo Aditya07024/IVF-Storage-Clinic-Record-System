@@ -232,21 +232,20 @@ export const OcrVerification: React.FC = () => {
     setThawDate(json.thawDate || '');
     setEmbryoCount(json.embryoCount ? String(json.embryoCount) : '');
 
-    // Normalize Canister Name against exact physical clinic inventory
+    // Parse Canister Name directly from raw text (e.g. C01 to C20 or Canister number)
     let can = (json.canisterName || '').trim();
-    if (can.match(/8|C08|cayo/i)) can = 'C08';
-    else if (can.match(/1|C01/i)) can = 'C01';
-    else if (can.match(/2|C02/i)) can = 'C02';
-    else if (can.match(/3|C03/i)) can = 'C03';
-    else if (can.match(/4|C04/i)) can = 'C04';
-    else if (can.match(/5|C05/i)) can = 'C05';
-    else if (can.match(/6|C06/i)) can = 'C06';
-    else if (can.match(/7|C07/i)) can = 'C07';
-    else if (can.match(/9|C09/i)) can = 'C09';
-    else if (can.match(/10|C10/i)) can = 'C10';
-    setCanisterName(can || 'C08');
+    if (can) {
+      const match = can.match(/(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num >= 1 && num <= 20) {
+          can = `C${num.toString().padStart(2, '0')}`;
+        }
+      }
+    }
+    setCanisterName(can);
 
-    // Normalize Viso Tube / Straw Color (5 Physical Colors: Pink, Green, Blue, Yellow, White)
+    // Parse Viso Tube / Straw Color (Pink, Green, Blue, Yellow, White)
     let col = (json.visoTubeColor || '').trim();
     if (col.match(/pink/i)) col = 'Pink';
     else if (col.match(/green/i)) col = 'Green';
@@ -256,25 +255,36 @@ export const OcrVerification: React.FC = () => {
     else col = '';
     setVisoTubeColor(col);
 
-    // Normalize Viso Tube ID / Goblet
-    let gob = (json.visoTubeId || '').trim();
-    if (gob.match(/yellow/i)) gob = 'V09';
-    else if (gob.match(/pink/i)) gob = 'V01';
-    else if (gob.match(/green/i)) gob = 'V05';
-    else if (gob.match(/blue/i)) gob = 'V07';
-    else if (gob.match(/red/i)) gob = 'V03';
-    else if (gob.match(/grey|gray/i)) gob = 'V02';
-    else if (gob.match(/black/i)) gob = 'V04';
-    else if (gob.match(/purple/i)) gob = 'V08';
-    else if (gob.match(/orange/i)) gob = 'V10';
-    else if (gob.match(/sky/i)) gob = 'V11';
-    setVisoTubeId(gob || 'V09');
+    // Parse Viso Tube ID / Goblet directly from raw text (V01 to V11)
+    let gob = (json.visoTubeId || json.goblet || json.tubeNumber || '').trim();
+    if (gob) {
+      const gMatch = gob.match(/(\d+)/);
+      if (gMatch) {
+        const gNum = parseInt(gMatch[1], 10);
+        if (gNum >= 1 && gNum <= 11) {
+          gob = `V${gNum.toString().padStart(2, '0')}`;
+        }
+      } else if (gob.match(/yellow/i)) gob = 'V09';
+      else if (gob.match(/pink/i)) gob = 'V01';
+      else if (gob.match(/green/i)) gob = 'V05';
+      else if (gob.match(/blue/i)) gob = 'V07';
+      else if (gob.match(/red/i)) gob = 'V03';
+      else if (gob.match(/grey|gray/i)) gob = 'V02';
+      else if (gob.match(/black/i)) gob = 'V04';
+      else if (gob.match(/purple/i)) gob = 'V08';
+      else if (gob.match(/orange/i)) gob = 'V10';
+      else if (gob.match(/sky/i)) gob = 'V11';
+    }
+    setVisoTubeId(gob);
 
-    // Normalize Level / Tier
+    // Parse Level / Tier directly from raw text
     let lvl = (json.level || '').trim();
-    if (lvl.match(/1|bottom|I/i)) lvl = 'Level 1';
-    else if (lvl.match(/2|top|II/i)) lvl = 'Level 2';
-    setLevel(lvl || 'Level 1');
+    if (lvl) {
+      if (lvl.match(/2|top|II$/i)) lvl = 'Level 2';
+      else if (lvl.match(/1|bottom|I$/i)) lvl = 'Level 1';
+      else lvl = '';
+    }
+    setLevel(lvl);
 
     const initialStraws = Array.isArray(json.straws) && json.straws.length > 0
       ? json.straws.map((s: any) => {
@@ -706,7 +716,7 @@ export const OcrVerification: React.FC = () => {
               <img
                 src={getImageUrl(activeRecord.storageKey)}
                 alt="Scanned Record"
-                className="max-h-[400px] w-auto object-contain rounded-xl border border-slate-200 shadow-sm"
+                className="max-h-[700px] w-auto object-contain rounded-xl border border-slate-200 shadow-sm"
                 onError={(e) => {
                   (e.target as any).style.display = 'none';
                 }}
@@ -875,11 +885,11 @@ export const OcrVerification: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>AI Extracted Cryo Storage Location (Editable)</span>
+                    <span>Extracted Document Storage Location (Editable)</span>
                   </span>
-                  <span className="text-[9px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-2xs">
-                    AUTO-ALLOCATES IN CONTAINER VIEW
-                  </span>
+                  {/* <span className="text-[9px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-2xs">
+                    EXACT DOCUMENT LOCATION
+                  </span> */}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {/* Field 1: Cryotank / Can Overview */}
@@ -940,7 +950,7 @@ export const OcrVerification: React.FC = () => {
 
                   {/* Field 4: Viso Tube / Goblet Color (11 Physical Colors) */}
                   <div className="space-y-0.5">
-                    <label className="font-bold text-slate-700 text-[9px] uppercase">Viso Tube / Goblet Color</label>
+                    <label className="font-bold text-slate-700 text-[9px] uppercase">Viso Tube Color</label>
                     <select
                       value={visoTubeColor}
                       onChange={(e) => {

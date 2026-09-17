@@ -350,7 +350,7 @@ STRICT EXTRACTION RULES:
 7. Extract Registration / Patient ID ("patientId") (e.g. "IVF-2026-000007", "26980").
 8. Extract Doctor Name ("doctorName") formatted with "Dr." prefix (e.g. "Dr. Abha Majumdar").
 9. Extract Date of Egg Retrieval / Aspiration Date ("aspirationDate" / "visitDate") and Freezing Date ("freezingDate") formatted as YYYY-MM-DD.
-10. Extract Storage Location fields: "canisterName" (e.g. "C08"), "visoTubeColor" (e.g. "Pink"), "level" (e.g. "Level 1").
+10. Extract Storage Location fields STRICTLY from raw document image text: "canisterName" (e.g. "C01", "C03", "C08"), "level" (e.g. "Level 1", "Level 2"), "visoTubeId" (e.g. "V01", "V05", "V09"), "visoTubeColor" (e.g. "Pink", "Green", "Blue", "Yellow", "White"). DO NOT assume or auto-allocate default storage locations if unstated in document text. If a location field is missing from text, return null for that field.
 11. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage (e.g. "Day 5"), grade (e.g. "4AA"), fragmentation ("No", "+", "++"), freezingDate.
 
 Return ONLY valid JSON matching this schema:
@@ -836,71 +836,65 @@ ${rawText}`;
         ? (rawTank.toUpperCase().startsWith('CAN-') ? rawTank.toUpperCase() : `CAN-${tankDigits.padStart(2, '0')}`)
         : 'CAN-01';
 
-      const canisterDigits = (input.canisterName || '8').replace(/\D/g, '');
-      const selectedCanisterNum = canisterDigits ? parseInt(canisterDigits, 10) : 8;
+      const canisterDigits = (input.canisterName || '').replace(/\D/g, '');
+      const selectedCanisterNum = canisterDigits ? parseInt(canisterDigits, 10) : null;
 
-      const levelDigits = (input.level || '1').replace(/\D/g, '');
-      const selectedLevelNum = levelDigits ? parseInt(levelDigits, 10) : 1;
+      const levelDigits = (input.level || '').replace(/\D/g, '');
+      const selectedLevelNum = levelDigits ? parseInt(levelDigits, 10) : null;
 
-      const gobletDigits = (input.visoTubeId || '1').replace(/\D/g, '');
-      const selectedGobletNum = gobletDigits ? parseInt(gobletDigits, 10) : 1;
+      const gobletDigits = (input.visoTubeId || '').replace(/\D/g, '');
+      const selectedGobletNum = gobletDigits ? parseInt(gobletDigits, 10) : null;
 
-      // Search for the specific Canister, Level, Goblet, and VisoTube matching user selection (Tank, Canister, Level, Goblet)
-      let targetVisoTube = await tx.visoTube.findFirst({
-        where: {
-          goblet: {
-            gobletNumber: selectedGobletNum,
-            level: {
-              levelNumber: selectedLevelNum,
-              canister: {
-                canisterNumber: selectedCanisterNum,
-                can: {
-                  code: selectedTankCode,
-                },
-              },
+      // Search for the specific Canister, Level, Goblet, and VisoTube matching extracted/user selection
+      const gobletWhere: any = {
+        level: {
+          canister: {
+            can: {
+              code: selectedTankCode,
             },
           },
         },
+      };
+
+      if (selectedCanisterNum !== null) {
+        gobletWhere.level.canister.canisterNumber = selectedCanisterNum;
+      }
+      if (selectedLevelNum !== null) {
+        gobletWhere.level.levelNumber = selectedLevelNum;
+      }
+      if (selectedGobletNum !== null) {
+        gobletWhere.gobletNumber = selectedGobletNum;
+      }
+
+      let targetVisoTube = await tx.visoTube.findFirst({
+        where: {
+          goblet: gobletWhere,
+        },
       });
 
-      // Fallback 1: match by Tank Code, Canister Number & Level Number
-      if (!targetVisoTube) {
-        targetVisoTube = await tx.visoTube.findFirst({
-          where: {
-            goblet: {
-              level: {
-                levelNumber: selectedLevelNum,
-                canister: {
-                  canisterNumber: selectedCanisterNum,
-                  can: {
-                    code: selectedTankCode,
-                  },
-                },
+      // Fallback 1: match without gobletNumber if specific goblet was unstated
+      if (!targetVisoTube && selectedCanisterNum !== null) {
+        const fallbackWhere: any = {
+          level: {
+            canister: {
+              canisterNumber: selectedCanisterNum,
+              can: {
+                code: selectedTankCode,
               },
             },
+          },
+        };
+        if (selectedLevelNum !== null) {
+          fallbackWhere.level.levelNumber = selectedLevelNum;
+        }
+        targetVisoTube = await tx.visoTube.findFirst({
+          where: {
+            goblet: fallbackWhere,
           },
         });
       }
 
-      // Fallback 2: match by Tank Code & Canister Number
-      if (!targetVisoTube) {
-        targetVisoTube = await tx.visoTube.findFirst({
-          where: {
-            goblet: {
-              level: {
-                canister: {
-                  canisterNumber: selectedCanisterNum,
-                  can: {
-                    code: selectedTankCode,
-                  },
-                },
-              },
-            },
-          },
-        });
-      }
-
-      // Fallback 3: match by Tank Code only
+      // Fallback 2: match by Tank Code only
       if (!targetVisoTube) {
         targetVisoTube = await tx.visoTube.findFirst({
           where: {
@@ -917,7 +911,7 @@ ${rawText}`;
         });
       }
 
-      // Fallback 4: first available VisoTube in database
+      // Fallback 3: first available VisoTube in database
       if (!targetVisoTube) {
         targetVisoTube = await tx.visoTube.findFirst({
           orderBy: { tubeNumber: 'asc' },
