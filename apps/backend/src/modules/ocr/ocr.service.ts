@@ -923,6 +923,10 @@ ${rawText}`;
         const parsedFreezing = parseFlexibleDate(input.freezingDate) || new Date();
         const parsedAsp = parseFlexibleDate(input.aspirationDate);
 
+        const canisterLabel = selectedCanisterNum !== null ? `C${selectedCanisterNum.toString().padStart(2, '0')}` : 'C--';
+        const levelLabel = selectedLevelNum !== null ? `Level ${selectedLevelNum}` : 'Level --';
+        const gobletLabel = selectedGobletNum !== null ? `V${selectedGobletNum.toString().padStart(2, '0')}` : 'V--';
+
         const batch = await tx.storageBatch.create({
           data: {
             batchId: batchCode,
@@ -933,7 +937,7 @@ ${rawText}`;
             totalStraws: strawsList.length,
             totalEmbryos: strawsList.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
             visoTubeId: targetVisoTube.id,
-            notes: `Allocated from OCR Verification (${selectedTankCode}, Canister C${selectedCanisterNum.toString().padStart(2, '0')}, Level ${selectedLevelNum}, Viso Tube V${selectedGobletNum.toString().padStart(2, '0')}, Color: ${input.visoTubeColor || 'Pink'})`,
+            notes: `Allocated from OCR Verification (${selectedTankCode}, ${canisterLabel}, ${levelLabel}, Viso Tube ${gobletLabel}, Color: ${input.visoTubeColor || 'Pink'})`,
           },
         });
 
