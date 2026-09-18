@@ -17,6 +17,16 @@ function formatDateDots(d: string | Date | null | undefined): string {
   return `${day}.${month}.${year}`;
 }
 
+function formatDateDDMMYYYY(d: string | Date | null | undefined): string {
+  if (!d) return '';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return '';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 function formatOneYearExpiryDots(freezingDate: string | Date | null | undefined): string {
   if (!freezingDate) return 'N/A';
   const date = new Date(freezingDate);
@@ -225,17 +235,21 @@ export class DocumentService {
         ? formatSixMonthsExpiryDots(patient.freezingDate || patient.aspirationDate || patient.createdAt)
         : formatOneYearExpiryDots(patient.freezingDate || patient.aspirationDate || patient.createdAt);
 
-      // Clean Age string
+      // Format DOB with Age
       const ageClean = patient.patientAge
         ? `${String(patient.patientAge).replace(/\s*yrs?/gi, '').trim()} Yrs`
-        : 'N/A';
+        : '';
+      const dobFormatted = patient.dob ? formatDateDDMMYYYY(patient.dob) : '';
+      const dobAgeStr = dobFormatted
+        ? (ageClean ? `${dobFormatted} (${ageClean})` : dobFormatted)
+        : (ageClean || 'N/A');
 
       // Left Column Demographics
       doc.fillColor('#0f172a').font('Helvetica-Bold').text('Name of patient: ', 44, demoStartY + 10, { continued: true });
       doc.font('Helvetica-Bold').fillColor('#047857').text(patient.fullName || 'N/A');
 
-      doc.fillColor('#0f172a').font('Helvetica-Bold').text('Age: ', 44, demoStartY + 38, { continued: true });
-      doc.font('Helvetica').fillColor('#334155').text(ageClean);
+      doc.fillColor('#0f172a').font('Helvetica-Bold').text('DOB: ', 44, demoStartY + 38, { continued: true });
+      doc.font('Helvetica').fillColor('#334155').text(dobAgeStr);
 
       doc.fillColor('#0f172a').font('Helvetica-Bold').text('Reg No: ', 44, demoStartY + 66, { continued: true });
       doc.font('Helvetica-Bold').fillColor('#047857').text(patient.patientId || 'N/A');
@@ -385,11 +399,16 @@ export class DocumentService {
           if (straw.isPgt) bHasPgt = true;
 
           if (straw.embryos && straw.embryos.length > 0) {
-            straw.embryos.forEach((emb: any) => {
-              if (emb.grade) bEmbryoScoresArr.push(emb.grade);
-            });
-          } else if (straw.grade) {
-            bEmbryoScoresArr.push(straw.grade);
+            straw.embryos
+              .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
+              .forEach((emb: any) => {
+                bEmbryoScoresArr.push(emb.grade || straw.grade || 'N/A');
+              });
+          } else {
+            const strawGrade = straw.grade || 'N/A';
+            for (let i = 0; i < cnt; i++) {
+              bEmbryoScoresArr.push(strawGrade);
+            }
           }
         });
 
