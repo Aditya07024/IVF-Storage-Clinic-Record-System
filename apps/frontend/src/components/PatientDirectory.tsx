@@ -721,7 +721,7 @@ export const PatientDirectory: React.FC = () => {
                                 ...s,
                                 batchEmbryoStage: batch.embryoStage,
                                 batchOocyteStage: batch.oocyteStage,
-                                stage: s.stage || batch.oocyteStage || batch.embryoStage || (pIsOocyte ? 'MII' : 'Day 5'),
+                                stage: s.stage || (pIsOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || 'Day 5')),
                               });
                             });
                           });
@@ -880,29 +880,7 @@ export const PatientDirectory: React.FC = () => {
                             );
                           })()}
 
-                          {canPrintMail ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setReportMailPatient(p);
-                              }}
-                              className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 transition-all inline-flex items-center gap-1 text-xs font-bold shadow-xs active:scale-95"
-                              title="Print or Send Email Report"
-                            >
-                              <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Print / Mail</span>
-                            </button>
-                          ) : (
-                            <button
-                              disabled
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-2 bg-slate-100 text-slate-400 rounded-xl border border-slate-200 cursor-not-allowed inline-flex items-center gap-1 text-xs font-bold opacity-60"
-                              title="Printing & Emailing reports requires Admin permission"
-                            >
-                              <Lock className="w-3.5 h-3.5 text-slate-400" />
-                              <span>Print / Mail</span>
-                            </button>
-                          )}
+
                         </div>
                       </td>
                     </tr>
@@ -2097,14 +2075,22 @@ export const PatientDirectory: React.FC = () => {
                                   {displayLabel}
                                 </span>
                                 <span className={`text-slate-800 font-bold text-xs bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 ${!isOccupied ? 'line-through text-slate-500 group-hover/thawed:no-underline group-hover/thawed:text-slate-800' : ''}`}>
-                                  ({countLabel}{stageSummary ? ` • ${stageSummary}` : ''})
+                                  ({embryoCount} {isOocyte ? (embryoCount === 1 ? 'egg' : 'eggs') : (embryoCount === 1 ? 'embryo' : 'embryos')})
                                 </span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${!isOccupied ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>
                                   {straw.color || 'Pink'}
                                 </span>
                                 {(!isOocyte || (eFrag || eComment)) && (
                                   <span className={`font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 ${!isOccupied ? 'text-slate-500 line-through bg-slate-200/60 group-hover/thawed:no-underline group-hover/thawed:text-slate-900 group-hover/thawed:bg-slate-100' : 'text-slate-900'}`}>
-                                    {isOocyte ? 'Notes' : 'Grade'}: {gradeStr}{fragStr}{commentStr}
+                                    {isOocyte ? 'Notes' : 'Grade'}: {(() => {
+                                      if (straw.embryos && straw.embryos.length > 1) {
+                                        return straw.embryos
+                                          .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
+                                          .map((emb: any) => (emb.grade || gradeStr).trim().toUpperCase())
+                                          .join(', ');
+                                      }
+                                      return gradeStr;
+                                    })()}{fragStr}{commentStr}
                                   </span>
                                 )}
                               </div>
