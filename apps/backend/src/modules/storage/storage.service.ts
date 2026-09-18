@@ -471,7 +471,7 @@ export class StorageService {
           totalEmbryosSoFar++;
           const eGradeKey = `grade${e}`;
           const eCommentKey = `comment${e}`;
-          const eGrade = ((item as any)[eGradeKey] || (e === 1 ? item.grade : '') || '').toString();
+          const eGrade = ((item as any)[eGradeKey] || item.grade || '').toString();
           const eComment = ((item as any)[eCommentKey] || (e === 1 ? item.comments : '') || '').toString();
 
           await tx.embryo.create({

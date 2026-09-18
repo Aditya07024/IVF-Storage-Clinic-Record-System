@@ -402,7 +402,8 @@ export class DocumentService {
             straw.embryos
               .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
               .forEach((emb: any) => {
-                bEmbryoScoresArr.push(emb.grade || straw.grade || 'N/A');
+                const embGrade = (emb.grade || '').trim();
+                bEmbryoScoresArr.push(embGrade || straw.grade || 'N/A');
               });
           } else {
             const strawGrade = straw.grade || 'N/A';
