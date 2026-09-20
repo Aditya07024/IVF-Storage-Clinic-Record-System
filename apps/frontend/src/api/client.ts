@@ -298,6 +298,68 @@ export function getImageUrl(pathUrl: string | null | undefined): string {
 }
 
 export const openSecurePdfBlob = async (patientId: string, reportType?: string) => {
+  // Dispatch event for in-app loading modal
+  window.dispatchEvent(new CustomEvent('pdf-loading-start', { detail: { patientId, reportType } }));
+
+  // Synchronously open window to bypass browser popup blockers
+  const pdfWindow = window.open('about:blank', '_blank');
+  if (pdfWindow) {
+    pdfWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Generating IVF Cryo Specimen Report...</title>
+        <style>
+          body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+          .card { background: #1e293b; padding: 2.5rem; border-radius: 1.5rem; border: 1px solid #334155; text-align: center; max-width: 420px; width: 90%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+          .spinner { width: 48px; height: 48px; border: 4px solid #334155; border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1.5rem auto; }
+          .progress-bar-bg { background: #334155; height: 10px; border-radius: 9999px; overflow: hidden; margin: 1.5rem 0 1rem 0; }
+          .progress-bar-fill { background: linear-gradient(90deg, #10b981, #14b8a6); height: 100%; width: 0%; transition: width 0.1s linear; }
+          @keyframes spin { to { transform: rotate(360deg); } }
+          h2 { font-size: 1.25rem; font-weight: 700; margin: 0 0 0.5rem 0; color: #ffffff; }
+          p { font-size: 0.875rem; color: #94a3b8; margin: 0; }
+          .percent { font-family: monospace; font-size: 0.9rem; color: #34d399; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="spinner"></div>
+          <h2>Generating Cryo Specimen PDF</h2>
+          <p id="stage">Initializing document engine...</p>
+          <div class="progress-bar-bg">
+            <div id="fill" class="progress-bar-fill"></div>
+          </div>
+          <div class="percent"><span id="pct">0</span>%</div>
+        </div>
+        <script>
+          const start = Date.now();
+          const duration = 10000;
+          const fill = document.getElementById('fill');
+          const pct = document.getElementById('pct');
+          const stage = document.getElementById('stage');
+          const stages = [
+            'Fetching cryo straw records & patient details...',
+            'Formatting straw numbers & tube colors...',
+            'Rendering QR barcodes & verification signatures...',
+            'Finalizing vector PDF document layout...'
+          ];
+          const timer = setInterval(() => {
+            const elapsed = Date.now() - start;
+            const progress = Math.min(100, Math.floor((elapsed / duration) * 100));
+            if (fill) fill.style.width = progress + '%';
+            if (pct) pct.innerText = progress;
+            if (stage) stage.innerText = stages[Math.min(3, Math.floor(progress / 25))];
+            if (progress >= 100) clearInterval(timer);
+          }, 50);
+        </script>
+      </body>
+      </html>
+    `);
+  }
+
+  const startTime = Date.now();
+  const MIN_LOADING_TIME = 10000; // 10 seconds loading bar duration
+
   try {
     const apiBase = getApiBaseUrl().replace(/\/$/, '');
     const accessKey = localStorage.getItem('app_access_key') || localStorage.getItem('site_access_key') || 'clinic2026';
@@ -306,7 +368,7 @@ export const openSecurePdfBlob = async (patientId: string, reportType?: string) 
     const query = reportType ? `?reportType=${reportType}` : '';
     const url = `${apiBase}/api/documents/patient/${patientId}/pdf${query}`;
 
-    // Fetch PDF binary directly using authenticated headers (NO URL TOKENS OR BACKEND ADDRESS VISIBLE)
+    // Fetch PDF binary directly using authenticated headers
     const response = await fetch(url, {
       headers: {
         'x-access-key': accessKey,
@@ -321,13 +383,22 @@ export const openSecurePdfBlob = async (patientId: string, reportType?: string) 
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
 
-    // Open clean in-memory blob URL (Backend URL & secret token are 100% hidden)
-    const pdfWindow = window.open(blobUrl, '_blank');
-    if (pdfWindow) {
-      pdfWindow.title = 'IVF Clinical Specimen Report';
-    }
+    // Ensure 10-second loading bar animation completes for user feedback
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
+
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('pdf-loading-complete'));
+      if (pdfWindow) {
+        pdfWindow.location.href = blobUrl;
+      }
+    }, remainingTime);
+
   } catch (err: any) {
     console.error('Secure PDF opening error:', err);
-    alert('Error opening report PDF: ' + (err.message || err));
+    window.dispatchEvent(new CustomEvent('pdf-loading-error', { detail: { message: err.message || 'Error generating PDF' } }));
+    if (pdfWindow) {
+      pdfWindow.close();
+    }
   }
 };

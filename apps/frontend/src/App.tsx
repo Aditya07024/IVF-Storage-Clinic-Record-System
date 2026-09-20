@@ -11,6 +11,7 @@ import { ThawWorkflow } from './components/ThawWorkflow';
 import { AuditLogs } from './components/AuditLogs';
 import { DeveloperSupport } from './components/DeveloperSupport';
 import { AdminPanel } from './components/AdminPanel';
+import { PdfLoadingModal } from './components/PdfLoadingModal';
 import { apiRequest } from './api/client';
 
 export const AppContent: React.FC = () => {
@@ -98,6 +99,8 @@ export const AppContent: React.FC = () => {
         {activeTab === 'support' && <DeveloperSupport />}
         {activeTab === 'admin' && <AdminPanel />}
       </main>
+
+      <PdfLoadingModal />
     </div>
   );
 };
