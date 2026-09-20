@@ -195,8 +195,8 @@ export class DocumentService {
       // ==========================================
       // 2. PATIENT HEADER BANNER & BADGES (MATCHING DRAWER POPUP HEADER)
       // ==========================================
-      const headerBannerY = 86;
-      
+      const headerBannerY = 96;
+
       // Parse photos for top header right side
       const parsePhotoBuffer = async (urlStr?: string | null): Promise<Buffer | null> => {
         if (!urlStr) return null;
@@ -224,8 +224,8 @@ export class DocumentService {
       const wifePhotoRaw = await parsePhotoBuffer(patient.photoUrl);
       const husbandPhotoRaw = await parsePhotoBuffer((patient as any).partnerPhotoUrl);
 
-      // Patient ID & Full Name
-      doc.fillColor('#047857').fontSize(9).font('Helvetica-Bold').text(patient.patientId || 'N/A', 30, headerBannerY);
+      // Patient Registration ID & Full Name
+      doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#047857').text(`REGISTRATION ID: ${patient.patientId || 'N/A'}`, 30, headerBannerY);
       doc.fillColor('#0f172a').fontSize(14).font('Helvetica-Bold').text(patient.fullName || 'N/A', 30, headerBannerY + 12);
 
       // Photos layout top right
@@ -368,7 +368,7 @@ export class DocumentService {
       // ==========================================
       // 3. PATIENT & PARTNER PROFILE CARDS (SIDE-BY-SIDE MATCHING POPUP)
       // ==========================================
-      const profilesY = 138;
+      const profilesY = 154;
       const profW = 262;
       const profH = 82;
 
@@ -465,31 +465,26 @@ export class DocumentService {
       }
 
       // ==========================================
-      // 4. CLINICAL & STORAGE QUICK BAR (4 GRID CARDS NOW UNDER PATIENT DETAILS)
+      // 4. CLINICAL & STORAGE QUICK BAR (3 GRID CARDS UNDER PATIENT DETAILS)
       // ==========================================
       const quickBarY = currentSectionY;
-      const cardW = 128.5;
+      const cardW = 171.6;
       const cardH = 34;
 
-      // Quick Card 1: Registration ID (Emerald)
-      doc.roundedRect(30, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#ecfdf5', '#a7f3d0');
-      doc.fontSize(7).font('Helvetica-Bold').fillColor('#065f46').text('REGISTRATION ID', 36, quickBarY + 6);
-      doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#0f172a').text(patient.patientId || 'N/A', 36, quickBarY + 17, { width: cardW - 12, lineBreak: false });
+      // Quick Card 1: Egg Pick Up Date (Amber)
+      doc.roundedRect(30, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#fffbeb', '#fde68a');
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#92400e').text('EGG PICK UP DATE', 36, quickBarY + 6);
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#78350f').text(allAspirationDatesStr, 36, quickBarY + 17, { width: cardW - 12, lineBreak: false });
 
-      // Quick Card 2: Egg Pick Up Date (Amber)
-      doc.roundedRect(165.6, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#fffbeb', '#fde68a');
-      doc.fontSize(7).font('Helvetica-Bold').fillColor('#92400e').text('EGG PICK UP DATE', 171.6, quickBarY + 6);
-      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#78350f').text(allAspirationDatesStr, 171.6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
+      // Quick Card 2: Freezing Date(s) (Blue)
+      doc.roundedRect(211.6, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#eff6ff', '#bfdbfe');
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#1e40af').text('FREEZING DATE(S)', 217.6, quickBarY + 6);
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#1e3a8a').text(allFreezingDatesStr, 217.6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
 
-      // Quick Card 3: Freezing Date(s) (Blue)
-      doc.roundedRect(301.2, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#eff6ff', '#bfdbfe');
-      doc.fontSize(7).font('Helvetica-Bold').fillColor('#1e40af').text('FREEZING DATE(S)', 307.2, quickBarY + 6);
-      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#1e3a8a').text(allFreezingDatesStr, 307.2, quickBarY + 17, { width: cardW - 12, lineBreak: false });
-
-      // Quick Card 4: Attending Doctor (Slate)
-      doc.roundedRect(436.8, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#f8fafc', '#cbd5e1');
-      doc.fontSize(7).font('Helvetica-Bold').fillColor('#475569').text('ATTENDING DOCTOR', 442.8, quickBarY + 6);
-      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f172a').text(patient.doctorName || 'N/A', 442.8, quickBarY + 17, { width: cardW - 12, lineBreak: false });
+      // Quick Card 3: Attending Doctor (Slate)
+      doc.roundedRect(393.2, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#f8fafc', '#cbd5e1');
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#475569').text('ATTENDING DOCTOR', 399.2, quickBarY + 6);
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f172a').text(patient.doctorName || 'N/A', 399.2, quickBarY + 17, { width: cardW - 12, lineBreak: false });
 
       currentSectionY = quickBarY + cardH + 10;
 
@@ -550,7 +545,7 @@ export class DocumentService {
             const strawBoxY = currentSectionY;
             const embryoCount = straw.embryoCount || (straw.embryos ? straw.embryos.length : 1);
             const strawLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
-            const displayLabel = strawLabel.startsWith('#') ? strawLabel : `Straw #${sIdx + 1}`;
+            const displayLabel = strawLabel.startsWith('#') ? strawLabel : `#${sIdx + 1}`;
 
             const strawColor = straw.color || 'Pink';
             let colorBg = '#fce7f3';
@@ -619,11 +614,7 @@ export class DocumentService {
             }
 
             const mainSpecText = `${isOocyteDoc ? 'Stage' : 'Grade'}: ${gradeFormatted}${commentFormatted}`;
-            doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#0f172a').text(mainSpecText, 160, strawBoxY + 20, { width: 250, lineBreak: false });
-
-            // Straw Color Badge
-            doc.roundedRect(420, strawBoxY + 18, 54, 12, 3).lineWidth(0.5).fillAndStroke(colorBg, colorBorder);
-            doc.fontSize(7).font('Helvetica-Bold').fillColor(colorText).text(`${strawColor} Tag`, 420, strawBoxY + 20, { width: 54, align: 'center' });
+            doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#0f172a').text(mainSpecText, 160, strawBoxY + 20, { width: 310, lineBreak: false });
 
             // PGT Badge
             if (straw.isPgt && !isOocyteDoc) {

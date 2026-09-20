@@ -2083,7 +2083,63 @@ export const PatientDirectory: React.FC = () => {
                 </div>
               </div>
             )}
-
+ {/* Uploaded Documents & OCR Scans History */}
+            {selectedPatient.ocrRecords && selectedPatient.ocrRecords.length > 0 && (
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-teal-600" />
+                  <span>Uploaded Documents & OCR History ({selectedPatient.ocrRecords.length})</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedPatient.ocrRecords.map((ocr: any) => {
+                    const imgUrl = getImageUrl(ocr.storageKey);
+                    return (
+                      <div key={ocr.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-semibold">
+                          <span className="truncate max-w-[180px] font-mono text-slate-900">{ocr.originalFilename}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${ocr.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-amber-100 text-amber-900 border border-amber-300'}`}>
+                            {ocr.status}
+                          </span>
+                        </div>
+                        {ocr.mimeType?.startsWith('image/') && (
+                          <div
+                            className="relative rounded-xl overflow-hidden border border-slate-300 max-h-36 bg-slate-900 flex items-center justify-center group cursor-pointer"
+                            onClick={() => {
+                              setPreviewImageModalUrl(imgUrl);
+                              setPreviewImageTitle(ocr.originalFilename || 'OCR Scanned Document');
+                            }}
+                          >
+                            <img src={imgUrl} alt={ocr.originalFilename} className="object-contain max-h-36 w-full" />
+                            <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <span className="px-3 py-1 bg-emerald-600 text-white font-bold text-[11px] rounded-lg shadow-md flex items-center gap-1">
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>View Full Image</span>
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {/* <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewImageModalUrl(imgUrl);
+                            setPreviewImageTitle(ocr.originalFilename || 'OCR Scanned Document');
+                          }}
+                          className="w-full py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-lg border border-emerald-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>View Full Image</span>
+                        </button> */}
+                        {/* {ocr.rawOcrText && (
+                          <div className="text-[10px] font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-700 max-h-20 overflow-y-auto whitespace-pre-wrap">
+                            {ocr.rawOcrText}
+                          </div>
+                        )} */}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {/* Active Storage Batches Section */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
@@ -2515,63 +2571,7 @@ export const PatientDirectory: React.FC = () => {
               </div>
             )} */}
 
-            {/* Uploaded Documents & OCR Scans History */}
-            {selectedPatient.ocrRecords && selectedPatient.ocrRecords.length > 0 && (
-              <div className="space-y-3 pt-4 border-t border-slate-200">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-teal-600" />
-                  <span>Uploaded Documents & OCR History ({selectedPatient.ocrRecords.length})</span>
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {selectedPatient.ocrRecords.map((ocr: any) => {
-                    const imgUrl = getImageUrl(ocr.storageKey);
-                    return (
-                      <div key={ocr.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                        <div className="flex items-center justify-between text-xs font-semibold">
-                          <span className="truncate max-w-[180px] font-mono text-slate-900">{ocr.originalFilename}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${ocr.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-amber-100 text-amber-900 border border-amber-300'}`}>
-                            {ocr.status}
-                          </span>
-                        </div>
-                        {ocr.mimeType?.startsWith('image/') && (
-                          <div
-                            className="relative rounded-xl overflow-hidden border border-slate-300 max-h-36 bg-slate-900 flex items-center justify-center group cursor-pointer"
-                            onClick={() => {
-                              setPreviewImageModalUrl(imgUrl);
-                              setPreviewImageTitle(ocr.originalFilename || 'OCR Scanned Document');
-                            }}
-                          >
-                            <img src={imgUrl} alt={ocr.originalFilename} className="object-contain max-h-36 w-full" />
-                            <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <span className="px-3 py-1 bg-emerald-600 text-white font-bold text-[11px] rounded-lg shadow-md flex items-center gap-1">
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>View Full Image</span>
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPreviewImageModalUrl(imgUrl);
-                            setPreviewImageTitle(ocr.originalFilename || 'OCR Scanned Document');
-                          }}
-                          className="w-full py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-lg border border-emerald-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>View Full Image</span>
-                        </button>
-                        {ocr.rawOcrText && (
-                          <div className="text-[10px] font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-700 max-h-20 overflow-y-auto whitespace-pre-wrap">
-                            {ocr.rawOcrText}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+           
           </div>
         </div>
       )}

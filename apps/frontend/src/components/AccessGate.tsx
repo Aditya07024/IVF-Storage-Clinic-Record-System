@@ -87,7 +87,9 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
           </p>
         </div>
 
-        {/* 1-Click Quick Demo Access Key Button (Hidden in Production) */}
+
+
+        {/* 1-Click Quick Demo Access Key Button */}
         {!import.meta.env.PROD && (
           <div className="mb-5 p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-2">
             <button
@@ -111,7 +113,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
                 }
               }}
               disabled={loading}
-              className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <KeyRound className="w-4 h-4 text-emerald-200" />
               <span>Unlock Website with Demo Access Key (clinic2026)</span>
@@ -150,14 +152,14 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
-              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <CheckCircle2 className="w-5 h-5" />
-                <span>Verify Access Gate</span>
+                <KeyRound className="w-4 h-4" />
+                <span>Verify Access Key</span>
               </>
             )}
           </button>

@@ -872,7 +872,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to calculate storage recommendation.');
+      const msg = err.message || 'Failed to calculate storage recommendation.';
+      triggerValidationError(msg);
     } finally {
       setSearchingStorage(false);
     }
@@ -897,6 +898,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
   const { enqueueTask } = useBackgroundTask();
 
+  const triggerValidationError = (msg: string) => {
+    setError(msg);
+    alert(msg);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -906,49 +912,55 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     if (formMode === 'new') {
       if (isSupernumeraryDonor) {
         if (!donorRegNo.trim()) {
-          setError('Donor Reg No. / Code is required.');
+          triggerValidationError('Donor Reg No. / Code is required.');
           return;
         }
         if (!donorName.trim()) {
-          setError('Donor Name is required.');
+          triggerValidationError('Donor Name is required.');
           return;
         }
         if (!doctorName.trim()) {
-          setError('Doctor Name is required.');
+          triggerValidationError('Doctor Name is required.');
           return;
         }
       } else {
         if (!fullName.trim() || !doctorName.trim()) {
-          setError('Patient Full Name and Doctor Name are required.');
+          triggerValidationError('Patient Full Name and Doctor Name are required.');
           return;
         }
         if (!dob.trim()) {
-          setError('Patient Date of Birth (DOB) is required.');
+          triggerValidationError('Patient Date of Birth (DOB) is required.');
           return;
         }
         if (!email.trim()) {
-          setError('Patient Email Address is required.');
+          triggerValidationError('Patient Email Address is required.');
           return;
         }
         if (!phone.trim() && !partnerPhone.trim()) {
-          setError('Please enter at least 1 Mobile Phone number (Patient or Partner).');
+          triggerValidationError('Please enter at least 1 Mobile Phone number (Patient or Partner).');
           return;
         }
       }
     } else {
       if (!selectedExistingPatient) {
-        setError('Please search and select an existing patient first.');
+        triggerValidationError('Please search and select an existing patient first.');
         return;
       }
       if (!doctorName.trim()) {
-        setError('Doctor Name is required.');
+        triggerValidationError('Doctor Name is required.');
         return;
       }
     }
 
-    if (assignStorageEnabled && strawItems.some((s) => !s.color)) {
-      setError('Please select a straw color for all straws before saving.');
-      return;
+    if (assignStorageEnabled) {
+      if (!selectedVisoTubeId) {
+        triggerValidationError('Please select a storage VisoTube location before saving.');
+        return;
+      }
+      if (strawItems.some((s) => !s.color || !s.color.trim())) {
+        triggerValidationError('Please select a straw color for all straws before saving.');
+        return;
+      }
     }
 
     // Open Pre-Save Confirmation & Overview Modal
@@ -1140,7 +1152,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         onSuccess(updatedPatient);
       },
       onError: (err) => {
-        setError(err.message || 'Background save failed.');
+        triggerValidationError(err.message || 'Background save failed.');
       },
     });
   };

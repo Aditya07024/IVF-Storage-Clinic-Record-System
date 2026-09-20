@@ -259,62 +259,42 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
           </label>
 
           {(() => {
-            const hasThawedEmbryos = Boolean(
-              (patient as any)?.thawRecords?.length > 0 ||
-              (patient as any)?.thawedCount > 0 ||
-              (patient as any)?.batches?.some((b: any) =>
-                b.straws?.some((s: any) => s.status === 'THAWED')
-              )
-            );
+            const isOocyte = isOocyteSpecimen(patient);
+
+            const reportItems = [
+              { id: 'OOCYTE', title: '🥚 Day 0 Report', desc: 'Egg / Oocyte Freezing Report' },
+              { id: 'DAY3', title: '🔬 Day 3 Report', desc: 'Cleavage Stage Freezing Report' },
+              { id: 'DAY5', title: '🧫 Day 5/6 Report', desc: 'Blastocyst Freezing Report' },
+            ].filter((item) => !isOocyte || item.id === 'OOCYTE');
 
             return (
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'OOCYTE', title: '🥚 Day 0 Report', desc: 'Egg / Oocyte Freezing Report' },
-                  { id: 'DAY3', title: '🔬 Day 3 Report', desc: 'Cleavage Stage Freezing Report' },
-                  { id: 'DAY5', title: '🧫 Day 5/6 Report', desc: 'Blastocyst Freezing Report' },
-                  // { id: 'THAW', title: '🧪 Thaw Report', desc: 'Thawing & Recovery Report' },
-                ].map((item) => {
-                  const isThawItem = item.id === 'THAW';
-                  const isDisabled = isThawItem && !hasThawedEmbryos;
-
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => {
-                        if (isDisabled) return;
-                        const newType = item.id as any;
-                        setReportType(newType);
-                        const typeLabel = getReportTypeName(newType);
-                        if (patient) {
-                          setCustomSubject(`[${typeLabel}] Official IVF Specimen Storage Report - ${patient.fullName} (${patient.patientId})`);
-                        }
-                      }}
-                      className={`p-2.5 rounded-xl border text-left transition-all ${
-                        isDisabled
-                          ? 'bg-slate-100/90 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
-                          : reportType === item.id
-                          ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-500/20 shadow-xs font-bold'
-                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
-                      }`}
-                      title={isDisabled ? 'No embryos have been thawed for this patient yet' : ''}
-                    >
-                      <div className="font-bold text-xs flex items-center justify-between">
-                        <span className={isDisabled ? 'text-slate-400' : 'text-slate-900'}>{item.title}</span>
-                        {isDisabled && (
-                          <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300">
-                            Disabled
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-slate-500 font-medium">
-                        {isDisabled ? 'No embryos thawed yet' : item.desc}
-                      </div>
-                    </button>
-                  );
-                })}
+              <div className={`grid gap-2 ${isOocyte ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-3'}`}>
+                {reportItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      const newType = item.id as any;
+                      setReportType(newType);
+                      const typeLabel = getReportTypeName(newType);
+                      if (patient) {
+                        setCustomSubject(`[${typeLabel}] Official IVF Specimen Storage Report - ${patient.fullName} (${patient.patientId})`);
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      reportType === item.id
+                        ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-500/20 shadow-xs font-bold'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-xs flex items-center justify-between">
+                      <span className="text-slate-900">{item.title}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                      {item.desc}
+                    </div>
+                  </button>
+                ))}
               </div>
             );
           })()}

@@ -40,6 +40,14 @@ export const OcrVerification: React.FC = () => {
   const [patientAge, setPatientAge] = useState('');
   const [partnerAge, setPartnerAge] = useState('');
   const [doctorName, setDoctorName] = useState('');
+  const [specimenType, setSpecimenType] = useState<'EMBRYO' | 'OOCYTE'>('EMBRYO');
+  const [cycleType, setCycleType] = useState<'SELF' | 'DONOR_RECIPIENT'>('SELF');
+  const [donorName, setDonorName] = useState('');
+  const [donorRegNo, setDonorRegNo] = useState('');
+  const [donorAge, setDonorAge] = useState('');
+  const [donorPhone, setDonorPhone] = useState('');
+  const [vitrificationIndication, setVitrificationIndication] = useState('Social egg freezing');
+  const [oocyteStage, setOocyteStage] = useState('MII');
   const [visitDate, setVisitDate] = useState('');
   const [freezingDate, setFreezingDate] = useState('');
   const [thawDate, setThawDate] = useState('');
@@ -227,6 +235,14 @@ export const OcrVerification: React.FC = () => {
     setPatientAge(json.patientAge || '');
     setPartnerAge(json.partnerAge || '');
     setDoctorName(json.doctorName || '');
+    setSpecimenType((json.specimenType || (json.vitrificationIndication || json.donorName || json.oocyteStage ? 'OOCYTE' : 'EMBRYO')).toUpperCase() as any);
+    setCycleType((json.cycleType || (json.donorName || json.donorRegNo ? 'DONOR_RECIPIENT' : 'SELF')).toUpperCase() as any);
+    setDonorName(json.donorName || '');
+    setDonorRegNo(json.donorRegNo || '');
+    setDonorAge(json.donorAge || '');
+    setDonorPhone(json.donorPhone || '');
+    setVitrificationIndication(json.vitrificationIndication || 'Social egg freezing');
+    setOocyteStage(json.oocyteStage || 'MII');
     setVisitDate(json.visitDate || json.aspirationDate || '');
     setFreezingDate(json.freezingDate || '');
     setThawDate(json.thawDate || '');
@@ -245,13 +261,19 @@ export const OcrVerification: React.FC = () => {
     }
     setCanisterName(can);
 
-    // Parse Viso Tube / Straw Color (Pink, Green, Blue, Yellow, White)
+    // Parse Viso Tube / Straw Color (11 Colors)
     let col = (json.visoTubeColor || '').trim();
     if (col.match(/pink/i)) col = 'Pink';
+    else if (col.match(/grey|gray/i)) col = 'Grey';
+    else if (col.match(/red/i)) col = 'Red';
+    else if (col.match(/black/i)) col = 'Black';
     else if (col.match(/green/i)) col = 'Green';
-    else if (col.match(/blue/i)) col = 'Blue';
+    else if (col.match(/rust/i)) col = 'Rust';
+    else if (col.match(/blue/i) && !col.match(/sky/i)) col = 'Blue';
+    else if (col.match(/purple/i)) col = 'Purple';
     else if (col.match(/yellow/i)) col = 'Yellow';
-    else if (col.match(/white/i)) col = 'White';
+    else if (col.match(/orange/i)) col = 'Orange';
+    else if (col.match(/sky/i)) col = 'Skyblue';
     else col = '';
     setVisoTubeColor(col);
 
@@ -290,10 +312,16 @@ export const OcrVerification: React.FC = () => {
       ? json.straws.map((s: any) => {
           let sCol = (s.colorTag || s.colorName || '').trim();
           if (sCol.match(/pink/i)) sCol = 'Pink';
+          else if (sCol.match(/grey|gray/i)) sCol = 'Grey';
+          else if (sCol.match(/red/i)) sCol = 'Red';
+          else if (sCol.match(/black/i)) sCol = 'Black';
           else if (sCol.match(/green/i)) sCol = 'Green';
-          else if (sCol.match(/blue/i)) sCol = 'Blue';
+          else if (sCol.match(/rust/i)) sCol = 'Rust';
+          else if (sCol.match(/blue/i) && !sCol.match(/sky/i)) sCol = 'Blue';
+          else if (sCol.match(/purple/i)) sCol = 'Purple';
           else if (sCol.match(/yellow/i)) sCol = 'Yellow';
-          else if (sCol.match(/white/i)) sCol = 'White';
+          else if (sCol.match(/orange/i)) sCol = 'Orange';
+          else if (sCol.match(/sky/i)) sCol = 'Skyblue';
           else sCol = col || '';
           return {
             ...s,
@@ -480,6 +508,14 @@ export const OcrVerification: React.FC = () => {
           patientAge: patientAge.trim() || undefined,
           partnerAge: partnerAge.trim() || undefined,
           doctorName: doctorName.trim() || undefined,
+          specimenType,
+          cycleType,
+          donorName: donorName.trim() || undefined,
+          donorRegNo: donorRegNo.trim() || undefined,
+          donorAge: donorAge.trim() || undefined,
+          donorPhone: donorPhone.trim() || undefined,
+          vitrificationIndication: vitrificationIndication.trim() || undefined,
+          oocyteStage: oocyteStage.trim() || undefined,
           visitDate: visitDate || undefined,
           freezingDate: freezingDate || undefined,
           thawDate: thawDate || undefined,
@@ -744,6 +780,154 @@ export const OcrVerification: React.FC = () => {
             </div>
 
             <form onSubmit={handleVerify} className="space-y-4 text-xs">
+              {/* Specimen & Cycle Type Selection (Embryo vs Egg / Self vs Donor) */}
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Specimen Type Selector */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Specimen Type *
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-white border border-slate-300 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setSpecimenType('EMBRYO')}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          specimenType === 'EMBRYO'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Embryo (Embryos)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSpecimenType('OOCYTE')}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          specimenType === 'OOCYTE'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Egg (Oocyte)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Cycle Type Selector */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Cycle / Donor Type *
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-white border border-slate-300 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setCycleType('SELF')}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          cycleType === 'SELF'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Self Cycle
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCycleType('DONOR_RECIPIENT')}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          cycleType === 'DONOR_RECIPIENT'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Donor / Recipient
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Donor Details Card (Rendered if Donor Cycle is active) */}
+                {(cycleType === 'DONOR_RECIPIENT' || donorName || donorRegNo) && (
+                  <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2.5">
+                    <div className="text-[10px] font-bold text-amber-900 uppercase tracking-wider flex items-center justify-between">
+                      <span>Donor & Egg Freezing Information</span>
+                      <span className="bg-amber-200 text-amber-900 px-2 py-0.5 rounded text-[9px]">DONOR RECORD</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                      <div className="space-y-1">
+                        <label className="font-semibold text-slate-700 text-[10px]">Donor Reg No. / Code</label>
+                        <input
+                          type="text"
+                          value={donorRegNo}
+                          onChange={(e) => setDonorRegNo(e.target.value)}
+                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-mono font-bold"
+                          placeholder="e.g. D-9948"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-semibold text-slate-700 text-[10px]">Donor Name</label>
+                        <input
+                          type="text"
+                          value={donorName}
+                          onChange={(e) => setDonorName(capitalizeWords(e.target.value))}
+                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-bold"
+                          placeholder="Donor Name"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-semibold text-slate-700 text-[10px]">Donor Age</label>
+                        <input
+                          type="text"
+                          value={donorAge}
+                          onChange={(e) => setDonorAge(e.target.value)}
+                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-medium"
+                          placeholder="e.g. 24 Yrs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-semibold text-slate-700 text-[10px]">Donor Mobile Phone</label>
+                        <input
+                          type="text"
+                          value={donorPhone}
+                          onChange={(e) => setDonorPhone(e.target.value)}
+                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-mono"
+                          placeholder="e.g. +91 98765 43210"
+                        />
+                      </div>
+                      {specimenType === 'OOCYTE' && (
+                        <>
+                          <div className="space-y-1">
+                            <label className="font-semibold text-slate-700 text-[10px]">Vitrification Indication</label>
+                            <select
+                              value={vitrificationIndication}
+                              onChange={(e) => setVitrificationIndication(e.target.value)}
+                              className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-medium"
+                            >
+                              <option value="Social egg freezing">Social egg freezing</option>
+                              <option value="Medical indication (Onco-fertility)">Medical indication (Onco-fertility)</option>
+                              <option value="Supernumerary donor egg freezing">Supernumerary donor egg freezing</option>
+                              <option value="Elective / Other">Elective / Other</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="font-semibold text-slate-700 text-[10px]">Oocyte Stage</label>
+                            <select
+                              value={oocyteStage}
+                              onChange={(e) => setOocyteStage(e.target.value)}
+                              className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-bold"
+                            >
+                              <option value="MII">MII (Metaphase II - Mature)</option>
+                              <option value="MI">MI (Metaphase I)</option>
+                              <option value="GV">GV (Germinal Vesicle)</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1 md:col-span-2">
                   <label className="font-semibold text-slate-700">Registration ID</label>
@@ -887,9 +1071,6 @@ export const OcrVerification: React.FC = () => {
                     <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Extracted Document Storage Location (Editable)</span>
                   </span>
-                  {/* <span className="text-[9px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-2xs">
-                    EXACT DOCUMENT LOCATION
-                  </span> */}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {/* Field 1: Cryotank / Can Overview */}
@@ -921,7 +1102,7 @@ export const OcrVerification: React.FC = () => {
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Canister --</option>
-                      <option value="C08">C08 (Canister 08)</option>
+                      
                       <option value="C01">C01 (Canister 01)</option>
                       <option value="C02">C02 (Canister 02)</option>
                       <option value="C03">C03 (Canister 03)</option>
@@ -929,6 +1110,7 @@ export const OcrVerification: React.FC = () => {
                       <option value="C05">C05 (Canister 05)</option>
                       <option value="C06">C06 (Canister 06)</option>
                       <option value="C07">C07 (Canister 07)</option>
+                      <option value="C08">C08 (Canister 08)</option>
                       <option value="C09">C09 (Canister 09)</option>
                       <option value="C10">C10 (Canister 10)</option>
                     </select>
@@ -961,10 +1143,16 @@ export const OcrVerification: React.FC = () => {
                     >
                       <option value="" className="bg-white text-slate-900 font-bold">-- Select Color --</option>
                       <option value="Pink" className="bg-pink-100 text-pink-900 font-bold">Pink</option>
+                      <option value="Grey" className="bg-slate-200 text-slate-900 font-bold">Grey</option>
+                      <option value="Red" className="bg-red-100 text-red-900 font-bold">Red</option>
+                      <option value="Black" className="bg-slate-900 text-white font-bold">Black</option>
                       <option value="Green" className="bg-emerald-100 text-emerald-900 font-bold">Green</option>
+                      <option value="Rust" className="bg-amber-100 text-amber-950 font-bold">Rust</option>
                       <option value="Blue" className="bg-blue-100 text-blue-900 font-bold">Blue</option>
+                      <option value="Purple" className="bg-purple-100 text-purple-900 font-bold">Purple</option>
                       <option value="Yellow" className="bg-yellow-100 text-yellow-950 font-bold">Yellow</option>
-                      <option value="White" className="bg-slate-100 text-slate-900 font-bold">White</option>
+                      <option value="Orange" className="bg-orange-100 text-orange-950 font-bold">Orange</option>
+                      <option value="Skyblue" className="bg-sky-100 text-sky-950 font-bold">Skyblue</option>
                     </select>
                   </div>
                 </div>
@@ -989,27 +1177,21 @@ export const OcrVerification: React.FC = () => {
                   <table className="w-full text-left text-[9px]">
                     <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                       <tr>
-                        <th className="p-1">Straw ID</th>
+                        <th className="p-1.5 font-bold">Straw ID</th>
                         <th className="p-1">Color Tag</th>
-                        <th className="p-1 text-center">Embryos</th>
+                        <th className="p-1 text-center">{specimenType === 'OOCYTE' ? 'Oocytes' : 'Embryos'}</th>
                         <th className="p-1">Stage</th>
                         <th className="p-1">Grade</th>
                         <th className="p-1">Fragmentation</th>
-                        <th className="p-1 text-center">Thaw?</th>
+                        <th className="p-1 text-center">Thaw</th>
                         <th className="p-1 text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {straws.map((st, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 font-medium text-slate-800">
-                          <td className="p-0.5">
-                            <input
-                              type="text"
-                              value={st.strawId || ''}
-                              onChange={(e) => updateStrawRow(idx, 'strawId', e.target.value)}
-                              placeholder={`#${idx + 1}`}
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-mono font-bold text-[8px]"
-                            />
+                          <td className="p-1.5 font-mono font-bold text-slate-900 text-[10px] whitespace-nowrap bg-slate-50/80">
+                            Straw #{idx + 1}
                           </td>
                           <td className="p-0.5">
                             <select
@@ -1017,12 +1199,18 @@ export const OcrVerification: React.FC = () => {
                               onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
                               className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
                             >
-                              <option value="">-- Select Straw Color --</option>
+                              <option value="">-- Select Color --</option>
                               <option value="Pink">Pink</option>
+                              <option value="Grey">Grey</option>
+                              <option value="Red">Red</option>
+                              <option value="Black">Black</option>
                               <option value="Green">Green</option>
+                              <option value="Rust">Rust</option>
                               <option value="Blue">Blue</option>
+                              <option value="Purple">Purple</option>
                               <option value="Yellow">Yellow</option>
-                              <option value="White">White</option>
+                              <option value="Orange">Orange</option>
+                              <option value="Skyblue">Skyblue</option>
                             </select>
                           </td>
                           <td className="p-0.5 text-center">
@@ -1106,9 +1294,7 @@ export const OcrVerification: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
-                <p className="text-[9px] text-slate-500 font-medium italic pt-0.5 flex items-center gap-1">
-                  <span>✨ Edit any detected values above. Clicking Approve will automatically mark containers filled in Full Container View.</span>
-                </p>
+
               </div>
 
               <div className="space-y-1">

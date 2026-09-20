@@ -302,6 +302,14 @@ export class OcrService {
     visoTubeColor?: string;
     visoTubeId?: string;
     level?: string;
+    specimenType?: string;
+    cycleType?: string;
+    donorName?: string;
+    donorRegNo?: string;
+    donorAge?: string;
+    donorPhone?: string;
+    vitrificationIndication?: string;
+    oocyteStage?: string;
     straws?: Array<{
       strawId?: string;
       colorTag?: string;
@@ -315,10 +323,38 @@ export class OcrService {
     }>;
     comments?: string;
   }> {
+    let doctorNamesList = [
+      'Dr Abha Majumdar',
+      'Dr. Shweta Mittal Gupta',
+      'Dr. Neeti Tiwari',
+      'Dr. Ruma Satwik',
+      'Dr. Sakshi Nayar',
+      'Dr. Bhawani Shekhar',
+      'Dr. Tejashri Shrotri',
+      'GOPD Unit IVA',
+      'GOPD Unit IVB',
+    ];
+    try {
+      const dbPatients = await prisma.patient.findMany({
+        where: { doctorName: { not: null } },
+        select: { doctorName: true },
+        distinct: ['doctorName'],
+      });
+      for (const p of dbPatients) {
+        if (p.doctorName && p.doctorName.trim()) {
+          const doc = p.doctorName.trim();
+          if (!doctorNamesList.includes(doc)) {
+            doctorNamesList.push(doc);
+          }
+        }
+      }
+    } catch (e) {}
+
     let clinicInventoryContext = `Exact Clinic Physical Container Hierarchy:
 - Canisters: C01, C02, C03, C04, C05, C06, C07, C08, C09, C10
 - Levels: Level 1 (Bottom), Level 2 (Top)
-- 5 Clinic Straw Colors: ONLY Pink, Green, Blue, Yellow, or White.`;
+- 11 Physical Viso Tube Colors: Viso Tube - Pink, Viso Tube - Grey, Viso Tube - Red, Viso Tube - Black, Viso Tube - Green, Viso Tube - Rust, Viso Tube - Blue, Viso Tube - Purple, Viso Tube - Yellow, Viso Tube - Orange, Viso Tube - Skyblue.
+- Official Clinic Doctor List: [${doctorNamesList.join(', ')}].`;
 
     try {
       const activeCanisters = await prisma.canister.findMany({
@@ -327,7 +363,7 @@ export class OcrService {
       });
       if (activeCanisters.length > 0) {
         const canisterNames = activeCanisters.map(c => `C${c.canisterNumber.toString().padStart(2, '0')} (Canister ${c.canisterNumber})`).join(', ');
-        clinicInventoryContext = `Active Clinic Storage Inventory: Canisters: [${canisterNames}]; 5 Clinic Straw Colors: [Pink, Green, Blue, Yellow, White]; Levels: [Level 1 (Bottom), Level 2 (Top)].`;
+        clinicInventoryContext = `Active Clinic Storage Inventory: Canisters: [${canisterNames}]; 11 Physical Viso Tube Colors: [Pink, Grey, Red, Black, Green, Rust, Blue, Purple, Yellow, Orange, Skyblue]; Levels: [Level 1 (Bottom), Level 2 (Top)]; Known Clinic Doctors: [${doctorNamesList.join(', ')}].`;
       }
     } catch (e) {}
 
@@ -341,17 +377,15 @@ Identify and map raw text to the exact clinical form fields.
 ${clinicInventoryContext}
 
 STRICT EXTRACTION RULES:
-1. ONLY extract values that explicitly exist in the raw document text. DO NOT invent, fabricate, or assume data. If a field is not present in the text, return null.
-2. Filter out raw text noise, printed headers, hospital footers, page numbers, legal disclaimers, or un-related margin text. DO NOT place irrelevant header text into input fields!
-3. Straw Color ("colorTag" / "visoTubeColor") MUST ONLY be one of these 5 physical clinic colors: Pink, Green, Blue, Yellow, or White. If unstated or ambiguous, return null.
-4. Extract Patient Full Name ("fullName") and Male Partner Name ("partnerName").
-5. Extract Patient Age ("patientAge") and Partner Age ("partnerAge") (e.g. "36 Yrs" or "30").
-6. Extract Patient Date of Birth ("dob") and Partner Date of Birth ("partnerDob") formatted as YYYY-MM-DD.
-7. Extract Registration / Patient ID ("patientId") (e.g. "IVF-2026-000007", "26980").
-8. Extract Doctor Name ("doctorName") formatted with "Dr." prefix (e.g. "Dr. Abha Majumdar").
-9. Extract Date of Egg Retrieval / Aspiration Date ("aspirationDate" / "visitDate") and Freezing Date ("freezingDate") formatted as YYYY-MM-DD.
-10. Extract Storage Location fields STRICTLY from raw document image text: "canisterName" (e.g. "C01", "C03", "C08"), "level" (e.g. "Level 1", "Level 2"), "visoTubeId" (e.g. "V01", "V05", "V09"), "visoTubeColor" (e.g. "Pink", "Green", "Blue", "Yellow", "White"). DO NOT assume or auto-allocate default storage locations if unstated in document text. If a location field is missing from text, return null for that field.
-11. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage (e.g. "Day 5"), grade (e.g. "4AA"), fragmentation ("No", "+", "++"), freezingDate.
+1. ONLY extract values that explicitly exist in the raw document text. DO NOT invent or assume data. If missing, return null.
+2. Filter out raw text noise, printed headers, hospital footers, page numbers, legal disclaimers, or un-related margin text.
+3. Viso Tube Color ("visoTubeColor") MUST ONLY be one of these 11 physical colors: Pink, Grey, Red, Black, Green, Rust, Blue, Purple, Yellow, Orange, or Skyblue. If unstated, return null.
+4. DOCTOR / UNIT NAME MATCHING RULE: Analyze any doctor name or unit name extracted from Vision OCR raw text. Fuzzy search and match it to the nearest matching doctor or unit name from this official clinic list: [Dr Abha Majumdar, Dr. Shweta Mittal Gupta, Dr. Neeti Tiwari, Dr. Ruma Satwik, Dr. Sakshi Nayar, Dr. Bhawani Shekhar, Dr. Tejashri Shrotri, GOPD Unit IVA, GOPD Unit IVB]. If a doctor name is close to one of these names, set "doctorName" to the EXACT matched name from this list.
+5. SPECIMEN TYPE ("specimenType"): Return "OOCYTE" if document mentions eggs, oocytes, MII, MI, oocyte freezing, donor eggs, supernumerary donor; otherwise return "EMBRYO".
+6. CYCLE TYPE ("cycleType"): Return "DONOR_RECIPIENT" if document mentions donor, donor reg no, donor egg, donor name; otherwise return "SELF".
+7. Extract Donor fields if present: "donorName", "donorRegNo", "donorAge", "donorPhone", "vitrificationIndication", "oocyteStage" (e.g. "MII" or "MI").
+8. Extract Storage Location fields STRICTLY from document text: "canisterName" (e.g. "C01", "C08"), "level" (e.g. "Level 1", "Level 2"), "visoTubeId" (e.g. "V01", "V05"), "visoTubeColor".
+9. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage, grade, fragmentation, freezingDate.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -370,6 +404,14 @@ Return ONLY valid JSON matching this schema:
   "aspirationDate": "YYYY-MM-DD or null",
   "freezingDate": "YYYY-MM-DD or null",
   "thawDate": "YYYY-MM-DD or null",
+  "specimenType": "EMBRYO or OOCYTE",
+  "cycleType": "SELF or DONOR_RECIPIENT",
+  "donorName": "string or null",
+  "donorRegNo": "string or null",
+  "donorAge": "string or null",
+  "donorPhone": "string or null",
+  "vitrificationIndication": "string or null",
+  "oocyteStage": "string or null",
   "embryoCount": number or null,
   "canisterName": "string or null",
   "visoTubeColor": "string or null",
@@ -399,7 +441,6 @@ ${rawText}`;
           const result = await model.generateContent(prompt);
           let responseText = result.response.text().trim();
           
-          // Strip Markdown Code Fences if present (e.g. ```json ... ```)
           responseText = responseText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
           const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -425,6 +466,14 @@ ${rawText}`;
                 aspirationDate: parsed.aspirationDate || '',
                 freezingDate: parsed.freezingDate || '',
                 thawDate: parsed.thawDate || '',
+                specimenType: parsed.specimenType || (parsed.oocyteStage || parsed.donorName || parsed.vitrificationIndication ? 'OOCYTE' : 'EMBRYO'),
+                cycleType: parsed.cycleType || (parsed.donorName || parsed.donorRegNo ? 'DONOR_RECIPIENT' : 'SELF'),
+                donorName: parsed.donorName || '',
+                donorRegNo: parsed.donorRegNo || '',
+                donorAge: parsed.donorAge || '',
+                donorPhone: parsed.donorPhone || '',
+                vitrificationIndication: parsed.vitrificationIndication || 'Social egg freezing',
+                oocyteStage: parsed.oocyteStage || 'MII',
                 embryoCount: parsed.embryoCount || undefined,
                 canisterName: parsed.canisterName || '',
                 visoTubeColor: parsed.visoTubeColor || '',
@@ -462,15 +511,42 @@ ${rawText}`;
       patientId = idMatch[1].trim();
     }
 
-    // Doctor Name
+    // Doctor / Unit Name Fuzzy Matcher
     let doctorName = '';
-    const docMatch = rawText.match(/(?:Doctor|Dr\.?|Consultant|Physician)[:\s]*([A-Za-z\s.]+)/i);
-    if (docMatch) {
-      let doc = docMatch[1].split(/\n|,|;|\(|Mobile|Phone|Date/i)[0].trim();
-      if (doc && !doc.toLowerCase().startsWith('dr')) {
-        doc = `Dr. ${doc}`;
+    const officialClinicList = [
+      'Dr Abha Majumdar',
+      'Dr. Shweta Mittal Gupta',
+      'Dr. Neeti Tiwari',
+      'Dr. Ruma Satwik',
+      'Dr. Sakshi Nayar',
+      'Dr. Bhawani Shekhar',
+      'Dr. Tejashri Shrotri',
+      'GOPD Unit IVA',
+      'GOPD Unit IVB',
+    ];
+
+    for (const preset of officialClinicList) {
+      const surname = preset.split(' ').pop()?.toLowerCase() || '';
+      const firstName = preset.split(' ')[1]?.toLowerCase() || '';
+      if (
+        rawText.toLowerCase().includes(preset.toLowerCase()) ||
+        (surname.length > 3 && rawText.toLowerCase().includes(surname)) ||
+        (firstName.length > 3 && rawText.toLowerCase().includes(firstName))
+      ) {
+        doctorName = preset;
+        break;
       }
-      doctorName = doc;
+    }
+
+    if (!doctorName) {
+      const docMatch = rawText.match(/(?:Doctor|Dr\.?|Consultant|Physician|Unit)[:\s]*([A-Za-z0-9\s.]+)/i);
+      if (docMatch) {
+        let doc = docMatch[1].split(/\n|,|;|\(|Mobile|Phone|Date/i)[0].trim();
+        if (doc && !doc.toLowerCase().startsWith('dr') && !doc.toLowerCase().startsWith('gopd')) {
+          doc = `Dr. ${doc}`;
+        }
+        doctorName = doc;
+      }
     }
 
     // Patient & Partner Name Extractor
@@ -587,6 +663,27 @@ ${rawText}`;
       });
     }
 
+    // Donor Information Extractor
+    let donorName = '';
+    let donorRegNo = '';
+    let donorAge = '';
+    let donorPhone = '';
+    let vitrificationIndication = 'Social egg freezing';
+    let oocyteStage = 'MII';
+
+    const donorNameMatch = rawText.match(/(?:Donor\s*Name|Donor)[:\s]*([A-Za-z\s.]+)/i);
+    if (donorNameMatch) {
+      donorName = donorNameMatch[1].split(/\n|,|;|\(|Age|DOB|Date|Phone|Reg|ID/i)[0].trim();
+    }
+
+    const donorRegMatch = rawText.match(/(?:Donor\s*(?:Reg|Code|ID|No))[:\s]*([A-Z0-9-]+)/i);
+    if (donorRegMatch) {
+      donorRegNo = donorRegMatch[1].trim();
+    }
+
+    const isDonorCycle = Boolean(donorName || donorRegNo || /donor/i.test(rawText));
+    const isOocyteSpecimen = Boolean(/oocyte|egg|MII|MI|vitrification/i.test(rawText));
+
     return {
       patientId: patientId || undefined,
       fullName: fullName || '',
@@ -604,6 +701,14 @@ ${rawText}`;
       aspirationDate: aspirationDate || '',
       freezingDate: freezingDate || '',
       thawDate: thawDate || '',
+      specimenType: isOocyteSpecimen ? 'OOCYTE' : 'EMBRYO',
+      cycleType: isDonorCycle ? 'DONOR_RECIPIENT' : 'SELF',
+      donorName: donorName || '',
+      donorRegNo: donorRegNo || '',
+      donorAge: donorAge || '',
+      donorPhone: donorPhone || '',
+      vitrificationIndication: vitrificationIndication || 'Social egg freezing',
+      oocyteStage: oocyteStage || 'MII',
       embryoCount: straws.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
       canisterName: canisterName || '',
       visoTubeColor: visoTubeColor || '',
@@ -726,27 +831,38 @@ ${rawText}`;
       const targetPatientId = input.patientId?.trim();
       let patient;
 
+      const patientData: any = {
+        fullName: input.fullName,
+        partnerName: input.partnerName,
+        phone: input.phone,
+        partnerPhone: input.partnerPhone,
+        email: input.email,
+        partnerEmail: input.partnerEmail,
+        dob: input.dob,
+        partnerDob: input.partnerDob,
+        patientAge: input.patientAge,
+        partnerAge: input.partnerAge,
+        doctorName: input.doctorName,
+        specimenType: input.specimenType || 'EMBRYO',
+        cycleType: input.cycleType || ((input.donorName || input.donorRegNo) ? 'DONOR_RECIPIENT' : 'SELF'),
+        donorName: input.donorName || null,
+        donorRegNo: input.donorRegNo || null,
+        donorAge: input.donorAge || null,
+        donorPhone: input.donorPhone || null,
+        vitrificationIndication: input.vitrificationIndication || null,
+        oocyteStage: input.oocyteStage || null,
+        aspirationDate: parseFlexibleDate(input.aspirationDate),
+        freezingDate: parseFlexibleDate(input.freezingDate),
+        thawDate: parseFlexibleDate(input.thawDate),
+        comments: input.comments,
+      };
+
       if (record.patientId) {
         patient = await tx.patient.update({
           where: { id: record.patientId },
           data: {
+            ...patientData,
             patientId: targetPatientId || undefined,
-            fullName: input.fullName,
-            photoUrl: record.storageKey || undefined,
-            partnerName: input.partnerName,
-            phone: input.phone,
-            partnerPhone: input.partnerPhone,
-            email: input.email,
-            partnerEmail: input.partnerEmail,
-            dob: input.dob,
-            partnerDob: input.partnerDob,
-            patientAge: input.patientAge,
-            partnerAge: input.partnerAge,
-            doctorName: input.doctorName,
-            aspirationDate: parseFlexibleDate(input.aspirationDate) || undefined,
-            freezingDate: parseFlexibleDate(input.freezingDate) || undefined,
-            thawDate: parseFlexibleDate(input.thawDate) || undefined,
-            comments: input.comments,
           },
         });
       } else if (targetPatientId) {
@@ -755,44 +871,15 @@ ${rawText}`;
           patient = await tx.patient.update({
             where: { id: existing.id },
             data: {
-              fullName: input.fullName,
-              photoUrl: record.storageKey || existing.photoUrl || undefined,
-              partnerName: input.partnerName,
-              phone: input.phone,
-              partnerPhone: input.partnerPhone,
-              email: input.email,
-              partnerEmail: input.partnerEmail,
-              dob: input.dob,
-              partnerDob: input.partnerDob,
-              patientAge: input.patientAge,
-              partnerAge: input.partnerAge,
-              doctorName: input.doctorName,
-              aspirationDate: parseFlexibleDate(input.aspirationDate) || undefined,
-              freezingDate: parseFlexibleDate(input.freezingDate) || undefined,
-              thawDate: parseFlexibleDate(input.thawDate) || undefined,
-              comments: input.comments,
+              ...patientData,
             },
           });
         } else {
           patient = await tx.patient.create({
             data: {
+              ...patientData,
               patientId: targetPatientId,
-              fullName: input.fullName,
-              photoUrl: record.storageKey || null,
-              partnerName: input.partnerName,
-              phone: input.phone,
-              partnerPhone: input.partnerPhone,
-              email: input.email,
-              partnerEmail: input.partnerEmail,
-              dob: input.dob,
-              partnerDob: input.partnerDob,
-              patientAge: input.patientAge,
-              partnerAge: input.partnerAge,
-              doctorName: input.doctorName,
-              aspirationDate: parseFlexibleDate(input.aspirationDate),
-              freezingDate: parseFlexibleDate(input.freezingDate),
-              thawDate: parseFlexibleDate(input.thawDate),
-              comments: input.comments,
+              photoUrl: null,
             },
           });
         }
@@ -803,23 +890,9 @@ ${rawText}`;
 
         patient = await tx.patient.create({
           data: {
+            ...patientData,
             patientId: pId,
-            fullName: input.fullName,
-            photoUrl: record.storageKey || null,
-            partnerName: input.partnerName,
-            phone: input.phone,
-            partnerPhone: input.partnerPhone,
-            email: input.email,
-            partnerEmail: input.partnerEmail,
-            dob: input.dob,
-            partnerDob: input.partnerDob,
-            patientAge: input.patientAge,
-            partnerAge: input.partnerAge,
-            doctorName: input.doctorName,
-            aspirationDate: parseFlexibleDate(input.aspirationDate),
-            freezingDate: parseFlexibleDate(input.freezingDate),
-            thawDate: parseFlexibleDate(input.thawDate),
-            comments: input.comments,
+            photoUrl: null,
           },
         });
       }
@@ -937,6 +1010,13 @@ ${rawText}`;
             totalStraws: strawsList.length,
             totalEmbryos: strawsList.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
             visoTubeId: targetVisoTube.id,
+            specimenType: input.specimenType || 'EMBRYO',
+            cycleType: input.cycleType || ((input.donorName || input.donorRegNo) ? 'DONOR_RECIPIENT' : 'SELF'),
+            donorName: input.donorName || undefined,
+            donorAge: input.donorAge || undefined,
+            donorPhone: input.donorPhone || undefined,
+            vitrificationIndication: input.vitrificationIndication || undefined,
+            oocyteStage: input.oocyteStage || undefined,
             notes: `Allocated from OCR Verification (${selectedTankCode}, ${canisterLabel}, ${levelLabel}, Viso Tube ${gobletLabel}, Color: ${input.visoTubeColor || 'Pink'})`,
           },
         });
@@ -983,6 +1063,17 @@ ${rawText}`;
           }
         }
       }
+
+      try {
+        await tx.patientNote.create({
+          data: {
+            patientId: patient.id,
+            authorId: staffUserId,
+            authorName: staffName,
+            noteText: `[Scanned Document Record]\nFilename: ${record.originalFilename}\nStatus: Verified OCR Scanned Document attached to patient records & reports.`,
+          },
+        });
+      } catch (e) {}
 
       await tx.ocrRecord.update({
         where: { id: record.id },

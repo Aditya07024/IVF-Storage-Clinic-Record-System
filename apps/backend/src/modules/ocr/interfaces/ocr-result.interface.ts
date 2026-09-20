@@ -19,6 +19,14 @@ export interface VerifyOcrInput {
   patientAge?: string;
   partnerAge?: string;
   doctorName?: string;
+  specimenType?: string;
+  cycleType?: string;
+  donorName?: string;
+  donorRegNo?: string;
+  donorAge?: string;
+  donorPhone?: string;
+  vitrificationIndication?: string;
+  oocyteStage?: string;
   aspirationDate?: string;
   freezingDate?: string;
   thawDate?: string;
