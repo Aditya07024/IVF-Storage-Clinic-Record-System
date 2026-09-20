@@ -1138,29 +1138,43 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
             {/* Redesigned Clinical Summary & Patient/Partner Profile Cards */}
             <div className="space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200/80 shadow-2xs space-y-0.5">
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">REGISTRATION ID</span>
-                  <span className="font-mono font-bold text-slate-900 text-sm block">{viewingPatientModal.patientId}</span>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <div className="bg-emerald-50/80 p-2.5 rounded-2xl border border-emerald-200/80 shadow-2xs space-y-0.5">
+                  <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider block">REGISTRATION ID</span>
+                  <span className="font-mono font-bold text-slate-900 text-xs block">{viewingPatientModal.patientId}</span>
                 </div>
 
-                <div className="bg-amber-50/80 p-3 rounded-2xl border border-amber-200/80 shadow-2xs space-y-0.5">
-                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">EGG PICK UP DATE</span>
-                  <span className="font-mono font-bold text-amber-950 text-sm block">
+                <div className="bg-amber-50/80 p-2.5 rounded-2xl border border-amber-200/80 shadow-2xs space-y-0.5">
+                  <span className="text-[9px] font-bold text-amber-900 uppercase tracking-wider block">EGG PICK UP DATE</span>
+                  <span className="font-mono font-bold text-amber-950 text-xs block">
                     {formatDateDDMMYYYY(viewingPatientModal.aspirationDate || viewingPatientModal.batches?.[0]?.aspirationDate || viewingPatientModal.freezingDate)}
                   </span>
                 </div>
 
-                <div className="bg-blue-50/80 p-3 rounded-2xl border border-blue-200/80 shadow-2xs space-y-0.5">
-                  <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">FREEZING DATE(S)</span>
+                <div className="bg-blue-50/80 p-2.5 rounded-2xl border border-blue-200/80 shadow-2xs space-y-0.5">
+                  <span className="text-[9px] font-bold text-blue-900 uppercase tracking-wider block">FREEZING DATE(S)</span>
                   <span className="font-mono font-bold text-blue-950 text-xs block">
                     {getSortedFreezingDates(viewingPatientModal)}
                   </span>
                 </div>
 
-                <div className="bg-slate-100/80 p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-0.5">
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">ATTENDING DOCTOR</span>
-                  <span className="font-bold text-slate-900 text-sm block truncate">
+                <div className="bg-emerald-100/80 p-2.5 rounded-2xl border border-emerald-300 shadow-2xs space-y-0.5">
+                  <span className="text-[9px] font-bold text-emerald-900 uppercase tracking-wider block">FROZEN TILL (1 YR)</span>
+                  <span className="font-mono font-bold text-emerald-950 text-xs block">
+                    {(() => {
+                      const d = viewingPatientModal.aspirationDate || viewingPatientModal.batches?.[0]?.aspirationDate || viewingPatientModal.freezingDate || viewingPatientModal.batches?.[0]?.freezingDate;
+                      if (!d) return 'N/A';
+                      const dt = new Date(d);
+                      if (isNaN(dt.getTime())) return 'N/A';
+                      dt.setFullYear(dt.getFullYear() + 1);
+                      return formatDateDDMMYYYY(dt);
+                    })()}
+                  </span>
+                </div>
+
+                <div className="bg-slate-100/80 p-2.5 rounded-2xl border border-slate-200 shadow-2xs space-y-0.5">
+                  <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider block">ATTENDING DOCTOR</span>
+                  <span className="font-bold text-slate-900 text-xs block truncate">
                     {viewingPatientModal.doctorName || 'N/A'}
                   </span>
                 </div>

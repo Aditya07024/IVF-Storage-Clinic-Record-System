@@ -365,6 +365,41 @@ export class DocumentService {
         return unique.length > 0 ? unique.join(', ') : 'N/A';
       })();
 
+      // Frozen Till dates string across all batches (1 year after pick up / freezing date)
+      const allFrozenTillDatesStr = (() => {
+        const dates: { time: number; str: string }[] = [];
+        if (patient.batches && patient.batches.length > 0) {
+          patient.batches.forEach((b: any) => {
+            const d = b.aspirationDate || b.freezingDate || b.storageDate;
+            if (d) {
+              const dt = new Date(d);
+              if (!isNaN(dt.getTime())) {
+                const targetDt = new Date(dt.getTime());
+                targetDt.setFullYear(targetDt.getFullYear() + 1);
+                dates.push({ time: targetDt.getTime(), str: formatDateDDMMYYYY(targetDt) });
+              }
+            }
+          });
+        }
+        if (dates.length === 0) {
+          const d = patient.aspirationDate || patient.freezingDate;
+          if (d) {
+            const dt = new Date(d);
+            if (!isNaN(dt.getTime())) {
+              const targetDt = new Date(dt.getTime());
+              targetDt.setFullYear(targetDt.getFullYear() + 1);
+              dates.push({ time: targetDt.getTime(), str: formatDateDDMMYYYY(targetDt) });
+            }
+          }
+        }
+        dates.sort((a, b) => a.time - b.time);
+        const unique: string[] = [];
+        dates.forEach((item) => {
+          if (!unique.includes(item.str)) unique.push(item.str);
+        });
+        return unique.length > 0 ? unique.join(', ') : 'N/A';
+      })();
+
       // ==========================================
       // 3. PATIENT & PARTNER PROFILE CARDS (SIDE-BY-SIDE MATCHING POPUP)
       // ==========================================
@@ -468,65 +503,33 @@ export class DocumentService {
       // 4. CLINICAL & STORAGE QUICK BAR (4 GRID CARDS UNDER PATIENT DETAILS)
       // ==========================================
       const quickBarY = currentSectionY;
-      const cardW = 130;
+      const cardW = 129.25;
       const cardH = 34;
-      const cardGap = 5;
-
-      // Calculate Frozen Till Date (1 Year after Freezing Date / Egg Pick Up Date)
-      const calculateFrozenTillDateStr = (): string => {
-        let primaryDate: Date | null = null;
-        if (patient.freezingDate) {
-          const d = new Date(patient.freezingDate);
-          if (!isNaN(d.getTime())) primaryDate = d;
-        }
-        if (!primaryDate && patient.aspirationDate) {
-          const d = new Date(patient.aspirationDate);
-          if (!isNaN(d.getTime())) primaryDate = d;
-        }
-        if (!primaryDate && patient.batches && patient.batches.length > 0) {
-          for (const b of patient.batches) {
-            const d = b.freezingDate || b.storageDate || b.aspirationDate;
-            if (d) {
-              const dt = new Date(d);
-              if (!isNaN(dt.getTime())) {
-                primaryDate = dt;
-                break;
-              }
-            }
-          }
-        }
-        if (!primaryDate) return 'N/A';
-
-        const tillDate = new Date(primaryDate);
-        tillDate.setFullYear(tillDate.getFullYear() + 1);
-        return formatDateDDMMYYYY(tillDate);
-      };
-
-      const frozenTillStr = calculateFrozenTillDateStr();
+      const cardGap = 6;
 
       // Quick Card 1: Egg Pick Up Date (Amber)
-      let cardX = 30;
-      doc.roundedRect(cardX, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#fffbeb', '#fde68a');
-      doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#92400e').text('EGG PICK UP DATE', cardX + 6, quickBarY + 6);
-      doc.fontSize(8).font('Helvetica-Bold').fillColor('#78350f').text(allAspirationDatesStr, cardX + 6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
+      const c1X = 30;
+      doc.roundedRect(c1X, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#fffbeb', '#fde68a');
+      doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#92400e').text('EGG PICK UP DATE', c1X + 6, quickBarY + 6);
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#78350f').text(allAspirationDatesStr, c1X + 6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
 
       // Quick Card 2: Freezing Date(s) (Blue)
-      cardX += cardW + cardGap;
-      doc.roundedRect(cardX, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#eff6ff', '#bfdbfe');
-      doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#1e40af').text('FREEZING DATE(S)', cardX + 6, quickBarY + 6);
-      doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e3a8a').text(allFreezingDatesStr, cardX + 6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
+      const c2X = c1X + cardW + cardGap;
+      doc.roundedRect(c2X, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#eff6ff', '#bfdbfe');
+      doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#1e40af').text('FREEZING DATE(S)', c2X + 6, quickBarY + 6);
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#1e3a8a').text(allFreezingDatesStr, c2X + 6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
 
-      // Quick Card 3: Frozen Till (Emerald/Teal - 1 Year Validity)
-      cardX += cardW + cardGap;
-      doc.roundedRect(cardX, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#f0fdf4', '#a7f3d0');
-      doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#065f46').text('FROZEN TILL (1 YR)', cardX + 6, quickBarY + 6);
-      doc.fontSize(8).font('Helvetica-Bold').fillColor('#047857').text(frozenTillStr, cardX + 6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
+      // Quick Card 3: Frozen Till (1 Year Expiry) (Emerald / Teal)
+      const c3X = c2X + cardW + cardGap;
+      doc.roundedRect(c3X, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#f0fdf4', '#a7f3d0');
+      doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#047857').text('FROZEN TILL (1 YR)', c3X + 6, quickBarY + 6);
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#065f46').text(allFrozenTillDatesStr, c3X + 6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
 
       // Quick Card 4: Attending Doctor (Slate)
-      cardX += cardW + cardGap;
-      doc.roundedRect(cardX, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#f8fafc', '#cbd5e1');
-      doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#475569').text('ATTENDING DOCTOR', cardX + 6, quickBarY + 6);
-      doc.fontSize(8).font('Helvetica-Bold').fillColor('#0f172a').text(patient.doctorName || 'N/A', cardX + 6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
+      const c4X = c3X + cardW + cardGap;
+      doc.roundedRect(c4X, quickBarY, cardW, cardH, 5).lineWidth(0.75).fillAndStroke('#f8fafc', '#cbd5e1');
+      doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#475569').text('ATTENDING DOCTOR', c4X + 6, quickBarY + 6);
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f172a').text(patient.doctorName || 'N/A', c4X + 6, quickBarY + 17, { width: cardW - 12, lineBreak: false });
 
       currentSectionY = quickBarY + cardH + 10;
 
@@ -557,47 +560,9 @@ export class DocumentService {
       };
 
       // ==========================================
-      // 5. OOCYTE / EMBRYO SPECIMEN SUMMARY & ACTIVE CRYO STORAGE STRAW CARDS
+      // 5. ACTIVE CRYO STORAGE SPECIMEN BATCHES & STRAW CARDS
       // ==========================================
       const batchesToRender: any[] = patient.batches || [];
-
-      // If Oocyte Report: Render Oocyte Specimen Summary Section
-      if (isOocyteDoc) {
-        const allOccupiedStraws = batchesToRender.flatMap((b: any) => (b.straws || []).filter((s: any) => s.status === 'OCCUPIED' || isThaw));
-        const strawsList = allOccupiedStraws.length > 0 ? allOccupiedStraws : batchesToRender.flatMap((b: any) => b.straws || []);
-        
-        const totalOocytes = strawsList.reduce((sum: number, s: any) => sum + (s.embryoCount || (s.embryos ? s.embryos.length : 1)), 0);
-        const strawCount = strawsList.length || 1;
-        const breakdownParts = strawsList.map((s: any) => s.embryoCount || (s.embryos ? s.embryos.length : 1));
-        const breakdownStr = breakdownParts.length > 0 ? breakdownParts.join('+') : '0';
-
-        const sumBoxH = 46;
-        ensureSpace(sumBoxH + 10);
-        const sumY = currentSectionY;
-        doc.roundedRect(30, sumY, 535, sumBoxH, 6).lineWidth(0.75).fillAndStroke('#f0fdf4', '#a7f3d0');
-        doc.roundedRect(30, sumY, 4, sumBoxH, 2).fill('#047857');
-
-        doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#065f46').text('OOCYTE CRYO-PRESERVATION SPECIMEN DETAILS', 40, sumY + 6);
-
-        // Row 1: Number & Developmental Stage
-        doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#334155').text('Number:', 40, sumY + 19);
-        doc.fontSize(7.5).font('Helvetica').fillColor('#0f172a').text(`${totalOocytes} MII oocytes - ${strawCount} ${strawCount === 1 ? 'Straw' : 'Straws'} (${breakdownStr})`, 80, sumY + 19, { width: 220, lineBreak: false });
-
-        doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#334155').text('Developmental Stage:', 310, sumY + 19);
-        doc.fontSize(7.5).font('Helvetica').fillColor('#0f172a').text('Day 0', 410, sumY + 19);
-
-        // Row 2: Oocyte Score* & Freezing Method & Frozen Till
-        doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#334155').text('Oocyte Score*:', 40, sumY + 31);
-        doc.fontSize(7.5).font('Helvetica').fillColor('#0f172a').text('M-II oocytes', 105, sumY + 31);
-
-        doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#334155').text('Freezing Method:', 185, sumY + 31);
-        doc.fontSize(7.5).font('Helvetica').fillColor('#0f172a').text('Vitrification', 260, sumY + 31);
-
-        doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#065f46').text('Frozen Till:', 340, sumY + 31);
-        doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#047857').text(`${frozenTillStr} (1 Year)`, 400, sumY + 31);
-
-        currentSectionY += sumBoxH + 10;
-      }
 
       if (batchesToRender.length > 0) {
         ensureSpace(30);
@@ -610,11 +575,26 @@ export class DocumentService {
           const strawsToDisplay = batchStraws.length > 0 ? batchStraws : (batch.straws || []);
 
           const batchFreezingDateStr = formatDateDDMMYYYY(batch.freezingDate || batch.storageDate || patient.freezingDate);
+          const batchFrozenTillStr = (() => {
+            const d = batch.aspirationDate || batch.freezingDate || batch.storageDate || patient.freezingDate || patient.aspirationDate;
+            if (d) {
+              const dt = new Date(d);
+              if (!isNaN(dt.getTime())) {
+                const targetDt = new Date(dt.getTime());
+                targetDt.setFullYear(targetDt.getFullYear() + 1);
+                return formatDateDDMMYYYY(targetDt);
+              }
+            }
+            return '';
+          })();
           const rawStage = batch.embryoStage || (isOocyteDoc ? 'MII' : 'day5');
           const formattedStage = isOocyteDoc ? rawStage : (rawStage.toLowerCase().startsWith('day') ? rawStage.toLowerCase() : `day${rawStage}`);
 
           let batchHeaderParts = [];
           batchHeaderParts.push(`Frozen: ${batchFreezingDateStr}`);
+          if (batchFrozenTillStr) {
+            batchHeaderParts.push(`Frozen Till: ${batchFrozenTillStr}`);
+          }
           batchHeaderParts.push(`Stage: ${formattedStage}`);
           const batchHeaderLine = batchHeaderParts.join('  |  ');
 
