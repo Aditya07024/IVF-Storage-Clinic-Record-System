@@ -1609,8 +1609,8 @@ export const PatientDirectory: React.FC = () => {
 
       {/* Detail Drawer Modal */}
       {selectedPatient && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex justify-end overflow-y-auto">
-          <div className="w-full max-w-2xl bg-white min-h-screen sm:min-h-0 sm:h-full border-l border-slate-200 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
+        <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[99999] bg-slate-950/50 backdrop-blur-xs sm:backdrop-blur-sm flex justify-end overflow-hidden !m-0 !mt-0 !my-0 p-0 [margin-top:0!important]">
+          <div className="w-full max-w-2xl bg-white h-screen min-h-screen h-[100dvh] !m-0 !mt-0 !my-0 [margin-top:0!important] border-l-4 border-slate-900 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
               {/* Left Column: Patient Photo & Demographics */}
               <div className="flex items-center gap-3.5 flex-1 min-w-0">
