@@ -809,6 +809,8 @@ export const PatientDirectory: React.FC = () => {
                             const displayStraws = isAllThawed ? allStraws : activeStraws;
 
                             const stageCounts: Record<string, number> = {};
+                            const stageOrder: string[] = [];
+
                             displayStraws.forEach((s: any) => {
                               const pIsOocyte = isOocyteSpecimen(p);
                               if (pIsOocyte) {
@@ -816,12 +818,14 @@ export const PatientDirectory: React.FC = () => {
                                   s.embryos.forEach((emb: any) => {
                                     const stg = emb.grade || s.grade || s.batchOocyteStage || 'MII';
                                     const cleanStg = stg.split('(')[0].trim();
+                                    if (!stageCounts[cleanStg]) stageOrder.push(cleanStg);
                                     stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + 1;
                                   });
                                 } else {
                                   const stg = s.grade || s.batchOocyteStage || 'MII';
                                   const cleanStg = stg.split('(')[0].trim();
                                   const count = s.embryoCount || 1;
+                                  if (!stageCounts[cleanStg]) stageOrder.push(cleanStg);
                                   stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + count;
                                 }
                               } else {
@@ -830,6 +834,7 @@ export const PatientDirectory: React.FC = () => {
                                 const count = (s.embryos && Array.isArray(s.embryos) && s.embryos.length > 0)
                                   ? s.embryos.length
                                   : (typeof s.embryoCount === 'number' ? s.embryoCount : (parseInt(s.embryoCount, 10) || 1));
+                                if (!stageCounts[cleanStg]) stageOrder.push(cleanStg);
                                 stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + count;
                               }
                             });
@@ -842,9 +847,8 @@ export const PatientDirectory: React.FC = () => {
                               return sum + (typeof s.embryoCount === 'number' ? s.embryoCount : (parseInt(s.embryoCount, 10) || 1));
                             }, 0);
 
-                            const stageBreakdown = Object.entries(stageCounts)
-                              .sort(([a], [b]) => a.localeCompare(b))
-                              .map(([stage, count]) => `${count} ${stage}`)
+                            const stageBreakdown = stageOrder
+                              .map((stage) => `${stageCounts[stage]} ${stage}`)
                               .join(' + ');
 
                             const isOocyte = isOocyteSpecimen(p);
@@ -1149,14 +1153,14 @@ export const PatientDirectory: React.FC = () => {
                           if (straw.embryos && straw.embryos.length > 0) {
                             return straw.embryos
                               .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                              .map((emb: any) => (emb.grade || eGrade || 'N/A').trim().toUpperCase())
+                              .map((emb: any) => (emb.grade || eGrade || (isOocyte ? 'MII' : 'N/A')).trim().toUpperCase())
                               .join(', ');
                           }
                           if (eGrade.includes(',')) return eGrade;
                           if (embryoCount > 1 && eGrade) {
                             return Array(embryoCount).fill(eGrade).join(', ');
                           }
-                          return gradeStr;
+                          return gradeStr || (isOocyte ? (quickThawPatient.oocyteStage || 'MII') : 'N/A');
                         })();
 
                         return (
@@ -1199,11 +1203,9 @@ export const PatientDirectory: React.FC = () => {
 
                             {/* Detailed Embryo Grade & Notes */}
                             <div className="mt-2.5 flex items-center gap-2 text-xs flex-wrap font-mono font-bold">
-                              {(!isOocyte || (eFrag || eComment)) && (
-                                <span className="bg-amber-100/90 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
-                                  {isOocyte ? 'Notes' : 'Grade'}: {formattedGradeDisplay}{fragStr}{commentStr}
-                                </span>
-                              )}
+                              <span className="bg-amber-100/90 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
+                                {isOocyte ? 'Stage' : 'Grade'}: {formattedGradeDisplay}{fragStr}{commentStr}
+                              </span>
                               {straw.isPgt && !isOocyte && (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
                                   PGT TESTED
@@ -1815,9 +1817,23 @@ export const PatientDirectory: React.FC = () => {
                       </span>
                     )}
 
-                    {isOocyteSpecimen(selectedPatient) && selectedPatient.oocyteStage && (
+                    {isOocyteSpecimen(selectedPatient) && (
                       <span className="text-indigo-950 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300 w-fit">
-                        Oocyte Stage: {selectedPatient.oocyteStage}
+                        Oocyte Stage: {(() => {
+                          const allEmbryos = selectedPatient.batches?.flatMap((b: any) => b.straws?.flatMap((s: any) => s.embryos || []) || []) || [];
+                          if (allEmbryos.length > 0) {
+                            const sortedStages = allEmbryos
+                              .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
+                              .map((emb: any) => (emb.grade || 'MII').trim().toUpperCase())
+                              .filter(Boolean);
+                            const uniqueStages: string[] = [];
+                            sortedStages.forEach((stg: string) => {
+                              if (!uniqueStages.includes(stg)) uniqueStages.push(stg);
+                            });
+                            if (uniqueStages.length > 0) return uniqueStages.join(', ');
+                          }
+                          return selectedPatient.oocyteStage || 'MII';
+                        })()}
                       </span>
                     )}
                   </div>
@@ -2208,22 +2224,20 @@ export const PatientDirectory: React.FC = () => {
                                 <span className={`text-slate-800 font-bold text-xs bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 ${!isOccupied ? 'line-through text-slate-500 group-hover/thawed:no-underline group-hover/thawed:text-slate-800' : ''}`}>
                                   ({embryoCount} {isOocyte ? (embryoCount === 1 ? 'egg' : 'eggs') : (embryoCount === 1 ? 'embryo' : 'embryos')})
                                 </span>
+                                <span className={`font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 ${!isOccupied ? 'text-slate-500 line-through bg-slate-200/60 group-hover/thawed:no-underline group-hover/thawed:text-slate-900 group-hover/thawed:bg-slate-100' : 'text-slate-900'}`}>
+                                  {isOocyte ? 'Stage' : 'Grade'}: {(() => {
+                                    if (straw.embryos && straw.embryos.length > 0) {
+                                      return straw.embryos
+                                        .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
+                                        .map((emb: any) => (emb.grade || gradeStr || (isOocyte ? 'MII' : 'N/A')).trim().toUpperCase())
+                                        .join(', ');
+                                    }
+                                    return gradeStr || (isOocyte ? (selectedPatient.oocyteStage || 'MII') : 'N/A');
+                                  })()}{fragStr}{commentStr}
+                                </span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${!isOccupied ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>
                                   {straw.color || 'Pink'}
                                 </span>
-                                {(!isOocyte || (eFrag || eComment)) && (
-                                  <span className={`font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 ${!isOccupied ? 'text-slate-500 line-through bg-slate-200/60 group-hover/thawed:no-underline group-hover/thawed:text-slate-900 group-hover/thawed:bg-slate-100' : 'text-slate-900'}`}>
-                                    {isOocyte ? 'Notes' : 'Grade'}: {(() => {
-                                      if (straw.embryos && straw.embryos.length > 1) {
-                                        return straw.embryos
-                                          .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                                          .map((emb: any) => (emb.grade || gradeStr).trim().toUpperCase())
-                                          .join(', ');
-                                      }
-                                      return gradeStr;
-                                    })()}{fragStr}{commentStr}
-                                  </span>
-                                )}
                               </div>
                               <div className="flex items-center gap-2 text-xs font-medium text-slate-700 flex-wrap">
                                 {straw.isPgt && !isOocyte && (
@@ -2625,7 +2639,7 @@ export const PatientDirectory: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Embryo Count in Straw <span className="text-rose-600">*</span>
+                    {isOocyteSpecimen(selectedPatient) ? 'Oocyte Count in Straw' : 'Embryo Count in Straw'} <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="number"
@@ -2642,72 +2656,102 @@ export const PatientDirectory: React.FC = () => {
                 </div>
               </div>
 
-              {/* Granular Per-Embryo Breakdown */}
+              {/* Granular Per-Item Breakdown */}
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-3">
                 <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                  <span>Embryo Breakdown & Details ({editStrawEmbryoCount} Embryo{editStrawEmbryoCount > 1 ? 's' : ''})</span>
+                  <span>
+                    {isOocyteSpecimen(selectedPatient)
+                      ? `Oocyte Breakdown & Details (${editStrawEmbryoCount} Oocyte${editStrawEmbryoCount > 1 ? 's' : ''})`
+                      : `Embryo Breakdown & Details (${editStrawEmbryoCount} Embryo${editStrawEmbryoCount > 1 ? 's' : ''})`}
+                  </span>
                 </div>
 
                 <div className="space-y-2.5">
-                  {Array.from({ length: editStrawEmbryoCount }).map((_, i) => (
-                    <div key={i} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
-                      <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
-                        <span>Embryo #{i + 1}</span>
+                  {Array.from({ length: editStrawEmbryoCount }).map((_, i) => {
+                    const isOocyte = isOocyteSpecimen(selectedPatient);
+                    return (
+                      <div key={i} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
+                        <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                          <span>{isOocyte ? `Oocyte #${i + 1}` : `Embryo #${i + 1}`}</span>
+                        </div>
+                        <div className={`grid grid-cols-1 ${isOocyte ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-2`}>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                              {isOocyte ? 'Oocyte Stage' : 'Grade'}
+                            </label>
+                            {isOocyte ? (
+                              <select
+                                value={['MII', 'MI', 'GV'].includes((editStrawEmbryoGrades[i] || '').toUpperCase()) ? (editStrawEmbryoGrades[i] || 'MII').toUpperCase() : 'MII'}
+                                onChange={(e) => {
+                                  const newGrades = [...editStrawEmbryoGrades];
+                                  newGrades[i] = e.target.value;
+                                  setEditStrawEmbryoGrades(newGrades);
+                                  if (i === 0) setEditStrawGrade(e.target.value);
+                                }}
+                                className="w-full h-8 bg-slate-50 border border-slate-300 rounded-lg px-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500 cursor-pointer"
+                              >
+                                <option value="MII">MII</option>
+                                <option value="MI">MI</option>
+                                <option value="GV">GV</option>
+                              </select>
+                            ) : (
+                              <input
+                                type="text"
+                                value={editStrawEmbryoGrades[i] || ''}
+                                onChange={(e) => {
+                                  const newGrades = [...editStrawEmbryoGrades];
+                                  newGrades[i] = e.target.value.toUpperCase();
+                                  setEditStrawEmbryoGrades(newGrades);
+                                  if (i === 0) setEditStrawGrade(e.target.value.toUpperCase());
+                                }}
+                                placeholder="e.g. 5AA"
+                                className="w-full h-8 bg-slate-50 border border-slate-300 rounded-lg px-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500 uppercase"
+                              />
+                            )}
+                          </div>
+                          {!isOocyte && (
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Fragmentation</label>
+                              <select
+                                value={editStrawEmbryoFrags[i] || 'No'}
+                                onChange={(e) => {
+                                  const newFrags = [...editStrawEmbryoFrags];
+                                  newFrags[i] = e.target.value;
+                                  setEditStrawEmbryoFrags(newFrags);
+                                  if (i === 0) setEditStrawFragmentation(e.target.value);
+                                }}
+                                className="w-full h-8 bg-slate-50 border border-slate-300 rounded-lg px-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500 cursor-pointer"
+                              >
+                                <option value="No">No / None</option>
+                                <option value="+">+</option>
+                                <option value="++">++</option>
+                                <option value="<10%">&lt;10%</option>
+                                <option value="10-20%">10-20%</option>
+                                <option value=">20%">&gt;20%</option>
+                              </select>
+                            </div>
+                          )}
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                              {isOocyte ? 'Oocyte Remarks' : 'Comment / Note'}
+                            </label>
+                            <input
+                              type="text"
+                              value={editStrawEmbryoComments[i] || ''}
+                              onChange={(e) => {
+                                const newComments = [...editStrawEmbryoComments];
+                                newComments[i] = e.target.value;
+                                setEditStrawEmbryoComments(newComments);
+                                if (i === 0) setEditStrawComments(e.target.value);
+                              }}
+                              placeholder={isOocyte ? 'e.g. Normal morphology' : 'Note / Remark'}
+                              className="w-full h-8 bg-slate-50 border border-slate-300 rounded-lg px-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Grade</label>
-                          <input
-                            type="text"
-                            value={editStrawEmbryoGrades[i] || ''}
-                            onChange={(e) => {
-                              const newGrades = [...editStrawEmbryoGrades];
-                              newGrades[i] = e.target.value.toUpperCase();
-                              setEditStrawEmbryoGrades(newGrades);
-                              if (i === 0) setEditStrawGrade(e.target.value.toUpperCase());
-                            }}
-                            placeholder="e.g. 5AA"
-                            className="w-full h-8 bg-slate-50 border border-slate-300 rounded-lg px-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500 uppercase"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Fragmentation</label>
-                          <select
-                            value={editStrawEmbryoFrags[i] || 'No'}
-                            onChange={(e) => {
-                              const newFrags = [...editStrawEmbryoFrags];
-                              newFrags[i] = e.target.value;
-                              setEditStrawEmbryoFrags(newFrags);
-                              if (i === 0) setEditStrawFragmentation(e.target.value);
-                            }}
-                            className="w-full h-8 bg-slate-50 border border-slate-300 rounded-lg px-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500 cursor-pointer"
-                          >
-                            <option value="No">No / None</option>
-                            <option value="+">+</option>
-                            <option value="++">++</option>
-                            <option value="<10%">&lt;10%</option>
-                            <option value="10-20%">10-20%</option>
-                            <option value=">20%">&gt;20%</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Comment / Note</label>
-                          <input
-                            type="text"
-                            value={editStrawEmbryoComments[i] || ''}
-                            onChange={(e) => {
-                              const newComments = [...editStrawEmbryoComments];
-                              newComments[i] = e.target.value;
-                              setEditStrawEmbryoComments(newComments);
-                              if (i === 0) setEditStrawComments(e.target.value);
-                            }}
-                            placeholder="Note / Remark"
-                            className="w-full h-8 bg-slate-50 border border-slate-300 rounded-lg px-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2727,7 +2771,7 @@ export const PatientDirectory: React.FC = () => {
                 </div>
               )}
 
-              <div>
+              {/* <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Straw Remarks / Notes
                 </label>
@@ -2738,7 +2782,7 @@ export const PatientDirectory: React.FC = () => {
                   placeholder="Enter any additional straw observations or comments..."
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 font-medium focus:outline-none focus:border-amber-500"
                 />
-              </div>
+              </div> */}
 
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button

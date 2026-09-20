@@ -200,7 +200,7 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 relative max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
@@ -273,7 +273,7 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
                   { id: 'OOCYTE', title: '🥚 Day 0 Report', desc: 'Egg / Oocyte Freezing Report' },
                   { id: 'DAY3', title: '🔬 Day 3 Report', desc: 'Cleavage Stage Freezing Report' },
                   { id: 'DAY5', title: '🧫 Day 5/6 Report', desc: 'Blastocyst Freezing Report' },
-                  { id: 'THAW', title: '🧪 Thaw Report', desc: 'Thawing & Recovery Report' },
+                  // { id: 'THAW', title: '🧪 Thaw Report', desc: 'Thawing & Recovery Report' },
                 ].map((item) => {
                   const isThawItem = item.id === 'THAW';
                   const isDisabled = isThawItem && !hasThawedEmbryos;

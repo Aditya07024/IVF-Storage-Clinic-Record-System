@@ -179,18 +179,25 @@ export function getStrawStageSummary(item: any, specimenType?: string, vitrifica
 
   if (isOocyte) {
     const stageCounts: Record<string, number> = {};
+    const stageOrder: string[] = [];
+
     for (let i = 0; i < count; i++) {
       const eGradeKey = `grade${i + 1}`;
-      let stg = (item[eGradeKey] || (i === 0 ? (item.grade || item.embryoStage || item.stage) : '') || 'MII').toString().trim().toUpperCase();
-      if (!['MII', 'MI', 'GV'].includes(stg)) stg = 'MII';
+      let rawStg = '';
+      if (item.embryos && item.embryos[i]) {
+        rawStg = (item.embryos[i].grade || item.embryos[i].notes || '').toString().trim().toUpperCase();
+      }
+      if (!rawStg) {
+        rawStg = (item[eGradeKey] || (i === 0 ? (item.grade || item.embryoStage || item.stage) : '') || 'MII').toString().trim().toUpperCase();
+      }
+      const cleanStg = rawStg.split('(')[0].replace(/\[.*?\]/g, '').trim();
+      let stg = ['MII', 'MI', 'GV'].includes(cleanStg) ? cleanStg : (cleanStg || 'MII');
+      if (!stageCounts[stg]) {
+        stageOrder.push(stg);
+      }
       stageCounts[stg] = (stageCounts[stg] || 0) + 1;
     }
-    const parts: string[] = [];
-    ['MII', 'MI', 'GV'].forEach((stg) => {
-      if (stageCounts[stg]) {
-        parts.push(`${stageCounts[stg]} ${stg}`);
-      }
-    });
+    const parts = stageOrder.map((stg) => `${stageCounts[stg]} ${stg}`);
     return parts.length > 0 ? parts.join(' + ') : `${count} MII`;
   } else {
     const stg = (item.embryoStage || item.stage || '').toString().trim();
@@ -243,33 +250,7 @@ export function getBatchSummaryText(strawItems: any[], specimenType?: string, cy
     ? (totalCount === 1 ? 'oocyte' : 'oocytes')
     : totalCount === 1 ? 'embryo' : 'embryos';
 
-  if (isOocyte) {
-    const totalStages: Record<string, number> = {};
-    strawItems.forEach((item) => {
-      const cnt = item.embryoCount || (item.embryos ? item.embryos.length : 1);
-      for (let i = 0; i < cnt; i++) {
-        const eGradeKey = `grade${i + 1}`;
-        let stg = (item[eGradeKey] || (i === 0 ? (item.grade || item.embryoStage || item.stage) : '') || 'MII').toString().trim().toUpperCase();
-        if (!['MII', 'MI', 'GV'].includes(stg)) stg = 'MII';
-        totalStages[stg] = (totalStages[stg] || 0) + 1;
-      }
-    });
-    const stageParts: string[] = [];
-    ['MII', 'MI', 'GV'].forEach((stg) => {
-      if (totalStages[stg]) {
-        stageParts.push(`${totalStages[stg]} ${stg}`);
-      }
-    });
-    Object.keys(totalStages).forEach((stg) => {
-      if (!['MII', 'MI', 'GV'].includes(stg)) {
-        stageParts.push(`${totalStages[stg]} ${stg}`);
-      }
-    });
-    const stageSummary = stageParts.length > 0 ? ` (${stageParts.join(', ')})` : '';
-    return `${totalCount} ${unitLabel} frozen in ${strawItems.length} straw${strawItems.length > 1 ? 's' : ''} (${countsStr})${stageSummary}`;
-  } else {
-    return `${totalCount} ${unitLabel} frozen in ${strawItems.length} straw${strawItems.length > 1 ? 's' : ''} (${countsStr})`;
-  }
+  return `${totalCount} ${unitLabel} frozen in ${strawItems.length} straw${strawItems.length > 1 ? 's' : ''} (${countsStr})`;
 }
 
 function parseLocationCode(code: string) {
@@ -2279,12 +2260,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
                           <div className="sm:col-span-3">
                             <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              {strawDisplayNum} {specimenType === 'OOCYTE' ? 'No. of Oocyte(s)' : 'No of Embryo(s)'}
+                               {specimenType === 'OOCYTE' ? 'No. of Oocyte(s)' : 'No of Embryo(s)'}
                             </label>
                             {specimenType === 'OOCYTE' ? (
                               <div className="flex flex-wrap items-center gap-2">
                                 {/* Per-straw dropdown */}
-                                <select
+                                {/* <select
                                   value={item.embryoCount || 1}
                                   onChange={(e) => {
                                     const count = parseInt(e.target.value, 10) || 1;
@@ -2299,11 +2280,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                                       {num} {num === 1 ? 'oocyte' : 'oocytes'} / straw
                                     </option>
                                   ))}
-                                </select>
+                                </select> */}
 
                                 {/* Quick selector buttons */}
                                 <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 flex-1 min-w-[200px]">
-                                  {[1, 2, 3, 4].map((count) => {
+                                  {[1, 2, 3, 4,5 ,6].map((count) => {
                                     const labelText = `${count} ${count === 1 ? 'oocyte' : 'oocytes'}`;
                                     return (
                                       <button
