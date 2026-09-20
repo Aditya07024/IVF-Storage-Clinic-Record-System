@@ -420,7 +420,8 @@ export class DocumentService {
           bTotalStrawsCount = batch.totalStraws;
         }
 
-        const batchStage = batch.embryoStage || (activeReportType === 'DAY5' ? 'Day 5' : activeReportType === 'DAY3' ? 'Day 3' : 'Day 0');
+        const rawBatchStage = batch.embryoStage || (activeReportType === 'DAY5' ? 'day5' : activeReportType === 'DAY3' ? 'day3' : 'day0');
+        const batchStage = rawBatchStage.replace(/\bDay\s*([0-9]+)/gi, 'day$1');
 
         // Check page break before Pill Header & Details Card
         const requiredBatchHeight = (bHasPgt && !isThaw) ? 140 : 110;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, formatDayStage } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
@@ -100,6 +100,7 @@ export const PatientDirectory: React.FC = () => {
   const [editStrawCustomId, setEditStrawCustomId] = useState('');
   const [editStrawColor, setEditStrawColor] = useState('Pink');
   const [editStrawGrade, setEditStrawGrade] = useState('');
+  const [editStrawEmbryoGrades, setEditStrawEmbryoGrades] = useState<string[]>([]);
   const [editStrawEmbryoCount, setEditStrawEmbryoCount] = useState(1);
   const [editStrawIsPgt, setEditStrawIsPgt] = useState(false);
   const [editStrawComments, setEditStrawComments] = useState('');
@@ -126,7 +127,21 @@ export const PatientDirectory: React.FC = () => {
     setEditStrawCustomId(straw.strawId || '');
     setEditStrawColor(straw.color || 'Pink');
     setEditStrawGrade(straw.grade || '');
-    setEditStrawEmbryoCount(straw.embryoCount || straw.embryos?.length || 1);
+    const cnt = straw.embryoCount || straw.embryos?.length || 1;
+    setEditStrawEmbryoCount(cnt);
+    // Initialize per-embryo grades from embryo records
+    const grades: string[] = [];
+    if (straw.embryos && straw.embryos.length > 0) {
+      const sorted = [...straw.embryos].sort((a: any, b: any) => a.embryoNumber - b.embryoNumber);
+      for (let i = 0; i < cnt; i++) {
+        grades.push((sorted[i]?.grade || straw.grade || '').trim());
+      }
+    } else {
+      for (let i = 0; i < cnt; i++) {
+        grades.push(straw.grade || '');
+      }
+    }
+    setEditStrawEmbryoGrades(grades);
     setEditStrawIsPgt(Boolean(straw.isPgt));
     setEditStrawComments(straw.comments || '');
     setEditStrawError(null);
@@ -144,7 +159,8 @@ export const PatientDirectory: React.FC = () => {
         body: JSON.stringify({
           strawCustomId: editStrawCustomId.trim(),
           color: editStrawColor,
-          grade: editStrawGrade.trim(),
+          grade: editStrawEmbryoCount > 1 ? editStrawEmbryoGrades[0]?.trim() || '' : editStrawGrade.trim(),
+          embryoGrades: editStrawEmbryoCount > 1 ? editStrawEmbryoGrades.map(g => g.trim()) : undefined,
           embryoCount: editStrawEmbryoCount,
           isPgt: editStrawIsPgt,
           comments: editStrawComments.trim(),
@@ -721,7 +737,7 @@ export const PatientDirectory: React.FC = () => {
                                 ...s,
                                 batchEmbryoStage: batch.embryoStage,
                                 batchOocyteStage: batch.oocyteStage,
-                                stage: s.stage || (pIsOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || 'Day 5')),
+                                stage: s.stage || (pIsOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || 'day5')),
                               });
                             });
                           });
@@ -749,8 +765,8 @@ export const PatientDirectory: React.FC = () => {
                                   stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + count;
                                 }
                               } else {
-                                const stg = s.stage || s.batchEmbryoStage || 'Day 5';
-                                const cleanStg = stg.split('(')[0].trim().replace(/\bDay\s+(\d+)/gi, 'Day $1');
+                                const stg = s.stage || s.batchEmbryoStage || 'day5';
+                                const cleanStg = formatDayStage(stg.split('(')[0].trim());
                                 const count = (s.embryos && Array.isArray(s.embryos) && s.embryos.length > 0)
                                   ? s.embryos.length
                                   : (typeof s.embryoCount === 'number' ? s.embryoCount : (parseInt(s.embryoCount, 10) || 1));
@@ -880,7 +896,18 @@ export const PatientDirectory: React.FC = () => {
                             );
                           })()}
 
-
+                          {/* Delete Patient Button - Comment out this block to remove from UI anytime */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePatient(p.id, p.fullName);
+                            }}
+                            className="p-2 bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 rounded-xl border border-slate-200 hover:border-rose-300 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs active:scale-95 cursor-pointer"
+                            title="Delete Patient Record"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
+                            <span>Delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1000,7 +1027,7 @@ export const PatientDirectory: React.FC = () => {
                       </span>
                       {batch.embryoStage && (
                         <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 font-mono font-bold text-[11px]">
-                          Stage: {batch.embryoStage}
+                          Stage: {formatDayStage(batch.embryoStage)}
                         </span>
                       )}
                     </div>
@@ -1042,6 +1069,20 @@ export const PatientDirectory: React.FC = () => {
                           : (embryoCount === 1 ? `1 embryo` : `${embryoCount} embryos`);
 
                         const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
+
+                        const formattedGradeDisplay = (() => {
+                          if (straw.embryos && straw.embryos.length > 0) {
+                            return straw.embryos
+                              .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
+                              .map((emb: any) => (emb.grade || eGrade || 'N/A').trim().toUpperCase())
+                              .join(', ');
+                          }
+                          if (eGrade.includes(',')) return eGrade;
+                          if (embryoCount > 1 && eGrade) {
+                            return Array(embryoCount).fill(eGrade).join(', ');
+                          }
+                          return gradeStr;
+                        })();
 
                         return (
                           <div
@@ -1085,7 +1126,7 @@ export const PatientDirectory: React.FC = () => {
                             <div className="mt-2.5 flex items-center gap-2 text-xs flex-wrap font-mono font-bold">
                               {(!isOocyte || (eFrag || eComment)) && (
                                 <span className="bg-amber-100/90 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
-                                  {isOocyte ? 'Notes' : 'Grade'}: {gradeStr}{fragStr}{commentStr}
+                                  {isOocyte ? 'Notes' : 'Grade'}: {formattedGradeDisplay}{fragStr}{commentStr}
                                 </span>
                               )}
                               {straw.isPgt && !isOocyte && (
@@ -2001,7 +2042,7 @@ export const PatientDirectory: React.FC = () => {
                           </span>
                           {batch.embryoStage && (
                             <span className="bg-blue-100 text-blue-900 px-2 py-0.5 rounded border border-blue-300 font-bold">
-                              Stage: {batch.embryoStage}
+                              Stage: {formatDayStage(batch.embryoStage)}
                             </span>
                           )}
                           {isAllThawed && (
@@ -2042,11 +2083,9 @@ export const PatientDirectory: React.FC = () => {
                           };
                           const stageSummary = getStrawStageSummary(strawWithBatchStage, selectedPatient.specimenType, selectedPatient.vitrificationIndication);
                           const eGrade = (straw.grade || '').trim().toUpperCase();
-                          const eFrag = (straw.fragmentation || '').trim();
                           const eComment = (straw.comments || '').trim();
 
                           const gradeStr = eGrade ? eGrade : 'N/A';
-                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
                           const commentStr = eComment ? ` - (${eComment})` : '';
                           const prevCount = allStraws.slice(0, sIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
                           const startNum = prevCount + 1;
@@ -2090,7 +2129,7 @@ export const PatientDirectory: React.FC = () => {
                                           .join(', ');
                                       }
                                       return gradeStr;
-                                    })()}{fragStr}{commentStr}
+                                    })()}{commentStr}
                                   </span>
                                 )}
                               </div>
@@ -2496,13 +2535,34 @@ export const PatientDirectory: React.FC = () => {
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Grade / Score
                   </label>
-                  <input
-                    type="text"
-                    value={editStrawGrade}
-                    onChange={(e) => setEditStrawGrade(e.target.value)}
-                    placeholder="e.g. 4aa, 8c, Good"
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
+                  {editStrawEmbryoCount > 1 ? (
+                    <div className="space-y-2">
+                      {Array.from({ length: editStrawEmbryoCount }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-bold text-slate-500 w-16 shrink-0">Embryo {i + 1}</span>
+                          <input
+                            type="text"
+                            value={editStrawEmbryoGrades[i] || ''}
+                            onChange={(e) => {
+                              const newGrades = [...editStrawEmbryoGrades];
+                              newGrades[i] = e.target.value;
+                              setEditStrawEmbryoGrades(newGrades);
+                            }}
+                            placeholder={`e.g. 4AA`}
+                            className="w-full h-9 bg-slate-50 border border-slate-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editStrawGrade}
+                      onChange={(e) => setEditStrawGrade(e.target.value)}
+                      placeholder="e.g. 4aa, 8c, Good"
+                      className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                    />
+                  )}
                 </div>
               </div>
 

@@ -167,6 +167,11 @@ export function isOocyteSpecimen(obj?: any, specimenTypeParam?: string, vitrific
   return false;
 }
 
+export function formatDayStage(stage: string | null | undefined): string {
+  if (!stage) return '';
+  return stage.replace(/\bDay\s*([0-9]+)/gi, 'day$1');
+}
+
 export function getStrawStageSummary(item: any, specimenType?: string, vitrificationIndication?: string): string {
   if (!item) return '';
   const count = item.embryoCount || (item.embryos ? item.embryos.length : 1);
@@ -189,7 +194,7 @@ export function getStrawStageSummary(item: any, specimenType?: string, vitrifica
     return parts.length > 0 ? parts.join(' + ') : `${count} MII`;
   } else {
     const stg = (item.embryoStage || item.stage || '').toString().trim();
-    return stg;
+    return formatDayStage(stg);
   }
 }
 
