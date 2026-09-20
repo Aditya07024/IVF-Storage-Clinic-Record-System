@@ -333,7 +333,7 @@ export const openSecurePdfBlob = async (patientId: string, reportType?: string) 
         </div>
         <script>
           const start = Date.now();
-          const duration = 10000;
+          const duration = 7000;
           const fill = document.getElementById('fill');
           const pct = document.getElementById('pct');
           const stage = document.getElementById('stage');
@@ -358,7 +358,7 @@ export const openSecurePdfBlob = async (patientId: string, reportType?: string) 
   }
 
   const startTime = Date.now();
-  const MIN_LOADING_TIME = 10000; // 10 seconds loading bar duration
+  const MIN_LOADING_TIME = 7000; // 7 seconds loading bar duration
 
   try {
     const apiBase = getApiBaseUrl().replace(/\/$/, '');

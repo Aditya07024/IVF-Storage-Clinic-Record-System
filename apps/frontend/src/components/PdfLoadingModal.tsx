@@ -11,7 +11,7 @@ export const PdfLoadingModal: React.FC = () => {
   useEffect(() => {
     let intervalId: any = null;
     let startTime = 0;
-    const TOTAL_DURATION = 10000; // 10 seconds duration as requested
+    const TOTAL_DURATION = 7000; // 7 seconds duration as requested
 
     const handleStart = () => {
       setIsOpen(true);
@@ -102,7 +102,7 @@ export const PdfLoadingModal: React.FC = () => {
             Generating Cryo Specimen PDF
           </h3>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            10-Second High-Precision Document Renderer
+            7-Second High-Precision Document Renderer
           </p>
         </div>
 
