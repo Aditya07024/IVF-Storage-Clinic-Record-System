@@ -471,8 +471,15 @@ export class StorageService {
           totalEmbryosSoFar++;
           const eGradeKey = `grade${e}`;
           const eCommentKey = `comment${e}`;
+          const eFragKey = `frag${e}`;
           const eGrade = ((item as any)[eGradeKey] || item.grade || '').toString();
-          const eComment = ((item as any)[eCommentKey] || (e === 1 ? item.comments : '') || '').toString();
+          let eComment = ((item as any)[eCommentKey] || (e === 1 ? item.comments : '') || '').toString().trim();
+          const eFrag = ((item as any)[eFragKey] || (e === 1 ? (item as any).fragmentation : '') || '').toString().trim();
+
+          eComment = eComment.replace(/\[Fragmentation:\s*[^\]]+\]\s*/gi, '').trim();
+          if (eFrag && eFrag !== 'No') {
+            eComment = `[Fragmentation: ${eFrag}] ${eComment}`.trim();
+          }
 
           await tx.embryo.create({
             data: {
@@ -656,6 +663,8 @@ export class StorageService {
       strawCustomId?: string;
       color?: string;
       grade?: string;
+      embryoGrades?: string[];
+      embryoComments?: string[];
       embryoCount?: number;
       isPgt?: boolean;
       comments?: string;
@@ -666,7 +675,7 @@ export class StorageService {
     return prisma.$transaction(async (tx) => {
       const straw = await tx.straw.findUnique({
         where: { id: strawId },
-        include: { batch: true },
+        include: { batch: true, embryos: true },
       });
 
       if (!straw) {
@@ -698,6 +707,25 @@ export class StorageService {
         where: { id: strawId },
         data: updatePayload,
       });
+
+      // Update or recreate Embryo records if embryoGrades or embryoComments are passed or embryoCount changed
+      const targetCount = updatePayload.embryoCount !== undefined ? updatePayload.embryoCount : straw.embryoCount;
+      if (data.embryoGrades || data.embryoComments || updatePayload.embryoCount !== undefined) {
+        await tx.embryo.deleteMany({ where: { strawId: straw.id } });
+        for (let i = 0; i < targetCount; i++) {
+          const g = (data.embryoGrades?.[i] || data.grade || straw.grade || '').trim();
+          const n = (data.embryoComments?.[i] || '').trim();
+          await tx.embryo.create({
+            data: {
+              strawId: straw.id,
+              embryoNumber: i + 1,
+              grade: g,
+              notes: n || null,
+              status: 'FROZEN',
+            },
+          });
+        }
+      }
 
       // Audit Log for Straw Modification
       await tx.auditLog.create({
