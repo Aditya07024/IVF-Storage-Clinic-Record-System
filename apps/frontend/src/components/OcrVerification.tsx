@@ -1,9 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl, getImageUrl } from '../api/client';
-import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords } from './PatientForm';
+import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
+
+export const VISO_COLOR_TO_TUBE_CODE: Record<string, string> = {
+  Pink: 'V01',
+  Grey: 'V02',
+  Red: 'V03',
+  Black: 'V04',
+  Green: 'V05',
+  Rust: 'V06',
+  Blue: 'V07',
+  Purple: 'V08',
+  Yellow: 'V09',
+  Orange: 'V10',
+  Skyblue: 'V11',
+};
 
 export const OcrVerification: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -296,6 +310,8 @@ export const OcrVerification: React.FC = () => {
       else if (gob.match(/purple/i)) gob = 'V08';
       else if (gob.match(/orange/i)) gob = 'V10';
       else if (gob.match(/sky/i)) gob = 'V11';
+    } else if (col && VISO_COLOR_TO_TUBE_CODE[col]) {
+      gob = VISO_COLOR_TO_TUBE_CODE[col];
     }
     setVisoTubeId(gob);
 
@@ -308,21 +324,18 @@ export const OcrVerification: React.FC = () => {
     }
     setLevel(lvl);
 
+    const defaultStrawColor = CLINIC_STRAW_COLORS.includes(col as any) ? col : 'Pink';
+
     const initialStraws = Array.isArray(json.straws) && json.straws.length > 0
       ? json.straws.map((s: any) => {
           let sCol = (s.colorTag || s.colorName || '').trim();
           if (sCol.match(/pink/i)) sCol = 'Pink';
-          else if (sCol.match(/grey|gray/i)) sCol = 'Grey';
-          else if (sCol.match(/red/i)) sCol = 'Red';
-          else if (sCol.match(/black/i)) sCol = 'Black';
           else if (sCol.match(/green/i)) sCol = 'Green';
-          else if (sCol.match(/rust/i)) sCol = 'Rust';
           else if (sCol.match(/blue/i) && !sCol.match(/sky/i)) sCol = 'Blue';
-          else if (sCol.match(/purple/i)) sCol = 'Purple';
           else if (sCol.match(/yellow/i)) sCol = 'Yellow';
-          else if (sCol.match(/orange/i)) sCol = 'Orange';
-          else if (sCol.match(/sky/i)) sCol = 'Skyblue';
-          else sCol = col || '';
+          else if (sCol.match(/white/i)) sCol = 'White';
+          else if (CLINIC_STRAW_COLORS.includes(col as any)) sCol = col;
+          else sCol = 'Pink';
           return {
             ...s,
             colorTag: sCol,
@@ -330,14 +343,15 @@ export const OcrVerification: React.FC = () => {
             thawDate: s.thawDate || json.thawDate || '',
           };
         })
-      : [{ strawId: 'STR-01', colorTag: col || '', embryoCount: 1, stage: 'Day 5', grade: '4AA', fragmentation: 'No', freezingDate: json.freezingDate || '', thawDate: json.thawDate || '' }];
+      : [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: 'Day 5', grade: '4AA', fragmentation: 'No', freezingDate: json.freezingDate || '', thawDate: json.thawDate || '' }];
     setStraws(initialStraws);
     setComments(json.comments || '');
   };
 
   const addStrawRow = () => {
     setStraws((prev) => {
-      const primaryColor = prev[0]?.colorTag || visoTubeColor || '';
+      const defaultStrawColor = CLINIC_STRAW_COLORS.includes(visoTubeColor as any) ? visoTubeColor : 'Pink';
+      const primaryColor = prev[0]?.colorTag || defaultStrawColor;
       return [
         ...prev,
         {
@@ -1136,8 +1150,9 @@ export const OcrVerification: React.FC = () => {
                     <select
                       value={visoTubeColor}
                       onChange={(e) => {
-                        setVisoTubeColor(e.target.value);
-                        setVisoTubeId(e.target.value);
+                        const selectedColor = e.target.value;
+                        setVisoTubeColor(selectedColor);
+                        setVisoTubeId(VISO_COLOR_TO_TUBE_CODE[selectedColor] || selectedColor);
                       }}
                       className={`w-full border rounded-lg p-1.5 font-bold text-[11px] focus:outline-none shadow-2xs cursor-pointer transition-all ${getVisoColorStyle(visoTubeColor)}`}
                     >
@@ -1191,26 +1206,22 @@ export const OcrVerification: React.FC = () => {
                       {straws.map((st, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 font-medium text-slate-800">
                           <td className="p-1.5 font-mono font-bold text-slate-900 text-[10px] whitespace-nowrap bg-slate-50/80">
-                            Straw #{idx + 1}
+                            #{idx + 1}
                           </td>
                           <td className="p-0.5">
                             <select
                               value={st.colorTag || st.colorName || ''}
                               onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
+                              className={`w-full border rounded py-0.5 px-1 font-bold text-[8px] focus:outline-none transition-all ${
+                                st.colorTag ? getStrawColorBadgeClass(st.colorTag) : 'bg-slate-50 border-slate-300 text-slate-900'
+                              }`}
                             >
-                              <option value="">-- Select Color --</option>
-                              <option value="Pink">Pink</option>
-                              <option value="Grey">Grey</option>
-                              <option value="Red">Red</option>
-                              <option value="Black">Black</option>
-                              <option value="Green">Green</option>
-                              <option value="Rust">Rust</option>
-                              <option value="Blue">Blue</option>
-                              <option value="Purple">Purple</option>
-                              <option value="Yellow">Yellow</option>
-                              <option value="Orange">Orange</option>
-                              <option value="Skyblue">Skyblue</option>
+                              <option value="" className="bg-white text-slate-900 font-normal">-- Select Color --</option>
+                              {CLINIC_STRAW_COLORS.map((c) => (
+                                <option key={c} value={c} className="bg-white text-slate-900 font-medium">
+                                  {c}
+                                </option>
+                              ))}
                             </select>
                           </td>
                           <td className="p-0.5 text-center">

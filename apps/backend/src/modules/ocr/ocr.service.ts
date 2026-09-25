@@ -385,7 +385,7 @@ STRICT EXTRACTION RULES:
 6. CYCLE TYPE ("cycleType"): Return "DONOR_RECIPIENT" if document mentions donor, donor reg no, donor egg, donor name; otherwise return "SELF".
 7. Extract Donor fields if present: "donorName", "donorRegNo", "donorAge", "donorPhone", "vitrificationIndication", "oocyteStage" (e.g. "MII" or "MI").
 8. Extract Storage Location fields STRICTLY from document text: "canisterName" (e.g. "C01", "C08"), "level" (e.g. "Level 1", "Level 2"), "visoTubeId" (e.g. "V01", "V05"), "visoTubeColor".
-9. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage, grade, fragmentation, freezingDate.
+9. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage, grade, fragmentation, freezingDate. Straw colorTag MUST ONLY be one of these 5 clinic straw colors: Pink, Green, Blue, Yellow, or White. If unstated, return null.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -619,10 +619,16 @@ ${rawText}`;
     if (colorMatch) {
       const c = colorMatch[1].toLowerCase();
       if (c.includes('pink')) visoTubeColor = 'Pink';
+      else if (c.includes('grey') || c.includes('gray')) visoTubeColor = 'Grey';
+      else if (c.includes('red')) visoTubeColor = 'Red';
+      else if (c.includes('black')) visoTubeColor = 'Black';
       else if (c.includes('green')) visoTubeColor = 'Green';
-      else if (c.includes('blue')) visoTubeColor = 'Blue';
+      else if (c.includes('rust')) visoTubeColor = 'Rust';
+      else if (c.includes('blue') && !c.includes('sky')) visoTubeColor = 'Blue';
+      else if (c.includes('purple')) visoTubeColor = 'Purple';
       else if (c.includes('yellow')) visoTubeColor = 'Yellow';
-      else if (c.includes('white')) visoTubeColor = 'White';
+      else if (c.includes('orange')) visoTubeColor = 'Orange';
+      else if (c.includes('sky')) visoTubeColor = 'Skyblue';
     }
 
     let level = '';
@@ -631,6 +637,9 @@ ${rawText}`;
       const lStr = levelMatch[1].trim();
       level = (lStr === '2' || lStr.toUpperCase() === 'II') ? 'Level 2' : 'Level 1';
     }
+
+    const VALID_STRAW_COLORS = ['Pink', 'Green', 'Blue', 'Yellow', 'White'];
+    const defaultStrawColor = VALID_STRAW_COLORS.includes(visoTubeColor) ? visoTubeColor : 'Pink';
 
     // Straws Specimen Extractor
     const straws: any[] = [];
@@ -642,7 +651,7 @@ ${rawText}`;
 
       straws.push({
         strawId: `STR-0${match[1]}`,
-        colorTag: visoTubeColor || '',
+        colorTag: defaultStrawColor,
         embryoCount: 1,
         stage: 'Day 5',
         grade: match[2] ? match[2].trim() : '4AA',
@@ -654,7 +663,7 @@ ${rawText}`;
     if (straws.length === 0) {
       straws.push({
         strawId: 'STR-01',
-        colorTag: visoTubeColor || '',
+        colorTag: defaultStrawColor,
         embryoCount: 1,
         stage: 'Day 5',
         grade: '4AA',
@@ -897,10 +906,47 @@ ${rawText}`;
         });
       }
 
-      // 7. Auto-Create StorageBatch and Straws in the EXACT selected Canister, Level, and VisoTube
+      const validStrawColors = ['Pink', 'Green', 'Blue', 'Yellow', 'White'];
+      const defaultStrawColor = (input.visoTubeColor && validStrawColors.includes(input.visoTubeColor)) ? input.visoTubeColor : 'Pink';
       const strawsList = Array.isArray(input.straws) && input.straws.length > 0
         ? input.straws
-        : [{ strawId: 'STR-01', colorTag: input.visoTubeColor || 'Pink', embryoCount: 1, stage: 'Day 5', grade: '4AA' }];
+        : [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: 'Day 5', grade: '4AA' }];
+
+      // Map Viso Tube Color to physical tubeNumber (1 to 11)
+      const VISO_TUBE_COLOR_TO_NUMBER: Record<string, number> = {
+        pink: 1,
+        grey: 2,
+        gray: 2,
+        red: 3,
+        black: 4,
+        green: 5,
+        rust: 6,
+        blue: 7,
+        purple: 8,
+        yellow: 9,
+        orange: 10,
+        skyblue: 11,
+        sky: 11,
+      };
+
+      let selectedTubeNumber: number = 1; // Default to 1 (Pink)
+
+      // 1. Try to parse tube number from input.visoTubeId (e.g., "V02", "V2", "2")
+      const rawTubeId = (input.visoTubeId || '').trim();
+      const tubeDigits = rawTubeId.replace(/\D/g, '');
+      if (tubeDigits) {
+        const parsedNum = parseInt(tubeDigits, 10);
+        if (parsedNum >= 1 && parsedNum <= 11) {
+          selectedTubeNumber = parsedNum;
+        }
+      } else if (rawTubeId && VISO_TUBE_COLOR_TO_NUMBER[rawTubeId.toLowerCase()]) {
+        selectedTubeNumber = VISO_TUBE_COLOR_TO_NUMBER[rawTubeId.toLowerCase()];
+      }
+
+      // 2. If tube number wasn't derived from visoTubeId, check input.visoTubeColor
+      if (input.visoTubeColor && VISO_TUBE_COLOR_TO_NUMBER[input.visoTubeColor.trim().toLowerCase()]) {
+        selectedTubeNumber = VISO_TUBE_COLOR_TO_NUMBER[input.visoTubeColor.trim().toLowerCase()];
+      }
 
       // Parse user's selected tank, canister, level, and goblet numbers
       const rawTank = (input.tankName || '').trim();
@@ -935,13 +981,11 @@ ${rawText}`;
       if (selectedLevelNum !== null) {
         gobletWhere.level.levelNumber = selectedLevelNum;
       }
-      if (selectedGobletNum !== null) {
-        gobletWhere.gobletNumber = selectedGobletNum;
-      }
 
       let targetVisoTube = await tx.visoTube.findFirst({
         where: {
           goblet: gobletWhere,
+          tubeNumber: selectedTubeNumber,
         },
       });
 
@@ -963,6 +1007,7 @@ ${rawText}`;
         targetVisoTube = await tx.visoTube.findFirst({
           where: {
             goblet: fallbackWhere,
+            tubeNumber: selectedTubeNumber,
           },
         });
       }
@@ -980,11 +1025,19 @@ ${rawText}`;
                 },
               },
             },
+            tubeNumber: selectedTubeNumber,
           },
         });
       }
 
-      // Fallback 3: first available VisoTube in database
+      // Fallback 3: first available VisoTube in database matching selectedTubeNumber
+      if (!targetVisoTube) {
+        targetVisoTube = await tx.visoTube.findFirst({
+          where: { tubeNumber: selectedTubeNumber },
+        });
+      }
+
+      // Fallback 4: first available VisoTube in database
       if (!targetVisoTube) {
         targetVisoTube = await tx.visoTube.findFirst({
           orderBy: { tubeNumber: 'asc' },
@@ -998,7 +1051,12 @@ ${rawText}`;
 
         const canisterLabel = selectedCanisterNum !== null ? `C${selectedCanisterNum.toString().padStart(2, '0')}` : 'C--';
         const levelLabel = selectedLevelNum !== null ? `Level ${selectedLevelNum}` : 'Level --';
-        const gobletLabel = selectedGobletNum !== null ? `V${selectedGobletNum.toString().padStart(2, '0')}` : 'V--';
+        const tubeCodeLabel = `V${targetVisoTube.tubeNumber.toString().padStart(2, '0')}`;
+        const VISO_COLOR_NAMES: Record<number, string> = {
+          1: 'Pink', 2: 'Grey', 3: 'Red', 4: 'Black', 5: 'Green',
+          6: 'Rust', 7: 'Blue', 8: 'Purple', 9: 'Yellow', 10: 'Orange', 11: 'Skyblue'
+        };
+        const tubeColorName = input.visoTubeColor || VISO_COLOR_NAMES[targetVisoTube.tubeNumber] || 'Pink';
 
         const batch = await tx.storageBatch.create({
           data: {
@@ -1017,7 +1075,7 @@ ${rawText}`;
             donorPhone: input.donorPhone || undefined,
             vitrificationIndication: input.vitrificationIndication || undefined,
             oocyteStage: input.oocyteStage || undefined,
-            notes: `Allocated from OCR Verification (${selectedTankCode}, ${canisterLabel}, ${levelLabel}, Viso Tube ${gobletLabel}, Color: ${input.visoTubeColor || 'Pink'})`,
+            notes: `Allocated from OCR Verification (${selectedTankCode}, ${canisterLabel}, ${levelLabel}, Viso Tube ${tubeCodeLabel}, Color: ${tubeColorName})`,
           },
         });
 
@@ -1037,12 +1095,17 @@ ${rawText}`;
           const baseGrade = (st.grade || '4AA').trim();
           const finalGrade = baseGrade.includes('Fragmentation:') ? baseGrade : `${baseGrade}${fragText}`;
 
+          const validStrawColors = ['Pink', 'Green', 'Blue', 'Yellow', 'White'];
+          const strawColor = (st.colorTag && validStrawColors.includes(st.colorTag))
+            ? st.colorTag
+            : ((input.visoTubeColor && validStrawColors.includes(input.visoTubeColor)) ? input.visoTubeColor : 'Pink');
+
           const createdStraw = await tx.straw.create({
             data: {
               strawId: uniqueStrawCode,
               batchId: batch.id,
               visoTubeId: targetVisoTube.id,
-              color: st.colorTag || input.visoTubeColor || '',
+              color: strawColor,
               embryoCount: st.embryoCount || 1,
               grade: finalGrade,
               status: st.thawDate ? 'THAWED' : 'OCCUPIED',
