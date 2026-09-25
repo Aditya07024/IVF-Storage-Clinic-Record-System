@@ -96,43 +96,7 @@ export class DocumentService {
       });
       doc.on('error', reject);
 
-      // ==========================================
-      // 0. REPORT GRAPHICS BACKGROUND IMAGE
-      // ==========================================
-      const potentialBgPaths = [
-        path.join(process.cwd(), 'assets/reportgraphics.jpg'),
-        path.join(process.cwd(), 'assets/reportgraphics.png'),
-        path.join(process.cwd(), '../frontend/public/reportgraphics.jpg'),
-        path.join(process.cwd(), '../frontend/public/reportgraphics.png'),
-        '/var/www/ivf/apps/backend/assets/reportgraphics.jpg',
-        '/var/www/ivf/apps/backend/assets/reportgraphics.png',
-        '/var/www/ivf/apps/frontend/public/reportgraphics.jpg',
-      ];
 
-      let foundBgPath: string | null = null;
-      for (const p of potentialBgPaths) {
-        if (fs.existsSync(p)) {
-          foundBgPath = p;
-          break;
-        }
-      }
-
-      const drawBg = () => {
-        if (foundBgPath) {
-          try {
-            doc.save();
-            doc.opacity(0.14);
-            doc.image(foundBgPath, 0, 0, { width: 595.28, height: 841.89 });
-            doc.restore();
-          } catch (err) {
-            console.error('Error embedding report background graphic:', err);
-          }
-        }
-      };
-
-      // Draw background on Page 1 & auto-draw on subsequent pages
-      drawBg();
-      doc.on('pageAdded', drawBg);
 
       // ==========================================
       // 1. HOSPITAL BRANDING HEADER

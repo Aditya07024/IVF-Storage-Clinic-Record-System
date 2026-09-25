@@ -961,7 +961,7 @@ export const PatientDirectory: React.FC = () => {
                           })()}
 
                           {/* Delete Patient Button - Comment out this block to remove from UI anytime */}
-                          <button
+                          {/* <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeletePatient(p.id, p.fullName);
@@ -971,7 +971,7 @@ export const PatientDirectory: React.FC = () => {
                           >
                             <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
                             <span>Delete</span>
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>
