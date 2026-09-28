@@ -1261,6 +1261,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     </div>
 
                     <div className="text-xs space-y-1">
+                      {p.aspirationDate && (
+                        <div className="text-slate-600">
+                          <span className="font-semibold text-slate-800">Egg Retrieval:</span>{' '}
+                          <strong className="text-emerald-950 font-mono">{formatDateDDMMYYYY(p.aspirationDate)}</strong>
+                        </div>
+                      )}
                       <div className="text-slate-600">
                         <span className="font-semibold text-slate-800">Freezing Date:</span>{' '}
                         <strong className="text-emerald-950 font-mono">{freezingDateStr}</strong>

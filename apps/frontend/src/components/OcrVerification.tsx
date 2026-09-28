@@ -1066,15 +1066,15 @@ export const OcrVerification: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <DateInputDDMMYYYY
-                  label="Freezing Date"
-                  value={freezingDate}
-                  onChange={(val) => setFreezingDate(val)}
-                />
-
-                <DateInputDDMMYYYY
                   label="Date of Egg Retrieval"
                   value={visitDate}
                   onChange={(val) => setVisitDate(val)}
+                />
+
+                <DateInputDDMMYYYY
+                  label="Freezing Date"
+                  value={freezingDate}
+                  onChange={(val) => setFreezingDate(val)}
                 />
               </div>
 
