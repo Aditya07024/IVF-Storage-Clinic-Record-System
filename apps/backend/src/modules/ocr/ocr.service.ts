@@ -20,19 +20,32 @@ export function parseFlexibleDate(dateVal?: string | Date | null): Date | null {
   if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
 
   const str = String(dateVal).trim();
-  if (!str || str.toLowerCase() === 'n/a') return null;
+  if (!str || str.toLowerCase() === 'n/a' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return null;
 
-  // 1. Check DD/MM/YYYY or DD-MM-YYYY format
-  const ddmmyyyyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (ddmmyyyyMatch) {
-    const day = parseInt(ddmmyyyyMatch[1], 10);
-    const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
-    const year = parseInt(ddmmyyyyMatch[3], 10);
+  // 1. Check YYYY-MM-DD format (ISO format)
+  const isoMatch = str.match(/^(\d{4})[\/\.\-](\d{1,2})[\/\.\-](\d{1,2})$/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10) - 1;
+    const day = parseInt(isoMatch[3], 10);
     const parsed = new Date(year, month, day);
     return isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  // 2. Standard ISO / JS date parse
+  // 2. Check DD/MM/YYYY, DD.MM.YYYY, DD-MM-YYYY, DD/MM/YY, DD.MM.YY, DD-MM-YY format (Day, Month, Year)
+  const ddmmyyyyMatch = str.match(/^(\d{1,2})[\/\.\-\s](\d{1,2})[\/\.\-\s](\d{2,4})$/);
+  if (ddmmyyyyMatch) {
+    const day = parseInt(ddmmyyyyMatch[1], 10);
+    const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+    let year = parseInt(ddmmyyyyMatch[3], 10);
+    if (year < 100) {
+      year = year >= 50 ? 1900 + year : 2000 + year; // e.g. 19 -> 2019, 95 -> 1995
+    }
+    const parsed = new Date(year, month, day);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  // 3. Standard ISO / JS date parse
   const parsed = new Date(str);
   return isNaN(parsed.getTime()) ? null : parsed;
 }
@@ -860,7 +873,7 @@ ${rawText}`;
         donorPhone: input.donorPhone || null,
         vitrificationIndication: input.vitrificationIndication || null,
         oocyteStage: input.oocyteStage || null,
-        aspirationDate: parseFlexibleDate(input.aspirationDate),
+        aspirationDate: parseFlexibleDate(input.aspirationDate || input.visitDate),
         freezingDate: parseFlexibleDate(input.freezingDate),
         thawDate: parseFlexibleDate(input.thawDate),
         comments: input.comments,
@@ -1047,7 +1060,7 @@ ${rawText}`;
       if (targetVisoTube) {
         const batchCode = `BAT-${Date.now().toString().slice(-6)}`;
         const parsedFreezing = parseFlexibleDate(input.freezingDate) || new Date();
-        const parsedAsp = parseFlexibleDate(input.aspirationDate);
+        const parsedAsp = parseFlexibleDate(input.aspirationDate || input.visitDate);
 
         const canisterLabel = selectedCanisterNum !== null ? `C${selectedCanisterNum.toString().padStart(2, '0')}` : 'C--';
         const levelLabel = selectedLevelNum !== null ? `Level ${selectedLevelNum}` : 'Level --';

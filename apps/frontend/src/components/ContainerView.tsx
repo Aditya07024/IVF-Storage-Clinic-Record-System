@@ -1112,7 +1112,13 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 )}
 
                 <button
-                  onClick={() => setViewingPatientModal(null)}
+                  onClick={() => {
+                    const p = viewingPatientModal;
+                    setViewingPatientModal(null);
+                    if (p) {
+                      window.dispatchEvent(new CustomEvent('edit-patient-details', { detail: p }));
+                    }
+                  }}
                   className="w-full h-8 px-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
                 >
                   <Edit3 className="w-3 h-3" />

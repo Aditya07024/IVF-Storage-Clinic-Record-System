@@ -28,6 +28,7 @@ export interface VerifyOcrInput {
   vitrificationIndication?: string;
   oocyteStage?: string;
   aspirationDate?: string;
+  visitDate?: string;
   freezingDate?: string;
   thawDate?: string;
   tankName?: string;

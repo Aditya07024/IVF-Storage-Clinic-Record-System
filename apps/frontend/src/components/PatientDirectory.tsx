@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, formatDayStage } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, formatDayStage, DateInputDDMMYYYY } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
@@ -90,6 +90,7 @@ export const PatientDirectory: React.FC = () => {
   const [editDoctorName, setEditDoctorName] = useState('');
   const [editComments, setEditComments] = useState('');
   const [editFreezingDate, setEditFreezingDate] = useState('');
+  const [editAspirationDate, setEditAspirationDate] = useState('');
   const [editVisitDate, setEditVisitDate] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -139,6 +140,16 @@ export const PatientDirectory: React.FC = () => {
       document.body.style.overflow = '';
     };
   }, [selectedPatient, editingPatient, quickThawPatient, editingStraw, previewImageModalUrl]);
+
+  useEffect(() => {
+    const handleEditPatientEvent = (e: any) => {
+      if (e.detail) {
+        openEditPatientModal(e.detail);
+      }
+    };
+    window.addEventListener('edit-patient-details', handleEditPatientEvent);
+    return () => window.removeEventListener('edit-patient-details', handleEditPatientEvent);
+  }, []);
 
   const openEditStrawModal = (straw: any) => {
     setEditingStraw(straw);
@@ -321,7 +332,10 @@ export const PatientDirectory: React.FC = () => {
     setEditDonorPhone(patient.donorPhone || '');
     setEditDoctorName(patient.doctorName || '');
     setEditComments(patient.comments || '');
-    setEditFreezingDate(patient.freezingDate ? new Date(patient.freezingDate).toISOString().split('T')[0] : '');
+    const rawAsp = patient.aspirationDate || patient.batches?.[0]?.aspirationDate || patient.visitDate;
+    setEditAspirationDate(rawAsp ? (typeof rawAsp === 'string' ? rawAsp.split('T')[0] : new Date(rawAsp).toISOString().split('T')[0]) : '');
+    const rawFreezing = patient.freezingDate || patient.batches?.[0]?.freezingDate || patient.batches?.[0]?.storageDate;
+    setEditFreezingDate(rawFreezing ? (typeof rawFreezing === 'string' ? rawFreezing.split('T')[0] : new Date(rawFreezing).toISOString().split('T')[0]) : '');
     setEditVisitDate(patient.visitDate ? new Date(patient.visitDate).toISOString().split('T')[0] : '');
     setEditError(null);
     setEditSuccessMsg(null);
@@ -353,8 +367,9 @@ export const PatientDirectory: React.FC = () => {
         donorPhone: editDonorPhone.trim(),
         doctorName: editDoctorName.trim(),
         comments: editComments.trim(),
+        aspirationDate: editAspirationDate ? editAspirationDate : null,
         freezingDate: editFreezingDate ? editFreezingDate : null,
-        visitDate: editVisitDate ? editVisitDate : null,
+        visitDate: editAspirationDate || editVisitDate ? (editAspirationDate || editVisitDate) : null,
       };
 
       const res = await apiRequest(`/api/patients/${editingPatient.id}`, {
@@ -1628,15 +1643,19 @@ export const PatientDirectory: React.FC = () => {
                   />
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Freezing Date
-                  </label>
-                  <input
-                    type="date"
+                <div>
+                  <DateInputDDMMYYYY
+                    label="Date of Egg Retrieval"
+                    value={editAspirationDate}
+                    onChange={(val) => setEditAspirationDate(val)}
+                  />
+                </div>
+
+                <div>
+                  <DateInputDDMMYYYY
+                    label="Date of Freezing"
                     value={editFreezingDate}
-                    onChange={(e) => setEditFreezingDate(e.target.value)}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                    onChange={(val) => setEditFreezingDate(val)}
                   />
                 </div>
 

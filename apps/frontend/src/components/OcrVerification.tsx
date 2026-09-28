@@ -530,6 +530,7 @@ export const OcrVerification: React.FC = () => {
           donorPhone: donorPhone.trim() || undefined,
           vitrificationIndication: vitrificationIndication.trim() || undefined,
           oocyteStage: oocyteStage.trim() || undefined,
+          aspirationDate: visitDate || undefined,
           visitDate: visitDate || undefined,
           freezingDate: freezingDate || undefined,
           thawDate: thawDate || undefined,
