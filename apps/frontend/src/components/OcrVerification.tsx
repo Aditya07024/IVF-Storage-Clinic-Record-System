@@ -312,7 +312,6 @@ export const OcrVerification: React.FC = () => {
     setVitrificationIndication(json.vitrificationIndication || 'Social egg freezing');
     setOocyteStage(json.oocyteStage || 'MII');
     setVisitDate(json.visitDate || json.aspirationDate || '');
-    setFreezingDate(json.freezingDate || '');
     setThawDate(json.thawDate || '');
     setEmbryoCount(json.embryoCount ? String(json.embryoCount) : '');
 
