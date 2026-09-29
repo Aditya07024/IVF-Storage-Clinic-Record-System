@@ -499,6 +499,22 @@ export const OcrVerification: React.FC = () => {
     });
   };
 
+  const handleSpecimenTypeChange = (type: 'EMBRYO' | 'OOCYTE') => {
+    setSpecimenType(type);
+    setFreezingGroups((prevGroups) =>
+      prevGroups.map((group) => {
+        const autoStage = calculateStageFromDates(visitDate, group.freezingDate, type);
+        return {
+          ...group,
+          straws: group.straws.map((st) => ({
+            ...st,
+            stage: st.isCustomStage ? st.stage : autoStage,
+          })),
+        };
+      })
+    );
+  };
+
   const addNewFreezingDateGroup = () => {
     setFreezingGroups((prevGroups) => {
       const defaultColor = CLINIC_STRAW_COLORS.includes(visoTubeColor as any) ? visoTubeColor : 'Pink';
@@ -1001,7 +1017,7 @@ export const OcrVerification: React.FC = () => {
                     <div className="grid grid-cols-2 gap-1.5 p-1 bg-white border border-slate-300 rounded-xl">
                       <button
                         type="button"
-                        onClick={() => setSpecimenType('EMBRYO')}
+                        onClick={() => handleSpecimenTypeChange('EMBRYO')}
                         className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           specimenType === 'EMBRYO'
                             ? 'bg-emerald-600 text-white shadow-xs'
@@ -1012,7 +1028,7 @@ export const OcrVerification: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSpecimenType('OOCYTE')}
+                        onClick={() => handleSpecimenTypeChange('OOCYTE')}
                         className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           specimenType === 'OOCYTE'
                             ? 'bg-emerald-600 text-white shadow-xs'
@@ -1023,8 +1039,6 @@ export const OcrVerification: React.FC = () => {
                       </button>
                     </div>
                   </div>
-
-                  {/* Cycle Type Selector */}
                   <div>
                     <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                       Cycle / Donor Type *
@@ -1372,18 +1386,18 @@ export const OcrVerification: React.FC = () => {
                       <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                         Specimen Straws by Freezing Date ({freezingGroups.reduce((acc, g) => acc + g.straws.length, 0)} Straws in {freezingGroups.length} Batch{freezingGroups.length > 1 ? 'es' : ''})
                       </h3>
-                      <p className="text-[10px] text-slate-500 font-medium">
+                      {/* <p className="text-[10px] text-slate-500 font-medium">
                         Set the Freezing Date for each batch. Embryo stage is auto-calculated based on Date of Egg Retrieval.
-                      </p>
+                      </p> */}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={addNewFreezingDateGroup}
-                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer self-start sm:self-auto"
+                    className="px-1.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all flex items-center shadow-2xs active:scale-95 cursor-pointer self-start sm:self-auto"
                   >
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>+ Add Freezing Date / Batch</span>
+                    <span>Add Another Freezing Date</span>
                   </button>
                 </div>
 
@@ -1429,7 +1443,7 @@ export const OcrVerification: React.FC = () => {
                             className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
-                            <span>+ Add Straw in this Freezing Date</span>
+                            <span>Add Straw</span>
                           </button>
 
                           {freezingGroups.length > 1 && (
@@ -1507,12 +1521,12 @@ export const OcrVerification: React.FC = () => {
                                 <td className="p-0.5">
                                   <input
                                     type="text"
-                                    value={st.stage || ''}
+                                    value={st.stage || calculateStageFromDates(visitDate, group.freezingDate, specimenType)}
                                     onChange={(e) => {
                                       updateStrawInGroup(gIdx, sIdx, 'stage', e.target.value);
                                       updateStrawInGroup(gIdx, sIdx, 'isCustomStage', true);
                                     }}
-                                    placeholder="Day 5"
+                                    placeholder={calculateStageFromDates(visitDate, group.freezingDate, specimenType)}
                                     className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[8px] font-bold text-slate-800"
                                   />
                                 </td>
