@@ -411,7 +411,7 @@ export const OcrVerification: React.FC = () => {
         strawId: s.strawId || `STR-0${groupedMap.get(groupKey)!.length + 1}`,
         colorTag: sCol,
         embryoCount: s.embryoCount ?? 1,
-        stage: s.stage || autoStage,
+        stage: autoStage,
         grade: s.grade || '4AA',
         fragmentation: s.fragmentation || 'No',
         embryoGrades: s.embryoGrades,
