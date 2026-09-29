@@ -19,6 +19,53 @@ export const VISO_COLOR_TO_TUBE_CODE: Record<string, string> = {
   Skyblue: 'V11',
 };
 
+export interface FreezingGroupStraw {
+  strawId?: string;
+  colorTag: string;
+  embryoCount: number;
+  stage: string;
+  grade: string;
+  fragmentation: string;
+  embryoGrades?: string[];
+  embryoFrags?: string[];
+  isThawing?: boolean;
+  thawDate?: string;
+  isCustomStage?: boolean;
+}
+
+export interface FreezingGroup {
+  id: string;
+  freezingDate: string;
+  straws: FreezingGroupStraw[];
+}
+
+export function calculateStageFromDates(
+  retrievalDateStr: string,
+  freezingDateStr: string,
+  specimenType: 'EMBRYO' | 'OOCYTE' = 'EMBRYO'
+): string {
+  if (specimenType === 'OOCYTE') return 'MII';
+  if (!retrievalDateStr || !freezingDateStr) return 'Day 5';
+
+  const { iso: rIso } = normalizeFlexibleDateToDDMMYYYY(retrievalDateStr);
+  const { iso: fIso } = normalizeFlexibleDateToDDMMYYYY(freezingDateStr);
+
+  if (!rIso || !fIso) return 'Day 5';
+
+  const rDate = new Date(rIso);
+  const fDate = new Date(fIso);
+
+  if (isNaN(rDate.getTime()) || isNaN(fDate.getTime())) return 'Day 5';
+
+  const diffMs = fDate.getTime() - rDate.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays >= 0 && diffDays <= 14) {
+    return `Day ${diffDays}`;
+  }
+  return 'Day 5';
+}
+
 export const OcrVerification: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [cropModalFile, setCropModalFile] = useState<File | null>(null);
@@ -63,7 +110,6 @@ export const OcrVerification: React.FC = () => {
   const [vitrificationIndication, setVitrificationIndication] = useState('Social egg freezing');
   const [oocyteStage, setOocyteStage] = useState('MII');
   const [visitDate, setVisitDate] = useState('');
-  const [freezingDate, setFreezingDate] = useState('');
   const [thawDate, setThawDate] = useState('');
   const [embryoCount, setEmbryoCount] = useState('');
   const [tankName, setTankName] = useState('CAN-01');
@@ -71,7 +117,15 @@ export const OcrVerification: React.FC = () => {
   const [visoTubeColor, setVisoTubeColor] = useState('');
   const [visoTubeId, setVisoTubeId] = useState('');
   const [level, setLevel] = useState('');
-  const [straws, setStraws] = useState<any[]>([]);
+  const [freezingGroups, setFreezingGroups] = useState<FreezingGroup[]>([
+    {
+      id: 'fg-1',
+      freezingDate: '',
+      straws: [
+        { strawId: 'STR-01', colorTag: 'Pink', embryoCount: 1, stage: 'Day 5', grade: '4AA', fragmentation: 'No' },
+      ],
+    },
+  ]);
   const [comments, setComments] = useState('');
 
   const [uploading, setUploading] = useState(false);
@@ -325,67 +379,180 @@ export const OcrVerification: React.FC = () => {
     setLevel(lvl);
 
     const defaultStrawColor = CLINIC_STRAW_COLORS.includes(col as any) ? col : 'Pink';
+    const mainFreezingDate = json.freezingDate ? (json.freezingDate.includes('/') ? json.freezingDate : formatDateDDMMYYYY(json.freezingDate)) : '';
+    const currentSpecimenType = (json.specimenType || (json.vitrificationIndication || json.donorName || json.oocyteStage ? 'OOCYTE' : 'EMBRYO')).toUpperCase() as any;
 
-    const initialStraws = Array.isArray(json.straws) && json.straws.length > 0
-      ? json.straws.map((s: any) => {
-          let sCol = (s.colorTag || s.colorName || '').trim();
-          if (sCol.match(/pink/i)) sCol = 'Pink';
-          else if (sCol.match(/green/i)) sCol = 'Green';
-          else if (sCol.match(/blue/i) && !sCol.match(/sky/i)) sCol = 'Blue';
-          else if (sCol.match(/yellow/i)) sCol = 'Yellow';
-          else if (sCol.match(/white/i)) sCol = 'White';
-          else if (CLINIC_STRAW_COLORS.includes(col as any)) sCol = col;
-          else sCol = 'Pink';
-          return {
-            ...s,
-            colorTag: sCol,
-            fragmentation: s.fragmentation || 'No',
-            thawDate: s.thawDate || json.thawDate || '',
-          };
-        })
-      : [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: 'Day 5', grade: '4AA', fragmentation: 'No', freezingDate: json.freezingDate || '', thawDate: json.thawDate || '' }];
-    setStraws(initialStraws);
+    const rawStraws = Array.isArray(json.straws) && json.straws.length > 0
+      ? json.straws
+      : [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: 'Day 5', grade: '4AA', fragmentation: 'No', freezingDate: mainFreezingDate }];
+
+    // Group straws by freezingDate
+    const groupedMap = new Map<string, any[]>();
+    rawStraws.forEach((s: any) => {
+      let sCol = (s.colorTag || s.colorName || '').trim();
+      if (sCol.match(/pink/i)) sCol = 'Pink';
+      else if (sCol.match(/green/i)) sCol = 'Green';
+      else if (sCol.match(/blue/i) && !sCol.match(/sky/i)) sCol = 'Blue';
+      else if (sCol.match(/yellow/i)) sCol = 'Yellow';
+      else if (sCol.match(/white/i)) sCol = 'White';
+      else if (CLINIC_STRAW_COLORS.includes(col as any)) sCol = col;
+      else sCol = 'Pink';
+
+      const sDateRaw = s.freezingDate || mainFreezingDate;
+      const sDate = sDateRaw ? (sDateRaw.includes('/') ? sDateRaw : formatDateDDMMYYYY(sDateRaw)) : '';
+      const groupKey = sDate || '__default__';
+
+      if (!groupedMap.has(groupKey)) {
+        groupedMap.set(groupKey, []);
+      }
+
+      const autoStage = calculateStageFromDates(json.visitDate || json.aspirationDate || '', sDate, currentSpecimenType);
+
+      groupedMap.get(groupKey)!.push({
+        strawId: s.strawId || `STR-0${groupedMap.get(groupKey)!.length + 1}`,
+        colorTag: sCol,
+        embryoCount: s.embryoCount ?? 1,
+        stage: s.stage || autoStage,
+        grade: s.grade || '4AA',
+        fragmentation: s.fragmentation || 'No',
+        embryoGrades: s.embryoGrades,
+        embryoFrags: s.embryoFrags,
+        isThawing: s.isThawing,
+        thawDate: s.thawDate || json.thawDate || '',
+      });
+    });
+
+    const parsedGroups: FreezingGroup[] = [];
+    let gCounter = 1;
+    groupedMap.forEach((strawList, key) => {
+      const gDate = key === '__default__' ? mainFreezingDate : key;
+      parsedGroups.push({
+        id: `fg-${gCounter++}`,
+        freezingDate: gDate,
+        straws: strawList,
+      });
+    });
+
+    if (parsedGroups.length === 0) {
+      parsedGroups.push({
+        id: 'fg-1',
+        freezingDate: mainFreezingDate,
+        straws: [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: 'Day 5', grade: '4AA', fragmentation: 'No' }],
+      });
+    }
+
+    setFreezingGroups(parsedGroups);
     setComments(json.comments || '');
   };
 
-  const addStrawRow = () => {
-    setStraws((prev) => {
-      const defaultStrawColor = CLINIC_STRAW_COLORS.includes(visoTubeColor as any) ? visoTubeColor : 'Pink';
-      const primaryColor = prev[0]?.colorTag || defaultStrawColor;
-      return [
-        ...prev,
-        {
-          strawId: `STR-0${prev.length + 1}`,
-          colorTag: primaryColor,
-          embryoCount: 1,
-          stage: 'Day 5',
-          grade: '4AA',
-          fragmentation: 'No',
-          freezingDate: freezingDate || '',
-          thawDate: thawDate || '',
-        },
-      ];
+  const handleVisitDateChange = (val: string) => {
+    setVisitDate(val);
+    setFreezingGroups((prevGroups) =>
+      prevGroups.map((group) => {
+        const autoStage = calculateStageFromDates(val, group.freezingDate, specimenType);
+        return {
+          ...group,
+          straws: group.straws.map((st) => ({
+            ...st,
+            stage: st.isCustomStage ? st.stage : autoStage,
+          })),
+        };
+      })
+    );
+  };
+
+  const updateGroupFreezingDate = (groupIdx: number, newDate: string) => {
+    setFreezingGroups((prevGroups) => {
+      const next = [...prevGroups];
+      const autoStage = calculateStageFromDates(visitDate, newDate, specimenType);
+      const targetGroup = { ...next[groupIdx] };
+      targetGroup.freezingDate = newDate;
+      targetGroup.straws = targetGroup.straws.map((st) => ({
+        ...st,
+        stage: st.isCustomStage ? st.stage : autoStage,
+      }));
+      next[groupIdx] = targetGroup;
+      return next;
     });
   };
 
-  const addStrawWithCustomDateRow = () => {
-    setStraws((prev) => {
-      const defaultStrawColor = CLINIC_STRAW_COLORS.includes(visoTubeColor as any) ? visoTubeColor : 'Pink';
-      const primaryColor = prev[0]?.colorTag || defaultStrawColor;
-      return [
-        ...prev,
-        {
-          strawId: `STR-0${prev.length + 1}`,
-          colorTag: primaryColor,
-          embryoCount: 1,
-          stage: 'Day 5',
-          grade: '4AA',
-          fragmentation: 'No',
-          freezingDate: '',
-          thawDate: '',
-          isCustomDate: true,
-        },
-      ];
+  const addStrawToGroup = (groupIdx: number) => {
+    setFreezingGroups((prevGroups) => {
+      const next = [...prevGroups];
+      const targetGroup = { ...next[groupIdx] };
+      const defaultColor = CLINIC_STRAW_COLORS.includes(visoTubeColor as any) ? visoTubeColor : 'Pink';
+      const autoStage = calculateStageFromDates(visitDate, targetGroup.freezingDate, specimenType);
+      const totalStraws = prevGroups.reduce((acc, g) => acc + g.straws.length, 0);
+
+      const newStraw: FreezingGroupStraw = {
+        strawId: `STR-0${totalStraws + 1}`,
+        colorTag: targetGroup.straws[0]?.colorTag || defaultColor,
+        embryoCount: 1,
+        stage: autoStage,
+        grade: '4AA',
+        fragmentation: 'No',
+        thawDate: '',
+      };
+
+      targetGroup.straws = [...targetGroup.straws, newStraw];
+      next[groupIdx] = targetGroup;
+      return next;
+    });
+  };
+
+  const addNewFreezingDateGroup = () => {
+    setFreezingGroups((prevGroups) => {
+      const defaultColor = CLINIC_STRAW_COLORS.includes(visoTubeColor as any) ? visoTubeColor : 'Pink';
+      const totalStraws = prevGroups.reduce((acc, g) => acc + g.straws.length, 0);
+      const newGroup: FreezingGroup = {
+        id: `fg-${Date.now()}`,
+        freezingDate: '',
+        straws: [
+          {
+            strawId: `STR-0${totalStraws + 1}`,
+            colorTag: defaultColor,
+            embryoCount: 1,
+            stage: 'Day 5',
+            grade: '4AA',
+            fragmentation: 'No',
+            thawDate: '',
+          },
+        ],
+      };
+      return [...prevGroups, newGroup];
+    });
+  };
+
+  const removeGroup = (groupIdx: number) => {
+    setFreezingGroups((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== groupIdx) : prev));
+  };
+
+  const updateStrawInGroup = (groupIdx: number, strawIdx: number, field: string, val: any) => {
+    setFreezingGroups((prevGroups) => {
+      const next = [...prevGroups];
+      const targetGroup = { ...next[groupIdx] };
+      const targetStraws = [...targetGroup.straws];
+      targetStraws[strawIdx] = {
+        ...targetStraws[strawIdx],
+        [field]: val,
+      };
+      targetGroup.straws = targetStraws;
+      next[groupIdx] = targetGroup;
+      return next;
+    });
+  };
+
+  const removeStrawFromGroup = (groupIdx: number, strawIdx: number) => {
+    setFreezingGroups((prevGroups) => {
+      const next = [...prevGroups];
+      const targetGroup = { ...next[groupIdx] };
+      if (targetGroup.straws.length > 1) {
+        targetGroup.straws = targetGroup.straws.filter((_, i) => i !== strawIdx);
+        next[groupIdx] = targetGroup;
+      } else if (next.length > 1) {
+        return prevGroups.filter((_, i) => i !== groupIdx);
+      }
+      return next;
     });
   };
 
@@ -527,6 +694,14 @@ export const OcrVerification: React.FC = () => {
     setSuccessMsg(null);
 
     try {
+      const flattenedStraws = freezingGroups.flatMap((group) =>
+        group.straws.map((st) => ({
+          ...st,
+          freezingDate: group.freezingDate || undefined,
+        }))
+      );
+      const primaryFreezingDate = freezingGroups.find((g) => g.freezingDate)?.freezingDate || undefined;
+
       const res = await apiRequest('/api/ocr/verify', {
         method: 'POST',
         body: JSON.stringify({
@@ -553,14 +728,14 @@ export const OcrVerification: React.FC = () => {
           oocyteStage: oocyteStage.trim() || undefined,
           aspirationDate: visitDate || undefined,
           visitDate: visitDate || undefined,
-          freezingDate: freezingDate || undefined,
+          freezingDate: primaryFreezingDate,
           thawDate: thawDate || undefined,
           tankName: tankName.trim() || undefined,
           canisterName: canisterName.trim() || undefined,
           visoTubeColor: visoTubeColor.trim() || undefined,
           visoTubeId: visoTubeId.trim() || undefined,
           level: level.trim() || undefined,
-          straws: straws.length > 0 ? straws : undefined,
+          straws: flattenedStraws.length > 0 ? flattenedStraws : undefined,
           comments: comments.trim() || undefined,
         }),
       });
@@ -1086,17 +1261,11 @@ export const OcrVerification: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <DateInputDDMMYYYY
                   label="Date of Egg Retrieval"
                   value={visitDate}
-                  onChange={(val) => setVisitDate(val)}
-                />
-
-                <DateInputDDMMYYYY
-                  label="Freezing Date"
-                  value={freezingDate}
-                  onChange={(val) => setFreezingDate(val)}
+                  onChange={(val) => handleVisitDateChange(val)}
                 />
               </div>
 
@@ -1195,243 +1364,287 @@ export const OcrVerification: React.FC = () => {
                 </div>
               </div>
 
-              {/* Extracted Specimen Straws Batch Table (Fully Editable & Compact Text) */}
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Specimen Straws Batch ({straws.length} Extracted Straws)</span>
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={addStrawRow}
-                      className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
-                    >
-                      <span>+ Add Straw</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={addStrawWithCustomDateRow}
-                      className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
-                      title="Add embryos/straws frozen on another date"
-                    >
-                      <Calendar className="w-3 h-3" />
-                      <span>+ Add Freezing Date / Embryos</span>
-                    </button>
+              {/* Freezing Date Batches & Specimen Straws Section */}
+              <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-200 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200 pb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div>
+                      <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                        Specimen Straws by Freezing Date ({freezingGroups.reduce((acc, g) => acc + g.straws.length, 0)} Straws in {freezingGroups.length} Batch{freezingGroups.length > 1 ? 'es' : ''})
+                      </h3>
+                      <p className="text-[10px] text-slate-500 font-medium">
+                        Set the Freezing Date for each batch. Embryo stage is auto-calculated based on Date of Egg Retrieval.
+                      </p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={addNewFreezingDateGroup}
+                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer self-start sm:self-auto"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>+ Add Freezing Date / Batch</span>
+                  </button>
                 </div>
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-                  <table className="w-full text-left text-[9px]">
-                    <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                      <tr>
-                        <th className="p-1.5 font-bold">Straw ID</th>
-                        <th className="p-1">Color Tag</th>
-                        <th className="p-1 text-center">{specimenType === 'OOCYTE' ? 'Oocytes' : 'Embryos'}</th>
-                        <th className="p-1">Stage</th>
-                        <th className="p-1">Grade</th>
-                        <th className="p-1">Fragmentation</th>
-                        <th className="p-1">Freezing Date</th>
-                        <th className="p-1 text-center">Thaw</th>
-                        <th className="p-1 text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {straws.map((st, idx) => (
-                        <React.Fragment key={idx}>
-                          <tr className="hover:bg-slate-50 font-medium text-slate-800">
-                            <td className="p-1.5 font-mono font-bold text-slate-900 text-[10px] whitespace-nowrap bg-slate-50/80">
-                              #{idx + 1}
-                            </td>
-                            <td className="p-0.5">
-                              <select
-                                value={st.colorTag || st.colorName || ''}
-                                onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
-                                className={`w-full border rounded py-0.5 px-1 font-bold text-[8px] focus:outline-none transition-all ${
-                                  st.colorTag ? getStrawColorBadgeClass(st.colorTag) : 'bg-slate-50 border-slate-300 text-slate-900'
-                                }`}
-                              >
-                                <option value="" className="bg-white text-slate-900 font-normal">-- Select Color --</option>
-                                {CLINIC_STRAW_COLORS.map((c) => (
-                                  <option key={c} value={c} className="bg-white text-slate-900 font-medium">
-                                    {c}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="p-0.5 text-center">
-                              <input
-                                type="number"
-                                min={1}
-                                value={st.embryoCount ?? 1}
-                                onChange={(e) => {
-                                  const cnt = parseInt(e.target.value, 10) || 1;
-                                  updateStrawRow(idx, 'embryoCount', cnt);
-                                  const currentGrades = st.embryoGrades || [];
-                                  const currentFrags = st.embryoFrags || [];
-                                  const newGrades = Array.from({ length: cnt }, (_, i) => currentGrades[i] || st.grade || '4AA');
-                                  const newFrags = Array.from({ length: cnt }, (_, i) => currentFrags[i] || st.fragmentation || 'No');
-                                  updateStrawRow(idx, 'embryoGrades', newGrades);
-                                  updateStrawRow(idx, 'embryoFrags', newFrags);
-                                }}
-                                className="w-8 bg-slate-50 border border-slate-300 rounded py-0.5 text-center font-bold text-emerald-700 text-[8px]"
-                              />
-                            </td>
-                            <td className="p-0.5">
-                              <input
-                                type="text"
-                                value={st.stage || ''}
-                                onChange={(e) => updateStrawRow(idx, 'stage', e.target.value)}
-                                placeholder="Day 5"
-                                className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[8px]"
-                              />
-                            </td>
-                            <td className="p-0.5">
-                              <input
-                                type="text"
-                                value={st.grade || ''}
-                                onChange={(e) => updateStrawRow(idx, 'grade', e.target.value)}
-                                placeholder="4AA"
-                                className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
-                              />
-                            </td>
-                            <td className="p-0.5">
-                              <select
-                                value={st.fragmentation || 'No'}
-                                onChange={(e) => updateStrawRow(idx, 'fragmentation', e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
-                              >
-                                <option value="No">No</option>
-                                <option value="+">+</option>
-                                <option value="++">++</option>
-                              </select>
-                            </td>
-                            <td className="p-0.5">
-                              <input
-                                type="text"
-                                value={st.freezingDate || ''}
-                                onChange={(e) => {
-                                  const raw = e.target.value;
-                                  const masked = formatRawToDDMMYYYYMask(raw);
-                                  updateStrawRow(idx, 'freezingDate', masked);
-                                }}
-                                onBlur={(e) => {
-                                  const raw = e.target.value;
-                                  if (raw) {
-                                    const { formatted } = normalizeFlexibleDateToDDMMYYYY(raw);
-                                    if (formatted) {
-                                      updateStrawRow(idx, 'freezingDate', formatted);
-                                    }
-                                  }
-                                }}
-                                placeholder={freezingDate ? formatDateDDMMYYYY(freezingDate) : 'DD/MM/YYYY'}
-                                className={`w-full border rounded py-0.5 px-1 font-mono text-[8px] focus:outline-none transition-all ${
-                                  st.isCustomDate || (st.freezingDate && st.freezingDate !== freezingDate)
-                                    ? 'bg-amber-50 border-amber-400 text-amber-950 font-bold'
-                                    : 'bg-slate-50 border-slate-300 text-slate-900'
-                                }`}
-                                title="Freezing Date for this straw (DD/MM/YYYY or DDMMYY)"
-                              />
-                            </td>
-                            <td className="p-0.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(st.isThawing || st.thawDate)}
-                                  onChange={(e) => {
-                                    const isChecked = e.target.checked;
-                                    updateStrawRow(idx, 'isThawing', isChecked);
-                                    if (isChecked) {
-                                      updateStrawRow(idx, 'thawDate', st.thawDate || formatDateDDMMYYYY(new Date()));
-                                    } else {
-                                      updateStrawRow(idx, 'thawDate', '');
-                                    }
-                                  }}
-                                  className="w-3.5 h-3.5 accent-amber-600 rounded cursor-pointer"
-                                  title="Tick box to thaw this specific straw"
-                                />
-                                {(st.isThawing || st.thawDate) && (
+
+                {/* Loop over Freezing Date Batches */}
+                <div className="space-y-4">
+                  {freezingGroups.map((group, gIdx) => (
+                    <div key={group.id || gIdx} className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                      {/* Batch Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                            Freezing Date Batch #{gIdx + 1}:
+                          </span>
+                          <div className="w-36">
+                            <input
+                              type="text"
+                              value={group.freezingDate || ''}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                const masked = formatRawToDDMMYYYYMask(raw);
+                                updateGroupFreezingDate(gIdx, masked);
+                              }}
+                              onBlur={(e) => {
+                                const { formatted } = normalizeFlexibleDateToDDMMYYYY(e.target.value);
+                                if (formatted) updateGroupFreezingDate(gIdx, formatted);
+                              }}
+                              placeholder="DD/MM/YYYY"
+                              className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 text-xs font-mono font-bold text-amber-950 focus:outline-none focus:border-amber-600 shadow-2xs"
+                            />
+                          </div>
+                          {group.freezingDate && visitDate && (
+                            <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                              Auto Stage: {calculateStageFromDates(visitDate, group.freezingDate, specimenType)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => addStrawToGroup(gIdx)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>+ Add Straw in this Freezing Date</span>
+                          </button>
+
+                          {freezingGroups.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeGroup(gIdx)}
+                              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                              title="Delete Freezing Date Batch"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Straws Table for this Batch */}
+                      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                        <table className="w-full text-left border-collapse text-[9px]">
+                          <thead>
+                            <tr className="bg-slate-100 text-slate-700 uppercase tracking-wider font-extrabold border-b border-slate-200">
+                              <th className="p-1 w-7 text-center">#</th>
+                              <th className="p-1 w-24">Color Tag</th>
+                              <th className="p-1 text-center">{specimenType === 'OOCYTE' ? 'Oocytes' : 'Embryos'}</th>
+                              <th className="p-1">Stage</th>
+                              <th className="p-1">Grade</th>
+                              <th className="p-1">Fragmentation</th>
+                              <th className="p-1 text-center">Thaw</th>
+                              <th className="p-1 text-center">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {group.straws.map((st, sIdx) => (
+                              <tr key={sIdx} className="hover:bg-slate-50/80 font-medium text-slate-800">
+                                <td className="p-1 font-mono font-bold text-slate-900 text-[10px] whitespace-nowrap bg-slate-50/80 text-center">
+                                  #{sIdx + 1}
+                                </td>
+                                <td className="p-0.5">
+                                  <select
+                                    value={st.colorTag || ''}
+                                    onChange={(e) => updateStrawInGroup(gIdx, sIdx, 'colorTag', e.target.value)}
+                                    className={`w-full border rounded py-0.5 px-1 font-bold text-[8px] focus:outline-none transition-all ${
+                                      st.colorTag ? getStrawColorBadgeClass(st.colorTag) : 'bg-slate-50 border-slate-300 text-slate-900'
+                                    }`}
+                                  >
+                                    <option value="" className="bg-white text-slate-900 font-normal">-- Select Color --</option>
+                                    {CLINIC_STRAW_COLORS.map((c) => (
+                                      <option key={c} value={c} className="bg-white text-slate-900 font-medium">
+                                        {c}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="p-0.5 text-center">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={st.embryoCount ?? 1}
+                                    onChange={(e) => {
+                                      const cnt = parseInt(e.target.value, 10) || 1;
+                                      updateStrawInGroup(gIdx, sIdx, 'embryoCount', cnt);
+
+                                      const prevGrades = st.embryoGrades && st.embryoGrades.length > 0 ? st.embryoGrades : [st.grade || '4AA'];
+                                      const prevFrags = st.embryoFrags && st.embryoFrags.length > 0 ? st.embryoFrags : [st.fragmentation || 'No'];
+
+                                      const newGrades = Array.from({ length: cnt }, (_, i) => prevGrades[i] || prevGrades[0] || '4AA');
+                                      const newFrags = Array.from({ length: cnt }, (_, i) => prevFrags[i] || prevFrags[0] || 'No');
+
+                                      updateStrawInGroup(gIdx, sIdx, 'embryoGrades', newGrades);
+                                      updateStrawInGroup(gIdx, sIdx, 'embryoFrags', newFrags);
+                                      updateStrawInGroup(gIdx, sIdx, 'grade', newGrades.join(', '));
+                                    }}
+                                    className="w-8 bg-slate-50 border border-slate-300 rounded py-0.5 text-center font-bold text-emerald-700 text-[8px]"
+                                  />
+                                </td>
+                                <td className="p-0.5">
                                   <input
                                     type="text"
-                                    value={st.thawDate || ''}
-                                    onChange={(e) => updateStrawRow(idx, 'thawDate', e.target.value)}
-                                    placeholder="DD/MM/YYYY"
-                                    className="w-20 bg-amber-50 border border-amber-400 rounded py-0.5 px-1 font-mono text-[8px] text-amber-900 font-bold focus:outline-none focus:border-amber-600 shadow-2xs"
+                                    value={st.stage || ''}
+                                    onChange={(e) => {
+                                      updateStrawInGroup(gIdx, sIdx, 'stage', e.target.value);
+                                      updateStrawInGroup(gIdx, sIdx, 'isCustomStage', true);
+                                    }}
+                                    placeholder="Day 5"
+                                    className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[8px] font-bold text-slate-800"
                                   />
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-0.5 text-center">
-                              <button
-                                type="button"
-                                onClick={() => removeStrawRow(idx)}
-                                className="p-0.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                                title="Delete Straw"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </td>
-                          </tr>
-
-                          {/* Nested Per-Embryo Breakdown for Multi-Embryo Straws */}
-                          {(st.embryoCount || 1) > 1 && (
-                            <tr className="bg-emerald-50/50 border-b border-emerald-100">
-                              <td colSpan={9} className="px-2 py-1.5">
-                                <div className="flex items-center gap-2 flex-wrap bg-white p-1.5 rounded-lg border border-emerald-200 shadow-2xs">
-                                  <span className="text-[9px] font-extrabold text-emerald-900 uppercase flex items-center gap-1">
-                                    <Dna className="w-3 h-3 text-emerald-600 shrink-0" />
-                                    Per-Embryo Breakdown ({st.embryoCount} Embryos in Straw #{idx + 1}):
-                                  </span>
-                                  {Array.from({ length: st.embryoCount }).map((_, eIdx) => {
-                                    const eGradeList = st.embryoGrades || Array.from({ length: st.embryoCount }, () => st.grade || '4AA');
-                                    const eFragList = st.embryoFrags || Array.from({ length: st.embryoCount }, () => st.fragmentation || 'No');
-                                    const eGrade = eGradeList[eIdx] || st.grade || '4AA';
-                                    const eFrag = eFragList[eIdx] || st.fragmentation || 'No';
-
-                                    return (
-                                      <div key={eIdx} className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md border border-slate-300 text-[8px] font-bold">
-                                        <span className="text-slate-700 font-mono">Embryo #{eIdx + 1}:</span>
-                                        <span className="text-slate-500 text-[7px] uppercase">Grade:</span>
-                                        <input
-                                          type="text"
-                                          value={eGrade}
-                                          onChange={(e) => {
-                                            const newGrades = [...(st.embryoGrades || Array.from({ length: st.embryoCount }, () => st.grade || '4AA'))];
-                                            newGrades[eIdx] = e.target.value.toUpperCase();
-                                            updateStrawRow(idx, 'embryoGrades', newGrades);
-                                            updateStrawRow(idx, 'grade', newGrades.join(', '));
-                                          }}
-                                          placeholder="4AA"
-                                          className="w-11 bg-white border border-slate-300 rounded py-0.5 px-1 font-bold font-mono text-[8px] text-slate-900 focus:outline-none focus:border-emerald-600 uppercase"
-                                        />
-                                        <span className="text-slate-500 text-[7px] uppercase ml-0.5">Frag:</span>
-                                        <select
-                                          value={eFrag}
-                                          onChange={(e) => {
-                                            const newFrags = [...(st.embryoFrags || Array.from({ length: st.embryoCount }, () => st.fragmentation || 'No'))];
-                                            newFrags[eIdx] = e.target.value;
-                                            updateStrawRow(idx, 'embryoFrags', newFrags);
-                                            if (eIdx === 0) updateStrawRow(idx, 'fragmentation', e.target.value);
-                                          }}
-                                          className="bg-white border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px] text-slate-900 focus:outline-none focus:border-emerald-600 cursor-pointer"
-                                        >
-                                          <option value="No">No</option>
-                                          <option value="+">+</option>
-                                          <option value="++">++</option>
-                                        </select>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </tbody>
-                  </table>
+                                </td>
+                                <td className="p-0.5">
+                                  {(st.embryoCount || 1) > 1 ? (
+                                    <div className="flex flex-col gap-1 min-w-[65px]">
+                                      {Array.from({ length: st.embryoCount }).map((_, eIdx) => {
+                                        const eGradeList = st.embryoGrades || Array.from({ length: st.embryoCount }, (_, i) => i === 0 ? (st.grade || '4AA') : (st.grade || '4AA'));
+                                        const val = eGradeList[eIdx] || '';
+                                        return (
+                                          <div key={eIdx} className="flex items-center gap-0.5">
+                                            <span className="text-[7px] text-slate-500 font-bold shrink-0 font-mono">#{eIdx + 1}:</span>
+                                            <input
+                                              type="text"
+                                              value={val}
+                                              onChange={(e) => {
+                                                const newGrades = [...(st.embryoGrades || Array.from({ length: st.embryoCount }, (_, i) => i === 0 ? (st.grade || '4AA') : (st.grade || '4AA')))];
+                                                newGrades[eIdx] = e.target.value.toUpperCase();
+                                                updateStrawInGroup(gIdx, sIdx, 'embryoGrades', newGrades);
+                                                updateStrawInGroup(gIdx, sIdx, 'grade', newGrades.join(', '));
+                                              }}
+                                              placeholder="4AA"
+                                              className="w-full bg-white border border-slate-300 rounded py-0.5 px-1 font-bold font-mono text-[8px] text-slate-900 focus:outline-none focus:border-emerald-600 uppercase"
+                                            />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={st.grade || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        updateStrawInGroup(gIdx, sIdx, 'grade', val);
+                                        updateStrawInGroup(gIdx, sIdx, 'embryoGrades', [val]);
+                                      }}
+                                      placeholder="4AA"
+                                      className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
+                                    />
+                                  )}
+                                </td>
+                                <td className="p-0.5">
+                                  {(st.embryoCount || 1) > 1 ? (
+                                    <div className="flex flex-col gap-1 min-w-[60px]">
+                                      {Array.from({ length: st.embryoCount }).map((_, eIdx) => {
+                                        const eFragList = st.embryoFrags || Array.from({ length: st.embryoCount }, (_, i) => i === 0 ? (st.fragmentation || 'No') : (st.fragmentation || 'No'));
+                                        const val = eFragList[eIdx] || 'No';
+                                        return (
+                                          <div key={eIdx} className="flex items-center gap-0.5">
+                                            <span className="text-[7px] text-slate-500 font-bold shrink-0 font-mono">#{eIdx + 1}:</span>
+                                            <select
+                                              value={val}
+                                              onChange={(e) => {
+                                                const newFrags = [...(st.embryoFrags || Array.from({ length: st.embryoCount }, (_, i) => i === 0 ? (st.fragmentation || 'No') : (st.fragmentation || 'No')))];
+                                                newFrags[eIdx] = e.target.value;
+                                                updateStrawInGroup(gIdx, sIdx, 'embryoFrags', newFrags);
+                                                if (eIdx === 0) updateStrawInGroup(gIdx, sIdx, 'fragmentation', e.target.value);
+                                              }}
+                                              className="w-full bg-white border border-slate-300 rounded py-0.5 px-0.5 font-bold text-[8px] text-slate-900 focus:outline-none focus:border-emerald-600 cursor-pointer"
+                                            >
+                                              <option value="No">No</option>
+                                              <option value="+">+</option>
+                                              <option value="++">++</option>
+                                            </select>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <select
+                                      value={st.fragmentation || 'No'}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        updateStrawInGroup(gIdx, sIdx, 'fragmentation', val);
+                                        updateStrawInGroup(gIdx, sIdx, 'embryoFrags', [val]);
+                                      }}
+                                      className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
+                                    >
+                                      <option value="No">No</option>
+                                      <option value="+">+</option>
+                                      <option value="++">++</option>
+                                    </select>
+                                  )}
+                                </td>
+                                <td className="p-0.5 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(st.isThawing || st.thawDate)}
+                                      onChange={(e) => {
+                                        const isChecked = e.target.checked;
+                                        updateStrawInGroup(gIdx, sIdx, 'isThawing', isChecked);
+                                        if (isChecked) {
+                                          updateStrawInGroup(gIdx, sIdx, 'thawDate', st.thawDate || formatDateDDMMYYYY(new Date()));
+                                        } else {
+                                          updateStrawInGroup(gIdx, sIdx, 'thawDate', '');
+                                        }
+                                      }}
+                                      className="w-3.5 h-3.5 accent-amber-600 rounded cursor-pointer"
+                                      title="Tick box to thaw this specific straw"
+                                    />
+                                    {(st.isThawing || st.thawDate) && (
+                                      <input
+                                        type="text"
+                                        value={st.thawDate || ''}
+                                        onChange={(e) => updateStrawInGroup(gIdx, sIdx, 'thawDate', e.target.value)}
+                                        placeholder="DD/MM/YYYY"
+                                        className="w-20 bg-amber-50 border border-amber-400 rounded py-0.5 px-1 font-mono text-[8px] text-amber-900 font-bold focus:outline-none focus:border-amber-600 shadow-2xs"
+                                      />
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-0.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => removeStrawFromGroup(gIdx, sIdx)}
+                                    className="p-0.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                    title="Delete Straw"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-
               </div>
 
               <div className="space-y-1">
