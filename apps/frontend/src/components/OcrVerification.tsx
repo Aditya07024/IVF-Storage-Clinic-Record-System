@@ -60,7 +60,7 @@ export function calculateStageFromDates(
   const diffMs = fDate.getTime() - rDate.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays >= 0 && diffDays <= 14) {
+  if (diffDays >= 0) {
     return `Day ${diffDays}`;
   }
   return 'Day 5';
@@ -1421,20 +1421,13 @@ export const OcrVerification: React.FC = () => {
                             Freezing Date Batch #{gIdx + 1}:
                           </span>
                           <div className="w-36">
-                            <input
-                              type="text"
+                            <DateInputDDMMYYYY
                               value={group.freezingDate || ''}
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                const masked = formatRawToDDMMYYYYMask(raw);
-                                updateGroupFreezingDate(gIdx, masked);
-                              }}
-                              onBlur={(e) => {
-                                const { formatted } = normalizeFlexibleDateToDDMMYYYY(e.target.value);
-                                if (formatted) updateGroupFreezingDate(gIdx, formatted);
-                              }}
+                              onChange={(isoDate) => updateGroupFreezingDate(gIdx, isoDate)}
+                              compact
+                              hideBadge
                               placeholder="DD/MM/YYYY"
-                              className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 text-xs font-mono font-bold text-amber-950 focus:outline-none focus:border-amber-600 shadow-2xs"
+                              inputClassName="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 pr-6 text-xs font-mono font-bold text-amber-950 focus:outline-none focus:border-amber-600 shadow-2xs block"
                             />
                           </div>
                           {group.freezingDate && visitDate && (
@@ -1505,9 +1498,7 @@ export const OcrVerification: React.FC = () => {
                                   </select>
                                 </td>
                                 <td className="p-0.5 text-center">
-                                  <input
-                                    type="number"
-                                    min={1}
+                                  <select
                                     value={st.embryoCount ?? 1}
                                     onChange={(e) => {
                                       const cnt = parseInt(e.target.value, 10) || 1;
@@ -1523,8 +1514,11 @@ export const OcrVerification: React.FC = () => {
                                       updateStrawInGroup(gIdx, sIdx, 'embryoFrags', newFrags);
                                       updateStrawInGroup(gIdx, sIdx, 'grade', newGrades.join(', '));
                                     }}
-                                    className="w-8 bg-slate-50 border border-slate-300 rounded py-0.5 text-center font-bold text-emerald-700 text-[8px]"
-                                  />
+                                    className="w-10 bg-slate-50 border border-slate-300 rounded py-0.5 px-0.5 text-center font-bold text-emerald-700 text-[9px] focus:outline-none focus:border-emerald-500 cursor-pointer"
+                                  >
+                                    <option value={1}>1</option>
+                                    <option value={2}>2</option>
+                                  </select>
                                 </td>
                                 <td className="p-0.5">
                                   <input
@@ -1638,13 +1632,16 @@ export const OcrVerification: React.FC = () => {
                                       title="Tick box to thaw this specific straw"
                                     />
                                     {(st.isThawing || st.thawDate) && (
-                                      <input
-                                        type="text"
-                                        value={st.thawDate || ''}
-                                        onChange={(e) => updateStrawInGroup(gIdx, sIdx, 'thawDate', e.target.value)}
-                                        placeholder="DD/MM/YYYY"
-                                        className="w-20 bg-amber-50 border border-amber-400 rounded py-0.5 px-1 font-mono text-[8px] text-amber-900 font-bold focus:outline-none focus:border-amber-600 shadow-2xs"
-                                      />
+                                      <div className="w-28 font-mono font-bold">
+                                        <DateInputDDMMYYYY
+                                          value={st.thawDate || ''}
+                                          onChange={(isoDate) => updateStrawInGroup(gIdx, sIdx, 'thawDate', isoDate)}
+                                          compact
+                                          hideBadge
+                                          placeholder="DD/MM/YYYY"
+                                          inputClassName="w-full bg-amber-50 border border-amber-400 rounded py-0.5 px-1 pr-6 font-mono text-[8px] text-amber-900 font-bold focus:outline-none focus:border-amber-600 shadow-2xs block"
+                                        />
+                                      </div>
                                     )}
                                   </div>
                                 </td>

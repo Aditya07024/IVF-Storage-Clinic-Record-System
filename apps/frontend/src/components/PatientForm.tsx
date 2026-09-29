@@ -320,15 +320,25 @@ export function normalizeFlexibleDateToDDMMYYYY(input: string): { formatted: str
 
   const parts = input.split(/[\/\-\.]/);
   if (parts.length === 3) {
-    let [dStr, mStr, yStr] = parts.map(p => p.trim());
-    if (dStr && mStr && yStr) {
-      let day = parseInt(dStr, 10);
-      let month = parseInt(mStr, 10);
-      let year = parseInt(yStr, 10);
+    let [p0, p1, p2] = parts.map(p => p.trim());
+    if (p0 && p1 && p2) {
+      let day = 0;
+      let month = 0;
+      let year = 0;
 
-      // Convert 2-digit year to 4-digit year (e.g. 23 -> 2023, 88 -> 1988)
-      if (yStr.length === 2) {
-        year = year < 50 ? 2000 + year : 1900 + year;
+      // Handle ISO format: YYYY-MM-DD or YYYY/MM/DD
+      if (p0.length === 4) {
+        year = parseInt(p0, 10);
+        month = parseInt(p1, 10);
+        day = parseInt(p2, 10);
+      } else {
+        // Handle DD/MM/YYYY or DD-MM-YY format
+        day = parseInt(p0, 10);
+        month = parseInt(p1, 10);
+        year = parseInt(p2, 10);
+        if (p2.length === 2) {
+          year = year < 50 ? 2000 + year : 1900 + year;
+        }
       }
 
       if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
@@ -345,6 +355,18 @@ export function normalizeFlexibleDateToDDMMYYYY(input: string): { formatted: str
   // Also try 8 digits (DDMMYYYY) or 6 digits (DDMMYY)
   const digits = input.replace(/\D/g, '');
   if (digits.length === 8) {
+    if (digits.startsWith('19') || digits.startsWith('20')) {
+      const year = parseInt(digits.substring(0, 4), 10);
+      const month = parseInt(digits.substring(4, 6), 10);
+      const day = parseInt(digits.substring(6, 8), 10);
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+        const dd = day.toString().padStart(2, '0');
+        const mm = month.toString().padStart(2, '0');
+        const yyyy = year.toString();
+        return { formatted: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
+      }
+    }
+
     const day = parseInt(digits.substring(0, 2), 10);
     const month = parseInt(digits.substring(2, 4), 10);
     const year = parseInt(digits.substring(4, 8), 10);
@@ -377,13 +399,17 @@ export function parseDDMMYYYYToISO(input: string): string {
   return iso;
 }
 
-interface DateInputDDMMYYYYProps {
-  label: string;
-  value: string; // ISO format (YYYY-MM-DD)
+export interface DateInputDDMMYYYYProps {
+  label?: string;
+  value: string; // ISO format (YYYY-MM-DD) or DD/MM/YYYY
   onChange: (isoDate: string) => void;
   required?: boolean;
   extraBadge?: React.ReactNode;
   className?: string;
+  inputClassName?: string;
+  compact?: boolean;
+  placeholder?: string;
+  hideBadge?: boolean;
 }
 
 export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
@@ -393,12 +419,20 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
   required,
   extraBadge,
   className,
+  inputClassName,
+  compact,
+  placeholder = 'DD/MM/YYYY',
+  hideBadge,
 }) => {
-  const [displayValue, setDisplayValue] = useState(() => formatISOToDDMMYYYY(value));
+  const [displayValue, setDisplayValue] = useState(() => {
+    const { formatted } = normalizeFlexibleDateToDDMMYYYY(value);
+    return formatted || formatISOToDDMMYYYY(value);
+  });
   const hiddenDateRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setDisplayValue(formatISOToDDMMYYYY(value));
+    const { formatted } = normalizeFlexibleDateToDDMMYYYY(value);
+    setDisplayValue(formatted || formatISOToDDMMYYYY(value));
   }, [value]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -433,39 +467,51 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
     }
   };
 
+  const currentIso = normalizeFlexibleDateToDDMMYYYY(value).iso || value;
+
   return (
-    <div className="min-w-0 max-w-full">
-      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-        <span>{label} {required && <span className="text-rose-600 font-bold">*</span>}</span>
-        {extraBadge || (
-          <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-            DD/MM/YYYY
-          </span>
-        )}
-      </label>
+    <div className={`min-w-0 max-w-full ${className || ''}`}>
+      {label && (
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+          <span>{label} {required && <span className="text-rose-600 font-bold">*</span>}</span>
+          {!hideBadge && (extraBadge || (
+            <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+              DD/MM/YYYY
+            </span>
+          ))}
+        </label>
+      )}
       <div className="relative flex items-center">
         <input
           type="text"
           value={displayValue}
           onChange={handleTextChange}
           onBlur={handleBlur}
-          placeholder="DD/MM/YYYY"
+          placeholder={placeholder}
           maxLength={10}
           required={required}
-          className={`w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 pr-10 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block ${className || ''}`}
+          className={
+            inputClassName
+              ? inputClassName
+              : compact
+              ? 'w-full min-w-0 max-w-full h-8 box-border bg-slate-50 border border-slate-300 rounded-lg px-2 pr-7 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block'
+              : 'w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 pr-10 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block'
+          }
         />
         <button
           type="button"
           onClick={handleOpenPicker}
-          className="absolute right-2 text-slate-400 hover:text-emerald-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors"
+          className={`absolute text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-200/60 transition-colors ${
+            compact ? 'right-1 p-1' : 'right-2 p-1.5'
+          }`}
           title="Pick date from calendar"
         >
-          <Calendar className="w-4 h-4" />
+          <Calendar className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
         </button>
         <input
           ref={hiddenDateRef}
           type="date"
-          value={value || ''}
+          value={currentIso || ''}
           onChange={(e) => {
             const iso = e.target.value;
             onChange(iso);
