@@ -44,26 +44,26 @@ export function calculateStageFromDates(
   freezingDateStr: string,
   specimenType: 'EMBRYO' | 'OOCYTE' = 'EMBRYO'
 ): string {
-  if (specimenType === 'OOCYTE') return 'MII';
-  if (!retrievalDateStr || !freezingDateStr) return 'Day 5';
+  if (specimenType === 'OOCYTE') return 'Auto Stage: MII';
+  if (!retrievalDateStr || !freezingDateStr) return 'Auto Stage: Day 5';
 
   const { iso: rIso } = normalizeFlexibleDateToDDMMYYYY(retrievalDateStr);
   const { iso: fIso } = normalizeFlexibleDateToDDMMYYYY(freezingDateStr);
 
-  if (!rIso || !fIso) return 'Day 5';
+  if (!rIso || !fIso) return 'Auto Stage: Day 5';
 
   const rDate = new Date(rIso);
   const fDate = new Date(fIso);
 
-  if (isNaN(rDate.getTime()) || isNaN(fDate.getTime())) return 'Day 5';
+  if (isNaN(rDate.getTime()) || isNaN(fDate.getTime())) return 'Auto Stage: Day 5';
 
   const diffMs = fDate.getTime() - rDate.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDays >= 0 && diffDays <= 14) {
-    return `Day ${diffDays}`;
+    return `Auto Stage: Day ${diffDays}`;
   }
-  return 'Day 5';
+  return 'Auto Stage: Day 5';
 }
 
 export const OcrVerification: React.FC = () => {
@@ -710,10 +710,15 @@ export const OcrVerification: React.FC = () => {
 
     try {
       const flattenedStraws = freezingGroups.flatMap((group) =>
-        group.straws.map((st) => ({
-          ...st,
-          freezingDate: group.freezingDate || undefined,
-        }))
+        group.straws.map((st) => {
+          const rawStage = st.stage || calculateStageFromDates(visitDate, group.freezingDate, specimenType);
+          const cleanStage = rawStage.replace(/^Auto Stage:\s*/i, '');
+          return {
+            ...st,
+            stage: cleanStage,
+            freezingDate: group.freezingDate || undefined,
+          };
+        })
       );
       const primaryFreezingDate = freezingGroups.find((g) => g.freezingDate)?.freezingDate || undefined;
 
