@@ -44,26 +44,26 @@ export function calculateStageFromDates(
   freezingDateStr: string,
   specimenType: 'EMBRYO' | 'OOCYTE' = 'EMBRYO'
 ): string {
-  if (specimenType === 'OOCYTE') return 'Auto Stage: MII';
-  if (!retrievalDateStr || !freezingDateStr) return 'Auto Stage: Day 5';
+  if (specimenType === 'OOCYTE') return 'MII';
+  if (!retrievalDateStr || !freezingDateStr) return 'Day 5';
 
   const { iso: rIso } = normalizeFlexibleDateToDDMMYYYY(retrievalDateStr);
   const { iso: fIso } = normalizeFlexibleDateToDDMMYYYY(freezingDateStr);
 
-  if (!rIso || !fIso) return 'Auto Stage: Day 5';
+  if (!rIso || !fIso) return 'Day 5';
 
   const rDate = new Date(rIso);
   const fDate = new Date(fIso);
 
-  if (isNaN(rDate.getTime()) || isNaN(fDate.getTime())) return 'Auto Stage: Day 5';
+  if (isNaN(rDate.getTime()) || isNaN(fDate.getTime())) return 'Day 5';
 
   const diffMs = fDate.getTime() - rDate.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDays >= 0 && diffDays <= 14) {
-    return `Auto Stage: Day ${diffDays}`;
+    return `Day ${diffDays}`;
   }
-  return 'Auto Stage: Day 5';
+  return 'Day 5';
 }
 
 export const OcrVerification: React.FC = () => {
@@ -446,14 +446,17 @@ export const OcrVerification: React.FC = () => {
 
   const handleVisitDateChange = (val: string) => {
     setVisitDate(val);
+    const { formatted } = normalizeFlexibleDateToDDMMYYYY(val);
+    const dateToUse = formatted || val;
+
     setFreezingGroups((prevGroups) =>
       prevGroups.map((group) => {
-        const autoStage = calculateStageFromDates(val, group.freezingDate, specimenType);
+        const computedStage = calculateStageFromDates(dateToUse, group.freezingDate, specimenType);
         return {
           ...group,
           straws: group.straws.map((st) => ({
             ...st,
-            stage: st.isCustomStage ? st.stage : autoStage,
+            stage: computedStage,
           })),
         };
       })
@@ -463,12 +466,16 @@ export const OcrVerification: React.FC = () => {
   const updateGroupFreezingDate = (groupIdx: number, newDate: string) => {
     setFreezingGroups((prevGroups) => {
       const next = [...prevGroups];
-      const autoStage = calculateStageFromDates(visitDate, newDate, specimenType);
       const targetGroup = { ...next[groupIdx] };
       targetGroup.freezingDate = newDate;
+
+      const { formatted } = normalizeFlexibleDateToDDMMYYYY(newDate);
+      const dateToUse = formatted || newDate;
+      const computedStage = calculateStageFromDates(visitDate, dateToUse, specimenType);
+
       targetGroup.straws = targetGroup.straws.map((st) => ({
         ...st,
-        stage: st.isCustomStage ? st.stage : autoStage,
+        stage: computedStage,
       }));
       next[groupIdx] = targetGroup;
       return next;
@@ -503,12 +510,12 @@ export const OcrVerification: React.FC = () => {
     setSpecimenType(type);
     setFreezingGroups((prevGroups) =>
       prevGroups.map((group) => {
-        const autoStage = calculateStageFromDates(visitDate, group.freezingDate, type);
+        const computedStage = calculateStageFromDates(visitDate, group.freezingDate, type);
         return {
           ...group,
           straws: group.straws.map((st) => ({
             ...st,
-            stage: st.isCustomStage ? st.stage : autoStage,
+            stage: computedStage,
           })),
         };
       })
@@ -710,15 +717,11 @@ export const OcrVerification: React.FC = () => {
 
     try {
       const flattenedStraws = freezingGroups.flatMap((group) =>
-        group.straws.map((st) => {
-          const rawStage = st.stage || calculateStageFromDates(visitDate, group.freezingDate, specimenType);
-          const cleanStage = rawStage.replace(/^Auto Stage:\s*/i, '');
-          return {
-            ...st,
-            stage: cleanStage,
-            freezingDate: group.freezingDate || undefined,
-          };
-        })
+        group.straws.map((st) => ({
+          ...st,
+          stage: st.stage || calculateStageFromDates(visitDate, group.freezingDate, specimenType),
+          freezingDate: group.freezingDate || undefined,
+        }))
       );
       const primaryFreezingDate = freezingGroups.find((g) => g.freezingDate)?.freezingDate || undefined;
 
@@ -967,7 +970,7 @@ export const OcrVerification: React.FC = () => {
 
       {/* Side-by-Side Human Verification Screen */}
       {activeRecord ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div>
           {/* Left: Original Scanned Image & Raw Text */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1399,9 +1402,9 @@ export const OcrVerification: React.FC = () => {
                   <button
                     type="button"
                     onClick={addNewFreezingDateGroup}
-                    className="px-1.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all flex items-center shadow-2xs active:scale-95 cursor-pointer self-start sm:self-auto"
+                    className="px-3.5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all flex items-center shadow-2xs active:scale-95 cursor-pointer self-start sm:self-auto"
                   >
-                    <Calendar className="w-3.5 h-3.5" />
+                    <Calendar className="w-4 h-4" />
                     <span>Add Another Freezing Date</span>
                   </button>
                 </div>
