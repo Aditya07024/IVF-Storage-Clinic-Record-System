@@ -724,8 +724,8 @@ export const PatientDirectory: React.FC = () => {
                   const sameNameCount = patients.filter(item => item.fullName.toLowerCase() === p.fullName.toLowerCase()).length;
                   const isDuplicateName = sameNameCount > 1;
 
-                  const eggRetrievalObj = p.aspirationDate || p.batches?.[0]?.aspirationDate || p.freezingDate || p.batches?.[0]?.storageDate;
-                  const eggRetrievalDateStr = formatDateDDMMYYYY(eggRetrievalObj);
+                  const eggRetrievalObj = p.aspirationDate || p.batches?.[0]?.aspirationDate;
+                  const eggRetrievalDateStr = eggRetrievalObj ? formatDateDDMMYYYY(eggRetrievalObj) : 'N/A';
                   const isOpeningDetail = loadingDetailId === p.id;
 
                   return (
@@ -1809,7 +1809,7 @@ export const PatientDirectory: React.FC = () => {
                   <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight truncate">{selectedPatient.fullName}</h2>
                   <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-1.5 sm:gap-x-2.5 mt-1">
                     <span className="text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300 w-fit">
-                      Egg Pick Up: {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate || selectedPatient.freezingDate)}
+                      Egg Pick Up: {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate)}
                     </span>
 
                     {/* Specimen Type Badge */}
@@ -1903,7 +1903,7 @@ export const PatientDirectory: React.FC = () => {
                 <div className="bg-amber-50/80 p-3 rounded-2xl border border-amber-200/80 shadow-2xs space-y-0.5">
                   <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">Egg Pick Up Date</span>
                   <span className="font-mono font-bold text-amber-950 text-sm block">
-                    {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate || selectedPatient.freezingDate)}
+                    {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate)}
                   </span>
                 </div>
 

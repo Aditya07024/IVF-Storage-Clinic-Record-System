@@ -200,7 +200,10 @@ export function getStrawStageSummary(item: any, specimenType?: string, vitrifica
     const parts = stageOrder.map((stg) => `${stageCounts[stg]} ${stg}`);
     return parts.length > 0 ? parts.join(' + ') : `${count} MII`;
   } else {
-    const stg = (item.embryoStage || item.stage || '').toString().trim();
+    const calculated = (item.aspirationDate || item.visitDate || item.batchAspirationDate) && (item.freezingDate || item.batchFreezingDate)
+      ? calculateEmbryoStage(item.aspirationDate || item.visitDate || item.batchAspirationDate, item.freezingDate || item.batchFreezingDate)
+      : '';
+    const stg = (item.embryoStage || item.stage || calculated || 'Day 5').toString().trim();
     return formatDayStage(stg);
   }
 }
@@ -211,15 +214,21 @@ export function getSortedFreezingDates(patient: any): string {
 
   const addDate = (dStr: any) => {
     if (!dStr) return;
-    const d = new Date(dStr);
+    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(typeof dStr === 'string' ? dStr : dStr.toISOString?.() || String(dStr));
+    const d = iso ? new Date(iso) : new Date(dStr);
     if (!isNaN(d.getTime())) {
-      dates.push({ dateObj: d, formatted: formatDateDDMMYYYY(dStr) });
+      dates.push({ dateObj: d, formatted: formatted || formatDateDDMMYYYY(dStr) });
     }
   };
 
   if (patient.batches && Array.isArray(patient.batches) && patient.batches.length > 0) {
     patient.batches.forEach((b: any) => {
       addDate(b.freezingDate || b.storageDate);
+      if (b.straws && Array.isArray(b.straws)) {
+        b.straws.forEach((st: any) => {
+          addDate(st.freezingDate);
+        });
+      }
     });
   }
   if (dates.length === 0 && patient.freezingDate) {
