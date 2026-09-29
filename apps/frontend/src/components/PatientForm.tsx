@@ -251,11 +251,12 @@ export function getSortedFreezingDates(patient: any): string {
 
 export function cleanDuplicateGradeString(rawGradeStr?: string): string {
   if (!rawGradeStr) return 'N/A';
-  const str = rawGradeStr.trim();
-  if (!str || str === 'N/A' || str === 'null') return 'N/A';
+  const cleanStr = rawGradeStr.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,+/g, ',').trim();
+  if (!cleanStr || cleanStr === 'N/A' || cleanStr === 'null') return 'N/A';
 
-  const parts = str.split(',').map((p) => p.trim()).filter(Boolean);
-  if (parts.length <= 1) return str;
+  const parts = cleanStr.split(',').map((p) => p.trim()).filter((p) => p && p !== ',');
+  if (parts.length === 0) return 'N/A';
+  if (parts.length === 1) return parts[0];
 
   if (parts.length % 2 === 0) {
     const half = parts.length / 2;

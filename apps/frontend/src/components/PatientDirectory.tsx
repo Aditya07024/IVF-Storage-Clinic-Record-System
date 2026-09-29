@@ -161,7 +161,12 @@ export const PatientDirectory: React.FC = () => {
     setEditingStraw(straw);
     setEditStrawCustomId(straw.strawId || '');
     setEditStrawColor(straw.color || 'Pink');
-    setEditStrawGrade(straw.grade || '');
+
+    const isOocyte = isOocyteSpecimen(selectedPatient);
+    const defaultGradeVal = isOocyte ? 'MII' : '4AA';
+
+    const cleanGrade = (straw.grade || '').replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,+/g, ',').trim();
+    setEditStrawGrade(cleanGrade || defaultGradeVal);
     const cnt = straw.embryoCount || straw.embryos?.length || 1;
     setEditStrawEmbryoCount(cnt);
     const { frag, comment } = parseStrawFragmentationAndComments(straw);
@@ -175,7 +180,8 @@ export const PatientDirectory: React.FC = () => {
       const sorted = [...straw.embryos].sort((a: any, b: any) => a.embryoNumber - b.embryoNumber);
       for (let i = 0; i < cnt; i++) {
         const emb = sorted[i];
-        grades.push((emb?.grade || straw.grade || '').trim());
+        const g = (emb?.grade || cleanGrade || '').trim();
+        grades.push(g && g !== ',' ? g : defaultGradeVal);
 
         const rawNote = (emb?.notes || emb?.comments || '').trim();
         let f = 'No';
@@ -191,8 +197,10 @@ export const PatientDirectory: React.FC = () => {
         embryoComments.push(c);
       }
     } else {
+      const existingGradeParts = cleanGrade ? cleanGrade.split(',').map(s => s.trim()).filter(Boolean) : [];
       for (let i = 0; i < cnt; i++) {
-        grades.push(straw.grade || '');
+        const g = existingGradeParts[i] || cleanGrade || defaultGradeVal;
+        grades.push(g && g !== ',' ? g : defaultGradeVal);
         frags.push(frag || 'No');
         embryoComments.push(comment || '');
       }
@@ -211,6 +219,9 @@ export const PatientDirectory: React.FC = () => {
     setSavingStrawEdit(true);
     setEditStrawError(null);
 
+    const isOocyte = isOocyteSpecimen(selectedPatient);
+    const defaultGradeVal = isOocyte ? 'MII' : '4AA';
+
     try {
       const preparedEmbryoComments: string[] = [];
       for (let i = 0; i < editStrawEmbryoCount; i++) {
@@ -220,12 +231,19 @@ export const PatientDirectory: React.FC = () => {
         if (frag && frag !== 'No') {
           rawC = `[Fragmentation: ${frag}] ${rawC}`.trim();
         }
-        preparedEmbryoComments.push(rawC);
+        if (rawC && rawC !== ',') {
+          preparedEmbryoComments.push(rawC);
+        }
       }
 
+      const cleanGradesList = editStrawEmbryoGrades
+        .slice(0, editStrawEmbryoCount)
+        .map((g) => (g || '').trim())
+        .map((g) => (g && g !== ',' ? g : defaultGradeVal));
+
       const combinedGrades = editStrawEmbryoCount > 1
-        ? editStrawEmbryoGrades.slice(0, editStrawEmbryoCount).map(g => g.trim()).join(', ')
-        : editStrawGrade.trim();
+        ? cleanGradesList.join(', ')
+        : (editStrawGrade.trim() && editStrawGrade.trim() !== ',' ? editStrawGrade.trim() : cleanGradesList[0] || defaultGradeVal);
 
       const primaryFrag = editStrawEmbryoFrags[0] || editStrawFragmentation || 'No';
 
@@ -235,7 +253,7 @@ export const PatientDirectory: React.FC = () => {
           strawCustomId: editStrawCustomId.trim(),
           color: editStrawColor,
           grade: combinedGrades,
-          embryoGrades: editStrawEmbryoGrades.slice(0, editStrawEmbryoCount).map(g => g.trim()),
+          embryoGrades: cleanGradesList,
           embryoComments: preparedEmbryoComments,
           embryoCount: editStrawEmbryoCount,
           fragmentation: primaryFrag,
@@ -245,9 +263,10 @@ export const PatientDirectory: React.FC = () => {
       });
 
       if (res.success) {
-        await fetchPatients();
+        clearApiCache();
+        await fetchPatients(true);
         if (selectedPatient) {
-          const updated = await apiRequest(`/api/patients/${selectedPatient.id}`);
+          const updated = await apiRequest(`/api/patients/${selectedPatient.id}`, { skipCache: true } as any);
           if (updated.success && updated.patient) {
             setSelectedPatient(updated.patient);
           }
@@ -1052,7 +1071,7 @@ export const PatientDirectory: React.FC = () => {
                           })()}
 
                           {/* Delete Patient Button - Comment out this block to remove from UI anytime */}
-                          {/* <button
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeletePatient(p.id, p.fullName);
@@ -1062,7 +1081,7 @@ export const PatientDirectory: React.FC = () => {
                           >
                             <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
                             <span>Delete</span>
-                          </button> */}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -2361,15 +2380,15 @@ export const PatientDirectory: React.FC = () => {
                                 .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
                                 .map((emb: any) => {
                                   const note = (emb.notes || emb.comments || '').trim();
-                                  return note.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
+                                  return note.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').replace(/^[,\s]+|[,\s]+$/g, '').trim();
                                 })
-                                .filter(Boolean);
+                                .filter((n: string) => n && n !== ',' && n !== 'N/A');
                               if (sortedNotes.length > 0) {
                                 return ` - (${sortedNotes.join(', ')})`;
                               }
                             }
-                            const cleanComment = eComment.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
-                            return cleanComment ? ` - (${cleanComment})` : '';
+                            const cleanComment = eComment.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').replace(/^[,\s]+|[,\s]+$/g, '').trim();
+                            return (cleanComment && cleanComment !== ',' && cleanComment !== 'N/A') ? ` - (${cleanComment})` : '';
                           })();
                           const prevCount = allStraws.slice(0, sIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
                           const startNum = batchEmbryoOffset + prevCount + 1;
@@ -2403,12 +2422,14 @@ export const PatientDirectory: React.FC = () => {
                                 <span className={`font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 ${!isOccupied ? 'text-slate-500 line-through bg-slate-200/60 group-hover/thawed:no-underline group-hover/thawed:text-slate-900 group-hover/thawed:bg-slate-100' : 'text-slate-900'}`}>
                                   {isOocyte ? 'Stage' : 'Grade'}: {cleanDuplicateGradeString((() => {
                                     if (straw.embryos && straw.embryos.length > 0) {
-                                      return straw.embryos
+                                      const validGrades = straw.embryos
                                         .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                                        .map((emb: any) => (emb.grade || gradeStr || (isOocyte ? 'MII' : 'N/A')).trim().toUpperCase())
-                                        .join(', ');
+                                        .map((emb: any) => (emb.grade || (gradeStr !== 'N/A' && gradeStr !== ',' ? gradeStr : '') || (isOocyte ? 'MII' : '4AA')).trim().toUpperCase())
+                                        .filter((g: string) => g && g !== ',');
+                                      if (validGrades.length > 0) return validGrades.join(', ');
                                     }
-                                    return gradeStr || (isOocyte ? (selectedPatient.oocyteStage || 'MII') : 'N/A');
+                                    const fallbackG = (gradeStr && gradeStr !== 'N/A' && gradeStr !== ',') ? gradeStr : (isOocyte ? (selectedPatient.oocyteStage || 'MII') : 'N/A');
+                                    return fallbackG;
                                   })())}{fragStr}{commentStr}
                                 </span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${!isOccupied ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>
