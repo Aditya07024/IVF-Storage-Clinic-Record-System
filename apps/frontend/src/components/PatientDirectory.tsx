@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle } from 'lucide-react';
-import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage } from '../api/client';
+import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
@@ -433,7 +433,8 @@ export const PatientDirectory: React.FC = () => {
     setActiveQuery(queryInput.trim());
   };
 
-  const fetchPatients = async () => {
+  const fetchPatients = async (skipCache: boolean = false) => {
+    if (skipCache) clearApiCache();
     setLoading(true);
     setLoadingProgress(15);
     setError(null);
@@ -447,7 +448,8 @@ export const PatientDirectory: React.FC = () => {
 
     try {
       const res = await apiRequest(
-        `/api/patients?q=${encodeURIComponent(activeQuery)}&freezingDate=${encodeURIComponent(freezingDateFilter)}&sortBy=${sortBy}&sortOrder=${sortOrder}&page=${page}&limit=20`
+        `/api/patients?q=${encodeURIComponent(activeQuery)}&freezingDate=${encodeURIComponent(freezingDateFilter)}&sortBy=${sortBy}&sortOrder=${sortOrder}&page=${page}&limit=20`,
+        skipCache ? ({ skipCache: true } as any) : {}
       );
       clearInterval(progressInterval);
       setLoadingProgress(100);
@@ -468,12 +470,25 @@ export const PatientDirectory: React.FC = () => {
   const handleSelectPatient = async (id: string) => {
     setLoadingDetailId(id);
     try {
-      const res = await apiRequest(`/api/patients/${id}`);
-      if (res.success) {
+      const res = await apiRequest(`/api/patients/${id}`, { skipCache: true } as any);
+      if (res.success && res.patient) {
         setSelectedPatient(res.patient);
+      } else {
+        clearApiCache();
+        setPatients((prev) => prev.filter((p) => p.id !== id));
+        setTotal((prev) => Math.max(0, prev - 1));
+        if (selectedPatient?.id === id) setSelectedPatient(null);
       }
     } catch (err: any) {
-      alert('Failed to load patient details: ' + err.message);
+      const msg = err.message || '';
+      if (msg.includes('not found') || msg.includes('404')) {
+        clearApiCache();
+        setPatients((prev) => prev.filter((p) => p.id !== id));
+        setTotal((prev) => Math.max(0, prev - 1));
+        if (selectedPatient?.id === id) setSelectedPatient(null);
+      } else {
+        alert('Failed to load patient details: ' + msg);
+      }
     } finally {
       setLoadingDetailId(null);
     }
@@ -532,7 +547,7 @@ export const PatientDirectory: React.FC = () => {
         return res;
       },
       onSuccess: () => {
-        fetchPatients();
+        fetchPatients(true);
         if (targetPatientId) handleSelectPatient(targetPatientId);
       },
     });
@@ -546,6 +561,8 @@ export const PatientDirectory: React.FC = () => {
     if (!window.confirm(`Are you sure you want to permanently delete patient "${name}"? This action cannot be undone.`)) {
       return;
     }
+
+    clearApiCache();
 
     // 1. Optimistically remove patient from local state IMMEDIATELY (instant feedback)
     const previousPatients = [...patients];
@@ -568,6 +585,7 @@ export const PatientDirectory: React.FC = () => {
       // 3. Fire delete request asynchronously in background
       const res = await apiRequest(`/api/patients/${id}`, { method: 'DELETE' });
       if (res.success) {
+        clearApiCache();
         setDeletionStatus({
           id,
           name,
@@ -577,7 +595,7 @@ export const PatientDirectory: React.FC = () => {
         setTimeout(() => {
           setDeletionStatus((current) => (current?.id === id && current.status === 'success' ? null : current));
         }, 3500);
-        fetchPatients();
+        fetchPatients(true);
       } else {
         // Revert local UI state on failure
         setPatients(previousPatients);
@@ -1034,7 +1052,7 @@ export const PatientDirectory: React.FC = () => {
                           })()}
 
                           {/* Delete Patient Button - Comment out this block to remove from UI anytime */}
-                          <button
+                          {/* <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeletePatient(p.id, p.fullName);
@@ -1044,7 +1062,7 @@ export const PatientDirectory: React.FC = () => {
                           >
                             <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
                             <span>Delete</span>
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>
