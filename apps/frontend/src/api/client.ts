@@ -33,6 +33,8 @@ interface CacheItem {
 
 // In-Memory Client Cache for ultra-fast instant UI rendering
 const apiCache = new Map<string, CacheItem>();
+const CACHE_TTL_MS = 60000; // 60 seconds default cache TTL
+
 export function clearApiCache() {
   apiCache.clear();
 }
