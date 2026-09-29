@@ -251,8 +251,33 @@ export function formatPhoneNumber(phoneInput?: string | null): string {
 export function calculateEmbryoStage(retrievalDate?: string | Date | null, freezingDate?: string | Date | null): string {
   if (!retrievalDate || !freezingDate) return 'Day 5';
 
-  const rDate = new Date(retrievalDate);
-  const fDate = new Date(freezingDate);
+  let rStr = typeof retrievalDate === 'string' ? retrievalDate : retrievalDate.toISOString();
+  let fStr = typeof freezingDate === 'string' ? freezingDate : freezingDate.toISOString();
+
+  const parseISO = (str: string) => {
+    if (!str) return '';
+    const parts = str.split(/[\/\-\.]/);
+    if (parts.length === 3) {
+      let [p0, p1, p2] = parts.map(p => p.trim());
+      let y = 0, m = 0, d = 0;
+      if (p0.length === 4) {
+        y = parseInt(p0, 10); m = parseInt(p1, 10); d = parseInt(p2, 10);
+      } else {
+        d = parseInt(p0, 10); m = parseInt(p1, 10); y = parseInt(p2, 10);
+        if (p2.length === 2) y = y < 50 ? 2000 + y : 1900 + y;
+      }
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900) {
+        return `${y}-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+      }
+    }
+    return str;
+  };
+
+  const rIso = parseISO(rStr);
+  const fIso = parseISO(fStr);
+
+  const rDate = new Date(rIso);
+  const fDate = new Date(fIso);
 
   if (isNaN(rDate.getTime()) || isNaN(fDate.getTime())) return 'Day 5';
 
@@ -261,7 +286,7 @@ export function calculateEmbryoStage(retrievalDate?: string | Date | null, freez
 
   const diffDays = Math.round((fUtc - rUtc) / (1000 * 60 * 60 * 24));
 
-  if (diffDays <= 0) {
+  if (diffDays < 0) {
     return 'Day 0';
   }
   return `Day ${diffDays}`;

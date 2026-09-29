@@ -1468,7 +1468,6 @@ export const OcrVerification: React.FC = () => {
                               <th className="p-1 w-7 text-center">#</th>
                               <th className="p-1 w-24">Color Tag</th>
                               <th className="p-1 text-center">{specimenType === 'OOCYTE' ? 'Oocytes' : 'Embryos'}</th>
-                              <th className="p-1">Stage</th>
                               <th className="p-1">Grade</th>
                               <th className="p-1">Fragmentation</th>
                               <th className="p-1 text-center">Thaw</th>
@@ -1519,18 +1518,6 @@ export const OcrVerification: React.FC = () => {
                                     <option value={1}>1</option>
                                     <option value={2}>2</option>
                                   </select>
-                                </td>
-                                <td className="p-0.5">
-                                  <input
-                                    type="text"
-                                    value={st.stage || calculateStageFromDates(visitDate, group.freezingDate, specimenType)}
-                                    onChange={(e) => {
-                                      updateStrawInGroup(gIdx, sIdx, 'stage', e.target.value);
-                                      updateStrawInGroup(gIdx, sIdx, 'isCustomStage', true);
-                                    }}
-                                    placeholder={calculateStageFromDates(visitDate, group.freezingDate, specimenType)}
-                                    className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[8px] font-bold text-slate-800"
-                                  />
                                 </td>
                                 <td className="p-0.5">
                                   {(st.embryoCount || 1) > 1 ? (
