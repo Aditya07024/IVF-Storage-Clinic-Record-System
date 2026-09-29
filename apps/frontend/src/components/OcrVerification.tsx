@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl, getImageUrl } from '../api/client';
-import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass } from './PatientForm';
+import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass, formatRawToDDMMYYYYMask, normalizeFlexibleDateToDDMMYYYY } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
@@ -1310,14 +1310,27 @@ export const OcrVerification: React.FC = () => {
                               <input
                                 type="text"
                                 value={st.freezingDate || ''}
-                                onChange={(e) => updateStrawRow(idx, 'freezingDate', e.target.value)}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  const masked = formatRawToDDMMYYYYMask(raw);
+                                  updateStrawRow(idx, 'freezingDate', masked);
+                                }}
+                                onBlur={(e) => {
+                                  const raw = e.target.value;
+                                  if (raw) {
+                                    const { formatted } = normalizeFlexibleDateToDDMMYYYY(raw);
+                                    if (formatted) {
+                                      updateStrawRow(idx, 'freezingDate', formatted);
+                                    }
+                                  }
+                                }}
                                 placeholder={freezingDate ? formatDateDDMMYYYY(freezingDate) : 'DD/MM/YYYY'}
                                 className={`w-full border rounded py-0.5 px-1 font-mono text-[8px] focus:outline-none transition-all ${
                                   st.isCustomDate || (st.freezingDate && st.freezingDate !== freezingDate)
                                     ? 'bg-amber-50 border-amber-400 text-amber-950 font-bold'
                                     : 'bg-slate-50 border-slate-300 text-slate-900'
                                 }`}
-                                title="Freezing Date for this straw (leave blank to use primary Freezing Date)"
+                                title="Freezing Date for this straw (DD/MM/YYYY or DDMMYY)"
                               />
                             </td>
                             <td className="p-0.5 text-center">

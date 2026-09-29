@@ -342,12 +342,24 @@ export function normalizeFlexibleDateToDDMMYYYY(input: string): { formatted: str
     }
   }
 
-  // Also try 8 digits
+  // Also try 8 digits (DDMMYYYY) or 6 digits (DDMMYY)
   const digits = input.replace(/\D/g, '');
   if (digits.length === 8) {
     const day = parseInt(digits.substring(0, 2), 10);
     const month = parseInt(digits.substring(2, 4), 10);
     const year = parseInt(digits.substring(4, 8), 10);
+
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+      const dd = day.toString().padStart(2, '0');
+      const mm = month.toString().padStart(2, '0');
+      const yyyy = year.toString();
+      return { formatted: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
+    }
+  } else if (digits.length === 6) {
+    const day = parseInt(digits.substring(0, 2), 10);
+    const month = parseInt(digits.substring(2, 4), 10);
+    let y2 = parseInt(digits.substring(4, 6), 10);
+    const year = y2 < 50 ? 2000 + y2 : 1900 + y2;
 
     if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
       const dd = day.toString().padStart(2, '0');
