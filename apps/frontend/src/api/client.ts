@@ -185,19 +185,55 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
 
 export function formatDateDDMMYYYY(dateInput: string | Date | null | undefined): string {
   if (!dateInput) return 'N/A';
+  if (dateInput instanceof Date) {
+    if (isNaN(dateInput.getTime())) return 'N/A';
+    const day = String(dateInput.getUTCDate()).padStart(2, '0');
+    const month = String(dateInput.getUTCMonth() + 1).padStart(2, '0');
+    const year = dateInput.getUTCFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
   let str = String(dateInput).trim();
+  if (!str || str === 'N/A' || str === 'null' || str === 'undefined') return 'N/A';
+
   if (str.includes('T')) {
+    const dObj = new Date(str);
+    if (!isNaN(dObj.getTime())) {
+      const day = String(dObj.getUTCDate()).padStart(2, '0');
+      const month = String(dObj.getUTCMonth() + 1).padStart(2, '0');
+      const year = dObj.getUTCFullYear();
+      return `${day}/${month}/${year}`;
+    }
     str = str.split('T')[0];
   }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    const [y, m, d] = str.split('-');
+
+  // 1. Check YYYY-MM-DD format (ISO)
+  const ymdMatch = str.match(/^(\d{4})[\/\.\-](\d{1,2})[\/\.\-](\d{1,2})$/);
+  if (ymdMatch) {
+    const y = ymdMatch[1];
+    const m = ymdMatch[2].padStart(2, '0');
+    const d = ymdMatch[3].padStart(2, '0');
     return `${d}/${m}/${y}`;
   }
-  const date = new Date(dateInput);
+
+  // 2. Check DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY format
+  const dmyMatch = str.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})$/);
+  if (dmyMatch) {
+    const d = dmyMatch[1].padStart(2, '0');
+    const m = dmyMatch[2].padStart(2, '0');
+    let y = dmyMatch[3];
+    if (y.length === 2) {
+      const yNum = parseInt(y, 10);
+      y = String(yNum < 50 ? 2000 + yNum : 1900 + yNum);
+    }
+    return `${d}/${m}/${y}`;
+  }
+
+  const date = new Date(str);
   if (isNaN(date.getTime())) return 'N/A';
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const year = date.getUTCFullYear();
   return `${day}/${month}/${year}`;
 }
 

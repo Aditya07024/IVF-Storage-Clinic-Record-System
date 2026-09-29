@@ -249,6 +249,75 @@ export function getSortedFreezingDates(patient: any): string {
   return uniqueFormatted.length > 0 ? uniqueFormatted.join(', ') : 'N/A';
 }
 
+export function cleanDuplicateGradeString(rawGradeStr?: string): string {
+  if (!rawGradeStr) return 'N/A';
+  const str = rawGradeStr.trim();
+  if (!str || str === 'N/A' || str === 'null') return 'N/A';
+
+  const parts = str.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length <= 1) return str;
+
+  if (parts.length % 2 === 0) {
+    const half = parts.length / 2;
+    const firstHalf = parts.slice(0, half).join(', ');
+    const secondHalf = parts.slice(half).join(', ');
+    if (firstHalf.toUpperCase() === secondHalf.toUpperCase()) {
+      return firstHalf;
+    }
+  }
+
+  return parts.join(', ');
+}
+
+export function groupBatchesByFreezingDate(rawBatches?: any[], patientAspDate?: string): any[] {
+  if (!rawBatches || !Array.isArray(rawBatches) || rawBatches.length === 0) return [];
+
+  const displayBatches: any[] = [];
+
+  rawBatches.forEach((batch: any) => {
+    const allStraws = batch.straws || [];
+    if (allStraws.length === 0) {
+      displayBatches.push(batch);
+      return;
+    }
+
+    const mapByDate = new Map<string, any[]>();
+    const batchDefaultFreezing = formatDateDDMMYYYY(batch.freezingDate || batch.storageDate);
+
+    allStraws.forEach((st: any) => {
+      const stDateFormatted = st.freezingDate ? formatDateDDMMYYYY(st.freezingDate) : batchDefaultFreezing;
+      const key = stDateFormatted || '__default__';
+      if (!mapByDate.has(key)) {
+        mapByDate.set(key, []);
+      }
+      mapByDate.get(key)!.push(st);
+    });
+
+    if (mapByDate.size <= 1) {
+      displayBatches.push(batch);
+    } else {
+      let subIdx = 1;
+      mapByDate.forEach((strawsGroup, dateKey) => {
+        const actualFreezingDate = dateKey === '__default__' ? (batch.freezingDate || batch.storageDate) : dateKey;
+        const aspDate = batch.aspirationDate || patientAspDate;
+        const computedStage = aspDate && actualFreezingDate
+          ? calculateEmbryoStage(aspDate, actualFreezingDate)
+          : batch.embryoStage;
+
+        displayBatches.push({
+          ...batch,
+          id: `${batch.id}-sub-${subIdx++}`,
+          freezingDate: actualFreezingDate,
+          embryoStage: computedStage,
+          straws: strawsGroup,
+        });
+      });
+    }
+  });
+
+  return displayBatches;
+}
+
 export function getBatchSummaryText(strawItems: any[], specimenType?: string, cycleType?: string, vitrificationIndication?: string): string {
   if (!strawItems || strawItems.length === 0) return '';
   const isOocyte = isOocyteSpecimen(null, specimenType, vitrificationIndication);
@@ -327,7 +396,19 @@ export function formatRawToDDMMYYYYMask(rawInput: string): string {
 export function normalizeFlexibleDateToDDMMYYYY(input: string): { formatted: string; iso: string } {
   if (!input) return { formatted: '', iso: '' };
 
-  const parts = input.split(/[\/\-\.]/);
+  let str = String(input).trim();
+  if (str.includes('T')) {
+    const dObj = new Date(str);
+    if (!isNaN(dObj.getTime())) {
+      const dd = String(dObj.getUTCDate()).padStart(2, '0');
+      const mm = String(dObj.getUTCMonth() + 1).padStart(2, '0');
+      const yyyy = String(dObj.getUTCFullYear());
+      return { formatted: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
+    }
+    str = str.split('T')[0];
+  }
+
+  const parts = str.split(/[\/\-\.]/);
   if (parts.length === 3) {
     let [p0, p1, p2] = parts.map(p => p.trim());
     if (p0 && p1 && p2) {
@@ -362,7 +443,7 @@ export function normalizeFlexibleDateToDDMMYYYY(input: string): { formatted: str
   }
 
   // Also try 8 digits (DDMMYYYY) or 6 digits (DDMMYY)
-  const digits = input.replace(/\D/g, '');
+  const digits = str.replace(/\D/g, '');
   if (digits.length === 8) {
     if (digits.startsWith('19') || digits.startsWith('20')) {
       const year = parseInt(digits.substring(0, 4), 10);
@@ -398,6 +479,14 @@ export function normalizeFlexibleDateToDDMMYYYY(input: string): { formatted: str
       const yyyy = year.toString();
       return { formatted: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
     }
+  }
+
+  const dObj = new Date(input);
+  if (!isNaN(dObj.getTime())) {
+    const dd = String(dObj.getDate()).padStart(2, '0');
+    const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+    const yyyy = String(dObj.getFullYear());
+    return { formatted: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
   }
 
   return { formatted: input, iso: '' };

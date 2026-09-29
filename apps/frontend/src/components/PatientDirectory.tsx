@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna } from 'lucide-react';
-import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob } from '../api/client';
+import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle } from 'lucide-react';
+import { apiRequest, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, formatDayStage, DateInputDDMMYYYY } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
@@ -24,7 +24,7 @@ function parseVisoTubeLocation(code?: string) {
   return `Can ${canNum} • Canister ${canisterNum} • ${levelName} • Viso Tube - ${tubeColor}`;
 }
 
-export function formatAgeWithY(ageStr?: string | number | null): string {
+function formatAgeWithY(ageStr?: string | number | null): string {
   if (!ageStr) return '';
   const str = String(ageStr).trim();
   if (!str) return '';
@@ -53,6 +53,12 @@ export const PatientDirectory: React.FC = () => {
   const [showAuditLogs, setShowAuditLogs] = useState(false);
   const [reportMailPatient, setReportMailPatient] = useState<any | null>(null);
   const [cropModalFile, setCropModalFile] = useState<{ patientId: string; file: File; target?: 'patient' | 'partner' } | null>(null);
+  const [deletionStatus, setDeletionStatus] = useState<{
+    id: string;
+    name: string;
+    status: 'deleting' | 'success' | 'error';
+    message?: string;
+  } | null>(null);
 
   useEffect(() => {
     apiRequest('/api/auth/me')
@@ -454,10 +460,8 @@ export const PatientDirectory: React.FC = () => {
       clearInterval(progressInterval);
       setError(err.message || 'Failed to fetch patients.');
     } finally {
-      setTimeout(() => {
-        setLoading(false);
-        setLoadingProgress(0);
-      }, 180);
+      setLoading(false);
+      setLoadingProgress(0);
     }
   };
 
@@ -542,15 +546,59 @@ export const PatientDirectory: React.FC = () => {
     if (!window.confirm(`Are you sure you want to permanently delete patient "${name}"? This action cannot be undone.`)) {
       return;
     }
+
+    // 1. Optimistically remove patient from local state IMMEDIATELY (instant feedback)
+    const previousPatients = [...patients];
+    const previousTotal = total;
+    setPatients((prev) => prev.filter((p) => p.id !== id));
+    setTotal((prev) => Math.max(0, prev - 1));
+    if (selectedPatient?.id === id) {
+      setSelectedPatient(null);
+    }
+
+    // 2. Show background purging process floating status
+    setDeletionStatus({
+      id,
+      name,
+      status: 'deleting',
+      message: `Permanently purging record for "${name}" and all associated audit logs...`,
+    });
+
     try {
+      // 3. Fire delete request asynchronously in background
       const res = await apiRequest(`/api/patients/${id}`, { method: 'DELETE' });
       if (res.success) {
+        setDeletionStatus({
+          id,
+          name,
+          status: 'success',
+          message: `Patient "${name}" and all related data completely erased.`,
+        });
+        setTimeout(() => {
+          setDeletionStatus((current) => (current?.id === id && current.status === 'success' ? null : current));
+        }, 3500);
         fetchPatients();
       } else {
-        alert(res.error || 'Failed to delete patient record.');
+        // Revert local UI state on failure
+        setPatients(previousPatients);
+        setTotal(previousTotal);
+        setDeletionStatus({
+          id,
+          name,
+          status: 'error',
+          message: res.error || 'Failed to delete patient record.',
+        });
       }
     } catch (err: any) {
-      alert('Error deleting patient record: ' + (err as any).message);
+      // Revert local UI state on error
+      setPatients(previousPatients);
+      setTotal(previousTotal);
+      setDeletionStatus({
+        id,
+        name,
+        status: 'error',
+        message: (err as any).message || 'Error deleting patient record.',
+      });
     }
   };
 
@@ -724,8 +772,8 @@ export const PatientDirectory: React.FC = () => {
                   const sameNameCount = patients.filter(item => item.fullName.toLowerCase() === p.fullName.toLowerCase()).length;
                   const isDuplicateName = sameNameCount > 1;
 
-                  const eggRetrievalObj = p.aspirationDate || p.batches?.[0]?.aspirationDate;
-                  const eggRetrievalDateStr = eggRetrievalObj ? formatDateDDMMYYYY(eggRetrievalObj) : 'N/A';
+                  const eggRetrievalObj = p.aspirationDate || p.batches?.[0]?.aspirationDate || p.freezingDate || p.batches?.[0]?.storageDate;
+                  const eggRetrievalDateStr = formatDateDDMMYYYY(eggRetrievalObj);
                   const isOpeningDetail = loadingDetailId === p.id;
 
                   return (
@@ -773,7 +821,7 @@ export const PatientDirectory: React.FC = () => {
                                 Partner: <span className="font-semibold text-slate-800">{p.partnerName}</span> {p.partnerAge ? `(${formatAgeWithY(p.partnerAge)})` : ''}
                               </div>
                             )}
-                            {(p.cycleType === 'DONOR_RECIPIENT' || p.donorName || p.donorRegNo || (p.vitrificationIndication && p.vitrificationIndication.toLowerCase().includes('donor'))) && (
+                            {(p.cycleType === 'DONOR_RECIPIENT' || (p.cycleType !== 'SELF' && p.donorName && p.donorName !== 'N/A' && p.donorName !== '—')) && (
                               <div className="text-xs text-amber-600 font-semibold whitespace-nowrap">
                                 Donor: <span className="font-bold text-amber-700">{p.donorName || 'N/A'}</span> {p.donorAge ? `(${formatAgeWithY(p.donorAge)})` : ''}
                               </div>
@@ -808,11 +856,21 @@ export const PatientDirectory: React.FC = () => {
                           allBatches.forEach((batch: any) => {
                             (batch.straws || []).forEach((s: any) => {
                               const pIsOocyte = isOocyteSpecimen(p);
+                              const aspDate = p.aspirationDate || batch.aspirationDate || p.visitDate;
+                              const frzDate = s.freezingDate || batch.freezingDate || batch.storageDate;
+                              let computedStage = s.stage;
+                              if (!pIsOocyte && aspDate && frzDate) {
+                                computedStage = calculateEmbryoStage(aspDate, frzDate);
+                              }
+                              if (!computedStage) {
+                                computedStage = pIsOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || 'Day 5');
+                              }
+
                               allStraws.push({
                                 ...s,
                                 batchEmbryoStage: batch.embryoStage,
                                 batchOocyteStage: batch.oocyteStage,
-                                stage: s.stage || (pIsOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || 'day5')),
+                                stage: computedStage,
                               });
                             });
                           });
@@ -976,7 +1034,7 @@ export const PatientDirectory: React.FC = () => {
                           })()}
 
                           {/* Delete Patient Button - Comment out this block to remove from UI anytime */}
-                          {/* <button
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeletePatient(p.id, p.fullName);
@@ -986,7 +1044,7 @@ export const PatientDirectory: React.FC = () => {
                           >
                             <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
                             <span>Delete</span>
-                          </button> */}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1093,78 +1151,90 @@ export const PatientDirectory: React.FC = () => {
                 Select Straw(s) to Thaw & Liberate Physical Capacity:
               </div>
 
-              {quickThawPatient.batches?.length === 0 ? (
-                <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 border border-slate-200 text-center">
-                  No cryo storage batches found for this patient.
-                </div>
-              ) : (
-                quickThawPatient.batches?.map((batch: any) => (
-                  <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2 flex-wrap gap-2">
-                      <span className="text-slate-700 font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
-                        Batch Stored: {formatDateDDMMYYYY(batch.storageDate || batch.freezingDate)}
-                      </span>
-                      {batch.embryoStage && (
-                        <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 font-mono font-bold text-[11px]">
-                          Stage: {formatDayStage(batch.embryoStage)}
-                        </span>
-                      )}
+              {(() => {
+                const thawBatches = groupBatchesByFreezingDate(quickThawPatient.batches, quickThawPatient.aspirationDate || quickThawPatient.visitDate);
+                if (thawBatches.length === 0) {
+                  return (
+                    <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 border border-slate-200 text-center">
+                      No cryo storage batches found for this patient.
                     </div>
+                  );
+                }
 
-                    <div className="grid grid-cols-1 gap-2.5">
-                      {([...(batch.straws || [])]
-                        .map((straw: any, sIdx: number) => ({ straw, sIdx }))
-                        .sort((a, b) => {
-                          const aThawed = a.straw.status === 'THAWED' || a.straw.status === 'VACANT';
-                          const bThawed = b.straw.status === 'THAWED' || b.straw.status === 'VACANT';
-                          if (aThawed !== bThawed) return aThawed ? 1 : -1;
-                          return a.sIdx - b.sIdx;
-                        })
-                      ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
-                        const isSelected = selectedStrawIds.includes(straw.id);
-                        const isThawed = straw.status === 'THAWED' || straw.status === 'VACANT';
-                        const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
-                        const isOocyte = isOocyteSpecimen(quickThawPatient);
+                let runningStrawCount = 0;
 
-                        const strawWithBatchStage = {
-                          ...straw,
-                          embryoStage: straw.embryoStage || straw.stage || batch.embryoStage
-                        };
-                        const stageSummary = getStrawStageSummary(strawWithBatchStage, quickThawPatient.specimenType, quickThawPatient.vitrificationIndication);
-                        const eGrade = (straw.grade || '').trim().toUpperCase();
-                        const eFrag = (straw.fragmentation || '').trim();
-                        const eComment = (straw.comments || '').trim();
+                return thawBatches.map((batch: any) => {
+                  const batchStraws = batch.straws || [];
+                  const batchOffset = runningStrawCount;
+                  runningStrawCount += batchStraws.length;
 
-                        const gradeStr = eGrade ? eGrade : 'N/A';
-                        const fragStr = (straw.embryos && straw.embryos.length >= 1) ? '' : ((eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '');
-                        const commentStr = (() => {
-                          if (straw.embryos && straw.embryos.length >= 1) {
-                            const sortedNotes = straw.embryos
-                              .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                              .map((emb: any) => {
-                                const note = (emb.notes || emb.comments || '').trim();
-                                return note.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
-                              })
-                              .filter(Boolean);
-                            if (sortedNotes.length > 0) {
-                              return ` - (${sortedNotes.join(', ')})`;
+                  return (
+                    <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between text-xs border-b border-slate-200 pb-2 flex-wrap gap-2">
+                        <span className="text-slate-700 font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+                          Batch Stored: {formatDateDDMMYYYY(batch.storageDate || batch.freezingDate)}
+                        </span>
+                        {batch.embryoStage && (
+                          <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 font-mono font-bold text-[11px]">
+                            Stage: {formatDayStage(batch.embryoStage)}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {([...batchStraws]
+                          .map((straw: any, sIdx: number) => ({ straw, sIdx }))
+                          .sort((a, b) => {
+                            const aThawed = a.straw.status === 'THAWED' || a.straw.status === 'VACANT';
+                            const bThawed = b.straw.status === 'THAWED' || b.straw.status === 'VACANT';
+                            if (aThawed !== bThawed) return aThawed ? 1 : -1;
+                            return a.sIdx - b.sIdx;
+                          })
+                        ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
+                          const isSelected = selectedStrawIds.includes(straw.id);
+                          const isThawed = straw.status === 'THAWED' || straw.status === 'VACANT';
+                          const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
+                          const isOocyte = isOocyteSpecimen(quickThawPatient);
+
+                          const strawWithBatchStage = {
+                            ...straw,
+                            embryoStage: straw.embryoStage || straw.stage || batch.embryoStage
+                          };
+                          const stageSummary = getStrawStageSummary(strawWithBatchStage, quickThawPatient.specimenType, quickThawPatient.vitrificationIndication);
+                          const eGrade = (straw.grade || '').trim().toUpperCase();
+                          const eFrag = (straw.fragmentation || '').trim();
+                          const eComment = (straw.comments || '').trim();
+
+                          const gradeStr = eGrade ? eGrade : 'N/A';
+                          const fragStr = (straw.embryos && straw.embryos.length >= 1) ? '' : ((eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '');
+                          const commentStr = (() => {
+                            if (straw.embryos && straw.embryos.length >= 1) {
+                              const sortedNotes = straw.embryos
+                                .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
+                                .map((emb: any) => {
+                                  const note = (emb.notes || emb.comments || '').trim();
+                                  return note.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
+                                })
+                                .filter(Boolean);
+                              if (sortedNotes.length > 0) {
+                                return ` - (${sortedNotes.join(', ')})`;
+                              }
                             }
-                          }
-                          const cleanComment = eComment.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
-                          return cleanComment ? ` - (${cleanComment})` : '';
-                        })();
+                            const cleanComment = eComment.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
+                            return cleanComment ? ` - (${cleanComment})` : '';
+                          })();
 
-                        const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
-                        const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
-                        const isDonorEgg = isOocyte && (quickThawPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
-                        const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
-                        const countLabel = isOocyte
-                          ? `${embryoCount} ${eggTypeName}`
-                          : (embryoCount === 1 ? `1 embryo` : `${embryoCount} embryos`);
+                          const globalStrawNum = batchOffset + sIdx + 1;
+                          const displayLabel = `Straw #${globalStrawNum}`;
+                          const isDonorEgg = isOocyte && (quickThawPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
+                          const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
+                          const countLabel = isOocyte
+                            ? `${embryoCount} ${eggTypeName}`
+                            : (embryoCount === 1 ? `1 embryo` : `${embryoCount} embryos`);
 
                         const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
 
-                        const formattedGradeDisplay = (() => {
+                        const formattedGradeDisplay = cleanDuplicateGradeString((() => {
                           if (straw.embryos && straw.embryos.length > 0) {
                             return straw.embryos
                               .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
@@ -1176,7 +1246,7 @@ export const PatientDirectory: React.FC = () => {
                             return Array(embryoCount).fill(eGrade).join(', ');
                           }
                           return gradeStr || (isOocyte ? (quickThawPatient.oocyteStage || 'MII') : 'N/A');
-                        })();
+                        })());
 
                         return (
                           <div
@@ -1234,13 +1304,14 @@ export const PatientDirectory: React.FC = () => {
                                 <span>📍 Location: <strong className="text-slate-900">{parseVisoTubeLocation(locCode)}</strong></span>
                               </div>
                             )}
-                          </div>
-                        );
-                      })}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  );
+                });
+              })()}
 
               {/* Doctor Remarks / Thaw Notes */}
               <div className="space-y-1 pt-2">
@@ -1572,67 +1643,69 @@ export const PatientDirectory: React.FC = () => {
                 </div>
 
                 {/* Egg / Oocyte Donor Profile (D-R Cycle) */}
-                <div className="sm:col-span-2 p-3.5 bg-amber-50/90 rounded-2xl border border-amber-300/80 space-y-3">
-                  <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
-                    <span className="text-xs font-extrabold text-amber-950 flex items-center gap-1.5 uppercase tracking-wider">
-                      <UserCheck className="w-4 h-4 text-amber-600" />
-                      <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
-                    </span>
-                    <span className="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full border border-amber-400/60">
-                      Donor Details
-                    </span>
+                {editCycleType === 'DONOR_RECIPIENT' && (
+                  <div className="sm:col-span-2 p-3.5 bg-amber-50/90 rounded-2xl border border-amber-300/80 space-y-3">
+                    <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                      <span className="text-xs font-extrabold text-amber-950 flex items-center gap-1.5 uppercase tracking-wider">
+                        <UserCheck className="w-4 h-4 text-amber-600" />
+                        <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full border border-amber-400/60">
+                        Donor Details
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                          Donor Reg No.
+                        </label>
+                        <input
+                          type="text"
+                          value={editDonorRegNo}
+                          onChange={(e) => setEditDonorRegNo(e.target.value)}
+                          placeholder="e.g. DON-2026-8901"
+                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                          Donor Name
+                        </label>
+                        <input
+                          type="text"
+                          value={editDonorName}
+                          onChange={(e) => setEditDonorName(capitalizeWords(e.target.value))}
+                          placeholder="e.g. Anjali"
+                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                          Donor Age
+                        </label>
+                        <input
+                          type="text"
+                          value={editDonorAge}
+                          onChange={(e) => setEditDonorAge(e.target.value)}
+                          placeholder="e.g. 32y"
+                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                          Donor Mobile Phone
+                        </label>
+                        <input
+                          type="text"
+                          value={editDonorPhone}
+                          onChange={(e) => setEditDonorPhone(e.target.value)}
+                          placeholder="e.g. +91 98765 43210"
+                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
-                        Donor Reg No.
-                      </label>
-                      <input
-                        type="text"
-                        value={editDonorRegNo}
-                        onChange={(e) => setEditDonorRegNo(e.target.value)}
-                        placeholder="e.g. DON-2026-8901"
-                        className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
-                        Donor Name
-                      </label>
-                      <input
-                        type="text"
-                        value={editDonorName}
-                        onChange={(e) => setEditDonorName(capitalizeWords(e.target.value))}
-                        placeholder="e.g. Anjali"
-                        className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
-                        Donor Age
-                      </label>
-                      <input
-                        type="text"
-                        value={editDonorAge}
-                        onChange={(e) => setEditDonorAge(e.target.value)}
-                        placeholder="e.g. 32y"
-                        className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
-                        Donor Mobile Phone
-                      </label>
-                      <input
-                        type="text"
-                        value={editDonorPhone}
-                        onChange={(e) => setEditDonorPhone(e.target.value)}
-                        placeholder="e.g. +91 98765 43210"
-                        className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  </div>
-                </div>
+                )}
 
                 <div className="sm:col-span-2">
                   <DoctorSelect
@@ -1809,7 +1882,7 @@ export const PatientDirectory: React.FC = () => {
                   <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight truncate">{selectedPatient.fullName}</h2>
                   <div className="text-xs text-slate-600 font-mono font-bold flex flex-wrap items-center gap-1.5 sm:gap-x-2.5 mt-1">
                     <span className="text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300 w-fit">
-                      Egg Pick Up: {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate)}
+                      Egg Pick Up: {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate || selectedPatient.freezingDate)}
                     </span>
 
                     {/* Specimen Type Badge */}
@@ -1818,7 +1891,7 @@ export const PatientDirectory: React.FC = () => {
                     </span>
 
                     {/* Cycle Classification Badge */}
-                    {selectedPatient.cycleType === 'DONOR_RECIPIENT' || selectedPatient.donorName || selectedPatient.donorRegNo ? (
+                    {selectedPatient.cycleType === 'DONOR_RECIPIENT' || (selectedPatient.cycleType !== 'SELF' && selectedPatient.donorName && selectedPatient.donorName !== 'N/A' && selectedPatient.donorName !== '—') ? (
                       <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1">
                         <UserCheck className="w-3 h-3 text-purple-700" />
                         <span>Donor: {selectedPatient.donorName || 'N/A'} {selectedPatient.donorAge ? `(${formatAgeWithY(selectedPatient.donorAge)})` : ''}</span>
@@ -2007,7 +2080,7 @@ export const PatientDirectory: React.FC = () => {
                 </div>
 
                 {/* Egg / Oocyte Donor Card (Shown if D-R Cycle) */}
-                {(selectedPatient.cycleType === 'DONOR_RECIPIENT' || selectedPatient.donorName) && (
+                {(selectedPatient.cycleType === 'DONOR_RECIPIENT' || (selectedPatient.cycleType !== 'SELF' && selectedPatient.donorName && selectedPatient.donorName !== 'N/A' && selectedPatient.donorName !== '—')) && (
                   <div className="md:col-span-2 bg-amber-50/90 p-4 rounded-2xl border border-amber-300/80 shadow-2xs space-y-2.5">
                     <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
                       <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
@@ -2114,12 +2187,12 @@ export const PatientDirectory: React.FC = () => {
                     const imgUrl = getImageUrl(ocr.storageKey);
                     return (
                       <div key={ocr.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                        <div className="flex items-center justify-between text-xs font-semibold">
+                        {/* <div className="flex items-center justify-between text-xs font-semibold">
                           <span className="truncate max-w-[180px] font-mono text-slate-900">{ocr.originalFilename}</span>
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${ocr.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-amber-100 text-amber-900 border border-amber-300'}`}>
                             {ocr.status}
                           </span>
-                        </div>
+                        </div> */}
                         {ocr.mimeType?.startsWith('image/') && (
                           <div
                             className="relative rounded-xl overflow-hidden border border-slate-300 max-h-36 bg-slate-900 flex items-center justify-center group cursor-pointer"
@@ -2167,7 +2240,8 @@ export const PatientDirectory: React.FC = () => {
                   <span>Active Cryo Storage Specimen Batches</span>
                 </span>
                 {(() => {
-                  const activeCount = selectedPatient.batches?.filter((b: any) =>
+                  const displayBatches = groupBatchesByFreezingDate(selectedPatient.batches, selectedPatient.aspirationDate || selectedPatient.visitDate);
+                  const activeCount = displayBatches.filter((b: any) =>
                     b.straws?.some((s: any) => s.status === 'OCCUPIED')
                   ).length || 0;
                   return (
@@ -2179,7 +2253,7 @@ export const PatientDirectory: React.FC = () => {
               </h3>
 
               {(() => {
-                const allBatches = selectedPatient.batches || [];
+                const allBatches = groupBatchesByFreezingDate(selectedPatient.batches, selectedPatient.aspirationDate || selectedPatient.visitDate);
 
                 if (allBatches.length === 0) {
                   return (
@@ -2189,8 +2263,17 @@ export const PatientDirectory: React.FC = () => {
                   );
                 }
 
+                let runningStrawCount = 0;
+                let runningEmbryoCount = 0;
+
                 return allBatches.map((batch: any) => {
                   const allStraws = batch.straws || [];
+                  const batchStrawOffset = runningStrawCount;
+                  const batchEmbryoOffset = runningEmbryoCount;
+
+                  runningStrawCount += allStraws.length;
+                  runningEmbryoCount += allStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
+
                   const activeStraws = allStraws.filter((s: any) => s.status === 'OCCUPIED');
                   const isAllThawed = allStraws.length > 0 && activeStraws.length === 0;
 
@@ -2207,7 +2290,7 @@ export const PatientDirectory: React.FC = () => {
                             Frozen: {formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}
                           </span>
                           {batch.embryoStage && (
-                            <span className="bg-blue-100 text-blue-900 px-2 py-0.5 rounded border border-blue-300 font-bold">
+                            <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 font-bold">
                               Stage: {formatDayStage(batch.embryoStage)}
                             </span>
                           )}
@@ -2238,8 +2321,8 @@ export const PatientDirectory: React.FC = () => {
                           })
                         ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
-                          const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
-                          const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
+                          const globalStrawNum = batchStrawOffset + sIdx + 1;
+                          const displayLabel = `#${globalStrawNum}`;
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
                           const isOocyte = isOocyteSpecimen(selectedPatient);
 
@@ -2271,8 +2354,8 @@ export const PatientDirectory: React.FC = () => {
                             return cleanComment ? ` - (${cleanComment})` : '';
                           })();
                           const prevCount = allStraws.slice(0, sIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
-                          const startNum = prevCount + 1;
-                          const endNum = prevCount + embryoCount;
+                          const startNum = batchEmbryoOffset + prevCount + 1;
+                          const endNum = batchEmbryoOffset + prevCount + embryoCount;
                           const numRangeStr = embryoCount === 1 ? `#${startNum}` : `#${startNum}–#${endNum}`;
                           const isDonorEgg = isOocyte && (selectedPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
                           const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
@@ -2300,7 +2383,7 @@ export const PatientDirectory: React.FC = () => {
                                   ({embryoCount} {isOocyte ? (embryoCount === 1 ? 'egg' : 'eggs') : (embryoCount === 1 ? 'embryo' : 'embryos')})
                                 </span>
                                 <span className={`font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 ${!isOccupied ? 'text-slate-500 line-through bg-slate-200/60 group-hover/thawed:no-underline group-hover/thawed:text-slate-900 group-hover/thawed:bg-slate-100' : 'text-slate-900'}`}>
-                                  {isOocyte ? 'Stage' : 'Grade'}: {(() => {
+                                  {isOocyte ? 'Stage' : 'Grade'}: {cleanDuplicateGradeString((() => {
                                     if (straw.embryos && straw.embryos.length > 0) {
                                       return straw.embryos
                                         .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
@@ -2308,7 +2391,7 @@ export const PatientDirectory: React.FC = () => {
                                         .join(', ');
                                     }
                                     return gradeStr || (isOocyte ? (selectedPatient.oocyteStage || 'MII') : 'N/A');
-                                  })()}{fragStr}{commentStr}
+                                  })())}{fragStr}{commentStr}
                                 </span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${!isOccupied ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>
                                   {straw.color || 'Pink'}
@@ -2901,6 +2984,48 @@ export const PatientDirectory: React.FC = () => {
                 className="max-h-[75vh] w-auto object-contain rounded-2xl border border-slate-800 shadow-2xl"
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Background Deletion Status Popup */}
+
+      {deletionStatus && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto">
+          <div
+            className={`p-4 rounded-2xl shadow-2xl border flex items-center gap-3.5 backdrop-blur-md transition-all ${
+              deletionStatus.status === 'deleting'
+                ? 'bg-slate-900/95 text-amber-300 border-amber-500/40 shadow-amber-950/40 ring-1 ring-amber-500/20'
+                : deletionStatus.status === 'success'
+                ? 'bg-slate-900/95 text-emerald-300 border-emerald-500/40 shadow-emerald-950/40 ring-1 ring-emerald-500/20'
+                : 'bg-slate-900/95 text-rose-300 border-rose-500/40 shadow-rose-950/40 ring-1 ring-rose-500/20'
+            }`}
+          >
+            {deletionStatus.status === 'deleting' && (
+              <Loader2 className="w-5 h-5 animate-spin text-amber-400 shrink-0" />
+            )}
+            {deletionStatus.status === 'success' && (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            )}
+            {deletionStatus.status === 'error' && (
+              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                {deletionStatus.status === 'deleting'
+                  ? 'Purging Patient Data (Background)'
+                  : deletionStatus.status === 'success'
+                  ? 'Purge Complete'
+                  : 'Purge Failed'}
+              </h4>
+              <p className="text-xs font-semibold text-slate-100 mt-0.5 truncate">{deletionStatus.message}</p>
+            </div>
+            <button
+              onClick={() => setDeletionStatus(null)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}

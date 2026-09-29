@@ -28,7 +28,7 @@ export function parseFlexibleDate(dateVal?: string | Date | null): Date | null {
     const year = parseInt(isoMatch[1], 10);
     const month = parseInt(isoMatch[2], 10) - 1;
     const day = parseInt(isoMatch[3], 10);
-    const parsed = new Date(year, month, day);
+    const parsed = new Date(Date.UTC(year, month, day, 12, 0, 0));
     return isNaN(parsed.getTime()) ? null : parsed;
   }
 
@@ -41,7 +41,7 @@ export function parseFlexibleDate(dateVal?: string | Date | null): Date | null {
     if (year < 100) {
       year = year >= 50 ? 1900 + year : 2000 + year; // e.g. 19 -> 2019, 95 -> 1995
     }
-    const parsed = new Date(year, month, day);
+    const parsed = new Date(Date.UTC(year, month, day, 12, 0, 0));
     return isNaN(parsed.getTime()) ? null : parsed;
   }
 
@@ -1058,8 +1058,6 @@ ${rawText}`;
       }
 
       if (targetVisoTube) {
-        const batchCode = `BAT-${Date.now().toString().slice(-6)}`;
-        const parsedFreezing = parseFlexibleDate(input.freezingDate) || new Date();
         const parsedAsp = parseFlexibleDate(input.aspirationDate || input.visitDate);
 
         const canisterLabel = selectedCanisterNum !== null ? `C${selectedCanisterNum.toString().padStart(2, '0')}` : 'C--';
@@ -1071,88 +1069,107 @@ ${rawText}`;
         };
         const tubeColorName = input.visoTubeColor || VISO_COLOR_NAMES[targetVisoTube.tubeNumber] || 'Pink';
 
-        const batch = await tx.storageBatch.create({
-          data: {
-            batchId: batchCode,
-            patientId: patient.id,
-            storageDate: new Date(),
-            freezingDate: parsedFreezing,
-            aspirationDate: parsedAsp,
-            totalStraws: strawsList.length,
-            totalEmbryos: strawsList.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
-            visoTubeId: targetVisoTube.id,
-            specimenType: input.specimenType || 'EMBRYO',
-            cycleType: input.cycleType || ((input.donorName || input.donorRegNo) ? 'DONOR_RECIPIENT' : 'SELF'),
-            donorName: input.donorName || undefined,
-            donorAge: input.donorAge || undefined,
-            donorPhone: input.donorPhone || undefined,
-            vitrificationIndication: input.vitrificationIndication || undefined,
-            oocyteStage: input.oocyteStage || undefined,
-            notes: `Allocated from OCR Verification (${selectedTankCode}, ${canisterLabel}, ${levelLabel}, Viso Tube ${tubeCodeLabel}, Color: ${tubeColorName})`,
-          },
-        });
+        // Group straws by freezingDate
+        const groupedStrawsMap = new Map<string, any[]>();
+        const defaultFreezingStr = input.freezingDate || '';
 
-        const existingPatientStrawCount = await tx.straw.count({
-          where: { batch: { patientId: patient.id } },
-        });
-
-        for (let i = 0; i < strawsList.length; i++) {
-          const st = strawsList[i];
-          const seqNum = existingPatientStrawCount + i + 1;
-          const defaultLabel = `#${seqNum}`;
-          const rawCode = st.strawId && !st.strawId.startsWith('STR-') ? st.strawId.trim() : defaultLabel;
-          
-          const uniqueStrawCode = rawCode;
-          const eCount = st.embryoCount || 1;
-
-          let combinedGrade = (st.grade || '4AA').trim();
-          if (Array.isArray(st.embryoGrades) && st.embryoGrades.length > 0) {
-            combinedGrade = st.embryoGrades.slice(0, eCount).map((g: string, idx: number) => {
-              const f = st.embryoFrags?.[idx] || st.fragmentation || 'No';
-              const fTxt = (f === '+' || f === '++') ? ` (${f})` : '';
-              return `${(g || '4AA').trim()}${fTxt}`;
-            }).join(', ');
-          } else {
-            const fragText = (st.fragmentation === '+' || st.fragmentation === '++') ? ` (Fragmentation: ${st.fragmentation})` : '';
-            if (!combinedGrade.includes('Fragmentation:')) {
-              combinedGrade = `${combinedGrade}${fragText}`;
-            }
+        strawsList.forEach((st: any) => {
+          const stFrzStr = st.freezingDate || defaultFreezingStr;
+          const key = stFrzStr ? String(stFrzStr).trim() : '__default__';
+          if (!groupedStrawsMap.has(key)) {
+            groupedStrawsMap.set(key, []);
           }
+          groupedStrawsMap.get(key)!.push(st);
+        });
 
-          const validStrawColors = ['Pink', 'Green', 'Blue', 'Yellow', 'White'];
-          const strawColor = (st.colorTag && validStrawColors.includes(st.colorTag))
-            ? st.colorTag
-            : ((input.visoTubeColor && validStrawColors.includes(input.visoTubeColor)) ? input.visoTubeColor : 'Pink');
+        let totalStrawsProcessed = 0;
 
-          const createdStraw = await tx.straw.create({
+        for (const [frzKey, groupStraws] of groupedStrawsMap.entries()) {
+          const batchCode = `BAT-${Date.now().toString().slice(-6)}-${totalStrawsProcessed + 1}`;
+          const actualFrzStr = frzKey === '__default__' ? input.freezingDate : frzKey;
+          const parsedFreezing = parseFlexibleDate(actualFrzStr) || parseFlexibleDate(input.freezingDate) || new Date();
+
+          const batch = await tx.storageBatch.create({
             data: {
-              strawId: uniqueStrawCode,
-              batchId: batch.id,
+              batchId: batchCode,
+              patientId: patient.id,
+              storageDate: new Date(),
+              freezingDate: parsedFreezing,
+              aspirationDate: parsedAsp,
+              totalStraws: groupStraws.length,
+              totalEmbryos: groupStraws.reduce((acc: number, s: any) => acc + (s.embryoCount || 1), 0),
               visoTubeId: targetVisoTube.id,
-              color: strawColor,
-              embryoCount: eCount,
-              grade: combinedGrade,
-              status: st.thawDate ? 'THAWED' : 'OCCUPIED',
-              freezingDate: parseFlexibleDate(st.freezingDate) || parsedFreezing,
-              thawDate: parseFlexibleDate(st.thawDate) || parseFlexibleDate(input.thawDate),
+              specimenType: input.specimenType || 'EMBRYO',
+              cycleType: input.cycleType || ((input.donorName || input.donorRegNo) ? 'DONOR_RECIPIENT' : 'SELF'),
+              donorName: input.donorName || undefined,
+              donorAge: input.donorAge || undefined,
+              donorPhone: input.donorPhone || undefined,
+              vitrificationIndication: input.vitrificationIndication || undefined,
+              oocyteStage: input.oocyteStage || undefined,
+              notes: `Allocated from OCR Verification (${selectedTankCode}, ${canisterLabel}, ${levelLabel}, Viso Tube ${tubeCodeLabel}, Color: ${tubeColorName})`,
             },
           });
 
-          for (let e = 1; e <= eCount; e++) {
-            const eg = (st.embryoGrades?.[e - 1] || st.grade || '4AA').trim();
-            const ef = st.embryoFrags?.[e - 1] || st.fragmentation || 'No';
-            const efTxt = (ef === '+' || ef === '++') ? ` (Fragmentation: ${ef})` : '';
-            const eFinalGrade = eg.includes('Fragmentation:') ? eg : `${eg}${efTxt}`;
+          for (let i = 0; i < groupStraws.length; i++) {
+            const st = groupStraws[i];
+            const seqNum = totalStrawsProcessed + i + 1;
+            const defaultLabel = `#${seqNum}`;
+            const rawCode = st.strawId && !st.strawId.startsWith('STR-') ? st.strawId.trim() : defaultLabel;
+            
+            const uniqueStrawCode = rawCode;
+            const eCount = st.embryoCount || 1;
 
-            await tx.embryo.create({
+            let combinedGrade = (st.grade || '4AA').trim();
+            if (Array.isArray(st.embryoGrades) && st.embryoGrades.length > 0) {
+              combinedGrade = st.embryoGrades.slice(0, eCount).map((g: string, idx: number) => {
+                const f = st.embryoFrags?.[idx] || st.fragmentation || 'No';
+                const fTxt = (f === '+' || f === '++') ? ` (${f})` : '';
+                return `${(g || '4AA').trim()}${fTxt}`;
+              }).join(', ');
+            } else {
+              const fragText = (st.fragmentation === '+' || st.fragmentation === '++') ? ` (Fragmentation: ${st.fragmentation})` : '';
+              if (!combinedGrade.includes('Fragmentation:')) {
+                combinedGrade = `${combinedGrade}${fragText}`;
+              }
+            }
+
+            const validStrawColors = ['Pink', 'Green', 'Blue', 'Yellow', 'White'];
+            const strawColor = (st.colorTag && validStrawColors.includes(st.colorTag))
+              ? st.colorTag
+              : ((input.visoTubeColor && validStrawColors.includes(input.visoTubeColor)) ? input.visoTubeColor : 'Pink');
+
+            const createdStraw = await tx.straw.create({
               data: {
-                strawId: createdStraw.id,
-                embryoNumber: e,
-                grade: eFinalGrade,
-                status: st.thawDate ? 'THAWED' : 'FREEZED',
+                strawId: uniqueStrawCode,
+                batchId: batch.id,
+                visoTubeId: targetVisoTube.id,
+                color: strawColor,
+                embryoCount: eCount,
+                grade: combinedGrade,
+                status: st.thawDate ? 'THAWED' : 'OCCUPIED',
+                freezingDate: parseFlexibleDate(st.freezingDate) || parsedFreezing,
+                thawDate: parseFlexibleDate(st.thawDate) || parseFlexibleDate(input.thawDate),
               },
             });
+
+            for (let e = 1; e <= eCount; e++) {
+              const eg = (st.embryoGrades?.[e - 1] || st.grade || '4AA').trim();
+              const ef = st.embryoFrags?.[e - 1] || st.fragmentation || 'No';
+              const efTxt = (ef === '+' || ef === '++') ? ` (Fragmentation: ${ef})` : '';
+              const eFinalGrade = eg.includes('Fragmentation:') ? eg : `${eg}${efTxt}`;
+
+              await tx.embryo.create({
+                data: {
+                  strawId: createdStraw.id,
+                  embryoNumber: e,
+                  grade: eFinalGrade,
+                  status: st.thawDate ? 'THAWED' : 'FREEZED',
+                },
+              });
+            }
           }
+
+          totalStrawsProcessed += groupStraws.length;
         }
       }
 

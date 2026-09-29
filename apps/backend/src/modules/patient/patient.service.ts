@@ -1,4 +1,38 @@
-import { prisma } from '../../common/prisma.js';
+import fs from 'fs';
+import path from 'path';
+import { prisma, withDbRetry } from '../../common/prisma.js';
+import { CONFIG } from '../../common/config.js';
+
+function parseFlexibleDate(d?: Date | string | null): Date | null {
+  if (!d) return null;
+  if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
+  const str = String(d).trim();
+  if (!str || str === 'N/A' || str === 'null' || str === 'undefined') return null;
+
+  const isoMatch = str.match(/^(\d{4})[\/\.\-](\d{1,2})[\/\.\-](\d{1,2})$/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10) - 1;
+    const day = parseInt(isoMatch[3], 10);
+    const parsed = new Date(Date.UTC(year, month, day, 12, 0, 0));
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const ddmmyyyyMatch = str.match(/^(\d{1,2})[\/\.\-\s](\d{1,2})[\/\.\-\s](\d{2,4})$/);
+  if (ddmmyyyyMatch) {
+    const day = parseInt(ddmmyyyyMatch[1], 10);
+    const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+    let year = parseInt(ddmmyyyyMatch[3], 10);
+    if (year < 100) {
+      year = year >= 50 ? 1900 + year : 2000 + year;
+    }
+    const parsed = new Date(Date.UTC(year, month, day, 12, 0, 0));
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(str);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
 
 async function getValidUserId(staffUserId?: string): Promise<string | null> {
   try {
@@ -122,9 +156,9 @@ export class PatientService {
             patientAge: input.patientAge ? input.patientAge.trim() : null,
             partnerAge: input.partnerAge ? input.partnerAge.trim() : null,
             doctorName: input.doctorName ? input.doctorName.trim() : null,
-            aspirationDate: input.aspirationDate ? new Date(input.aspirationDate) : null,
-            freezingDate: input.freezingDate ? new Date(input.freezingDate) : null,
-            thawDate: input.thawDate ? new Date(input.thawDate) : null,
+            aspirationDate: input.aspirationDate ? parseFlexibleDate(input.aspirationDate) : null,
+            freezingDate: input.freezingDate ? parseFlexibleDate(input.freezingDate) : null,
+            thawDate: input.thawDate ? parseFlexibleDate(input.thawDate) : null,
             comments: input.comments ? input.comments.trim() : null,
             photoUrl: input.photoUrl ? input.photoUrl.trim() : null,
             partnerPhotoUrl: input.partnerPhotoUrl ? input.partnerPhotoUrl.trim() : null,
@@ -254,42 +288,166 @@ export class PatientService {
   }
 
   async deletePatient(id: string, staffUserId: string, staffName: string) {
-    const patient = await prisma.patient.findUnique({
-      where: { id },
-      include: { batches: { include: { straws: true } } },
-    });
-    if (!patient) throw new Error('Patient record not found.');
-
-    await prisma.thawRecord.deleteMany({ where: { patientId: id } });
-    for (const batch of patient.batches) {
-      await prisma.straw.deleteMany({ where: { batchId: batch.id } });
-    }
-    await prisma.storageBatch.deleteMany({ where: { patientId: id } });
-    await prisma.patientNote.deleteMany({ where: { patientId: id } });
-    await prisma.ocrRecord.deleteMany({ where: { patientId: id } });
-    await prisma.emailLog.deleteMany({ where: { patientId: id } });
-
-    // Safe Audit Log
-    try {
-      const validUserId = await getValidUserId(staffUserId);
-      if (validUserId) {
-        await prisma.auditLog.create({
-          data: {
-            userId: validUserId,
-            userName: staffName,
-            action: 'PATIENT_DELETED',
-            entityName: 'Patient',
-            entityId: patient.patientId,
-            oldData: JSON.stringify({ fullName: patient.fullName, patientId: patient.patientId }),
+    return withDbRetry(async () => {
+      const patient = await prisma.patient.findUnique({
+        where: { id },
+        include: {
+          batches: {
+            include: {
+              straws: {
+                include: { embryos: true },
+              },
+            },
           },
+          notes: true,
+          thawRecords: true,
+          ocrRecords: true,
+          emailLogs: true,
+        },
+      });
+      if (!patient) throw new Error('Patient record not found.');
+
+      const patientUuid = patient.id;
+      const patientRegId = patient.patientId;
+      const fullName = patient.fullName;
+      const partnerName = patient.partnerName;
+      const email = patient.email;
+      const partnerEmail = patient.partnerEmail;
+
+      const batchIds = patient.batches.map((b) => b.id);
+      const strawIds = patient.batches.flatMap((b) => b.straws.map((s) => s.id));
+
+      // 1. Delete Embryos
+      if (strawIds.length > 0) {
+        await prisma.embryo.deleteMany({
+          where: { strawId: { in: strawIds } },
         });
       }
-    } catch (auditErr) {
-      console.warn('AuditLog delete skipped:', auditErr);
-    }
 
-    await prisma.patient.delete({ where: { id } });
-    return { success: true, message: `Patient ${patient.fullName} (${patient.patientId}) deleted successfully.` };
+      // 2. Delete Thaw Records
+      const thawConditions: any[] = [{ patientId: patientUuid }];
+      if (strawIds.length > 0) thawConditions.push({ strawId: { in: strawIds } });
+      if (batchIds.length > 0) thawConditions.push({ batchId: { in: batchIds } });
+      await prisma.thawRecord.deleteMany({
+        where: { OR: thawConditions },
+      });
+
+      // 3. Delete Storage Movements
+      const movementConditions: any[] = [{ patientId: patientUuid }];
+      if (strawIds.length > 0) movementConditions.push({ strawId: { in: strawIds } });
+      await prisma.storageMovement.deleteMany({
+        where: { OR: movementConditions },
+      });
+
+      // 4. Delete Straws
+      if (batchIds.length > 0) {
+        await prisma.straw.deleteMany({
+          where: { batchId: { in: batchIds } },
+        });
+      }
+
+      // 5. Delete Batches
+      await prisma.storageBatch.deleteMany({
+        where: { patientId: patientUuid },
+      });
+
+      // 6. Delete Patient Notes
+      await prisma.patientNote.deleteMany({
+        where: { patientId: patientUuid },
+      });
+
+      // 7. Delete OCR Records
+      const ocrConditions: any[] = [
+        { patientId: patientUuid },
+        { extractedJson: { contains: patientUuid } },
+        { extractedJson: { contains: patientRegId } },
+      ];
+      if (fullName) ocrConditions.push({ extractedJson: { contains: fullName } });
+      await prisma.ocrRecord.deleteMany({
+        where: { OR: ocrConditions },
+      });
+
+      // 8. Delete Email Logs
+      const emailConditions: any[] = [{ patientId: patientUuid }];
+      if (email) emailConditions.push({ recipientEmail: email });
+      if (partnerEmail) emailConditions.push({ recipientEmail: partnerEmail });
+      await prisma.emailLog.deleteMany({
+        where: { OR: emailConditions },
+      });
+
+      // 9. Wipe ALL related Audit Logs (past creation, updates, thaws, document prints)
+      const auditConditions: any[] = [
+        { entityId: patientUuid },
+        { entityId: patientRegId },
+        { oldData: { contains: patientUuid } },
+        { newData: { contains: patientUuid } },
+        { oldData: { contains: patientRegId } },
+        { newData: { contains: patientRegId } },
+      ];
+      if (fullName) {
+        auditConditions.push({ oldData: { contains: fullName } });
+        auditConditions.push({ newData: { contains: fullName } });
+      }
+      if (partnerName) {
+        auditConditions.push({ oldData: { contains: partnerName } });
+        auditConditions.push({ newData: { contains: partnerName } });
+      }
+
+      for (const bId of batchIds) {
+        auditConditions.push({ entityId: bId });
+        auditConditions.push({ oldData: { contains: bId } });
+        auditConditions.push({ newData: { contains: bId } });
+      }
+      for (const sId of strawIds) {
+        auditConditions.push({ entityId: sId });
+        auditConditions.push({ oldData: { contains: sId } });
+        auditConditions.push({ newData: { contains: sId } });
+      }
+
+      await prisma.auditLog.deleteMany({
+        where: { OR: auditConditions },
+      });
+
+      // 10. Clean up uploaded disk image files
+      const filesToDelete = new Set<string>();
+      const collectFile = (urlOrKey?: string | null) => {
+        if (!urlOrKey || urlOrKey.startsWith('data:')) return;
+        const basename = path.basename(urlOrKey);
+        const candidatePaths = [
+          path.join(path.resolve(CONFIG.STORAGE_LOCAL_DIR || './uploads'), basename),
+          path.join(process.cwd(), 'uploads', basename),
+        ];
+        for (const p of candidatePaths) {
+          if (fs.existsSync(p)) {
+            filesToDelete.add(p);
+          }
+        }
+      };
+
+      collectFile(patient.photoUrl);
+      collectFile(patient.partnerPhotoUrl);
+      for (const ocr of patient.ocrRecords) {
+        collectFile(ocr.storageKey);
+      }
+
+      for (const filePath of filesToDelete) {
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (err) {
+          console.warn('Failed to delete file on patient delete:', filePath, err);
+        }
+      }
+
+      // 11. Delete the Patient record itself
+      await prisma.patient.delete({ where: { id: patientUuid } });
+
+      return {
+        success: true,
+        message: `Patient ${fullName} (${patientRegId}) and all associated records have been completely erased.`,
+      };
+    });
   }
 
   async getPatientById(id: string) {
@@ -448,8 +606,8 @@ export class PatientService {
                   status: true,
                   embryoCount: true,
                   grade: true,
+                  color: true,
                   isPgt: true,
-                  embryos: true,
                 },
               },
             },

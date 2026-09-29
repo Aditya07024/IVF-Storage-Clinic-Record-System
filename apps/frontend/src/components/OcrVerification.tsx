@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna } from 'lucide-react';
+import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna, ShieldCheck, UserCheck, MapPin, Database, Printer, Edit3, Edit, Loader2 } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl, getImageUrl } from '../api/client';
 import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass, formatRawToDDMMYYYYMask, normalizeFlexibleDateToDDMMYYYY } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 
-export const VISO_COLOR_TO_TUBE_CODE: Record<string, string> = {
+const VISO_COLOR_TO_TUBE_CODE: Record<string, string> = {
   Pink: 'V01',
   Grey: 'V02',
   Red: 'V03',
@@ -39,7 +39,7 @@ export interface FreezingGroup {
   straws: FreezingGroupStraw[];
 }
 
-export function calculateStageFromDates(
+function calculateStageFromDates(
   retrievalDateStr: string,
   freezingDateStr: string,
   specimenType: 'EMBRYO' | 'OOCYTE' = 'EMBRYO'
@@ -132,6 +132,7 @@ export const OcrVerification: React.FC = () => {
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [savedSummaryModalData, setSavedSummaryModalData] = useState<any | null>(null);
 
   // Adobe Cam Edge Detection & Viewfinder States
   const [adobeCamEnabled, setAdobeCamEnabled] = useState(true);
@@ -707,13 +708,67 @@ export const OcrVerification: React.FC = () => {
     }
   };
 
-  const handleVerify = async (e: React.FormEvent) => {
+  // Step 1: Open Summary Review Popup Modal INSTANTLY (Zero API / network calls made here!)
+  const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeRecord) return;
+    if (!fullName || !fullName.trim()) {
+      setError('Patient Full Name is required before reviewing summary.');
+      return;
+    }
+
+    setError(null);
+    setSuccessMsg(null);
+
+    const summaryObj = {
+      patientId: patientId.trim() || 'AUTO-ASSIGN (Generated on Save)',
+      fullName: fullName.trim(),
+      partnerName: partnerName.trim() || undefined,
+      phone: phone.trim() || undefined,
+      partnerPhone: partnerPhone.trim() || undefined,
+      email: email.trim() || undefined,
+      partnerEmail: partnerEmail.trim() || undefined,
+      patientAge: patientAge.trim() || undefined,
+      partnerAge: partnerAge.trim() || undefined,
+      doctorName: doctorName.trim() || undefined,
+      specimenType,
+      cycleType,
+      donorName: donorName.trim() || undefined,
+      donorRegNo: donorRegNo.trim() || undefined,
+      donorAge: donorAge.trim() || undefined,
+      donorPhone: donorPhone.trim() || undefined,
+      vitrificationIndication: vitrificationIndication.trim() || undefined,
+      oocyteStage: oocyteStage.trim() || undefined,
+      visitDate,
+      thawDate: thawDate || undefined,
+      comments: comments.trim() || undefined,
+      storageLocation: {
+        tankName,
+        canisterName,
+        level,
+        visoTubeId,
+        visoTubeColor,
+      },
+      freezingGroups: freezingGroups.map((group) => ({
+        ...group,
+        straws: group.straws.map((st) => ({
+          ...st,
+          calculatedStage: calculateStageFromDates(visitDate, group.freezingDate, specimenType),
+        })),
+      })),
+      totalStraws: freezingGroups.reduce((acc, g) => acc + g.straws.length, 0),
+      totalEmbryos: freezingGroups.reduce((acc, g) => acc + g.straws.reduce((sAcc, st) => sAcc + (st.embryoCount || 1), 0), 0),
+    };
+
+    setSavedSummaryModalData(summaryObj);
+  };
+
+  // Step 2: Final Database Commit when clicking "Done & Finish" inside Popup Modal
+  const executeFinalSaveToDatabase = async () => {
     if (!activeRecord) return;
 
     setVerifying(true);
     setError(null);
-    setSuccessMsg(null);
 
     try {
       const flattenedStraws = freezingGroups.flatMap((group) =>
@@ -764,7 +819,8 @@ export const OcrVerification: React.FC = () => {
       });
 
       if (res.success) {
-        setSuccessMsg(`Patient record verified & saved to database (Patient ID: ${res.patient.patientId}).`);
+        setSuccessMsg(`Patient record verified & saved to database (Patient ID: ${res.patient?.patientId || patientId}).`);
+        setSavedSummaryModalData(null);
         setActiveRecord(null);
         await fetchPendingRecords();
         try {
@@ -772,12 +828,30 @@ export const OcrVerification: React.FC = () => {
           clearApiCache();
           window.dispatchEvent(new CustomEvent('storage-updated'));
         } catch (e) {}
+      } else {
+        setError(res.error || 'Failed to save record to database.');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to verify OCR record.');
+      setError(err.message || 'Failed to save OCR record to database.');
     } finally {
       setVerifying(false);
     }
+  };
+
+  const handleEditDetailsFromSummary = (section?: string) => {
+    setSavedSummaryModalData(null);
+    setSuccessMsg('✏️ Edit Mode Active: You can modify any fields below and click "Save & Verify Record" to update.');
+    setTimeout(() => {
+      let targetId = 'ocr-verification-form';
+      if (section === 'patient') targetId = 'ocr-patient-profile-section';
+      else if (section === 'storage') targetId = 'ocr-storage-location-section';
+      else if (section === 'straws') targetId = 'ocr-straw-allocation-section';
+
+      const el = document.getElementById(targetId) || document.getElementById('ocr-verification-form');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   const handleDiscard = async (recordIdToDiscard?: string) => {
@@ -1026,22 +1100,20 @@ export const OcrVerification: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleSpecimenTypeChange('EMBRYO')}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          specimenType === 'EMBRYO'
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${specimenType === 'EMBRYO'
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                          }`}
                       >
                         Embryo (Embryos)
                       </button>
                       <button
                         type="button"
                         onClick={() => handleSpecimenTypeChange('OOCYTE')}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          specimenType === 'OOCYTE'
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${specimenType === 'OOCYTE'
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                          }`}
                       >
                         Egg (Oocyte)
                       </button>
@@ -1055,22 +1127,20 @@ export const OcrVerification: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setCycleType('SELF')}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          cycleType === 'SELF'
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${cycleType === 'SELF'
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                          }`}
                       >
                         Self Cycle
                       </button>
                       <button
                         type="button"
                         onClick={() => setCycleType('DONOR_RECIPIENT')}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          cycleType === 'DONOR_RECIPIENT'
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${cycleType === 'DONOR_RECIPIENT'
                             ? 'bg-amber-600 text-white shadow-xs'
                             : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                          }`}
                       >
                         Donor / Recipient
                       </button>
@@ -1328,7 +1398,7 @@ export const OcrVerification: React.FC = () => {
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
                       <option value="">-- Select Canister --</option>
-                      
+
                       <option value="C01">C01 (Canister 01)</option>
                       <option value="C02">C02 (Canister 02)</option>
                       <option value="C03">C03 (Canister 03)</option>
@@ -1432,7 +1502,7 @@ export const OcrVerification: React.FC = () => {
                           </div>
                           {group.freezingDate && visitDate && (
                             <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                              Auto Stage: {calculateStageFromDates(visitDate, group.freezingDate, specimenType)}
+                              Stage: {calculateStageFromDates(visitDate, group.freezingDate, specimenType)}
                             </span>
                           )}
                         </div>
@@ -1484,9 +1554,8 @@ export const OcrVerification: React.FC = () => {
                                   <select
                                     value={st.colorTag || ''}
                                     onChange={(e) => updateStrawInGroup(gIdx, sIdx, 'colorTag', e.target.value)}
-                                    className={`w-full border rounded py-0.5 px-1 font-bold text-[8px] focus:outline-none transition-all ${
-                                      st.colorTag ? getStrawColorBadgeClass(st.colorTag) : 'bg-slate-50 border-slate-300 text-slate-900'
-                                    }`}
+                                    className={`w-full border rounded py-0.5 px-1 font-bold text-[8px] focus:outline-none transition-all ${st.colorTag ? getStrawColorBadgeClass(st.colorTag) : 'bg-slate-50 border-slate-300 text-slate-900'
+                                      }`}
                                   >
                                     <option value="" className="bg-white text-slate-900 font-normal">-- Select Color --</option>
                                     {CLINIC_STRAW_COLORS.map((c) => (
@@ -1683,7 +1752,7 @@ export const OcrVerification: React.FC = () => {
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Approve & Save Verified Record</span>
+                      <span>Review & Confirm Record Summary</span>
                     </>
                   )}
                 </button>
@@ -1711,11 +1780,10 @@ export const OcrVerification: React.FC = () => {
                 <div
                   key={record.id}
                   onClick={() => selectRecord(record)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-3 relative group ${
-                    activeRecord?.id === record.id
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-3 relative group ${activeRecord?.id === record.id
                       ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20 shadow-md'
                       : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-900 truncate max-w-[160px]">{record.originalFilename}</span>
@@ -1743,6 +1811,260 @@ export const OcrVerification: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Saved Summary Modal Popup */}
+      {savedSummaryModalData && (
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-5 my-auto max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+
+            {/* Top Banner Header */}
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 sm:p-5 rounded-2xl text-white flex items-center justify-between shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-extrabold flex items-center gap-2">
+                    <span>Review Patient Summary & Confirm</span>
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                  </h2>
+                  <p className="text-xs text-emerald-100 font-medium">
+                    Review details below. Data will be saved to database only after you click 'Done & Finish'.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Grid: Patient & Demographics + Container Allocation */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+
+              {/* Patient Info Card */}
+              <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                  <span className="font-extrabold text-emerald-950 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Patient Profile</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleEditDetailsFromSummary('patient')}
+                      className="text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded border border-amber-300 transition cursor-pointer flex items-center gap-1"
+                    >
+                      <Edit3 className="w-3 h-3 text-amber-600" />
+                      <span>Edit</span>
+                    </button>
+                    <span className="font-mono font-extrabold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 text-[10px]">
+                      ID: {savedSummaryModalData.patientId || 'SAVED'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-slate-800 font-medium">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-bold">Patient Name:</span>
+                    <span className="font-bold text-slate-900">{savedSummaryModalData.fullName}</span>
+                  </div>
+                  {savedSummaryModalData.partnerName && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-bold">Partner Name:</span>
+                      <span className="font-semibold text-slate-800">{savedSummaryModalData.partnerName}</span>
+                    </div>
+                  )}
+                  {savedSummaryModalData.phone && (
+                    <div className="flex justify-between font-mono">
+                      <span className="text-slate-500 font-bold">Mobile Phone:</span>
+                      <span className="font-bold text-slate-900">{savedSummaryModalData.phone}</span>
+                    </div>
+                  )}
+                  {savedSummaryModalData.doctorName && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-bold">Doctor Name:</span>
+                      <span className="font-bold text-slate-900">{savedSummaryModalData.doctorName}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1 border-t border-emerald-200/60">
+                    <span className="text-slate-500 font-bold">Classification:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-300">
+                        {savedSummaryModalData.specimenType === 'OOCYTE' ? '🥚 OOCYTE' : '🧬 EMBRYO'}
+                      </span>
+                      <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-300">
+                        {savedSummaryModalData.cycleType}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dates & Cryo Storage Location Card */}
+              <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+                  <span className="font-extrabold text-amber-950 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-amber-600" />
+                    <span>Storage Allocation & Dates</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleEditDetailsFromSummary('storage')}
+                      className="text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded border border-amber-300 transition cursor-pointer flex items-center gap-1"
+                    >
+                      <Edit3 className="w-3 h-3 text-amber-600" />
+                      <span>Edit</span>
+                    </button>
+                    <span className="font-mono font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-[10px] border border-amber-300">
+                      {savedSummaryModalData.totalStraws} Straw{savedSummaryModalData.totalStraws > 1 ? 's' : ''} ({savedSummaryModalData.totalEmbryos} {savedSummaryModalData.specimenType === 'OOCYTE' ? 'Oocytes' : 'Embryos'})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-slate-800 font-medium">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-bold">Egg Pick Up Date:</span>
+                    <span className="font-mono font-extrabold text-amber-950">
+                      {savedSummaryModalData.visitDate ? formatDateDDMMYYYY(savedSummaryModalData.visitDate) : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-bold">Freezing Date(s):</span>
+                    <span className="font-mono font-extrabold text-blue-950">
+                      {savedSummaryModalData.freezingGroups
+                        ?.map((g: any) => g.freezingDate ? formatDateDDMMYYYY(g.freezingDate) : null)
+                        .filter(Boolean)
+                        .filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i)
+                        .join(', ') || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1 border-t border-amber-200/60">
+                    <span className="text-slate-500 font-bold">Viso Tube Location:</span>
+                    <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-amber-300 text-[10px]">
+                      {savedSummaryModalData.storageLocation?.tankName || 'Tank A'} &gt; {savedSummaryModalData.storageLocation?.canisterName || 'C01'} &gt; {savedSummaryModalData.storageLocation?.level || 'Level 1'} &gt; Viso Tube {VISO_COLOR_TO_TUBE_CODE[savedSummaryModalData.storageLocation?.visoTubeColor] || 'V01'} ({savedSummaryModalData.storageLocation?.visoTubeColor || 'Pink'})
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Straw Details Table */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Database className="w-4 h-4 text-emerald-600" />
+                  <span>Saved Specimen Straws Breakdown</span>
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => handleEditDetailsFromSummary('straws')}
+                  className="text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded border border-amber-300 transition cursor-pointer flex items-center gap-1"
+                >
+                  <Edit3 className="w-3 h-3 text-amber-600" />
+                  <span>Edit Straws</span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                <table className="w-full text-left border-collapse text-[10px]">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 uppercase tracking-wider font-extrabold border-b border-slate-200">
+                      <th className="p-2 text-center w-8">#</th>
+                      <th className="p-2 w-28">Color Tag</th>
+                      <th className="p-2 text-center">{savedSummaryModalData.specimenType === 'OOCYTE' ? 'Oocytes' : 'Embryos'}</th>
+                      <th className="p-2">Batch Freezing Date</th>
+                      <th className="p-2">Calculated Stage</th>
+                      <th className="p-2">Grade(s) & Fragmentation</th>
+                      <th className="p-2 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {savedSummaryModalData.freezingGroups?.flatMap((group: any, gIdx: number) =>
+                      group.straws.map((st: any, sIdx: number) => (
+                        <tr key={`${gIdx}-${sIdx}`} className="hover:bg-slate-50 font-medium text-slate-800">
+                          <td className="p-2 font-mono font-bold text-slate-900 text-center bg-slate-50/80">
+                            #{sIdx + 1}
+                          </td>
+                          <td className="p-2">
+                            <span className={`px-2 py-0.5 rounded font-bold text-[9px] border inline-block ${getStrawColorBadgeClass(st.colorTag || 'Pink')}`}>
+                              {st.colorTag || 'Pink'}
+                            </span>
+                          </td>
+                          <td className="p-2 text-center font-bold text-emerald-700">
+                            {st.embryoCount || 1}
+                          </td>
+                          <td className="p-2 font-mono font-bold text-slate-900">
+                            {group.freezingDate ? formatDateDDMMYYYY(group.freezingDate) : 'N/A'}
+                          </td>
+                          <td className="p-2 font-bold text-blue-900">
+                            <span className="bg-blue-50 text-blue-900 px-2 py-0.5 rounded border border-blue-200">
+                              {calculateStageFromDates(savedSummaryModalData.visitDate, group.freezingDate, savedSummaryModalData.specimenType)}
+                            </span>
+                          </td>
+                          <td className="p-2 font-mono font-semibold text-slate-900">
+                            {Array.isArray(st.embryoGrades) && st.embryoGrades.length > 0
+                              ? st.embryoGrades.map((g: string, idx: number) => {
+                                const f = st.embryoFrags?.[idx] || 'No';
+                                return `${g}${f !== 'No' ? ` (${f})` : ''}`;
+                              }).join(', ')
+                              : `${st.grade || '4AA'}${st.fragmentation && st.fragmentation !== 'No' ? ` (${st.fragmentation})` : ''}`}
+                          </td>
+                          <td className="p-2 text-center">
+                            <span className={`px-2 py-0.5 rounded font-bold text-[9px] border ${st.isThawing || st.thawDate ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-emerald-100 text-emerald-900 border-emerald-300'}`}>
+                              {st.isThawing || st.thawDate ? 'THAWED' : 'OCCUPIED'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => {
+                  window.print();
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              >
+                <Printer className="w-4 h-4 text-slate-500" />
+                <span>Print Summary</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleEditDetailsFromSummary()}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>Edit / Correct Details</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={executeFinalSaveToDatabase}
+                disabled={verifying}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
+              >
+                {verifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Saving to Database...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Done & Finish (Save to Database)</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
     </div>

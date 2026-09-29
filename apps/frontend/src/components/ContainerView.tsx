@@ -30,7 +30,7 @@ import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass, getSortedFreezingDates } from './PatientForm';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
-export function parseLocationCode(code: string) {
+function parseLocationCode(code: string) {
   if (!code) return { can: '01', canister: '01', level: '1', goblet: '01', tube: '01', formatted: 'Unknown' };
   const match = code.match(/^CAN-?(\d+)-CANISTER(\d+)-L(\d+)-G(\d+)-V(\d+)$/i);
   if (!match) return { can: '01', canister: '01', level: '1', goblet: '01', tube: '01', formatted: code };
@@ -46,7 +46,7 @@ export function parseLocationCode(code: string) {
   };
 }
 
-export function parseVisoTubeLocation(code?: string) {
+function parseVisoTubeLocation(code?: string) {
   if (!code) return 'Location Not Specified';
   return parseLocationCode(code).formatted;
 }
@@ -54,7 +54,7 @@ export function parseVisoTubeLocation(code?: string) {
 export type OverviewMode = 'honeycomb' | 'matrix';
 
 // Exact Physical Viso Tube Color Definitions (11 Tubes per Goblet with strict boundary stroke colors)
-export const VISO_TUBE_COLOR_MAP: Record<number, { name: string; stroke: string; bg: string; dotHex: string }> = {
+const VISO_TUBE_COLOR_MAP: Record<number, { name: string; stroke: string; bg: string; dotHex: string }> = {
   1: { name: 'Pink', stroke: 'stroke-pink-500', bg: 'bg-pink-100 text-pink-900 border-pink-400', dotHex: '#ec4899' },
   2: { name: 'Grey', stroke: 'stroke-slate-600', bg: 'bg-slate-200 text-slate-900 border-slate-400', dotHex: '#6b7280' },
   3: { name: 'Red', stroke: 'stroke-rose-600', bg: 'bg-rose-100 text-rose-900 border-rose-400', dotHex: '#ef4444' },
