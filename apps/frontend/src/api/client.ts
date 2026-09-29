@@ -33,10 +33,60 @@ interface CacheItem {
 
 // In-Memory Client Cache for ultra-fast instant UI rendering
 const apiCache = new Map<string, CacheItem>();
-const CACHE_TTL_MS = 60000; // 60 seconds default cache TTL
-
 export function clearApiCache() {
   apiCache.clear();
+}
+
+let isRefreshingToken = false;
+let activeRefreshPromise: Promise<string | null> | null = null;
+
+async function silentTokenRefresh(): Promise<string | null> {
+  if (isRefreshingToken && activeRefreshPromise) {
+    return activeRefreshPromise;
+  }
+
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return null;
+
+  isRefreshingToken = true;
+  activeRefreshPromise = (async () => {
+    try {
+      const baseUrl = getApiBaseUrl();
+      const accessKey = localStorage.getItem('app_access_key') || '';
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (accessKey) headers['x-access-key'] = accessKey;
+
+      const res = await fetch(`${baseUrl}/api/auth/refresh`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.accessToken) {
+        localStorage.setItem('access_token', data.accessToken);
+        if (data.refreshToken) {
+          localStorage.setItem('refresh_token', data.refreshToken);
+        }
+        return data.accessToken;
+      }
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      return null;
+    } catch (err) {
+      console.error('Silent token refresh failed:', err);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      return null;
+    } finally {
+      isRefreshingToken = false;
+      activeRefreshPromise = null;
+    }
+  })();
+
+  return activeRefreshPromise;
 }
 
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
@@ -124,46 +174,24 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     throw new Error(fetchError?.message || 'Network connection interrupted. Retrying automatically...');
   }
 
-  const isAuthEndpoint = endpoint.includes('/api/auth/login') || endpoint.includes('/api/auth/refresh') || endpoint.includes('/api/auth/me');
+  const isAuthLoginOrRefresh = endpoint.includes('/api/auth/login') || endpoint.includes('/api/auth/refresh');
 
-  if (response.status === 401 && !(options as any)._isRetry && !isAuthEndpoint) {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (refreshToken) {
-      try {
-        const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        });
-        const refreshData = await refreshRes.json();
-        if (refreshRes.ok && refreshData.accessToken) {
-          localStorage.setItem('access_token', refreshData.accessToken);
-          if (refreshData.refreshToken) {
-            localStorage.setItem('refresh_token', refreshData.refreshToken);
-          }
-          return apiRequest(endpoint, { ...options, _isRetry: true } as any);
-        } else {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-        }
-      } catch (err) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        console.error('Silent token refresh failed:', err);
-      }
-    } else {
-      localStorage.removeItem('access_token');
+  // Handle 401 Unauthorized: Try silent token refresh first
+  if (response.status === 401 && !(options as any)._isRetry && !isAuthLoginOrRefresh) {
+    const newToken = await silentTokenRefresh();
+    if (newToken) {
+      return apiRequest(endpoint, { ...options, _isRetry: true } as any);
     }
   }
 
   const data = await response.json().catch(() => ({}));
 
-  if (response.status === 401 && !isAuthEndpoint) {
+  // If 401 Unauthorized persists, auto refresh page immediately (no alert popup!)
+  if (response.status === 401 && !isAuthLoginOrRefresh) {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
-    alert(data.error || 'Your session has expired. Click OK to refresh and log in again.');
     window.location.reload();
-    throw new Error(data.error || 'Session expired.');
+    throw new Error(data.error || 'Session expired. Refreshing page...');
   }
 
   if (response.status === 403 && data.error?.includes('Invalid site access key hash') && !(options as any)._isRetryKey) {
