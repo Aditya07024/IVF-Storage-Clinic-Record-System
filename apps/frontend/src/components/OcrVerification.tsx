@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna, ShieldCheck, UserCheck, MapPin, Database, Printer, Edit3, Edit, Loader2 } from 'lucide-react';
+import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna, ShieldCheck, UserCheck, MapPin, Database, Printer, Edit3, Edit } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl, getImageUrl } from '../api/client';
 import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass, formatRawToDDMMYYYYMask, normalizeFlexibleDateToDDMMYYYY } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
+import { useBackgroundTask } from '../context/BackgroundTaskContext';
 
 const VISO_COLOR_TO_TUBE_CODE: Record<string, string> = {
   Pink: 'V01',
@@ -763,79 +764,86 @@ export const OcrVerification: React.FC = () => {
     setSavedSummaryModalData(summaryObj);
   };
 
-  // Step 2: Final Database Commit when clicking "Done & Finish" inside Popup Modal
+  const { enqueueTask } = useBackgroundTask();
+
+  // Step 2: Final Database Commit queued in background popup when clicking "Done & Finish"
   const executeFinalSaveToDatabase = async () => {
     if (!activeRecord) return;
 
-    setVerifying(true);
-    setError(null);
+    const currentRecordId = activeRecord.id;
+    const currentFullName = fullName.trim() || 'Patient Record';
+    const currentPatientId = patientId.trim() || 'AUTO';
 
-    try {
-      const flattenedStraws = freezingGroups.flatMap((group) =>
-        group.straws.map((st) => ({
-          ...st,
-          stage: st.stage || calculateStageFromDates(visitDate, group.freezingDate, specimenType),
-          freezingDate: group.freezingDate || undefined,
-        }))
-      );
-      const primaryFreezingDate = freezingGroups.find((g) => g.freezingDate)?.freezingDate || undefined;
+    const flattenedStraws = freezingGroups.flatMap((group) =>
+      group.straws.map((st) => ({
+        ...st,
+        stage: st.stage || calculateStageFromDates(visitDate, group.freezingDate, specimenType),
+        freezingDate: group.freezingDate || undefined,
+      }))
+    );
+    const primaryFreezingDate = freezingGroups.find((g) => g.freezingDate)?.freezingDate || undefined;
 
-      const res = await apiRequest('/api/ocr/verify', {
-        method: 'POST',
-        body: JSON.stringify({
-          ocrRecordId: activeRecord.id,
-          patientId: patientId.trim() || undefined,
-          fullName: fullName.trim(),
-          partnerName: partnerName.trim() || undefined,
-          phone: phone.trim() || undefined,
-          partnerPhone: partnerPhone.trim() || undefined,
-          email: email.trim() || undefined,
-          partnerEmail: partnerEmail.trim() || undefined,
-          dob: dob || undefined,
-          partnerDob: partnerDob || undefined,
-          patientAge: patientAge.trim() || undefined,
-          partnerAge: partnerAge.trim() || undefined,
-          doctorName: doctorName.trim() || undefined,
-          specimenType,
-          cycleType,
-          donorName: donorName.trim() || undefined,
-          donorRegNo: donorRegNo.trim() || undefined,
-          donorAge: donorAge.trim() || undefined,
-          donorPhone: donorPhone.trim() || undefined,
-          vitrificationIndication: vitrificationIndication.trim() || undefined,
-          oocyteStage: oocyteStage.trim() || undefined,
-          aspirationDate: visitDate || undefined,
-          visitDate: visitDate || undefined,
-          freezingDate: primaryFreezingDate,
-          thawDate: thawDate || undefined,
-          tankName: tankName.trim() || undefined,
-          canisterName: canisterName.trim() || undefined,
-          visoTubeColor: visoTubeColor.trim() || undefined,
-          visoTubeId: visoTubeId.trim() || undefined,
-          level: level.trim() || undefined,
-          straws: flattenedStraws.length > 0 ? flattenedStraws : undefined,
-          comments: comments.trim() || undefined,
-        }),
-      });
+    const verifyPayload = {
+      ocrRecordId: currentRecordId,
+      patientId: patientId.trim() || undefined,
+      fullName: fullName.trim(),
+      partnerName: partnerName.trim() || undefined,
+      phone: phone.trim() || undefined,
+      partnerPhone: partnerPhone.trim() || undefined,
+      email: email.trim() || undefined,
+      partnerEmail: partnerEmail.trim() || undefined,
+      dob: dob || undefined,
+      partnerDob: partnerDob || undefined,
+      patientAge: patientAge.trim() || undefined,
+      partnerAge: partnerAge.trim() || undefined,
+      doctorName: doctorName.trim() || undefined,
+      specimenType,
+      cycleType,
+      donorName: donorName.trim() || undefined,
+      donorRegNo: donorRegNo.trim() || undefined,
+      donorAge: donorAge.trim() || undefined,
+      donorPhone: donorPhone.trim() || undefined,
+      vitrificationIndication: vitrificationIndication.trim() || undefined,
+      oocyteStage: oocyteStage.trim() || undefined,
+      aspirationDate: visitDate || undefined,
+      visitDate: visitDate || undefined,
+      freezingDate: primaryFreezingDate,
+      thawDate: thawDate || undefined,
+      tankName: tankName.trim() || undefined,
+      canisterName: canisterName.trim() || undefined,
+      visoTubeColor: visoTubeColor.trim() || undefined,
+      visoTubeId: visoTubeId.trim() || undefined,
+      level: level.trim() || undefined,
+      straws: flattenedStraws.length > 0 ? flattenedStraws : undefined,
+      comments: comments.trim() || undefined,
+    };
 
-      if (res.success) {
-        setSuccessMsg(`Patient record verified & saved to database (Patient ID: ${res.patient?.patientId || patientId}).`);
-        setSavedSummaryModalData(null);
-        setActiveRecord(null);
-        await fetchPendingRecords();
+    // INSTANTLY close modal & clear active record so staff can scan/edit next patient without waiting!
+    setSavedSummaryModalData(null);
+    setActiveRecord(null);
+    setSuccessMsg(`🚀 Patient record for "${currentFullName}" queued for background database save. You can scan more patients now!`);
+
+    enqueueTask({
+      title: `Saving Patient Record: ${currentFullName}`,
+      description: `Allocating Viso Tube & saving patient cryogenic straws`,
+      action: async () => {
+        const res = await apiRequest('/api/ocr/verify', {
+          method: 'POST',
+          body: JSON.stringify(verifyPayload),
+        });
+        if (!res.success) {
+          throw new Error(res.error || 'Failed to save patient record to database.');
+        }
+        return res;
+      },
+      onSuccess: () => {
+        fetchPendingRecords();
         try {
-          const { clearApiCache } = await import('../api/client');
           clearApiCache();
           window.dispatchEvent(new CustomEvent('storage-updated'));
         } catch (e) {}
-      } else {
-        setError(res.error || 'Failed to save record to database.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to save OCR record to database.');
-    } finally {
-      setVerifying(false);
-    }
+      },
+    });
   };
 
   const handleEditDetailsFromSummary = (section?: string) => {
@@ -2024,17 +2032,6 @@ export const OcrVerification: React.FC = () => {
 
             {/* Footer Buttons */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => {
-                  window.print();
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
-              >
-                <Printer className="w-4 h-4 text-slate-500" />
-                <span>Print Summary</span>
-              </button>
-
               <button
                 type="button"
                 onClick={() => handleEditDetailsFromSummary()}
