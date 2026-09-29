@@ -47,6 +47,8 @@ export interface VerifyOcrInput {
     aspirationDate?: string;
     freezingDate?: string;
     thawDate?: string;
+    embryoGrades?: string[];
+    embryoFrags?: string[];
   }>;
   comments?: string;
 }

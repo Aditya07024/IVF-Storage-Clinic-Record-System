@@ -368,6 +368,27 @@ export const OcrVerification: React.FC = () => {
     });
   };
 
+  const addStrawWithCustomDateRow = () => {
+    setStraws((prev) => {
+      const defaultStrawColor = CLINIC_STRAW_COLORS.includes(visoTubeColor as any) ? visoTubeColor : 'Pink';
+      const primaryColor = prev[0]?.colorTag || defaultStrawColor;
+      return [
+        ...prev,
+        {
+          strawId: `STR-0${prev.length + 1}`,
+          colorTag: primaryColor,
+          embryoCount: 1,
+          stage: 'Day 5',
+          grade: '4AA',
+          fragmentation: 'No',
+          freezingDate: '',
+          thawDate: '',
+          isCustomDate: true,
+        },
+      ];
+    });
+  };
+
   const updateStrawRow = (index: number, field: string, value: any) => {
     setStraws((prev) => {
       const copy = [...prev];
@@ -1176,18 +1197,29 @@ export const OcrVerification: React.FC = () => {
 
               {/* Extracted Specimen Straws Batch Table (Fully Editable & Compact Text) */}
               <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Specimen Straws Batch ({straws.length} Extracted Straws)</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={addStrawRow}
-                    className="px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
-                  >
-                    <span>+ Add Straw</span>
-                  </button>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={addStrawRow}
+                      className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
+                    >
+                      <span>+ Add Straw</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addStrawWithCustomDateRow}
+                      className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
+                      title="Add embryos/straws frozen on another date"
+                    >
+                      <Calendar className="w-3 h-3" />
+                      <span>+ Add Freezing Date / Embryos</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
                   <table className="w-full text-left text-[9px]">
@@ -1199,109 +1231,189 @@ export const OcrVerification: React.FC = () => {
                         <th className="p-1">Stage</th>
                         <th className="p-1">Grade</th>
                         <th className="p-1">Fragmentation</th>
+                        <th className="p-1">Freezing Date</th>
                         <th className="p-1 text-center">Thaw</th>
                         <th className="p-1 text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {straws.map((st, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 font-medium text-slate-800">
-                          <td className="p-1.5 font-mono font-bold text-slate-900 text-[10px] whitespace-nowrap bg-slate-50/80">
-                            #{idx + 1}
-                          </td>
-                          <td className="p-0.5">
-                            <select
-                              value={st.colorTag || st.colorName || ''}
-                              onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
-                              className={`w-full border rounded py-0.5 px-1 font-bold text-[8px] focus:outline-none transition-all ${
-                                st.colorTag ? getStrawColorBadgeClass(st.colorTag) : 'bg-slate-50 border-slate-300 text-slate-900'
-                              }`}
-                            >
-                              <option value="" className="bg-white text-slate-900 font-normal">-- Select Color --</option>
-                              {CLINIC_STRAW_COLORS.map((c) => (
-                                <option key={c} value={c} className="bg-white text-slate-900 font-medium">
-                                  {c}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="p-0.5 text-center">
-                            <input
-                              type="number"
-                              min={1}
-                              value={st.embryoCount ?? 1}
-                              onChange={(e) => updateStrawRow(idx, 'embryoCount', parseInt(e.target.value, 10) || 1)}
-                              className="w-8 bg-slate-50 border border-slate-300 rounded py-0.5 text-center font-bold text-emerald-700 text-[8px]"
-                            />
-                          </td>
-                          <td className="p-0.5">
-                            <input
-                              type="text"
-                              value={st.stage || ''}
-                              onChange={(e) => updateStrawRow(idx, 'stage', e.target.value)}
-                              placeholder="Day 5"
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[8px]"
-                            />
-                          </td>
-                          <td className="p-0.5">
-                            <input
-                              type="text"
-                              value={st.grade || ''}
-                              onChange={(e) => updateStrawRow(idx, 'grade', e.target.value)}
-                              placeholder="4AA"
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
-                            />
-                          </td>
-                          <td className="p-0.5">
-                            <select
-                              value={st.fragmentation || 'No'}
-                              onChange={(e) => updateStrawRow(idx, 'fragmentation', e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
-                            >
-                              <option value="No">No</option>
-                              <option value="+">+</option>
-                              <option value="++">++</option>
-                            </select>
-                          </td>
-                          <td className="p-0.5 text-center">
-                            <div className="flex items-center justify-center gap-1">
+                        <React.Fragment key={idx}>
+                          <tr className="hover:bg-slate-50 font-medium text-slate-800">
+                            <td className="p-1.5 font-mono font-bold text-slate-900 text-[10px] whitespace-nowrap bg-slate-50/80">
+                              #{idx + 1}
+                            </td>
+                            <td className="p-0.5">
+                              <select
+                                value={st.colorTag || st.colorName || ''}
+                                onChange={(e) => updateStrawRow(idx, 'colorTag', e.target.value)}
+                                className={`w-full border rounded py-0.5 px-1 font-bold text-[8px] focus:outline-none transition-all ${
+                                  st.colorTag ? getStrawColorBadgeClass(st.colorTag) : 'bg-slate-50 border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="" className="bg-white text-slate-900 font-normal">-- Select Color --</option>
+                                {CLINIC_STRAW_COLORS.map((c) => (
+                                  <option key={c} value={c} className="bg-white text-slate-900 font-medium">
+                                    {c}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="p-0.5 text-center">
                               <input
-                                type="checkbox"
-                                checked={Boolean(st.isThawing || st.thawDate)}
+                                type="number"
+                                min={1}
+                                value={st.embryoCount ?? 1}
                                 onChange={(e) => {
-                                  const isChecked = e.target.checked;
-                                  updateStrawRow(idx, 'isThawing', isChecked);
-                                  if (isChecked) {
-                                    updateStrawRow(idx, 'thawDate', st.thawDate || formatDateDDMMYYYY(new Date()));
-                                  } else {
-                                    updateStrawRow(idx, 'thawDate', '');
-                                  }
+                                  const cnt = parseInt(e.target.value, 10) || 1;
+                                  updateStrawRow(idx, 'embryoCount', cnt);
+                                  const currentGrades = st.embryoGrades || [];
+                                  const currentFrags = st.embryoFrags || [];
+                                  const newGrades = Array.from({ length: cnt }, (_, i) => currentGrades[i] || st.grade || '4AA');
+                                  const newFrags = Array.from({ length: cnt }, (_, i) => currentFrags[i] || st.fragmentation || 'No');
+                                  updateStrawRow(idx, 'embryoGrades', newGrades);
+                                  updateStrawRow(idx, 'embryoFrags', newFrags);
                                 }}
-                                className="w-3.5 h-3.5 accent-amber-600 rounded cursor-pointer"
-                                title="Tick box to thaw this specific straw"
+                                className="w-8 bg-slate-50 border border-slate-300 rounded py-0.5 text-center font-bold text-emerald-700 text-[8px]"
                               />
-                              {(st.isThawing || st.thawDate) && (
+                            </td>
+                            <td className="p-0.5">
+                              <input
+                                type="text"
+                                value={st.stage || ''}
+                                onChange={(e) => updateStrawRow(idx, 'stage', e.target.value)}
+                                placeholder="Day 5"
+                                className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 text-[8px]"
+                              />
+                            </td>
+                            <td className="p-0.5">
+                              <input
+                                type="text"
+                                value={st.grade || ''}
+                                onChange={(e) => updateStrawRow(idx, 'grade', e.target.value)}
+                                placeholder="4AA"
+                                className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
+                              />
+                            </td>
+                            <td className="p-0.5">
+                              <select
+                                value={st.fragmentation || 'No'}
+                                onChange={(e) => updateStrawRow(idx, 'fragmentation', e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px]"
+                              >
+                                <option value="No">No</option>
+                                <option value="+">+</option>
+                                <option value="++">++</option>
+                              </select>
+                            </td>
+                            <td className="p-0.5">
+                              <input
+                                type="text"
+                                value={st.freezingDate || ''}
+                                onChange={(e) => updateStrawRow(idx, 'freezingDate', e.target.value)}
+                                placeholder={freezingDate ? formatDateDDMMYYYY(freezingDate) : 'DD/MM/YYYY'}
+                                className={`w-full border rounded py-0.5 px-1 font-mono text-[8px] focus:outline-none transition-all ${
+                                  st.isCustomDate || (st.freezingDate && st.freezingDate !== freezingDate)
+                                    ? 'bg-amber-50 border-amber-400 text-amber-950 font-bold'
+                                    : 'bg-slate-50 border-slate-300 text-slate-900'
+                                }`}
+                                title="Freezing Date for this straw (leave blank to use primary Freezing Date)"
+                              />
+                            </td>
+                            <td className="p-0.5 text-center">
+                              <div className="flex items-center justify-center gap-1">
                                 <input
-                                  type="text"
-                                  value={st.thawDate || ''}
-                                  onChange={(e) => updateStrawRow(idx, 'thawDate', e.target.value)}
-                                  placeholder="DD/MM/YYYY"
-                                  className="w-20 bg-amber-50 border border-amber-400 rounded py-0.5 px-1 font-mono text-[8px] text-amber-900 font-bold focus:outline-none focus:border-amber-600 shadow-2xs"
+                                  type="checkbox"
+                                  checked={Boolean(st.isThawing || st.thawDate)}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    updateStrawRow(idx, 'isThawing', isChecked);
+                                    if (isChecked) {
+                                      updateStrawRow(idx, 'thawDate', st.thawDate || formatDateDDMMYYYY(new Date()));
+                                    } else {
+                                      updateStrawRow(idx, 'thawDate', '');
+                                    }
+                                  }}
+                                  className="w-3.5 h-3.5 accent-amber-600 rounded cursor-pointer"
+                                  title="Tick box to thaw this specific straw"
                                 />
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-0.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeStrawRow(idx)}
-                              className="p-0.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                              title="Delete Straw"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </td>
-                        </tr>
+                                {(st.isThawing || st.thawDate) && (
+                                  <input
+                                    type="text"
+                                    value={st.thawDate || ''}
+                                    onChange={(e) => updateStrawRow(idx, 'thawDate', e.target.value)}
+                                    placeholder="DD/MM/YYYY"
+                                    className="w-20 bg-amber-50 border border-amber-400 rounded py-0.5 px-1 font-mono text-[8px] text-amber-900 font-bold focus:outline-none focus:border-amber-600 shadow-2xs"
+                                  />
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-0.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeStrawRow(idx)}
+                                className="p-0.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                title="Delete Straw"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Nested Per-Embryo Breakdown for Multi-Embryo Straws */}
+                          {(st.embryoCount || 1) > 1 && (
+                            <tr className="bg-emerald-50/50 border-b border-emerald-100">
+                              <td colSpan={9} className="px-2 py-1.5">
+                                <div className="flex items-center gap-2 flex-wrap bg-white p-1.5 rounded-lg border border-emerald-200 shadow-2xs">
+                                  <span className="text-[9px] font-extrabold text-emerald-900 uppercase flex items-center gap-1">
+                                    <Dna className="w-3 h-3 text-emerald-600 shrink-0" />
+                                    Per-Embryo Breakdown ({st.embryoCount} Embryos in Straw #{idx + 1}):
+                                  </span>
+                                  {Array.from({ length: st.embryoCount }).map((_, eIdx) => {
+                                    const eGradeList = st.embryoGrades || Array.from({ length: st.embryoCount }, () => st.grade || '4AA');
+                                    const eFragList = st.embryoFrags || Array.from({ length: st.embryoCount }, () => st.fragmentation || 'No');
+                                    const eGrade = eGradeList[eIdx] || st.grade || '4AA';
+                                    const eFrag = eFragList[eIdx] || st.fragmentation || 'No';
+
+                                    return (
+                                      <div key={eIdx} className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md border border-slate-300 text-[8px] font-bold">
+                                        <span className="text-slate-700 font-mono">Embryo #{eIdx + 1}:</span>
+                                        <span className="text-slate-500 text-[7px] uppercase">Grade:</span>
+                                        <input
+                                          type="text"
+                                          value={eGrade}
+                                          onChange={(e) => {
+                                            const newGrades = [...(st.embryoGrades || Array.from({ length: st.embryoCount }, () => st.grade || '4AA'))];
+                                            newGrades[eIdx] = e.target.value.toUpperCase();
+                                            updateStrawRow(idx, 'embryoGrades', newGrades);
+                                            updateStrawRow(idx, 'grade', newGrades.join(', '));
+                                          }}
+                                          placeholder="4AA"
+                                          className="w-11 bg-white border border-slate-300 rounded py-0.5 px-1 font-bold font-mono text-[8px] text-slate-900 focus:outline-none focus:border-emerald-600 uppercase"
+                                        />
+                                        <span className="text-slate-500 text-[7px] uppercase ml-0.5">Frag:</span>
+                                        <select
+                                          value={eFrag}
+                                          onChange={(e) => {
+                                            const newFrags = [...(st.embryoFrags || Array.from({ length: st.embryoCount }, () => st.fragmentation || 'No'))];
+                                            newFrags[eIdx] = e.target.value;
+                                            updateStrawRow(idx, 'embryoFrags', newFrags);
+                                            if (eIdx === 0) updateStrawRow(idx, 'fragmentation', e.target.value);
+                                          }}
+                                          className="bg-white border border-slate-300 rounded py-0.5 px-1 font-bold text-[8px] text-slate-900 focus:outline-none focus:border-emerald-600 cursor-pointer"
+                                        >
+                                          <option value="No">No</option>
+                                          <option value="+">+</option>
+                                          <option value="++">++</option>
+                                        </select>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>

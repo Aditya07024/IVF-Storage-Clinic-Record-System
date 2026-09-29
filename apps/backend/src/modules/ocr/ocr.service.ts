@@ -1103,10 +1103,21 @@ ${rawText}`;
           const rawCode = st.strawId && !st.strawId.startsWith('STR-') ? st.strawId.trim() : defaultLabel;
           
           const uniqueStrawCode = rawCode;
+          const eCount = st.embryoCount || 1;
 
-          const fragText = (st.fragmentation === '+' || st.fragmentation === '++') ? ` (Fragmentation: ${st.fragmentation})` : '';
-          const baseGrade = (st.grade || '4AA').trim();
-          const finalGrade = baseGrade.includes('Fragmentation:') ? baseGrade : `${baseGrade}${fragText}`;
+          let combinedGrade = (st.grade || '4AA').trim();
+          if (Array.isArray(st.embryoGrades) && st.embryoGrades.length > 0) {
+            combinedGrade = st.embryoGrades.slice(0, eCount).map((g: string, idx: number) => {
+              const f = st.embryoFrags?.[idx] || st.fragmentation || 'No';
+              const fTxt = (f === '+' || f === '++') ? ` (${f})` : '';
+              return `${(g || '4AA').trim()}${fTxt}`;
+            }).join(', ');
+          } else {
+            const fragText = (st.fragmentation === '+' || st.fragmentation === '++') ? ` (Fragmentation: ${st.fragmentation})` : '';
+            if (!combinedGrade.includes('Fragmentation:')) {
+              combinedGrade = `${combinedGrade}${fragText}`;
+            }
+          }
 
           const validStrawColors = ['Pink', 'Green', 'Blue', 'Yellow', 'White'];
           const strawColor = (st.colorTag && validStrawColors.includes(st.colorTag))
@@ -1119,20 +1130,25 @@ ${rawText}`;
               batchId: batch.id,
               visoTubeId: targetVisoTube.id,
               color: strawColor,
-              embryoCount: st.embryoCount || 1,
-              grade: finalGrade,
+              embryoCount: eCount,
+              grade: combinedGrade,
               status: st.thawDate ? 'THAWED' : 'OCCUPIED',
               freezingDate: parseFlexibleDate(st.freezingDate) || parsedFreezing,
               thawDate: parseFlexibleDate(st.thawDate) || parseFlexibleDate(input.thawDate),
             },
           });
 
-          for (let e = 1; e <= (st.embryoCount || 1); e++) {
+          for (let e = 1; e <= eCount; e++) {
+            const eg = (st.embryoGrades?.[e - 1] || st.grade || '4AA').trim();
+            const ef = st.embryoFrags?.[e - 1] || st.fragmentation || 'No';
+            const efTxt = (ef === '+' || ef === '++') ? ` (Fragmentation: ${ef})` : '';
+            const eFinalGrade = eg.includes('Fragmentation:') ? eg : `${eg}${efTxt}`;
+
             await tx.embryo.create({
               data: {
                 strawId: createdStraw.id,
                 embryoNumber: e,
-                grade: finalGrade,
+                grade: eFinalGrade,
                 status: st.thawDate ? 'THAWED' : 'FREEZED',
               },
             });
