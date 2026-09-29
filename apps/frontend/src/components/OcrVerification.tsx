@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw } from 'lucide-react';
+import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl, getImageUrl } from '../api/client';
 import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
