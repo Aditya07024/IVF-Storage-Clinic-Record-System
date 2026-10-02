@@ -8,7 +8,18 @@
   "background_color": "#0f172a",
   "theme_color": "#059669",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui", "browser"],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+ivfcryo",
+      "url": "/?patientId=%s"
+    }
+  ],
   "orientation": "portrait",
   "categories": ["medical", "health", "productivity"],
   "icons": [
