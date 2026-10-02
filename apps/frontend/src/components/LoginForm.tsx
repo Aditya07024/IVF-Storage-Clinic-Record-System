@@ -13,7 +13,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Real-time Lockout Clock State
+  // Real-time Lockout Clock & Error Type State
+  const [errorType, setErrorType] = useState<'CREDENTIALS' | 'RATE_LIMIT' | null>(null);
   const [lockoutEndTime, setLockoutEndTime] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
   const [initialLockoutSeconds, setInitialLockoutSeconds] = useState<number>(900);
@@ -29,6 +30,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       !!err?.retryAfterSeconds;
 
     if (isLockout) {
+      setErrorType('RATE_LIMIT');
       let seconds = err?.retryAfterSeconds;
       if (!seconds) {
         const match = msg.match(/(\d+)\s*(?:minutes|minute|mins|min)/i);
@@ -37,6 +39,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       setInitialLockoutSeconds(seconds);
       setRemainingSeconds(seconds);
       setLockoutEndTime(Date.now() + seconds * 1000);
+    } else {
+      setErrorType('CREDENTIALS');
+      setLockoutEndTime(null);
+      setRemainingSeconds(0);
     }
   };
 
@@ -52,6 +58,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       if (left <= 0) {
         setLockoutEndTime(null);
         setError(null);
+        setErrorType(null);
       }
     };
 
@@ -66,13 +73,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  const isLockedOut = Boolean(lockoutEndTime && remainingSeconds > 0);
+  const isLockedOut = Boolean(errorType === 'RATE_LIMIT' && lockoutEndTime && remainingSeconds > 0);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLockedOut) return;
 
     setError(null);
+    setErrorType(null);
     setLoading(true);
 
     try {
@@ -152,40 +160,66 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           </div>
         )}
 
-        {/* Real-time Lockout Clock Card OR standard error display */}
-        {error && isLockedOut ? (
-          <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl space-y-3 text-rose-900 shadow-md">
+        {/* Separate Popup 1: Rate Limit Security Lockout with Live Clock */}
+        {error && isLockedOut && (
+          <div className="p-4 bg-slate-950 text-white border-2 border-rose-600 rounded-2xl space-y-3 shadow-xl">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-rose-200/80 rounded-xl text-rose-700 shrink-0 mt-0.5">
-                <ShieldAlert className="w-6 h-6 animate-pulse" />
+              <div className="p-2.5 bg-rose-900/80 rounded-xl text-rose-300 shrink-0 mt-0.5 border border-rose-700">
+                <Lock className="w-6 h-6 text-rose-400 animate-pulse" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-extrabold text-xs uppercase tracking-wider text-rose-800">
-                    Security Lockout Active
+                  <span className="font-extrabold text-xs uppercase tracking-wider text-rose-400">
+                    Security Policy: Rate Limit Locked
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-900 text-rose-200 border border-rose-700">
+                    IP LOCKED
                   </span>
                 </div>
-                <p className="text-xs text-rose-700 font-medium leading-relaxed">{error}</p>
+                <p className="text-xs text-rose-200 font-medium leading-relaxed">{error}</p>
               </div>
             </div>
 
             {/* Real-time Digital Countdown Clock Box */}
-            <div className="bg-gradient-to-r from-rose-900 via-slate-900 to-rose-950 p-4 rounded-xl text-white shadow-inner flex flex-col items-center justify-center gap-2 border border-rose-800">
-              <div className="flex items-center gap-2 text-rose-300 text-xs font-semibold uppercase tracking-widest">
+            <div className="bg-rose-950/90 p-4 rounded-xl border border-rose-800 shadow-inner flex flex-col items-center justify-center gap-1.5">
+              <div className="flex items-center gap-2 text-rose-300 text-xs font-bold uppercase tracking-widest">
                 <Clock className="w-4 h-4 text-rose-400 animate-spin" style={{ animationDuration: '4s' }} />
                 <span>Access Lock Resets In</span>
               </div>
-              <div className="font-mono text-3xl sm:text-4xl font-black tracking-widest text-white drop-shadow-md flex items-center justify-center gap-1">
+              <div className="font-mono text-3xl sm:text-4xl font-black tracking-widest text-white drop-shadow-md flex items-center justify-center gap-1 py-1">
                 <span>{formatClock(remainingSeconds)}</span>
               </div>
             </div>
           </div>
-        ) : error ? (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm shadow-2xs">
-            <ShieldAlert className="w-5 h-5 shrink-0 text-rose-600" />
-            <span>{error}</span>
+        )}
+
+        {/* Separate Popup 2: Failed Password / Incorrect Credentials */}
+        {error && !isLockedOut && (
+          <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 shadow-xs">
+            <div className="p-2 bg-amber-200/80 rounded-xl text-amber-800 shrink-0 mt-0.5">
+              <ShieldAlert className="w-5 h-5 text-amber-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span className="font-extrabold text-xs uppercase tracking-wider text-amber-950">
+                  Authentication Failed
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setErrorType(null);
+                  }}
+                  className="text-amber-700 hover:text-amber-950 text-xs font-bold px-1"
+                  title="Dismiss alert"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-amber-800 font-medium leading-relaxed">{error}</p>
+            </div>
           </div>
-        ) : null}
+        )}
 
         <form onSubmit={handleLogin} method="post" action="#" className="space-y-4">
           <div>

@@ -281,6 +281,10 @@ export class AuthService {
   }
 
   async createUser(input: { staffId: string; name: string; email?: string; password: string; role?: string; canPrintMail?: boolean }, adminUserId?: string) {
+    if (!input.password || input.password.trim().length < 6) {
+      throw new Error('Assigned staff password must be at least 6 characters long.');
+    }
+
     const sId = input.staffId.trim().toUpperCase();
     const existingStaffId = await prisma.user.findUnique({ where: { staffId: sId } });
     if (existingStaffId) {

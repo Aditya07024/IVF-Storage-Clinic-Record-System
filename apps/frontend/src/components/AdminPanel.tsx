@@ -50,6 +50,11 @@ export const AdminPanel: React.FC = () => {
       return;
     }
 
+    if (newPassword.trim().length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
     setCreating(true);
     setError(null);
     setSuccessMsg(null);
@@ -85,6 +90,11 @@ export const AdminPanel: React.FC = () => {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetTargetUser || !resetPasswordVal.trim()) return;
+
+    if (resetPasswordVal.trim().length < 6) {
+      setError('New password must be at least 6 characters long.');
+      return;
+    }
 
     setResetting(true);
     setError(null);
@@ -409,9 +419,10 @@ export const AdminPanel: React.FC = () => {
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Set account password"
+                    placeholder="Set password (min 6 characters)"
                     required
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-3.5 pr-10 py-2.5 text-sm font-mono text-slate-900 focus:outline-none focus:border-emerald-500"
+                    minLength={6}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-3.5 pr-10 py-2.5 text-sm font-mono text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
                   />
                   <button
                     type="button"
@@ -421,6 +432,9 @@ export const AdminPanel: React.FC = () => {
                     {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                  🔒 Minimum 6 characters required.
+                </p>
               </div>
 
               <div>
@@ -506,7 +520,8 @@ export const AdminPanel: React.FC = () => {
                     onChange={(e) => setResetPasswordVal(e.target.value)}
                     placeholder="Enter new password (min 6 chars)"
                     required
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-3.5 pr-10 py-2.5 text-sm font-mono text-slate-900 focus:outline-none focus:border-emerald-500"
+                    minLength={6}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-3.5 pr-10 py-2.5 text-sm font-mono text-slate-900 focus:outline-none focus:border-emerald-500 font-medium"
                   />
                   <button
                     type="button"
@@ -516,6 +531,9 @@ export const AdminPanel: React.FC = () => {
                     {showResetPasswordVal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                  🔒 Minimum 6 characters required.
+                </p>
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
