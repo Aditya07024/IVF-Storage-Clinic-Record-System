@@ -191,6 +191,7 @@ export const AdminPanel: React.FC = () => {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => {
               setNewPassword(generateRandomPassword());
