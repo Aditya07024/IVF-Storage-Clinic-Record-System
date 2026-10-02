@@ -923,29 +923,31 @@ export const PatientDirectory: React.FC = () => {
 
                             displayStraws.forEach((s: any) => {
                               const pIsOocyte = isOocyteSpecimen(p);
+                              const cleanGrade = (raw: string | undefined | null): string => {
+                                if (!raw) return '';
+                                const cleaned = raw.toString().replace(/[,\s]+/g, ' ').split('(')[0].trim().toUpperCase();
+                                return cleaned && cleaned !== 'N/A' ? cleaned : '';
+                              };
                               if (pIsOocyte) {
                                 if (s.embryos && s.embryos.length > 0) {
                                   s.embryos.forEach((emb: any) => {
-                                    const stg = emb.grade || s.grade || s.batchOocyteStage || 'MII';
-                                    const cleanStg = stg.split('(')[0].trim();
-                                    if (!stageCounts[cleanStg]) stageOrder.push(cleanStg);
-                                    stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + 1;
+                                    const stg = cleanGrade(emb.grade) || cleanGrade(s.grade) || cleanGrade(s.batchOocyteStage) || 'MII';
+                                    if (!stageCounts[stg]) stageOrder.push(stg);
+                                    stageCounts[stg] = (stageCounts[stg] || 0) + 1;
                                   });
                                 } else {
-                                  const stg = s.grade || s.batchOocyteStage || 'MII';
-                                  const cleanStg = stg.split('(')[0].trim();
+                                  const stg = cleanGrade(s.grade) || cleanGrade(s.batchOocyteStage) || 'MII';
                                   const count = s.embryoCount || 1;
-                                  if (!stageCounts[cleanStg]) stageOrder.push(cleanStg);
-                                  stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + count;
+                                  if (!stageCounts[stg]) stageOrder.push(stg);
+                                  stageCounts[stg] = (stageCounts[stg] || 0) + count;
                                 }
                               } else {
-                                const stg = s.stage || s.batchEmbryoStage || 'day5';
-                                const cleanStg = formatDayStage(stg.split('(')[0].trim());
+                                const stg = formatDayStage((s.stage || s.batchEmbryoStage || 'day5').split('(')[0].trim());
                                 const count = (s.embryos && Array.isArray(s.embryos) && s.embryos.length > 0)
                                   ? s.embryos.length
                                   : (typeof s.embryoCount === 'number' ? s.embryoCount : (parseInt(s.embryoCount, 10) || 1));
-                                if (!stageCounts[cleanStg]) stageOrder.push(cleanStg);
-                                stageCounts[cleanStg] = (stageCounts[cleanStg] || 0) + count;
+                                if (!stageCounts[stg]) stageOrder.push(stg);
+                                stageCounts[stg] = (stageCounts[stg] || 0) + count;
                               }
                             });
 
