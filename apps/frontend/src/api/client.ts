@@ -197,7 +197,19 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+    const errObj: any = new Error(data.error || `HTTP error! Status: ${response.status}`);
+    const retryHeader =
+      response.headers.get('Retry-After') ||
+      response.headers.get('retry-after') ||
+      response.headers.get('RateLimit-Reset') ||
+      response.headers.get('ratelimit-reset');
+    const parsedHeaderSec = retryHeader ? parseInt(retryHeader, 10) : null;
+    const retrySec = data.retryAfterSeconds || (parsedHeaderSec && !isNaN(parsedHeaderSec) ? parsedHeaderSec : null);
+
+    if (retrySec) {
+      errObj.retryAfterSeconds = retrySec;
+    }
+    throw errObj;
   }
 
   // Save to client cache on GET success

@@ -103,10 +103,21 @@ const globalApiLimiter = rateLimit({
 
 const authLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // max 10 login attempts per 15 mins per IP
+  max: 10, // max 10 failed login attempts per 15 mins per IP
+  skipSuccessfulRequests: true, // Successful logins do not count towards lockout
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, error: 'Security Policy: Too many failed login attempts. Access locked for 15 minutes.' },
+  handler: (req, res, _next, options) => {
+    const rateLimitInfo = (req as any).rateLimit;
+    const resetTime = rateLimitInfo?.resetTime ? new Date(rateLimitInfo.resetTime).getTime() : Date.now() + 15 * 60 * 1000;
+    const retryAfterSeconds = Math.max(1, Math.ceil((resetTime - Date.now()) / 1000));
+
+    res.status(options.statusCode || 429).json({
+      success: false,
+      error: 'Security Policy: Too many failed login attempts. Access locked for 15 minutes.',
+      retryAfterSeconds,
+    });
+  },
 });
 
 app.use('/api/', globalApiLimiter);

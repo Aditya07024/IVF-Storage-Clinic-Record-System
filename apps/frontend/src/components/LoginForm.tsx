@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UserCheck, ShieldAlert, LogIn, Eye, EyeOff, KeyRound } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserCheck, ShieldAlert, LogIn, Eye, EyeOff, KeyRound, Clock, Lock } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 interface LoginFormProps {
@@ -13,8 +13,65 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Real-time Lockout Clock State
+  const [lockoutEndTime, setLockoutEndTime] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+  const [initialLockoutSeconds, setInitialLockoutSeconds] = useState<number>(900);
+
+  const processError = (err: any) => {
+    const msg = err?.message || 'Authentication failed. Please check your staff ID and password.';
+    setError(msg);
+
+    const isLockout =
+      msg.includes('Too many failed login attempts') ||
+      msg.includes('Access locked') ||
+      msg.includes('locked for') ||
+      !!err?.retryAfterSeconds;
+
+    if (isLockout) {
+      let seconds = err?.retryAfterSeconds;
+      if (!seconds) {
+        const match = msg.match(/(\d+)\s*(?:minutes|minute|mins|min)/i);
+        seconds = match && match[1] ? parseInt(match[1], 10) * 60 : 900;
+      }
+      setInitialLockoutSeconds(seconds);
+      setRemainingSeconds(seconds);
+      setLockoutEndTime(Date.now() + seconds * 1000);
+    }
+  };
+
+  // Real-time ticking interval effect (updates every 1000ms)
+  useEffect(() => {
+    if (!lockoutEndTime) return;
+
+    const tick = () => {
+      const now = Date.now();
+      const left = Math.max(0, Math.ceil((lockoutEndTime - now) / 1000));
+      setRemainingSeconds(left);
+
+      if (left <= 0) {
+        setLockoutEndTime(null);
+        setError(null);
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutEndTime]);
+
+  const formatClock = (sec: number) => {
+    const mins = Math.floor(sec / 60);
+    const secs = sec % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const isLockedOut = Boolean(lockoutEndTime && remainingSeconds > 0);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLockedOut) return;
+
     setError(null);
     setLoading(true);
 
@@ -30,12 +87,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         onLoginSuccess(res.user);
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please check your staff ID and password.');
+      processError(err);
     } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
@@ -62,6 +118,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             <button
               type="button"
               onClick={async () => {
+                if (isLockedOut) return;
                 const adminId = import.meta.env.VITE_ADMIN_ID || 'ADMIN';
                 const adminPass = import.meta.env.VITE_ADMIN_PASSWORD || 'IVFadmin';
                 setStaffId(adminId);
@@ -81,12 +138,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                     onLoginSuccess(res.user);
                   }
                 } catch (err: any) {
-                  setError(err.message || 'Quick demo login failed.');
+                  processError(err);
                 } finally {
                   setLoading(false);
                 }
               }}
-              disabled={loading}
+              disabled={loading || isLockedOut}
               className="w-full py-2.5 px-3 bg-purple-100 hover:bg-purple-200 text-purple-950 border border-purple-300 font-extrabold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <KeyRound className="w-3.5 h-3.5 text-purple-700" />
@@ -95,12 +152,55 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           </div>
         )}
 
-        {error && (
+        {/* Real-time Lockout Clock Card OR standard error display */}
+        {error && isLockedOut ? (
+          <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl space-y-3 text-rose-900 shadow-md">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-rose-200/80 rounded-xl text-rose-700 shrink-0 mt-0.5">
+                <ShieldAlert className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-extrabold text-xs uppercase tracking-wider text-rose-800">
+                    Security Lockout Active
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-200 text-rose-800 border border-rose-300">
+                    <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
+                    Live Clock
+                  </span>
+                </div>
+                <p className="text-xs text-rose-700 font-medium leading-relaxed">{error}</p>
+              </div>
+            </div>
+
+            {/* Real-time Digital Countdown Clock Box */}
+            <div className="bg-gradient-to-r from-rose-900 via-slate-900 to-rose-950 p-4 rounded-xl text-white shadow-inner flex flex-col items-center justify-center gap-2 border border-rose-800">
+              <div className="flex items-center gap-2 text-rose-300 text-xs font-semibold uppercase tracking-widest">
+                <Clock className="w-4 h-4 text-rose-400 animate-spin" style={{ animationDuration: '4s' }} />
+                <span>Access Lock Resets In</span>
+              </div>
+              <div className="font-mono text-3xl sm:text-4xl font-black tracking-widest text-white drop-shadow-md flex items-center justify-center gap-1">
+                <span>{formatClock(remainingSeconds)}</span>
+              </div>
+              <p className="text-[11px] text-rose-300/80 text-center font-medium">
+                System will automatically unlock when timer hits 00:00
+              </p>
+
+              {/* Dynamic Real-time Progress Bar */}
+              <div className="w-full bg-rose-950/80 h-2 rounded-full overflow-hidden border border-rose-800/60 mt-1">
+                <div
+                  className="bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 h-full transition-all duration-1000 ease-linear rounded-full"
+                  style={{ width: `${Math.min(100, Math.max(0, (remainingSeconds / initialLockoutSeconds) * 100))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        ) : error ? (
           <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm shadow-2xs">
             <ShieldAlert className="w-5 h-5 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
-        )}
+        ) : null}
 
         <form onSubmit={handleLogin} method="post" action="#" className="space-y-4">
           <div>
@@ -113,13 +213,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               type="text"
               value={staffId}
               onChange={(e) => setStaffId(e.target.value)}
+              disabled={isLockedOut}
               placeholder="e.g. ADMIN"
               required
               autoComplete="username"
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck={false}
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -134,10 +235,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLockedOut}
                 placeholder="••••••••••••"
                 required
                 autoComplete="current-password"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-4 pr-11 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-mono"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-4 pr-11 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-mono disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
@@ -152,11 +254,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
+            disabled={loading || isLockedOut}
+            className={`w-full font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+              isLockedOut
+                ? 'bg-slate-700 text-rose-200 border border-rose-900/50 shadow-none'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-emerald-600/20'
+            }`}
           >
             {loading ? (
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : isLockedOut ? (
+              <>
+                <Lock className="w-5 h-5 text-rose-300 animate-pulse" />
+                <span>Access Locked ({formatClock(remainingSeconds)})</span>
+              </>
             ) : (
               <>
                 <LogIn className="w-5 h-5" />
@@ -175,3 +286,4 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     </div>
   );
 };
+
