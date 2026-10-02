@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldCheck, UserPlus, KeyRound, Lock, Trash2, CheckCircle2, ShieldAlert, RefreshCw, Eye, EyeOff, User } from 'lucide-react';
+import { ShieldCheck, UserPlus, KeyRound, Lock, Trash2, CheckCircle2, ShieldAlert, RefreshCw, Eye, EyeOff, User, ExternalLink, FolderArchive } from 'lucide-react';
 import { apiRequest } from '../api/client';
 
 export const AdminPanel: React.FC = () => {
