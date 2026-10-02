@@ -6,7 +6,7 @@
 set -e
 
 SERVER_ALIAS="ivf"  # SSH alias from ~/.ssh/config
-REMOTE_APP_DIR="/root/ivf"  # Adjust if your app lives elsewhere on the server
+REMOTE_APP_DIR="/var/www/ivf"  # Server app location
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
