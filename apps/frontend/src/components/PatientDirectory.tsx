@@ -923,31 +923,51 @@ export const PatientDirectory: React.FC = () => {
 
                             displayStraws.forEach((s: any) => {
                               const pIsOocyte = isOocyteSpecimen(p);
-                              const cleanGrade = (raw: string | undefined | null): string => {
-                                if (!raw) return '';
-                                const cleaned = raw.toString().replace(/[,\s]+/g, ' ').split('(')[0].trim().toUpperCase();
-                                return cleaned && cleaned !== 'N/A' ? cleaned : '';
+                              const validOocyteGrades = ['MII', 'MI', 'GV'];
+                              // Parse a raw grade string into individual grade tokens
+                              const parseGrades = (raw: string | undefined | null): string[] => {
+                                if (!raw) return [];
+                                const cleaned = raw.toString().split('(')[0].replace(/[,\+\/;]+/g, ' ').trim().toUpperCase();
+                                if (!cleaned || cleaned === 'N/A') return [];
+                                // Split by whitespace and filter to valid tokens only
+                                const tokens = cleaned.split(/\s+/).filter(t => t && t !== 'N/A');
+                                return tokens;
+                              };
+                              // Add a single grade to the counts
+                              const addGrade = (grade: string, count: number = 1) => {
+                                if (!stageCounts[grade]) stageOrder.push(grade);
+                                stageCounts[grade] = (stageCounts[grade] || 0) + count;
                               };
                               if (pIsOocyte) {
-                                if (s.embryos && s.embryos.length > 0) {
-                                  s.embryos.forEach((emb: any) => {
-                                    const stg = cleanGrade(emb.grade) || cleanGrade(s.grade) || cleanGrade(s.batchOocyteStage) || 'MII';
-                                    if (!stageCounts[stg]) stageOrder.push(stg);
-                                    stageCounts[stg] = (stageCounts[stg] || 0) + 1;
-                                  });
+                                // For oocytes: always use straw-level grade (matches detail view)
+                                const strawGrades = parseGrades(s.grade);
+                                const eCount = (s.embryos && Array.isArray(s.embryos) && s.embryos.length > 0)
+                                  ? s.embryos.length
+                                  : (typeof s.embryoCount === 'number' ? s.embryoCount : (parseInt(s.embryoCount, 10) || 1));
+
+                                if (strawGrades.length > 0) {
+                                  if (strawGrades.length === eCount) {
+                                    // Each token maps 1:1 to an oocyte (e.g. "MII, MI, MI" for 3 eggs)
+                                    strawGrades.forEach(g => addGrade(g));
+                                  } else if (strawGrades.length === 1) {
+                                    // Single grade applies to all oocytes (e.g. "MI" for 3 eggs)
+                                    addGrade(strawGrades[0], eCount);
+                                  } else {
+                                    // Mismatch — count each parsed token as-is
+                                    strawGrades.forEach(g => addGrade(g));
+                                  }
                                 } else {
-                                  const stg = cleanGrade(s.grade) || cleanGrade(s.batchOocyteStage) || 'MII';
-                                  const count = s.embryoCount || 1;
-                                  if (!stageCounts[stg]) stageOrder.push(stg);
-                                  stageCounts[stg] = (stageCounts[stg] || 0) + count;
+                                  // No straw-level grade — fall back to batch stage
+                                  const batchGrades = parseGrades(s.batchOocyteStage);
+                                  const fallback = batchGrades[0] || 'MII';
+                                  addGrade(fallback, eCount);
                                 }
                               } else {
                                 const stg = formatDayStage((s.stage || s.batchEmbryoStage || 'day5').split('(')[0].trim());
                                 const count = (s.embryos && Array.isArray(s.embryos) && s.embryos.length > 0)
                                   ? s.embryos.length
                                   : (typeof s.embryoCount === 'number' ? s.embryoCount : (parseInt(s.embryoCount, 10) || 1));
-                                if (!stageCounts[stg]) stageOrder.push(stg);
-                                stageCounts[stg] = (stageCounts[stg] || 0) + count;
+                                addGrade(stg, count);
                               }
                             });
 
