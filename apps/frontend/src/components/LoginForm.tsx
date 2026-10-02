@@ -233,7 +233,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               value={staffId}
               onChange={(e) => setStaffId(e.target.value)}
               disabled={isLockedOut}
-              placeholder="e.g. ADMIN"
+              placeholder="e.g. STAFF ID"
               required
               autoComplete="username"
               autoCorrect="off"

@@ -130,17 +130,6 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
             </div>
           ) : (
             <>
-              {/* Native 1-Click Install Button if browser prompt is active */}
-              {activePrompt && (
-                <button
-                  onClick={handleNativeInstall}
-                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer mb-2"
-                >
-                  <Download className="w-5 h-5" />
-                  <span>Install App Now (Browser 1-Click)</span>
-                </button>
-              )}
-
               {/* Apple iOS Instruction Card */}
               <div
                 className={`p-4 rounded-2xl border transition-all ${
