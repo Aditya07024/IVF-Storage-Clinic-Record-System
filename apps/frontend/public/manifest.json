@@ -1,0 +1,16 @@
+{
+  "short_name": "IVF Cryo",
+  "name": "SRGH IVF Cryo Bank Storage Record System",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#059669",
+  "display": "standalone",
+  "orientation": "portrait"
+}

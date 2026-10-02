@@ -9,9 +9,11 @@ import {
   ArrowRight,
   UserPlus,
   RotateCw,
+  Smartphone,
 } from 'lucide-react';
 import { apiRequest, clearApiCache } from '../api/client';
 import { get8StepHeatmapColor } from '../utils/heatmap';
+import { InstallAppModal } from './InstallAppModal';
 
 interface DashboardProps {
   onNavigate: (tab: any, canCode?: string) => void;
@@ -21,6 +23,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   useEffect(() => {
     fetchDashboard();
@@ -98,6 +101,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <p className="text-sm text-slate-500 mt-1">Real-time IVF embryo storage utilization & staff operational status</p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Mobile-Only Install App Button */}
+          <button
+            onClick={() => setIsInstallModalOpen(true)}
+            className="flex md:hidden items-center gap-2 px-3.5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer border border-amber-600/30"
+          >
+            <Smartphone className="w-4 h-4 text-slate-950" />
+            <span>Install App</span>
+          </button>
+
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -122,6 +134,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </button>
         </div>
       </div>
+
+      <InstallAppModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+      />
 
       {/* Pending OCR Alert Banner */}
       {summary.pendingOcrCount > 0 && (

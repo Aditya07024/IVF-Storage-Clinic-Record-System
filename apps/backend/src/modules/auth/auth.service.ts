@@ -119,35 +119,34 @@ export class AuthService {
   async seedUsersIfNeeded(): Promise<void> {
     return withDbRetry(async () => {
       try {
-        const adminExists = await prisma.user.findUnique({ where: { staffId: 'ADMIN001' } });
+        const isProd = process.env.NODE_ENV === 'production';
+        const adminId = process.env.VITE_ADMIN_ID || process.env.ADMIN_ID || (isProd ? 'ADMIN' : 'ADMIN001');
+        const adminPass = process.env.VITE_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || (isProd ? 'IVFadmin' : 'AdminPassword123!');
+        const adminEmail = process.env.ADMIN_EMAIL || (isProd ? 'admin@ivfclinic.com' : 'demoadmin@ivfclinic.com');
+        const adminName = isProd ? 'Admin (SRGH)' : 'Demo Admin';
+
+        const adminExists = await prisma.user.findFirst({
+          where: { OR: [{ staffId: adminId }, { staffId: 'ADMIN001' }, { staffId: 'ADMIN' }] }
+        });
+
         if (!adminExists) {
-          const adminHash = await argon2.hash('AdminPassword123!', { type: argon2.argon2id });
+          const adminHash = await argon2.hash(adminPass, { type: argon2.argon2id });
           await prisma.user.create({
             data: {
-              staffId: 'ADMIN001',
-              email: 'admin@ivfclinic.com',
-              name: 'Dr. Sarah Jenkins (Admin)',
+              staffId: adminId,
+              email: adminEmail,
+              name: adminName,
               passwordHash: adminHash,
               role: 'ADMIN',
             },
           });
-          console.log('[Auth] Auto-seeded default Admin user (ADMIN001)');
+          console.log(`[Auth] Auto-seeded Admin user (${adminId})`);
         }
 
-        const staffExists = await prisma.user.findUnique({ where: { staffId: 'STAFF001' } });
-        if (!staffExists) {
-          const staffHash = await argon2.hash('StaffPassword123!', { type: argon2.argon2id });
-          await prisma.user.create({
-            data: {
-              staffId: 'STAFF001',
-              email: 'staff@ivfclinic.com',
-              name: 'Alex Vance (Embryologist)',
-              passwordHash: staffHash,
-              role: 'STAFF',
-            },
-          });
-          console.log('[Auth] Auto-seeded default Staff user (STAFF001)');
-        }
+        // Purge legacy demo STAFF001 user if present
+        await prisma.user.deleteMany({
+          where: { OR: [{ staffId: 'STAFF001' }, { email: 'staff@ivfclinic.com' }] }
+        }).catch(() => {});
       } catch (err: any) {
         console.error('[Auth Seed Warning]', err.message);
       }

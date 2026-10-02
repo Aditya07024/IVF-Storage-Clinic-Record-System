@@ -68,34 +68,27 @@ async function seed() {
     throw new Error('No VisoTubes found in hierarchy.');
   }
 
-  // 3. Admin & Staff accounts
-  let admin = await prisma.user.findUnique({ where: { staffId: 'ADMIN001' } });
+  // 3. Admin account
+  const adminId = process.env.VITE_ADMIN_ID || 'ADMIN';
+  const adminPass = process.env.VITE_ADMIN_PASSWORD || 'IVFadmin';
+  let admin = await prisma.user.findFirst({
+    where: { OR: [{ staffId: adminId }, { staffId: 'ADMIN001' }] }
+  });
   if (!admin) {
-    const adminHash = await argon2.hash('AdminPassword123!', { type: argon2.argon2id });
+    const adminHash = await argon2.hash(adminPass, { type: argon2.argon2id });
     admin = await prisma.user.create({
       data: {
-        staffId: 'ADMIN001',
+        staffId: adminId,
         email: 'admin@ivfclinic.com',
-        name: 'Dr. Sarah Jenkins (Admin)',
+        name: 'Admin (SRGH)',
         passwordHash: adminHash,
         role: 'ADMIN',
       },
     });
-  }
-
-  let staff = await prisma.user.findUnique({ where: { staffId: 'STAFF001' } });
-  if (!staff) {
-    const staffHash = await argon2.hash('StaffPassword123!', { type: argon2.argon2id });
-    staff = await prisma.user.create({
-      data: {
-        staffId: 'STAFF001',
-        email: 'staff@ivfclinic.com',
-        name: 'Alex Vance (Senior Embryologist)',
-        passwordHash: staffHash,
-        role: 'STAFF',
-      },
-    });
-  }
+  // Purge legacy STAFF001 account if present
+  await prisma.user.deleteMany({
+    where: { OR: [{ staffId: 'STAFF001' }, { email: 'staff@ivfclinic.com' }] }
+  }).catch(() => {});
 
   const staffUserId = admin.id;
   const staffName = admin.name;

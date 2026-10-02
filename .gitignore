@@ -10,6 +10,7 @@ coverage/
 *.db
 dev.db
 apps/backend/prisma/dev.db
+CLIENT_HANDOFF_DOCS/
 
 # Credentials & Security Protection
 credentials/

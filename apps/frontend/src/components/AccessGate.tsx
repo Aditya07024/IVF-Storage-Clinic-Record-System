@@ -87,24 +87,26 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
           </p>
         </div>
 
-
-
-        {/* 1-Click Quick Demo Access Key Button */}
-        {!import.meta.env.PROD && (
-          <div className="mb-5 p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-2">
+        {/* 1-Click Quick Access Key Button (Development Mode Only - Hidden when NODE_ENV=production) */}
+        {import.meta.env.DEV &&
+          !import.meta.env.VITE_IS_PRODUCTION_ENV &&
+          import.meta.env.VITE_NODE_ENV !== 'production' &&
+          !import.meta.env.PROD && (
+            <div className="mb-5 p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-2">
             <button
               type="button"
               onClick={async () => {
-                setAccessKey('clinic2026');
+                const demoKey = import.meta.env.VITE_APP_ACCESS_KEY || 'ivf@srgm';
+                setAccessKey(demoKey);
                 setError(null);
                 setLoading(true);
                 try {
                   const res = await apiRequest('/api/auth/access-key', {
                     method: 'POST',
-                    body: JSON.stringify({ accessKey: 'clinic2026' }),
+                    body: JSON.stringify({ accessKey: demoKey }),
                   });
                   if (res.success) {
-                    grantAccess('clinic2026');
+                    grantAccess(demoKey);
                   }
                 } catch (err: any) {
                   setError(err.message || 'Demo access key failed.');
@@ -116,7 +118,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
               className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <KeyRound className="w-4 h-4 text-emerald-200" />
-              <span>Unlock Website with Demo Access Key (clinic2026)</span>
+              <span>Unlock Website with Demo Access Key ({import.meta.env.VITE_APP_ACCESS_KEY || 'ivf@srgm'})</span>
             </button>
           </div>
         )}

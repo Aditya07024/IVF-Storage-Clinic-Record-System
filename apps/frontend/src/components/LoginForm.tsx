@@ -36,29 +36,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleQuickDemoLogin = async (sId: string, pass: string) => {
-    setStaffId(sId);
-    setPassword(pass);
-    setError(null);
-    setLoading(true);
-
-    try {
-      const res = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ staffId: sId, password: pass }),
-      });
-
-      if (res.success) {
-        localStorage.setItem('access_token', res.accessToken);
-        if (res.refreshToken) localStorage.setItem('refresh_token', res.refreshToken);
-        onLoginSuccess(res.user);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Quick demo login failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
@@ -73,20 +50,47 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        {/* 1-Click Quick Admin Demo Login Button */}
-        {!import.meta.env.PROD && (
-          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+        {/* 1-Click Quick Admin Login Button (Development Mode Only - Hidden when NODE_ENV=production) */}
+        {import.meta.env.DEV &&
+          !import.meta.env.VITE_IS_PRODUCTION_ENV &&
+          import.meta.env.VITE_NODE_ENV !== 'production' &&
+          !import.meta.env.PROD && (
+            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
             <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider text-center">
-              ⚡ Quick Admin Demo Login:
+              ⚡ Quick Admin Login (Dev Mode):
             </div>
             <button
               type="button"
-              onClick={() => handleQuickDemoLogin('ADMIN001', 'AdminPassword123!')}
+              onClick={async () => {
+                const adminId = import.meta.env.VITE_ADMIN_ID || 'ADMIN';
+                const adminPass = import.meta.env.VITE_ADMIN_PASSWORD || 'IVFadmin';
+                setStaffId(adminId);
+                setPassword(adminPass);
+                setError(null);
+                setLoading(true);
+
+                try {
+                  const res = await apiRequest('/api/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ staffId: adminId, password: adminPass }),
+                  });
+
+                  if (res.success) {
+                    localStorage.setItem('access_token', res.accessToken);
+                    if (res.refreshToken) localStorage.setItem('refresh_token', res.refreshToken);
+                    onLoginSuccess(res.user);
+                  }
+                } catch (err: any) {
+                  setError(err.message || 'Quick demo login failed.');
+                } finally {
+                  setLoading(false);
+                }
+              }}
               disabled={loading}
               className="w-full py-2.5 px-3 bg-purple-100 hover:bg-purple-200 text-purple-950 border border-purple-300 font-extrabold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <KeyRound className="w-3.5 h-3.5 text-purple-700" />
-              <span>Admin Dashboard (ADMIN001)</span>
+              <span>Admin Dashboard ({import.meta.env.VITE_ADMIN_ID || 'ADMIN'})</span>
             </button>
           </div>
         )}
@@ -109,7 +113,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               type="text"
               value={staffId}
               onChange={(e) => setStaffId(e.target.value)}
-              placeholder="e.g. STAFF001"
+              placeholder="e.g. ADMIN"
               required
               autoComplete="username"
               autoCorrect="off"
