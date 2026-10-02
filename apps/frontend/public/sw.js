@@ -1,9 +1,11 @@
-const CACHE_NAME = 'ivf-cryo-app-v1';
+const CACHE_NAME = 'ivf-cryo-app-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.png'
+  '/favicon.png',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
