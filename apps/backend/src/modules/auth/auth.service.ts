@@ -62,23 +62,39 @@ export class AuthService {
     const envAdminId = (process.env.VITE_ADMIN_ID || process.env.ADMIN_ID || 'ADMIN').trim();
     const envAdminPass = (process.env.VITE_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'IVFadmin').trim();
 
+    // Find user by exact staffId or email only — never mix in admin fallback IDs
     let user = await prisma.user.findFirst({
       where: {
         OR: [
           { staffId: cleanInput },
           { staffId: cleanInput.toUpperCase() },
-          { staffId: 'ADMIN' },
-          { staffId: 'ADMIN001' },
           { email: cleanInput.toLowerCase() },
         ],
       },
     });
 
+    // Admin env-credential fallback: only if the entered ID matches the admin ID
+    const isAdminIdInput =
+      cleanInput.toUpperCase() === envAdminId.toUpperCase() ||
+      cleanInput.toUpperCase() === 'ADMIN' ||
+      cleanInput.toUpperCase() === 'ADMIN001';
+
     const isEnvAdminMatch =
-      (cleanInput.toUpperCase() === envAdminId.toUpperCase() ||
-       cleanInput.toUpperCase() === 'ADMIN' ||
-       cleanInput.toUpperCase() === 'ADMIN001') &&
+      isAdminIdInput &&
       (password === envAdminPass || password === 'IVFadmin' || password === 'AdminPassword123!');
+
+    if (!user && isAdminIdInput) {
+      // Try to find admin user by known admin staffIds
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { staffId: envAdminId },
+            { staffId: 'ADMIN' },
+            { staffId: 'ADMIN001' },
+          ],
+        },
+      });
+    }
 
     if (!user) {
       if (isEnvAdminMatch) {
