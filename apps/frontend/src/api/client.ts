@@ -196,6 +196,28 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     throw new Error(data.error || 'Session expired. Refreshing page...');
   }
 
+  // Handle 403 / Access Key Errors: Auto-redirect to Security Access Gate screen
+  const isAccessKeyError =
+    response.status === 403 ||
+    (typeof data.error === 'string' && (
+      data.error.toLowerCase().includes('access key') ||
+      data.error.toLowerCase().includes('invalid site access') ||
+      data.error.toLowerCase().includes('access denied')
+    ));
+
+  if (isAccessKeyError) {
+    localStorage.removeItem('app_access_key');
+    localStorage.removeItem('app_access_key_timestamp');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    clearApiCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('access-key-invalid'));
+      window.location.reload();
+    }
+    throw new Error(data.error || 'Access Key Invalid. Redirecting to Security Access Gate...');
+  }
+
   if (!response.ok) {
     const errObj: any = new Error(data.error || `HTTP error! Status: ${response.status}`);
     const retryHeader =

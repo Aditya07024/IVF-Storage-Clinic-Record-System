@@ -71,6 +71,16 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
   const isLockedOut = Boolean(lockoutEndTime && remainingSeconds > 0);
 
   useEffect(() => {
+    const handleInvalidAccessKey = () => {
+      localStorage.removeItem('app_access_key');
+      localStorage.removeItem('app_access_key_timestamp');
+      setAccessKey('');
+      setIsGranted(false);
+      setError('Access Key invalid or expired. Please enter valid site access key.');
+    };
+
+    window.addEventListener('access-key-invalid', handleInvalidAccessKey);
+
     const stored = localStorage.getItem('app_access_key');
     const storedTime = localStorage.getItem('app_access_key_timestamp');
 
@@ -91,6 +101,10 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
       setAccessKey(stored);
       setIsGranted(true);
     }
+
+    return () => {
+      window.removeEventListener('access-key-invalid', handleInvalidAccessKey);
+    };
   }, []);
 
   const grantAccess = (key: string) => {
