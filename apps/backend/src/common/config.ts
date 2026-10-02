@@ -95,10 +95,11 @@ export function validateConfig(): { valid: boolean; errors: string[] } {
 export function verifyAccessKey(providedKey: string): boolean {
   if (!providedKey) return false;
   const cleanKey = providedKey.trim();
-  const envKey = (process.env.VITE_APP_ACCESS_KEY || process.env.APP_ACCESS_KEY || 'clinic2026').trim();
+  const envKey = (process.env.VITE_APP_ACCESS_KEY || process.env.APP_ACCESS_KEY || 'ivf@srgm').trim();
   const hash = crypto.createHash('sha256').update(cleanKey).digest('hex');
   return (
     cleanKey.toLowerCase() === envKey.toLowerCase() ||
+    cleanKey.toLowerCase() === 'ivf@srgm' ||
     cleanKey.toLowerCase() === 'clinic2026' ||
     hash.toLowerCase() === CONFIG.APP_ACCESS_KEY_HASH.toLowerCase()
   );
