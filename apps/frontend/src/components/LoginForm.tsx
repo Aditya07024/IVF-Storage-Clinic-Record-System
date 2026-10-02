@@ -164,10 +164,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   <span className="font-extrabold text-xs uppercase tracking-wider text-rose-800">
                     Security Lockout Active
                   </span>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-200 text-rose-800 border border-rose-300">
-                    <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
-                    Live Clock
-                  </span>
                 </div>
                 <p className="text-xs text-rose-700 font-medium leading-relaxed">{error}</p>
               </div>
@@ -181,17 +177,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               </div>
               <div className="font-mono text-3xl sm:text-4xl font-black tracking-widest text-white drop-shadow-md flex items-center justify-center gap-1">
                 <span>{formatClock(remainingSeconds)}</span>
-              </div>
-              <p className="text-[11px] text-rose-300/80 text-center font-medium">
-                System will automatically unlock when timer hits 00:00
-              </p>
-
-              {/* Dynamic Real-time Progress Bar */}
-              <div className="w-full bg-rose-950/80 h-2 rounded-full overflow-hidden border border-rose-800/60 mt-1">
-                <div
-                  className="bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 h-full transition-all duration-1000 ease-linear rounded-full"
-                  style={{ width: `${Math.min(100, Math.max(0, (remainingSeconds / initialLockoutSeconds) * 100))}%` }}
-                />
               </div>
             </div>
           </div>
