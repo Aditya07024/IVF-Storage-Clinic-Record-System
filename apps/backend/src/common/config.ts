@@ -101,7 +101,6 @@ export function verifyAccessKey(providedKey: string): boolean {
 
   return (
     cleanKey.toLowerCase() === envKey.toLowerCase() ||
-    cleanKey.toLowerCase() === 'ivf@srgm' ||
     cleanKey.toLowerCase() === 'ivf@sgrm' ||
     cleanKey.toLowerCase() === 'clinic2026' ||
     hash.toLowerCase() === CONFIG.APP_ACCESS_KEY_HASH.toLowerCase() ||
