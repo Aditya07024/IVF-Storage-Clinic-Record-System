@@ -96,14 +96,21 @@ export function verifyAccessKey(providedKey: string): boolean {
   if (!providedKey) return false;
   const cleanKey = providedKey.trim();
   const envKey = (process.env.VITE_APP_ACCESS_KEY || process.env.APP_ACCESS_KEY || 'ivf@sgrm').trim();
-  const hash = crypto.createHash('sha256').update(cleanKey).digest('hex');
-  const envKeyHash = crypto.createHash('sha256').update(envKey).digest('hex');
+  const hash = crypto.createHash('sha256').update(cleanKey).digest('hex').toLowerCase();
+  const envKeyHash = crypto.createHash('sha256').update(envKey).digest('hex').toLowerCase();
+
+  const knownHashes = [
+    CONFIG.APP_ACCESS_KEY_HASH.toLowerCase(),
+    envKeyHash,
+    '8f3705adafbf4c17c1600f60ca8d6e8aac7b642a7c70614f9e57dd8984757c8d', // SHA-256 of ivf@sgrm
+    'c25d9b758428531583182d14a7e29bdf57c16b2b1d6d63b6bc0868a6b663cc2d', // SHA-256 of ivf@srgm
+  ];
 
   return (
     cleanKey.toLowerCase() === envKey.toLowerCase() ||
     cleanKey.toLowerCase() === 'ivf@sgrm' ||
+    cleanKey.toLowerCase() === 'ivf@srgm' ||
     cleanKey.toLowerCase() === 'clinic2026' ||
-    hash.toLowerCase() === CONFIG.APP_ACCESS_KEY_HASH.toLowerCase() ||
-    hash.toLowerCase() === envKeyHash.toLowerCase()
+    knownHashes.includes(hash)
   );
 }
