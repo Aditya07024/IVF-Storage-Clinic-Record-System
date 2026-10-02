@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Smartphone, Monitor, Share, MoreVertical, Download, CheckCircle2 } from 'lucide-react';
+import { X, Smartphone, Monitor, Share, Download, CheckCircle2 } from 'lucide-react';
 import brandLogo from '../assets/image.png';
 
 interface InstallAppModalProps {
@@ -13,12 +13,25 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
+    // Check global window deferred prompt if already captured
+    if ((window as any).deferredInstallPrompt) {
+      setDeferredPrompt((window as any).deferredInstallPrompt);
+    }
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      (window as any).deferredInstallPrompt = e;
       setDeferredPrompt(e);
     };
 
+    const handlePwaPromptAvailable = () => {
+      if ((window as any).deferredInstallPrompt) {
+        setDeferredPrompt((window as any).deferredInstallPrompt);
+      }
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('pwa-prompt-available', handlePwaPromptAvailable);
 
     // Detect Device Type
     const ua = navigator.userAgent || '';
@@ -30,27 +43,53 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
       setDeviceType('desktop');
     }
 
-    // Check if app is already running in standalone mode (installed)
+    // Check if app is running in standalone mode (already installed)
     if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
       setInstalled(true);
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-prompt-available', handlePwaPromptAvailable);
     };
   }, []);
 
-  const handleNativeInstall = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setInstalled(true);
+  // When modal opens, auto trigger browser native install popup if available
+  useEffect(() => {
+    if (isOpen && !installed) {
+      const activePrompt = deferredPrompt || (window as any).deferredInstallPrompt;
+      if (activePrompt) {
+        try {
+          activePrompt.prompt();
+          activePrompt.userChoice.then((choiceResult: any) => {
+            if (choiceResult.outcome === 'accepted') {
+              setInstalled(true);
+            }
+            setDeferredPrompt(null);
+            (window as any).deferredInstallPrompt = null;
+          }).catch(() => {});
+        } catch (e) {}
+      }
     }
-    setDeferredPrompt(null);
+  }, [isOpen, installed, deferredPrompt]);
+
+  const handleNativeInstall = async () => {
+    const activePrompt = deferredPrompt || (window as any).deferredInstallPrompt;
+    if (!activePrompt) return;
+    try {
+      activePrompt.prompt();
+      const { outcome } = await activePrompt.userChoice;
+      if (outcome === 'accepted') {
+        setInstalled(true);
+      }
+      setDeferredPrompt(null);
+      (window as any).deferredInstallPrompt = null;
+    } catch (e) {}
   };
 
   if (!isOpen) return null;
+
+  const activePrompt = deferredPrompt || (window as any).deferredInstallPrompt;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -91,18 +130,18 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
             </div>
           ) : (
             <>
-              {/* Native Prompt 1-Click Install Button if available */}
-              {deferredPrompt && (
+              {/* Native 1-Click Install Button if browser prompt is active */}
+              {activePrompt && (
                 <button
                   onClick={handleNativeInstall}
-                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer mb-2"
                 >
                   <Download className="w-5 h-5" />
-                  <span>Install App Now (1-Click)</span>
+                  <span>Install App Now (Browser 1-Click)</span>
                 </button>
               )}
 
-              {/* iOS Safari Instruction Card */}
+              {/* Apple iOS Instruction Card */}
               <div
                 className={`p-4 rounded-2xl border transition-all ${
                   deviceType === 'ios'
@@ -117,28 +156,24 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
                   </div>
                   {deviceType === 'ios' && (
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
-                      Your Device
+                      YOUR DEVICE
                     </span>
                   )}
                 </div>
-                <ol className="text-xs text-slate-700 space-y-2 pl-1 leading-relaxed">
+                <ol className="text-xs text-slate-700 space-y-2 pl-1 leading-relaxed font-medium">
                   <li>
-                    1. Tap the <strong className="text-slate-900">Share</strong> icon{' '}
-                    <span className="inline-inline-block px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded text-[11px] font-mono">
-                      ⎋
-                    </span>{' '}
-                    (square with upward arrow) at the bottom toolbar.
+                    1. Tap the Share icon <span className="inline-block px-1.5 py-0.5 bg-slate-200 text-slate-900 rounded font-mono font-bold">⎋</span> (square with upward arrow) at the bottom toolbar.
                   </li>
                   <li>
-                    2. Scroll down and select <strong className="text-amber-900">Add to Home Screen</strong> (+).
+                    2. Scroll down and select <strong className="text-amber-950 font-bold">Add to Home Screen (+)</strong>.
                   </li>
                   <li>
-                    3. Tap <strong className="text-amber-900">Add</strong> at top right to place icon on your home screen.
+                    3. Tap <strong className="text-amber-950 font-bold">Add</strong> at top right to place icon on your home screen.
                   </li>
                 </ol>
               </div>
 
-              {/* Android Chrome Instruction Card */}
+              {/* Android Instruction Card */}
               <div
                 className={`p-4 rounded-2xl border transition-all ${
                   deviceType === 'android'
@@ -153,19 +188,20 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
                   </div>
                   {deviceType === 'android' && (
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
-                      Your Device
+                      YOUR DEVICE
                     </span>
                   )}
                 </div>
-                <ol className="text-xs text-slate-700 space-y-2 pl-1 leading-relaxed">
+                <ol className="text-xs text-slate-700 space-y-2 pl-1 leading-relaxed font-medium">
                   <li>
-                    1. Tap the 3-dots menu <strong className="text-slate-900">(⋮)</strong> at the top right of browser.
+                    1. Tap the 3-dots menu <strong className="text-slate-900 font-bold">(⋮)</strong> at the top right of browser.
                   </li>
                   <li>
-                    2. Select <strong className="text-amber-900">Install App</strong> or{' '}
-                    <strong className="text-amber-900">Add to Home Screen</strong>.
+                    2. Select <strong className="text-amber-950 font-bold">Install App</strong> or <strong className="text-amber-950 font-bold">Add to Home Screen</strong>.
                   </li>
-                  <li>3. Tap Install to confirm.</li>
+                  <li>
+                    3. Tap <strong className="text-amber-950 font-bold">Install</strong> to confirm.
+                  </li>
                 </ol>
               </div>
 
@@ -184,14 +220,12 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
                   </div>
                   {deviceType === 'desktop' && (
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
-                      Your Device
+                      YOUR DEVICE
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-700 leading-relaxed">
-                  Look at the right side of your address bar and click the{' '}
-                  <strong className="text-amber-900">Install App (⤓)</strong> icon, or select{' '}
-                  <strong className="text-amber-900">Install IVF Cryo App</strong> from browser menu.
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  Look at the right side of your address bar and click the <strong className="text-amber-950 font-bold">Install App (⤓)</strong> icon, or select <strong className="text-amber-950 font-bold">Install IVF Cryo App</strong> from browser menu.
                 </p>
               </div>
             </>
@@ -199,10 +233,19 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
         </div>
 
         {/* Action Button Section */}
-        <div className="p-6 pt-3 bg-slate-50 border-t border-slate-100">
+        <div className="p-6 pt-3 bg-slate-50 border-t border-slate-100 flex items-center gap-3">
+          {activePrompt && !installed && (
+            <button
+              onClick={handleNativeInstall}
+              className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Install Now</span>
+            </button>
+          )}
           <button
             onClick={onClose}
-            className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-orange-600/30 transition-all active:scale-95 text-center cursor-pointer"
+            className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 text-center cursor-pointer"
           >
             Got It
           </button>
