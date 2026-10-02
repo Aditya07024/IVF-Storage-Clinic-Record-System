@@ -39,8 +39,8 @@ export const CONFIG = {
   BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:4000',
   DATABASE_URL: cleanDatabaseUrl(process.env.DATABASE_URL),
   
-  // Site Access Key Hash (Default 'clinic2026')
-  APP_ACCESS_KEY_HASH: process.env.APP_ACCESS_KEY_HASH || 'ec189984c5b36432f04401eb55b916a4801153d10b627bc4cc590382e27d1aa8',
+  // Site Access Key Hash (Default 'ivf@srgm')
+  APP_ACCESS_KEY_HASH: process.env.APP_ACCESS_KEY_HASH || 'c25d9b758428531583182d14a7e29bdf57c16b2b1d6d63b6bc0868a6b663cc2d',
   
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'dev_jwt_access_secret_super_secure_32_bytes_long_2026!',
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'dev_jwt_refresh_secret_super_secure_32_bytes_long_2026!',
