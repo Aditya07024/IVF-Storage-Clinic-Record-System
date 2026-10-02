@@ -362,6 +362,9 @@ export function calculateEmbryoStage(retrievalDate?: string | Date | null, freez
   if (diffDays < 0) {
     return 'Day 0';
   }
+  if (diffDays > 7) {
+    return 'Day 5';
+  }
   return `Day ${diffDays}`;
 }
 

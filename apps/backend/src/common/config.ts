@@ -39,7 +39,7 @@ export const CONFIG = {
   BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:4000',
   DATABASE_URL: cleanDatabaseUrl(process.env.DATABASE_URL),
   
-  // Site Access Key Hash (Default 'ivf@srgm')
+  // Site Access Key Hash (Default 'ivf@sgrm')
   APP_ACCESS_KEY_HASH: process.env.APP_ACCESS_KEY_HASH || 'c25d9b758428531583182d14a7e29bdf57c16b2b1d6d63b6bc0868a6b663cc2d',
   
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'dev_jwt_access_secret_super_secure_32_bytes_long_2026!',
@@ -95,11 +95,11 @@ export function validateConfig(): { valid: boolean; errors: string[] } {
 export function verifyAccessKey(providedKey: string): boolean {
   if (!providedKey) return false;
   const cleanKey = providedKey.trim();
-  const envKey = (process.env.VITE_APP_ACCESS_KEY || process.env.APP_ACCESS_KEY || 'ivf@srgm').trim();
+  const envKey = (process.env.VITE_APP_ACCESS_KEY || process.env.APP_ACCESS_KEY || 'ivf@sgrm').trim();
   const hash = crypto.createHash('sha256').update(cleanKey).digest('hex');
   return (
     cleanKey.toLowerCase() === envKey.toLowerCase() ||
-    cleanKey.toLowerCase() === 'ivf@srgm' ||
+    cleanKey.toLowerCase() === 'ivf@sgrm' ||
     cleanKey.toLowerCase() === 'clinic2026' ||
     hash.toLowerCase() === CONFIG.APP_ACCESS_KEY_HASH.toLowerCase()
   );

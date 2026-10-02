@@ -12,7 +12,7 @@ The **IVF Embryo Storage & Patient Record Management System** is built as a secu
 - **Object Storage**: Storage abstraction supporting local server disk (Hostinger KVM) and Cloudflare R2 / S3.
 
 ## System Boundaries & Modules
-1. **Access Gate Layer 1**: Site Access Key Hash verification (`ivf@srgm`) prior to presenting login.
+1. **Access Gate Layer 1**: Site Access Key Hash verification (`ivf@sgrm`) prior to presenting login.
 2. **Auth Module Layer 2**: Staff login via Argon2id password hashing (`ADMIN` / `IVFadmin`) and HTTP-Only JWT access/refresh token cookies.
 3. **Patient Module**: Patient CRUD, `IVF-YYYY-XXXXXX` ID generation, multiline notes with author/timestamp history.
 4. **Storage Hierarchy Module**: 16 Cans (Can 01 to Can 16) x 8 Viso Tubes per Can (Viso Tube 01 to 08) x Max 2 embryos per straw capacity rule.

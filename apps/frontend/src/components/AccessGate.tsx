@@ -150,36 +150,36 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
           import.meta.env.VITE_NODE_ENV !== 'production' &&
           !import.meta.env.PROD && (
             <div className="mb-5 p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-2">
-            <button
-              type="button"
-              onClick={async () => {
-                if (isLockedOut) return;
-                const demoKey = import.meta.env.VITE_APP_ACCESS_KEY || 'ivf@srgm';
-                setAccessKey(demoKey);
-                setError(null);
-                setLoading(true);
-                try {
-                  const res = await apiRequest('/api/auth/access-key', {
-                    method: 'POST',
-                    body: JSON.stringify({ accessKey: demoKey }),
-                  });
-                  if (res.success) {
-                    grantAccess(demoKey);
+              <button
+                type="button"
+                onClick={async () => {
+                  if (isLockedOut) return;
+                  const demoKey = import.meta.env.VITE_APP_ACCESS_KEY || 'ivf@sgrm';
+                  setAccessKey(demoKey);
+                  setError(null);
+                  setLoading(true);
+                  try {
+                    const res = await apiRequest('/api/auth/access-key', {
+                      method: 'POST',
+                      body: JSON.stringify({ accessKey: demoKey }),
+                    });
+                    if (res.success) {
+                      grantAccess(demoKey);
+                    }
+                  } catch (err: any) {
+                    processError(err);
+                  } finally {
+                    setLoading(false);
                   }
-                } catch (err: any) {
-                  processError(err);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              disabled={loading || isLockedOut}
-              className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              <KeyRound className="w-4 h-4 text-emerald-200" />
-              <span>Unlock Website with Demo Access Key ({import.meta.env.VITE_APP_ACCESS_KEY || 'ivf@srgm'})</span>
-            </button>
-          </div>
-        )}
+                }}
+                disabled={loading || isLockedOut}
+                className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                <KeyRound className="w-4 h-4 text-emerald-200" />
+                <span>Unlock Website with Demo Access Key ({import.meta.env.VITE_APP_ACCESS_KEY || 'ivf@sgrm'})</span>
+              </button>
+            </div>
+          )}
 
         {/* Real-time Lockout Clock Card OR standard error display */}
         {error && isLockedOut ? (
@@ -241,11 +241,10 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children }) => {
           <button
             type="submit"
             disabled={loading || isLockedOut}
-            className={`w-full font-semibold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-              isLockedOut
+            className={`w-full font-semibold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${isLockedOut
                 ? 'bg-slate-700 text-rose-200 border border-rose-900/50 shadow-none'
                 : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-emerald-600/20'
-            }`}
+              }`}
           >
             {loading ? (
               <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

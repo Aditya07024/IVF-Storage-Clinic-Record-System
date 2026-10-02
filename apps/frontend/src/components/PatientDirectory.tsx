@@ -895,8 +895,8 @@ export const PatientDirectory: React.FC = () => {
                               const pIsOocyte = isOocyteSpecimen(p);
                               const aspDate = p.aspirationDate || batch.aspirationDate || p.visitDate;
                               const frzDate = s.freezingDate || batch.freezingDate || batch.storageDate;
-                              let computedStage = s.stage;
-                              if (!pIsOocyte && aspDate && frzDate) {
+                              let computedStage = s.stage || batch.embryoStage;
+                              if (!computedStage && !pIsOocyte && aspDate && frzDate) {
                                 computedStage = calculateEmbryoStage(aspDate, frzDate);
                               }
                               if (!computedStage) {
