@@ -191,16 +191,61 @@ export const AdminPanel: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            setNewPassword(generateRandomPassword());
-            setShowCreateModal(true);
-          }}
-          className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-98 shrink-0"
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href="https://drive.google.com/drive/folders/188e-8O11ByAlYUC-WDdYZBpnzI4psTxc?usp=drive_link"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-300 font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 shrink-0 cursor-pointer"
+          >
+            <FolderArchive className="w-4 h-4 text-blue-700" />
+            <span>Admin Google Drive Vault</span>
+            <ExternalLink className="w-3.5 h-3.5 text-blue-600 ml-0.5" />
+          </a>
+
+          <button
+            onClick={() => {
+              setNewPassword(generateRandomPassword());
+              setShowCreateModal(true);
+            }}
+            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-98 shrink-0 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Assign New Staff ID & Password</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Admin-Only Secure Google Drive Storage Vault Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 p-5 rounded-3xl text-white shadow-md border border-blue-800/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 bg-blue-500/20 rounded-2xl flex items-center justify-center border border-blue-400/30 text-blue-300 shrink-0">
+            <FolderArchive className="w-6 h-6 text-blue-300" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-extrabold text-sm tracking-tight text-white">
+                Admin Secure Documentation & Cloud Drive
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-900/90 text-blue-200 border border-blue-700 uppercase">
+                Admin Exclusive
+              </span>
+            </div>
+            <p className="text-xs text-blue-200/90 font-medium">
+              Direct secure repository for clinic handoff files, credentials, contracts, and cloud backups.
+            </p>
+          </div>
+        </div>
+
+        <a
+          href="https://drive.google.com/drive/folders/188e-8O11ByAlYUC-WDdYZBpnzI4psTxc?usp=drive_link"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all shrink-0 cursor-pointer border border-blue-400/50"
         >
-          <UserPlus className="w-4 h-4" />
-          <span>Assign New Staff ID & Password</span>
-        </button>
+          <ExternalLink className="w-4 h-4 text-blue-100" />
+          <span>Open Google Drive Vault</span>
+        </a>
       </div>
 
       {error && (
