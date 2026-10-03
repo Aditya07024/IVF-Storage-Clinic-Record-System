@@ -1,9 +1,9 @@
-# 🧬 SRGH IVF Specimen Storage & Clinic Record System
+# 🧬 SGRH IVF Specimen Storage & Clinic Record System
 
 [![Deploy IVF System to Production](https://github.com/Aditya07024/IVF-Storage-Clinic-Record-System/actions/workflows/deploy.yml/badge.svg)](https://github.com/Aditya07024/IVF-Storage-Clinic-Record-System/actions/workflows/deploy.yml)
 [![5-Minute Keep-Alive Cron Ping](https://github.com/Aditya07024/IVF-Storage-Clinic-Record-System/actions/workflows/cron-ping.yml/badge.svg)](https://github.com/Aditya07024/IVF-Storage-Clinic-Record-System/actions/workflows/cron-ping.yml)
 
-An enterprise-grade, hardened clinical management system designed for **SRGH IVF Cryo Bank**. It handles patient registration, cryopreservation storage hierarchy tracking, AI-assisted medical report OCR extraction, transactional report emailing, and audit logging.
+An enterprise-grade, hardened clinical management system designed for **SGRH IVF Cryo Bank**. It handles patient registration, cryopreservation storage hierarchy tracking, AI-assisted medical report OCR extraction, transactional report emailing, and audit logging.
 
 ---
 

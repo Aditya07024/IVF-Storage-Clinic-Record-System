@@ -232,7 +232,7 @@ export const ReportPrintMailModal: React.FC<ReportPrintMailModalProps> = ({
             <span>Sender Gmail:</span>
           </div>
           <span className="font-mono bg-white px-2.5 py-0.5 rounded-lg border border-emerald-300 text-emerald-900 shadow-2xs">
-            srghivfcryo@gmail.com
+            sgrhivfcryo@gmail.com
           </span>
         </div>
 

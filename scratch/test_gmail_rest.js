@@ -28,7 +28,7 @@ async function testGmailRest() {
 
   // 2. Construct MIME Message
   const mimeMessage = [
-    `From: SRGH IVF Cryo Bank <srghivfcryo@gmail.com>`,
+    `From: SGRH IVF Cryo Bank <sgrhivfcryo@gmail.com>`,
     `To: adityakumar07024@gmail.com`,
     `Subject: IVF Report via Official Gmail REST API`,
     `Content-Type: text/plain; charset="UTF-8"`,

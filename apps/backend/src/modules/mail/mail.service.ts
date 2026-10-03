@@ -127,7 +127,7 @@ export class MailService {
         patientId: input.patientId,
         recipientEmail: input.recipientEmail.trim(),
         subject: input.customSubject || `Official IVF Specimen Storage Report - ${input.patientName} (${input.patientId})`,
-        senderEmail: input.senderEmail || CONFIG.SMTP_USER || 'srghivfcryo@gmail.com',
+        senderEmail: input.senderEmail || CONFIG.SMTP_USER || 'sgrhivfcryo@gmail.com',
         status: queuePosition === 1 && scheduledTime <= now + 5000 ? 'SENDING' : 'QUEUED',
         messageId: `queued_pos_${queuePosition}`,
         sentAt: scheduledAt,
@@ -157,7 +157,7 @@ export class MailService {
   }
 
   private createTransporter(port: number = 465) {
-    const user = (process.env.SMTP_USER || CONFIG.SMTP_USER || 'srghivfcryo@gmail.com').trim();
+    const user = (process.env.SMTP_USER || CONFIG.SMTP_USER || 'sgrhivfcryo@gmail.com').trim();
     const rawPass = process.env.SMTP_PASS || CONFIG.SMTP_PASS || 'vzba dnde aubt akas';
     const pass = rawPass.replace(/["'\s]/g, '').trim();
 
@@ -186,7 +186,7 @@ export class MailService {
 
     const subject = customSubject || `Official IVF Specimen & Cryo Storage Summary - ${patientName} (${patientId})`;
 
-    const user = (process.env.SMTP_USER || CONFIG.SMTP_USER || 'srghivfcryo@gmail.com').trim();
+    const user = (process.env.SMTP_USER || CONFIG.SMTP_USER || 'sgrhivfcryo@gmail.com').trim();
     const rawPass = process.env.SMTP_PASS || CONFIG.SMTP_PASS || 'vzba dnde aubt akas';
     const passWithSpaces = rawPass.trim();
 
@@ -212,7 +212,7 @@ export class MailService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo-title">SRGH IVF CRYO BANK</div>
+            <div class="logo-title">SGRH IVF CRYO BANK</div>
             <div class="subtitle">Official Clinical Specimen & Storage Record</div>
           </div>
 
@@ -221,7 +221,7 @@ export class MailService {
           </div>
 
           <div class="body-text">
-            Please find attached your official <strong>IVF Embryo / Oocyte Storage Summary Report</strong> issued by <strong>SRGH IVF Cryo Bank</strong>.
+            Please find attached your official <strong>IVF Embryo / Oocyte Storage Summary Report</strong> issued by <strong>SGRH IVF Cryo Bank</strong>.
           </div>
 
           ${customMessage ? `<div class="custom-msg">"${customMessage}"</div>` : ''}
@@ -252,7 +252,7 @@ export class MailService {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: process.env.RESEND_FROM || CONFIG.RESEND_FROM || 'SRGH IVF Cryo Bank <onboarding@resend.dev>',
+            from: process.env.RESEND_FROM || CONFIG.RESEND_FROM || 'SGRH IVF Cryo Bank <onboarding@resend.dev>',
             to: [recipientEmail.trim()],
             subject: subject,
             html: htmlContent,
@@ -278,7 +278,7 @@ export class MailService {
     }
 
     const mailOptions = {
-      from: `"SRGH IVF Cryo Bank" <${user}>`,
+      from: `"SGRH IVF Cryo Bank" <${user}>`,
       to: recipientEmail.trim(),
       subject: subject,
       html: htmlContent,
@@ -317,7 +317,7 @@ export class MailService {
           const pdfFilename = `IVF_Patient_Cryo_Report_${patientId}.pdf`;
 
           const mimeParts = [
-            `From: "SRGH IVF Cryo Bank" <${user}>`,
+            `From: "SGRH IVF Cryo Bank" <${user}>`,
             `To: ${recipientEmail.trim()}`,
             `Subject: ${subject}`,
             `MIME-Version: 1.0`,

@@ -281,7 +281,7 @@ model EmailLog {
   patientId      String
   recipientEmail String
   subject        String
-  senderEmail    String   @default("srghivfcryo@gmail.com")
+  senderEmail    String   @default("sgrhivfcryo@gmail.com")
   status         String   @default("DELIVERED")
   messageId      String?
   errorMessage   String?

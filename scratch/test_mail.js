@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
 dotenv.config({ path: './apps/backend/.env' });
 
-const user = (process.env.SMTP_USER || 'srghivfcryo@gmail.com').trim();
+const user = (process.env.SMTP_USER || 'sgrhivfcryo@gmail.com').trim();
 const pass = (process.env.SMTP_PASS || '').trim();
 
 console.log('Testing user:', user);
@@ -18,10 +18,10 @@ const transporter = nodemailer.createTransport({
 });
 
 transporter.sendMail({
-  from: `"SRGH IVF Cryo Bank" <${user}>`,
+  from: `"SGRH IVF Cryo Bank" <${user}>`,
   to: 'adityakumar07024@gmail.com',
   subject: 'IVF System Test Email',
-  text: 'Hello! This is a test email from SRGH IVF Cryo Bank.',
+  text: 'Hello! This is a test email from SGRH IVF Cryo Bank.',
 }, (err, info) => {
   if (err) {
     console.error('=== SMTP ERROR DETAILS ===', err);

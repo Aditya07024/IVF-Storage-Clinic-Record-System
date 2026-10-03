@@ -59,7 +59,7 @@ export const CONFIG = {
 
   // Transactional Email API Keys
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
-  RESEND_FROM: process.env.RESEND_FROM || 'SRGH IVF Cryo Bank <onboarding@resend.dev>',
+  RESEND_FROM: process.env.RESEND_FROM || 'SGRH IVF Cryo Bank <onboarding@resend.dev>',
 
   // Gmail OAuth2 API Credentials
   GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID || '',
@@ -70,9 +70,9 @@ export const CONFIG = {
   SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
   SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
   SMTP_SECURE: process.env.SMTP_SECURE === 'true',
-  SMTP_USER: (process.env.SMTP_USER || 'srghivfcryo@gmail.com').trim(),
+  SMTP_USER: (process.env.SMTP_USER || 'sgrhivfcryo@gmail.com').trim(),
   SMTP_PASS: (process.env.SMTP_PASS || 'vzba dnde aubt akas').replace(/["'\s]/g, '').trim(),
-  SMTP_FROM: process.env.SMTP_FROM || '"SRGH IVF Cryo Bank" <srghivfcryo@gmail.com>',
+  SMTP_FROM: process.env.SMTP_FROM || '"SGRH IVF Cryo Bank" <sgrhivfcryo@gmail.com>',
 };
 
 export function validateConfig(): { valid: boolean; errors: string[] } {

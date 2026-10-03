@@ -940,7 +940,7 @@ app.post('/api/documents/send-email', accessKeyGuard, jwtAuthGuard, async (req: 
           patientId: patient.id,
           recipientEmail: recipientEmail.trim(),
           subject: subject,
-          senderEmail: CONFIG.SMTP_USER || 'srghivfcryo@gmail.com',
+          senderEmail: CONFIG.SMTP_USER || 'sgrhivfcryo@gmail.com',
           status: 'FAILED',
           errorMessage: err.message || 'Failed to deliver email',
         },

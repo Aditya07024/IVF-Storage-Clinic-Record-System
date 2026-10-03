@@ -28,7 +28,7 @@ async function sendGmailRestAttachment() {
   const dummyPdf = Buffer.from('%PDF-1.4 Fake PDF Content for Testing');
 
   const mimeParts = [
-    `From: SRGH IVF Cryo Bank <srghivfcryo@gmail.com>`,
+    `From: SGRH IVF Cryo Bank <sgrhivfcryo@gmail.com>`,
     `To: adityakumar07024@gmail.com`,
     `Subject: IVF Storage Report (Gmail REST API)`,
     `MIME-Version: 1.0`,
@@ -37,7 +37,7 @@ async function sendGmailRestAttachment() {
     `--${boundary}`,
     `Content-Type: text/html; charset="UTF-8"`,
     ``,
-    `<h2>SRGH IVF Cryo Bank</h2><p>Attached is your official IVF Cryo Storage Summary Report.</p>`,
+    `<h2>SGRH IVF Cryo Bank</h2><p>Attached is your official IVF Cryo Storage Summary Report.</p>`,
     ``,
     `--${boundary}`,
     `Content-Type: application/pdf; name="IVF_Patient_Cryo_Report.pdf"`,

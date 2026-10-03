@@ -80,7 +80,7 @@ async function seed() {
       data: {
         staffId: adminId,
         email: 'admin@ivfclinic.com',
-        name: 'Admin (SRGH)',
+        name: 'Admin (SGRH)',
         passwordHash: adminHash,
         role: 'ADMIN',
       },

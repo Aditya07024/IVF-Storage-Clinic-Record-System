@@ -103,7 +103,7 @@ export class AuthService {
           data: {
             staffId: envAdminId,
             email: 'admin@ivfclinic.com',
-            name: 'Admin (SRGH)',
+            name: 'Admin (SGRH)',
             passwordHash: adminHash,
             role: 'ADMIN',
           },
@@ -174,7 +174,7 @@ export class AuthService {
         const adminId = (process.env.VITE_ADMIN_ID || process.env.ADMIN_ID || 'ADMIN').trim();
         const adminPass = (process.env.VITE_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'IVFadmin').trim();
         const adminEmail = (process.env.ADMIN_EMAIL || 'admin@ivfclinic.com').trim();
-        const adminName = 'Admin (SRGH)';
+        const adminName = 'Admin (SGRH)';
 
         const adminHash = await argon2.hash(adminPass, { type: argon2.argon2id });
 

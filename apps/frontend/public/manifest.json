@@ -1,7 +1,7 @@
 {
   "short_name": "IVF Cryo",
-  "name": "SRGH IVF Cryo Bank Storage Record System",
-  "description": "SRGH IVF Cryo Bank Patient Specimen Storage & Record Management System",
+  "name": "SGRH IVF Cryo Bank Storage Record System",
+  "description": "SGRH IVF Cryo Bank Patient Specimen Storage & Record Management System",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -48,13 +48,13 @@
       "sizes": "1280x720",
       "type": "image/jpeg",
       "form_factor": "wide",
-      "label": "SRGH IVF Cryo Bank Desktop Storage & Patient Records Dashboard"
+      "label": "SGRH IVF Cryo Bank Desktop Storage & Patient Records Dashboard"
     },
     {
       "src": "/screenshot-mobile.jpg",
       "sizes": "750x1334",
       "type": "image/jpeg",
-      "label": "SRGH IVF Cryo Mobile Patient Verification & Specimen Storage View"
+      "label": "SGRH IVF Cryo Mobile Patient Verification & Specimen Storage View"
     }
   ]
 }

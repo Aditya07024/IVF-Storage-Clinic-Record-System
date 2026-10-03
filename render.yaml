@@ -25,4 +25,4 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM
-        value: '"SRGH IVF Cryo Bank" <srghivfcryo@gmail.com>'
+        value: '"SGRH IVF Cryo Bank" <sgrhivfcryo@gmail.com>'

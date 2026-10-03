@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
 dotenv.config({ path: './apps/backend/.env' });
 
-const user = (process.env.SMTP_USER || 'srghivfcryo@gmail.com').trim();
+const user = (process.env.SMTP_USER || 'sgrhivfcryo@gmail.com').trim();
 const clientId = (process.env.GMAIL_CLIENT_ID || '').replace(/"/g, '').trim();
 const clientSecret = (process.env.GMAIL_CLIENT_SECRET || '').replace(/"/g, '').trim();
 const refreshToken = (process.env.GMAIL_REFRESH_TOKEN || '').replace(/"/g, '').trim();
@@ -26,7 +26,7 @@ const transporter = nodemailer.createTransport({
 });
 
 transporter.sendMail({
-  from: `"SRGH IVF Cryo Bank" <${user}>`,
+  from: `"SGRH IVF Cryo Bank" <${user}>`,
   to: 'adityakumar07024@gmail.com',
   subject: 'IVF System Test Email via Gmail OAuth2 API',
   text: 'Hello! This is an official test email using Google Cloud Console OAuth2 API.',

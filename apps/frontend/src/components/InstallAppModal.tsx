@@ -125,7 +125,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
               <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
               <div className="font-bold text-emerald-950 text-sm">App Already Installed!</div>
               <p className="text-xs text-emerald-800">
-                You are currently using the installed version of SRGH IVF Cryo Bank App.
+                You are currently using the installed version of SGRH IVF Cryo Bank App.
               </p>
             </div>
           ) : (
