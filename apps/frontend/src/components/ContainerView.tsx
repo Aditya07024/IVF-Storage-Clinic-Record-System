@@ -1387,7 +1387,16 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           const eFrag = (straw.fragmentation || '').trim();
                           const eComment = (straw.comments || '').trim();
 
-                          const gradeStr = eGrade ? eGrade : 'N/A';
+                          let gradeStr = eGrade ? eGrade : 'N/A';
+                          if (straw.embryos && straw.embryos.length > 0) {
+                            const validGrades = straw.embryos
+                              .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
+                              .map((emb: any) => (emb.grade || eGrade || 'N/A').trim().toUpperCase())
+                              .filter(Boolean);
+                            if (validGrades.length > 0) gradeStr = validGrades.join(', ');
+                          } else if (embryoCount > 1 && eGrade && !eGrade.includes(',')) {
+                            gradeStr = Array(embryoCount).fill(eGrade).join(', ');
+                          }
                           const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
                           const commentStr = eComment ? ` - (${eComment})` : '';
 

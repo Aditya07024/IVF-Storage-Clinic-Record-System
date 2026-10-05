@@ -2451,6 +2451,9 @@ export const PatientDirectory: React.FC = () => {
                                       if (validGrades.length > 0) return validGrades.join(', ');
                                     }
                                     const fallbackG = (gradeStr && gradeStr !== 'N/A' && gradeStr !== ',') ? gradeStr : (isOocyte ? (selectedPatient.oocyteStage || 'MII') : 'N/A');
+                                    if (embryoCount > 1 && fallbackG && fallbackG !== 'N/A' && !fallbackG.includes(',')) {
+                                      return Array(embryoCount).fill(fallbackG).join(', ');
+                                    }
                                     return fallbackG;
                                   })())}{fragStr}{commentStr}
                                 </span>

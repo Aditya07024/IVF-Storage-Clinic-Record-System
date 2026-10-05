@@ -618,6 +618,8 @@ export class DocumentService {
                 .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
                 .map((emb: any) => (emb.grade || gradeStr || (isOocyteDoc ? 'MII' : 'N/A')).trim().toUpperCase())
                 .join(', ');
+            } else if (embryoCount > 1 && eGrade && !eGrade.includes(',')) {
+              gradeFormatted = Array(embryoCount).fill(eGrade).join(', ');
             }
 
             let commentFormatted = '';

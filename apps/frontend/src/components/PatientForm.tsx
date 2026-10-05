@@ -188,7 +188,9 @@ export function getStrawStageSummary(item: any, specimenType?: string, vitrifica
         rawStg = (item.embryos[i].grade || item.embryos[i].notes || '').toString().trim().toUpperCase();
       }
       if (!rawStg) {
-        rawStg = (item[eGradeKey] || (i === 0 ? (item.grade || item.embryoStage || item.stage) : '') || 'MII').toString().trim().toUpperCase();
+        const itemG = item.grade || item.embryoStage || item.stage || '';
+        const itemGSplit = itemG.includes(',') ? itemG.split(',')[i]?.trim() : itemG;
+        rawStg = ((item as any)[eGradeKey] || itemGSplit || 'MII').toString().trim().toUpperCase();
       }
       const cleanStg = rawStg.split('(')[0].replace(/\[.*?\]/g, '').trim();
       let stg = ['MII', 'MI', 'GV'].includes(cleanStg) ? cleanStg : (cleanStg || 'MII');
@@ -256,16 +258,6 @@ export function cleanDuplicateGradeString(rawGradeStr?: string): string {
 
   const parts = cleanStr.split(',').map((p) => p.trim()).filter((p) => p && p !== ',');
   if (parts.length === 0) return 'N/A';
-  if (parts.length === 1) return parts[0];
-
-  if (parts.length % 2 === 0) {
-    const half = parts.length / 2;
-    const firstHalf = parts.slice(0, half).join(', ');
-    const secondHalf = parts.slice(half).join(', ');
-    if (firstHalf.toUpperCase() === secondHalf.toUpperCase()) {
-      return firstHalf;
-    }
-  }
 
   return parts.join(', ');
 }
@@ -2529,7 +2521,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                             const eGradeKey = `grade${eIdx + 1}`;
                             const eFragKey = `frag${eIdx + 1}`;
                             const eCommentKey = `comment${eIdx + 1}`;
-                            const rawGradeVal = ((item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '') || '').toString().trim().toUpperCase();
+                            const itemG = (item.grade || '').toString().trim();
+                            const itemGSplit = itemG.includes(',') ? itemG.split(',')[eIdx]?.trim() : itemG;
+                            const rawGradeVal = ((item as any)[eGradeKey] || itemGSplit || '').toString().trim().toUpperCase();
                             const currentGradeVal = specimenType === 'OOCYTE'
                               ? (['MII', 'MI', 'GV'].includes(rawGradeVal) ? rawGradeVal : 'MII')
                               : rawGradeVal;
@@ -3423,7 +3417,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                               const eGradeKey = `grade${eIdx + 1}`;
                               const eFragKey = `frag${eIdx + 1}`;
                               const eCommentKey = `comment${eIdx + 1}`;
-                              const eGrade = ((item as any)[eGradeKey] || (eIdx === 0 ? item.grade : '') || (specimenType === 'OOCYTE' ? 'MII' : '')).trim().toUpperCase();
+                              const itemG = (item.grade || '').toString().trim();
+                              const itemGSplit = itemG.includes(',') ? itemG.split(',')[eIdx]?.trim() : itemG;
+                              const eGrade = ((item as any)[eGradeKey] || itemGSplit || (specimenType === 'OOCYTE' ? 'MII' : '')).trim().toUpperCase();
                               const eFrag = ((item as any)[eFragKey] || '').trim();
                               const eComment = ((item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '') || '').trim();
 
