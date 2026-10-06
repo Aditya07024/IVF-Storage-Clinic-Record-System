@@ -172,6 +172,33 @@ export function formatDayStage(stage: string | null | undefined): string {
   return stage.replace(/\bDay\s*([0-9]+)/gi, 'day$1');
 }
 
+export function sortStageKeys(stages: string[]): string[] {
+  const getStageRank = (stg: string): number => {
+    const s = (stg || '').trim().toLowerCase();
+    if (s === 'mii') return 10;
+    if (s === 'mi') return 11;
+    if (s === 'gv') return 12;
+
+    const dayMatch = s.match(/day\s*(\d+)/i);
+    if (dayMatch) {
+      return 100 + parseInt(dayMatch[1], 10);
+    }
+    const dMatch = s.match(/d(\d+)/i);
+    if (dMatch) {
+      return 100 + parseInt(dMatch[1], 10);
+    }
+
+    return 1000;
+  };
+
+  return [...stages].sort((a, b) => {
+    const rankA = getStageRank(a);
+    const rankB = getStageRank(b);
+    if (rankA !== rankB) return rankA - rankB;
+    return a.localeCompare(b);
+  });
+}
+
 export function getStrawStageSummary(item: any, specimenType?: string, vitrificationIndication?: string): string {
   if (!item) return '';
   const count = item.embryoCount || (item.embryos ? item.embryos.length : 1);
@@ -199,7 +226,7 @@ export function getStrawStageSummary(item: any, specimenType?: string, vitrifica
       }
       stageCounts[stg] = (stageCounts[stg] || 0) + 1;
     }
-    const parts = stageOrder.map((stg) => `${stageCounts[stg]} ${stg}`);
+    const parts = sortStageKeys(stageOrder).map((stg) => `${stageCounts[stg]} ${stg}`);
     return parts.length > 0 ? parts.join(' + ') : `${count} MII`;
   } else {
     const calculated = (item.aspirationDate || item.visitDate || item.batchAspirationDate) && (item.freezingDate || item.batchFreezingDate)
@@ -641,6 +668,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
   // Form Fields
   const [customPatientId, setCustomPatientId] = useState('');
+  const [existingIdMatch, setExistingIdMatch] = useState<any | null>(null);
   const [fullName, setFullName] = useState('');
   const [partnerName, setPartnerName] = useState('');
   const [phone, setPhone] = useState('');
@@ -672,6 +700,29 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       setEmbryoStage(stage);
     }
   }, [aspirationDate, freezingDate]);
+
+  useEffect(() => {
+    if (selectedExistingPatient || !customPatientId || customPatientId.trim().length < 2) {
+      setExistingIdMatch(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await apiRequest(`/api/patients?q=${encodeURIComponent(customPatientId.trim())}`);
+        if (res.success && res.patients && res.patients.length > 0) {
+          const exactMatch = res.patients.find(
+            (p: any) => p.patientId && p.patientId.trim().toLowerCase() === customPatientId.trim().toLowerCase()
+          );
+          setExistingIdMatch(exactMatch || null);
+        } else {
+          setExistingIdMatch(null);
+        }
+      } catch {
+        setExistingIdMatch(null);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [customPatientId, selectedExistingPatient]);
 
   // Email OTP Verification States
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -1829,6 +1880,23 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                       : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
                   }`}
                 />
+                {existingIdMatch && !selectedExistingPatient && (
+                  <div className="mt-2.5 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium animate-in fade-in shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>
+                        Patient with Registration ID <strong>{existingIdMatch.patientId}</strong> already exists: <strong>{existingIdMatch.fullName}</strong>.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectExistingPatient(existingIdMatch)}
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shrink-0 ml-2 shadow-2xs cursor-pointer"
+                    >
+                      View / Select Patient
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1873,6 +1941,22 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                         <Camera className="w-5 h-5 text-emerald-600 shrink-0" />
                         <span className="text-[9px] text-emerald-800 font-bold text-center leading-tight mt-0.5 w-full block truncate">Wife Photo</span>
                       </div>
+                    )}
+
+                    {photoPreviewUrl && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPhotoFile(null);
+                          setPhotoPreviewUrl(null);
+                        }}
+                        className="mt-1 px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded border border-rose-200 flex items-center gap-1 transition-all cursor-pointer"
+                        title="Delete / Remove Photo"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-600" />
+                        <span>Delete</span>
+                      </button>
                     )}
 
                     <input

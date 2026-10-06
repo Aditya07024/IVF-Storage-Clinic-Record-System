@@ -673,6 +673,88 @@ app.post(['/api/patients/:id/photo', '/api/patients/:id/partner-photo'], accessK
     return res.status(400).json({ success: false, error: err?.message || 'Failed to update photo.' });
   }
 });
+
+// Delete Patient Photo or Partner Photo
+app.delete(['/api/patients/:id/photo', '/api/patients/:id/partner-photo'], accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const isPartner = req.path.includes('partner-photo') || req.query.type === 'partner' || req.query.target === 'partner';
+    const staffUserId = req.user?.userId || '00000000-0000-0000-0000-000000000000';
+    const staffName = req.user?.name || req.user?.staffId || 'ADMIN001';
+
+    const updatePayload = isPartner ? { partnerPhotoUrl: null } : { photoUrl: null };
+    const patient = await patientService.updatePatient(req.params.id, updatePayload, staffUserId, staffName);
+    serverCache.clear();
+    return res.json({ success: true, patient, isPartner });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err?.message || 'Failed to delete photo.' });
+  }
+});
+
+// Upload Patient Document Attachment (without OCR)
+app.post('/api/patients/:id/documents', accessKeyGuard, jwtAuthGuard, (req: Request, res: Response, next: NextFunction) => {
+  upload.any()(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: err?.message || 'File upload error.' });
+    }
+    next();
+  });
+}, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const files = (req as any).files || [];
+    const file = req.file || files[0];
+    if (!file) return res.status(400).json({ success: false, error: 'No document image file received.' });
+
+    const mimeType = file.mimetype || 'image/jpeg';
+    const base64Data = file.buffer.toString('base64');
+    const storageKey = `data:${mimeType};base64,${base64Data}`;
+
+    const docRecord = await prisma.ocrRecord.create({
+      data: {
+        patientId: req.params.id,
+        originalFilename: file.originalname || `patient_document_${Date.now()}`,
+        storageKey: storageKey,
+        mimeType: mimeType,
+        fileSize: file.size || file.buffer.length,
+        rawOcrText: '',
+        extractedJson: '{}',
+        status: 'ATTACHMENT',
+        verifiedBy: req.user?.userId || null,
+      },
+    });
+
+    serverCache.clear();
+    return res.json({ success: true, document: docRecord });
+  } catch (err: any) {
+    console.error('Patient document upload error:', err);
+    return res.status(400).json({ success: false, error: err?.message || 'Failed to upload document.' });
+  }
+});
+
+// Get Patient Documents / Attachments
+app.get('/api/patients/:id/documents', accessKeyGuard, jwtAuthGuard, async (req: Request, res: Response) => {
+  try {
+    const documents = await prisma.ocrRecord.findMany({
+      where: { patientId: req.params.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ success: true, documents });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err?.message || 'Failed to fetch documents.' });
+  }
+});
+
+// Delete Patient Document Attachment
+app.delete('/api/patients/:id/documents/:docId', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await prisma.ocrRecord.deleteMany({
+      where: { id: req.params.docId, patientId: req.params.id },
+    });
+    serverCache.clear();
+    return res.json({ success: true, message: 'Document deleted successfully.' });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err?.message || 'Failed to delete document.' });
+  }
+});
 app.delete('/api/patients/:id', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await patientService.deletePatient(req.params.id, req.user!.userId, req.user!.name || req.user!.staffId);

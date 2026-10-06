@@ -64,8 +64,8 @@ export interface CreatePatientInput {
   freezingDate?: Date | string;
   thawDate?: Date | string;
   comments?: string;
-  photoUrl?: string;
-  partnerPhotoUrl?: string;
+  photoUrl?: string | null;
+  partnerPhotoUrl?: string | null;
   isEmailVerified?: boolean;
   specimenType?: string;
   cycleType?: string;
