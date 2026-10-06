@@ -19,6 +19,8 @@ export const AppContent: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [selectedCanCode, setSelectedCanCode] = useState<string>('CAN-01');
+  const [selectedPatientIdForDirectory, setSelectedPatientIdForDirectory] = useState<string | null>(null);
+  const [preselectedPatientForAddStraws, setPreselectedPatientForAddStraws] = useState<any | null>(null);
 
   useEffect(() => {
     checkCurrentUser();
@@ -29,6 +31,18 @@ export const AppContent: React.FC = () => {
       setSelectedCanCode(canCode);
     }
     setActiveTab(tab);
+  };
+
+  const handleNavigateToPatientDirectory = (patientId?: string) => {
+    if (patientId) {
+      setSelectedPatientIdForDirectory(patientId);
+    }
+    setActiveTab('patients');
+  };
+
+  const handleAddMoreStraws = (patient: any) => {
+    setPreselectedPatientForAddStraws(patient);
+    setActiveTab('new-patient');
   };
 
   const checkCurrentUser = async () => {
@@ -90,10 +104,20 @@ export const AppContent: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto min-h-screen pb-16">
         {activeTab === 'dashboard' && <Dashboard onNavigate={handleNavigateFromDashboard} />}
-        {activeTab === 'new-patient' && <PatientForm onSuccess={() => {}} />}
-        {activeTab === 'patients' && <PatientDirectory />}
+        {activeTab === 'new-patient' && (
+          <PatientForm
+            initialPatient={preselectedPatientForAddStraws}
+            onSuccess={() => setPreselectedPatientForAddStraws(null)}
+          />
+        )}
+        {activeTab === 'patients' && (
+          <PatientDirectory
+            initialSelectedPatientId={selectedPatientIdForDirectory}
+            onAddMoreStraws={handleAddMoreStraws}
+          />
+        )}
         {activeTab === 'container-view' && <ContainerView initialCanCode={selectedCanCode} />}
-        {activeTab === 'ocr' && <OcrVerification />}
+        {activeTab === 'ocr' && <OcrVerification onNavigateToPatient={handleNavigateToPatientDirectory} />}
         {activeTab === 'thaw' && <ThawWorkflow />}
         {activeTab === 'logs' && <AuditLogs />}
         {activeTab === 'support' && <DeveloperSupport />}

@@ -644,9 +644,10 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
 
 interface PatientFormProps {
   onSuccess: (patient: any) => void;
+  initialPatient?: any | null;
 }
 
-export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
+export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPatient }) => {
   // Mode: 'new' | 'existing'
   const [formMode, setFormMode] = useState<'new' | 'existing'>('new');
 
@@ -702,25 +703,57 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   }, [aspirationDate, freezingDate]);
 
   useEffect(() => {
-    if (selectedExistingPatient || !customPatientId || customPatientId.trim().length < 2) {
+    if (initialPatient) {
+      setFormMode('existing');
+      handleSelectExistingPatient(initialPatient);
+    }
+  }, [initialPatient]);
+
+  const [isIdVerifiedUnique, setIsIdVerifiedUnique] = useState(false);
+  const [idChecking, setIdChecking] = useState(false);
+
+  const checkRegistrationIdInstant = async (idToTest?: string) => {
+    const val = (idToTest !== undefined ? idToTest : customPatientId).trim();
+    if (selectedExistingPatient || !val || val.length < 2) {
       setExistingIdMatch(null);
+      setIsIdVerifiedUnique(false);
       return;
     }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await apiRequest(`/api/patients?q=${encodeURIComponent(customPatientId.trim())}`);
-        if (res.success && res.patients && res.patients.length > 0) {
-          const exactMatch = res.patients.find(
-            (p: any) => p.patientId && p.patientId.trim().toLowerCase() === customPatientId.trim().toLowerCase()
-          );
-          setExistingIdMatch(exactMatch || null);
+    setIdChecking(true);
+    try {
+      const res = await apiRequest(`/api/patients?q=${encodeURIComponent(val)}&limit=50`);
+      if (res.success && res.patients && res.patients.length > 0) {
+        const exactMatch = res.patients.find(
+          (p: any) => p.patientId && p.patientId.trim().toLowerCase() === val.toLowerCase()
+        );
+        if (exactMatch) {
+          setExistingIdMatch(exactMatch);
+          setIsIdVerifiedUnique(false);
         } else {
           setExistingIdMatch(null);
+          setIsIdVerifiedUnique(true);
         }
-      } catch {
+      } else {
         setExistingIdMatch(null);
+        setIsIdVerifiedUnique(true);
       }
-    }, 300);
+    } catch {
+      setExistingIdMatch(null);
+      setIsIdVerifiedUnique(false);
+    } finally {
+      setIdChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedExistingPatient || !customPatientId || customPatientId.trim().length < 2) {
+      setExistingIdMatch(null);
+      setIsIdVerifiedUnique(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      checkRegistrationIdInstant(customPatientId);
+    }, 50);
     return () => clearTimeout(timer);
   }, [customPatientId, selectedExistingPatient]);
 
@@ -1863,25 +1896,45 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
             })()}
             {/* REGISTRATION ID (UNIQUE KEY) - Hidden ONLY for Supernumerary Donor Egg Freezing */}
             {!(specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing') && (
-              <div className="md:col-span-2 min-w-0 max-w-full">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <div className="md:col-span-2 min-w-0 max-w-full space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center justify-between">
                   <span>Registration ID (Unique Key) <span className="text-rose-600 font-bold">*</span></span>
+                  {idChecking && <span className="text-xs text-slate-500 font-normal animate-pulse">Checking availability...</span>}
                 </label>
-                <input
-                  type="text"
-                  value={customPatientId}
-                  onChange={(e) => setCustomPatientId(e.target.value)}
-                  readOnly={!!selectedExistingPatient}
-                  placeholder="e.g. IVF-2026-000001"
-                  required
-                  className={`w-full min-w-0 max-w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
-                    selectedExistingPatient
-                      ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
-                      : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
-                  }`}
-                />
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={customPatientId}
+                    onChange={(e) => setCustomPatientId(e.target.value)}
+                    onPaste={(e) => {
+                      const pasted = e.clipboardData.getData('text');
+                      checkRegistrationIdInstant(pasted);
+                    }}
+                    readOnly={!!selectedExistingPatient}
+                    placeholder="e.g. IVF-2026-000001"
+                    required
+                    className={`flex-1 min-w-0 h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
+                      selectedExistingPatient
+                        ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
+                        : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
+                    }`}
+                  />
+
+                  {!selectedExistingPatient && (
+                    <button
+                      type="button"
+                      onClick={() => checkRegistrationIdInstant(customPatientId)}
+                      className="px-4 h-11 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                    >
+                      <Save className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>Save Registration ID</span>
+                    </button>
+                  )}
+                </div>
+
                 {existingIdMatch && !selectedExistingPatient && (
-                  <div className="mt-2.5 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium animate-in fade-in shadow-2xs">
+                  <div className="mt-2.5 p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium animate-in fade-in shadow-2xs flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                       <span>
@@ -1891,10 +1944,20 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
                     <button
                       type="button"
                       onClick={() => handleSelectExistingPatient(existingIdMatch)}
-                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shrink-0 ml-2 shadow-2xs cursor-pointer"
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shrink-0 shadow-2xs cursor-pointer flex items-center gap-1"
                     >
-                      View / Select Patient
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>View / Select Patient</span>
                     </button>
+                  </div>
+                )}
+
+                {!existingIdMatch && !selectedExistingPatient && isIdVerifiedUnique && customPatientId.trim().length >= 2 && (
+                  <div className="mt-2.5 p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-xs text-emerald-900 font-medium animate-in fade-in shadow-2xs">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      Registration ID <strong>{customPatientId.trim()}</strong> is saved & unique! You can continue adding patient details below.
+                    </span>
                   </div>
                 )}
               </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna, ShieldCheck, UserCheck, MapPin, Database, Printer, Edit3, Edit } from 'lucide-react';
+import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna, ShieldCheck, UserCheck, MapPin, Database, Printer, Edit3, Edit, AlertTriangle, Eye, Save, Search } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl, getImageUrl } from '../api/client';
 import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass, formatRawToDDMMYYYYMask, normalizeFlexibleDateToDDMMYYYY } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
@@ -67,7 +67,11 @@ function calculateStageFromDates(
   return 'Day 5';
 }
 
-export const OcrVerification: React.FC = () => {
+export interface OcrVerificationProps {
+  onNavigateToPatient?: (patientId: string) => void;
+}
+
+export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPatient }) => {
   const [file, setFile] = useState<File | null>(null);
   const [cropModalFile, setCropModalFile] = useState<File | null>(null);
   const [pendingRecords, setPendingRecords] = useState<any[]>([]);
@@ -128,6 +132,61 @@ export const OcrVerification: React.FC = () => {
     },
   ]);
   const [comments, setComments] = useState('');
+  const [existingIdMatch, setExistingIdMatch] = useState<any | null>(null);
+  const [isIdVerifiedUnique, setIsIdVerifiedUnique] = useState(false);
+  const [idChecking, setIdChecking] = useState(false);
+
+  const checkRegistrationIdInstant = async (idToTest?: string) => {
+    const val = (idToTest !== undefined ? idToTest : patientId).trim();
+    if (!val || val.length < 2) {
+      setExistingIdMatch(null);
+      setIsIdVerifiedUnique(false);
+      return;
+    }
+    setIdChecking(true);
+    try {
+      const res = await apiRequest(`/api/patients?q=${encodeURIComponent(val)}&limit=50`);
+      if (res.success && res.patients && res.patients.length > 0) {
+        const exactMatch = res.patients.find(
+          (p: any) => p.patientId && p.patientId.trim().toLowerCase() === val.toLowerCase()
+        );
+        if (exactMatch) {
+          setExistingIdMatch(exactMatch);
+          setIsIdVerifiedUnique(false);
+        } else {
+          setExistingIdMatch(null);
+          setIsIdVerifiedUnique(true);
+        }
+      } else {
+        setExistingIdMatch(null);
+        setIsIdVerifiedUnique(true);
+      }
+    } catch {
+      setExistingIdMatch(null);
+      setIsIdVerifiedUnique(false);
+    } finally {
+      setIdChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!patientId || patientId.trim().length < 2) {
+      setExistingIdMatch(null);
+      setIsIdVerifiedUnique(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      checkRegistrationIdInstant(patientId);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [patientId]);
+
+  const handleSelectExistingPatient = (existing: any) => {
+    if (!existing) return;
+    if (onNavigateToPatient) {
+      onNavigateToPatient(existing.id);
+    }
+  };
 
   const [uploading, setUploading] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -1239,15 +1298,65 @@ export const OcrVerification: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1 md:col-span-2">
-                  <label className="font-semibold text-slate-700">Registration ID</label>
-                  <input
-                    type="text"
-                    value={patientId}
-                    onChange={(e) => setPatientId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                    placeholder="e.g. IVF-2026-000007"
-                  />
+                <div className="space-y-1.5 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-700">Registration ID</label>
+                    {idChecking && (
+                      <span className="text-xs text-slate-500 font-normal animate-pulse flex items-center gap-1">
+                        <Search className="w-3 h-3 text-slate-400" /> Checking availability...
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={patientId}
+                      onChange={(e) => setPatientId(e.target.value)}
+                      onPaste={(e) => {
+                        const pasted = e.clipboardData.getData('text');
+                        checkRegistrationIdInstant(pasted);
+                      }}
+                      className="flex-1 bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono font-bold"
+                      placeholder="e.g. IVF-2026-000007"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => checkRegistrationIdInstant(patientId)}
+                      className="px-4 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                    >
+                      <Save className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>Save Registration ID</span>
+                    </button>
+                  </div>
+
+                  {existingIdMatch && (
+                    <div className="mt-2.5 p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium animate-in fade-in shadow-2xs flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>
+                          Patient with Registration ID <strong>{existingIdMatch.patientId}</strong> already exists: <strong>{existingIdMatch.fullName}</strong>.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectExistingPatient(existingIdMatch)}
+                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shrink-0 shadow-2xs cursor-pointer flex items-center gap-1"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View Patient</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {!existingIdMatch && isIdVerifiedUnique && patientId.trim().length >= 2 && (
+                    <div className="mt-2.5 p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-xs text-emerald-900 font-medium animate-in fade-in shadow-2xs">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>
+                        Registration ID <strong>{patientId.trim()}</strong> is saved & unique! You can continue.
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">

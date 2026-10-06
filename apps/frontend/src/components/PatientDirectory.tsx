@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys } from './PatientForm';
@@ -33,7 +33,15 @@ function formatAgeWithY(ageStr?: string | number | null): string {
   return `${clean}y`;
 }
 
-export const PatientDirectory: React.FC = () => {
+export interface PatientDirectoryProps {
+  initialSelectedPatientId?: string | null;
+  onAddMoreStraws?: (patient: any) => void;
+}
+
+export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
+  initialSelectedPatientId,
+  onAddMoreStraws,
+}) => {
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [patients, setPatients] = useState<any[]>([]);
@@ -67,6 +75,18 @@ export const PatientDirectory: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (initialSelectedPatientId) {
+      apiRequest(`/api/patients/${initialSelectedPatientId}`)
+        .then((res) => {
+          if (res.success && res.patient) {
+            setSelectedPatient(res.patient);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [initialSelectedPatientId]);
 
   const canPrintMail = !currentUser || currentUser.role === 'ADMIN' || currentUser.canPrintMail !== false;
 
@@ -369,6 +389,13 @@ export const PatientDirectory: React.FC = () => {
       });
       if (res.success) {
         setPatientDocs((prev) => prev.filter((d) => d.id !== docId));
+        setSelectedPatient((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            ocrRecords: (prev.ocrRecords || []).filter((d: any) => d.id !== docId),
+          };
+        });
       } else {
         alert(res.error || 'Failed to delete document.');
       }
@@ -2092,33 +2119,45 @@ export const PatientDirectory: React.FC = () => {
               </div>
 
               {/* Action Buttons (Left: Edit & Print/Mail stacked, Right: Close) */}
-              <div className="flex items-center gap-1.5 shrink-0 w-auto p-1 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
-                {/* Left Side: Vertical Stack (Edit above, Print / Mail below) */}
-                <div className="flex flex-col gap-1.5 w-24 sm:w-28">
-                  <button
-                    onClick={() => openEditPatientModal(selectedPatient)}
-                    className="w-full h-8 px-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit</span>
-                  </button>
+              <div className="flex flex-col items-end gap-1.5 shrink-0 w-auto">
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
+                  {/* Left Side: Vertical Stack (Edit above, Print / Mail below) */}
+                  <div className="flex flex-col gap-1.5 w-24 sm:w-28">
+                    <button
+                      onClick={() => openEditPatientModal(selectedPatient)}
+                      className="w-full h-8 px-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
 
+                    <button
+                      onClick={() => setReportMailPatient(selectedPatient)}
+                      className="w-full h-8 px-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Print / Mail</span>
+                    </button>
+                  </div>
+
+                  {/* Right Side: Tall Close Button */}
                   <button
-                    onClick={() => setReportMailPatient(selectedPatient)}
-                    className="w-full h-8 px-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
+                    onClick={() => setSelectedPatient(null)}
+                    className="h-[71px] px-3 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-xs rounded-lg transition-all whitespace-nowrap text-center active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
                   >
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>Print / Mail</span>
+                    <X className="w-4 h-4 text-slate-500" />
+                    <span>Close</span>
                   </button>
                 </div>
 
-                {/* Right Side: Tall Close Button */}
+                {/* Add More Straws Button BELOW Edit / Print / Mail / Close */}
                 <button
-                  onClick={() => setSelectedPatient(null)}
-                  className="h-[71px] px-3 bg-white text-slate-700 hover:bg-slate-200 border border-slate-300 font-bold text-xs rounded-lg transition-all whitespace-nowrap text-center active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                  type="button"
+                  onClick={() => onAddMoreStraws && onAddMoreStraws(selectedPatient)}
+                  className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:shadow-sm active:scale-95"
                 >
-                  <X className="w-4 h-4 text-slate-500" />
-                  <span>Close</span>
+                  <Plus className="w-4 h-4" />
+                  <span>+ Add More Straws</span>
                 </button>
               </div>
             </div>
@@ -2351,165 +2390,123 @@ export const PatientDirectory: React.FC = () => {
               </div>
             )}
 
-            {/* Patient Storage Documents & Clinical Photos (Without OCR) */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 mt-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Patient Medical Documents & Photo Storage ({patientDocs.length})
-                  </span>
-                </div>
-                <label className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>{uploadingPatientDoc ? 'Uploading...' : 'Upload Document / Photo'}</span>
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    disabled={uploadingPatientDoc}
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file && selectedPatient) {
-                        handleUploadPatientDocument(selectedPatient.id, file);
-                      }
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-              </div>
+            {/* Patient Storage Documents & Clinical Photos (Merged OCR & Direct Attachments) */}
+            {(() => {
+              const map = new Map<string, any>();
+              if (selectedPatient.ocrRecords && Array.isArray(selectedPatient.ocrRecords)) {
+                selectedPatient.ocrRecords.forEach((d: any) => map.set(d.id, d));
+              }
+              if (patientDocs && Array.isArray(patientDocs)) {
+                patientDocs.forEach((d: any) => map.set(d.id, d));
+              }
+              const mergedDocs = Array.from(map.values()).sort(
+                (a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+              );
 
-              {patientDocs.length === 0 ? (
-                <div className="p-4 bg-white rounded-xl text-center text-xs text-slate-500 border border-slate-200">
-                  No additional document attachments uploaded for this patient. Click <strong>Upload Document / Photo</strong> to add lab records or photos without running OCR.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {patientDocs.map((doc: any) => {
-                    const imgUrl = getImageUrl(doc.storageKey);
-                    const isImage = doc.mimeType?.startsWith('image/') || doc.storageKey?.startsWith('data:image/');
+              return (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 mt-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        PATIENT MEDICAL DOCUMENTS & PHOTO STORAGE ({mergedDocs.length})
+                      </span>
+                    </div>
+                    <label className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{uploadingPatientDoc ? 'Uploading...' : 'Upload Document / Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        disabled={uploadingPatientDoc}
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && selectedPatient) {
+                            handleUploadPatientDocument(selectedPatient.id, file);
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
 
-                    return (
-                      <div key={doc.id} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-                            <span className="truncate text-slate-900 font-mono text-[11px]" title={doc.originalFilename}>
-                              {doc.originalFilename}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono shrink-0">
-                              {(doc.fileSize ? (doc.fileSize / 1024).toFixed(0) : '0')} KB
-                            </span>
-                          </div>
+                  {mergedDocs.length === 0 ? (
+                    <div className="p-4 bg-white rounded-xl text-center text-xs text-slate-500 border border-slate-200">
+                      No document attachments or scans found for this patient. Click <strong>Upload Document / Photo</strong> to store lab records or photos.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {mergedDocs.map((doc: any) => {
+                        const imgUrl = getImageUrl(doc.storageKey);
+                        const isImage = doc.mimeType?.startsWith('image/') || doc.storageKey?.startsWith('data:image/') || doc.storageKey?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
 
-                          {isImage ? (
-                            <div
-                              className="relative rounded-xl overflow-hidden border border-slate-200 h-32 bg-slate-900 flex items-center justify-center group cursor-pointer"
-                              onClick={() => {
-                                setPreviewImageModalUrl(imgUrl);
-                                setPreviewImageTitle(doc.originalFilename);
-                              }}
-                            >
-                              <img src={imgUrl} alt={doc.originalFilename} className="object-contain h-32 w-full" />
-                              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <span className="px-2.5 py-1 bg-emerald-600 text-white font-bold text-[10px] rounded-lg shadow-md flex items-center gap-1">
-                                  <Eye className="w-3.5 h-3.5" />
-                                  <span>Preview</span>
+                        return (
+                          <div key={doc.id} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2 flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                                <span className="truncate text-slate-900 font-mono text-[11px]" title={doc.originalFilename}>
+                                  {doc.originalFilename}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                                  {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(0)} KB` : 'Attached'}
                                 </span>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="h-32 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center justify-center gap-1 text-slate-500 p-2 text-center">
-                              <FileText className="w-8 h-8 text-emerald-600" />
-                              <span className="text-xs font-bold text-slate-700 truncate w-full">{doc.originalFilename}</span>
-                            </div>
-                          )}
-                        </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPreviewImageModalUrl(imgUrl);
-                              setPreviewImageTitle(doc.originalFilename);
-                            }}
-                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-lg border border-emerald-200 flex items-center gap-1 transition-all cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>View</span>
-                          </button>
+                              {isImage ? (
+                                <div
+                                  className="relative rounded-xl overflow-hidden border border-slate-200 h-32 bg-slate-900 flex items-center justify-center group cursor-pointer"
+                                  onClick={() => {
+                                    setPreviewImageModalUrl(imgUrl);
+                                    setPreviewImageTitle(doc.originalFilename || 'Patient Document');
+                                  }}
+                                >
+                                  <img src={imgUrl} alt={doc.originalFilename} className="object-contain h-32 w-full" />
+                                  <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <span className="px-2.5 py-1 bg-emerald-600 text-white font-bold text-[10px] rounded-lg shadow-md flex items-center gap-1">
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>Preview</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="h-32 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center justify-center gap-1 text-slate-500 p-2 text-center">
+                                  <FileText className="w-8 h-8 text-emerald-600" />
+                                  <span className="text-xs font-bold text-slate-700 truncate w-full">{doc.originalFilename}</span>
+                                </div>
+                              )}
+                            </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePatientDocument(selectedPatient.id, doc.id)}
-                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-bold rounded-lg border border-rose-200 flex items-center gap-1 transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                            <span>Delete</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
- {/* Uploaded Documents & OCR Scans History */}
-            {selectedPatient.ocrRecords && selectedPatient.ocrRecords.length > 0 && (
-              <div className="space-y-3 pt-4 border-t border-slate-200">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-teal-600" />
-                  <span>Uploaded Documents & OCR History ({selectedPatient.ocrRecords.length})</span>
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {selectedPatient.ocrRecords.map((ocr: any) => {
-                    const imgUrl = getImageUrl(ocr.storageKey);
-                    return (
-                      <div key={ocr.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                        {/* <div className="flex items-center justify-between text-xs font-semibold">
-                          <span className="truncate max-w-[180px] font-mono text-slate-900">{ocr.originalFilename}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${ocr.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-amber-100 text-amber-900 border border-amber-300'}`}>
-                            {ocr.status}
-                          </span>
-                        </div> */}
-                        {ocr.mimeType?.startsWith('image/') && (
-                          <div
-                            className="relative rounded-xl overflow-hidden border border-slate-300 max-h-36 bg-slate-900 flex items-center justify-center group cursor-pointer"
-                            onClick={() => {
-                              setPreviewImageModalUrl(imgUrl);
-                              setPreviewImageTitle(ocr.originalFilename || 'OCR Scanned Document');
-                            }}
-                          >
-                            <img src={imgUrl} alt={ocr.originalFilename} className="object-contain max-h-36 w-full" />
-                            <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <span className="px-3 py-1 bg-emerald-600 text-white font-bold text-[11px] rounded-lg shadow-md flex items-center gap-1">
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>View Full Image</span>
-                              </span>
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPreviewImageModalUrl(imgUrl);
+                                  setPreviewImageTitle(doc.originalFilename || 'Patient Document');
+                                }}
+                                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-lg border border-emerald-200 flex items-center gap-1 transition-all cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>View</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePatientDocument(selectedPatient.id, doc.id)}
+                                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-bold rounded-lg border border-rose-200 flex items-center gap-1 transition-all cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                <span>Delete</span>
+                              </button>
                             </div>
                           </div>
-                        )}
-                        {/* <button
-                          type="button"
-                          onClick={() => {
-                            setPreviewImageModalUrl(imgUrl);
-                            setPreviewImageTitle(ocr.originalFilename || 'OCR Scanned Document');
-                          }}
-                          className="w-full py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-lg border border-emerald-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>View Full Image</span>
-                        </button> */}
-                        {/* {ocr.rawOcrText && (
-                          <div className="text-[10px] font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-700 max-h-20 overflow-y-auto whitespace-pre-wrap">
-                            {ocr.rawOcrText}
-                          </div>
-                        )} */}
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
             {/* Active Storage Batches Section */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
