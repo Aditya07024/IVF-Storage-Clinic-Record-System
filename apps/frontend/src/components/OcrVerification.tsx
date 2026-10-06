@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna, ShieldCheck, UserCheck, MapPin, Database, Printer, Edit3, Edit, AlertTriangle, Eye, Save, Search } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl, getImageUrl } from '../api/client';
-import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass, formatRawToDDMMYYYYMask, normalizeFlexibleDateToDDMMYYYY } from './PatientForm';
+import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass, formatRawToDDMMYYYYMask, normalizeFlexibleDateToDDMMYYYY, calculateAgeFromDob } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
@@ -368,10 +368,12 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     setPartnerPhone(json.partnerPhone || '');
     setEmail(json.email || '');
     setPartnerEmail(json.partnerEmail || '');
-    setDob(json.dob || '');
-    setPartnerDob(json.partnerDob || '');
-    setPatientAge(json.patientAge || '');
-    setPartnerAge(json.partnerAge || '');
+    const initialDob = json.dob || '';
+    const initialPartnerDob = json.partnerDob || '';
+    setDob(initialDob);
+    setPartnerDob(initialPartnerDob);
+    setPatientAge(json.patientAge || (initialDob ? calculateAgeFromDob(initialDob) : ''));
+    setPartnerAge(json.partnerAge || (initialPartnerDob ? calculateAgeFromDob(initialPartnerDob) : ''));
     setDoctorName(json.doctorName || '');
     setSpecimenType((json.specimenType || (json.vitrificationIndication || json.donorName || json.oocyteStage ? 'OOCYTE' : 'EMBRYO')).toUpperCase() as any);
     setCycleType((json.cycleType || (json.donorName || json.donorRegNo ? 'DONOR_RECIPIENT' : 'SELF')).toUpperCase() as any);
@@ -1373,7 +1375,13 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                 <DateInputDDMMYYYY
                   label="Patient DOB"
                   value={dob}
-                  onChange={(val) => setDob(val)}
+                  onChange={(val) => {
+                    setDob(val);
+                    const computedAge = calculateAgeFromDob(val);
+                    if (computedAge) {
+                      setPatientAge(computedAge);
+                    }
+                  }}
                 />
 
                 <div className="space-y-1">
@@ -1423,7 +1431,13 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                 <DateInputDDMMYYYY
                   label="Partner DOB"
                   value={partnerDob}
-                  onChange={(val) => setPartnerDob(val)}
+                  onChange={(val) => {
+                    setPartnerDob(val);
+                    const computedAge = calculateAgeFromDob(val);
+                    if (computedAge) {
+                      setPartnerAge(computedAge);
+                    }
+                  }}
                 />
 
                 <div className="space-y-1">

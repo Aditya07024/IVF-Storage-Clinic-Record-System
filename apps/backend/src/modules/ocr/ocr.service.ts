@@ -399,6 +399,7 @@ STRICT EXTRACTION RULES:
 7. Extract Donor fields if present: "donorName", "donorRegNo", "donorAge", "donorPhone", "vitrificationIndication", "oocyteStage" (e.g. "MII" or "MI").
 8. Extract Storage Location fields STRICTLY from document text: "canisterName" (e.g. "C01", "C08"), "level" (e.g. "Level 1", "Level 2"), "visoTubeId" (e.g. "V01", "V05"), "visoTubeColor".
 9. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage, grade, fragmentation, freezingDate. Straw colorTag MUST ONLY be one of these 5 clinic straw colors: Pink, Green, Blue, Yellow, or White. If unstated, return null.
+10. Extract Date of Birth ("dob" for Patient, "partnerDob" for Partner/Husband) if present in document text (look for DOB, Date of Birth, D.O.B., Birth Date). Return in YYYY-MM-DD format. If DOB is present and Age is missing, calculate Age from DOB.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -461,19 +462,24 @@ ${rawText}`;
             const parsed = JSON.parse(jsonMatch[0]);
             if (parsed && (parsed.fullName || parsed.patientId || parsed.canisterName || parsed.straws?.length)) {
               console.log(`[OcrService] Gemini AI (${modelName}) successfully structured document fields.`);
+              const dobVal = parsed.dob || '';
+              const partnerDobVal = parsed.partnerDob || '';
+              const patientAgeVal = parsed.patientAge || (dobVal ? calculateBackendAgeStr(dobVal) : '');
+              const partnerAgeVal = parsed.partnerAge || (partnerDobVal ? calculateBackendAgeStr(partnerDobVal) : '');
+
               return {
                 patientId: parsed.patientId || undefined,
                 fullName: parsed.fullName || '',
                 partnerName: parsed.partnerName || '',
-                patientAge: parsed.patientAge || '',
-                partnerAge: parsed.partnerAge || '',
+                patientAge: patientAgeVal,
+                partnerAge: partnerAgeVal,
                 doctorName: parsed.doctorName || '',
                 phone: parsed.phone || '',
                 partnerPhone: parsed.partnerPhone || '',
                 email: parsed.email || '',
                 partnerEmail: parsed.partnerEmail || '',
-                dob: parsed.dob || '',
-                partnerDob: parsed.partnerDob || '',
+                dob: dobVal,
+                partnerDob: partnerDobVal,
                 visitDate: parsed.visitDate || '',
                 deDate: parsed.deDate || '',
                 aspirationDate: parsed.aspirationDate || '',
@@ -516,6 +522,27 @@ ${rawText}`;
       if (year.length === 2) year = `20${year}`;
       return `${year}-${month}-${day}`;
     };
+
+    function calculateBackendAgeStr(dobIsoStr?: string): string {
+      if (!dobIsoStr) return '';
+      const parts = dobIsoStr.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+          const dobDate = new Date(y, m, d);
+          const today = new Date();
+          let age = today.getFullYear() - dobDate.getFullYear();
+          const monthDiff = today.getMonth() - dobDate.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
+            age--;
+          }
+          if (age >= 0 && age < 120) return `${age} Yrs`;
+        }
+      }
+      return '';
+    }
 
     // Patient ID / Reg No
     let patientId = '';
@@ -597,17 +624,24 @@ ${rawText}`;
     let dob = '';
     let partnerDob = '';
 
-    const dobMatch = rawText.match(/(?:Patient\s*)?(?:DOB|Date of Birth)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
+    const dobMatch = rawText.match(/(?:Patient|Wife|Female)?\s*(?:D\.?O\.?B\.?|Date\s*of\s*Birth|Birth\s*Date)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
     if (dobMatch) dob = parseDateStr(dobMatch[1]);
 
-    const pDobMatch = rawText.match(/(?:Partner|Husband)\s*(?:DOB|Date of Birth)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
+    const pDobMatch = rawText.match(/(?:Partner|Husband|Male)\s*(?:D\.?O\.?B\.?|Date\s*of\s*Birth|Birth\s*Date)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);
     if (pDobMatch) partnerDob = parseDateStr(pDobMatch[1]);
 
-    const ageMatch = rawText.match(/(?:Patient\s*)?Age[:\s]*(\d{1,2})\s*(?:Yrs?|Years?)?/i);
+    const ageMatch = rawText.match(/(?:Patient|Wife|Female)?\s*Age[:\s]*(\d{1,2})\s*(?:Yrs?|Years?)?/i);
     if (ageMatch) patientAge = `${ageMatch[1]} Yrs`;
 
-    const pAgeMatch = rawText.match(/(?:Partner|Husband)\s*Age[:\s]*(\d{1,2})\s*(?:Yrs?|Years?)?/i);
+    const pAgeMatch = rawText.match(/(?:Partner|Husband|Male)\s*Age[:\s]*(\d{1,2})\s*(?:Yrs?|Years?)?/i);
     if (pAgeMatch) partnerAge = `${pAgeMatch[1]} Yrs`;
+
+    if (!patientAge && dob) {
+      patientAge = calculateBackendAgeStr(dob);
+    }
+    if (!partnerAge && partnerDob) {
+      partnerAge = calculateBackendAgeStr(partnerDob);
+    }
 
     // Clinical Dates
     const aspMatch = rawText.match(/(?:DO\s*ASP|ASPIRATION|Egg\s*Retrieval|OPU\s*Date)[:\s]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i);

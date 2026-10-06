@@ -378,16 +378,38 @@ function parseLocationCode(code: string) {
 
 export function calculateAgeFromDob(dobString?: string): string {
   if (!dobString) return '';
-  const dob = new Date(dobString);
-  if (isNaN(dob.getTime())) return '';
-  const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const m = today.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-    age--;
+  const { iso } = normalizeFlexibleDateToDDMMYYYY(dobString);
+  if (!iso) {
+    const d = new Date(dobString);
+    if (isNaN(d.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) {
+      age--;
+    }
+    return age >= 0 && age < 120 ? `${age} Yrs` : '';
   }
-  return age >= 0 ? `${age} Yrs` : '';
+  const parts = iso.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      const dob = new Date(year, month, day);
+      if (isNaN(dob.getTime())) return '';
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      return age >= 0 && age < 120 ? `${age} Yrs` : '';
+    }
+  }
+  return '';
 }
+
 
 export function formatISOToDDMMYYYY(isoStr?: string | null): string {
   if (!isoStr) return '';
