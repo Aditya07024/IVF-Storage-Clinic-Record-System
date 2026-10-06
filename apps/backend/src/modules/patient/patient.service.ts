@@ -121,19 +121,42 @@ export class PatientService {
     if (!input.fullName || !input.fullName.trim()) {
       throw new Error('Patient Full Name is required.');
     }
-    if (!input.dob || !input.dob.trim()) {
-      throw new Error('Patient Date of Birth (DOB) is required.');
-    }
-    if (!input.email || !input.email.trim()) {
-      throw new Error('Patient Email Address is required.');
+
+    // Auto-Merge check: search for existing patient by patientId or matching fullName
+    let existingPatient: any = null;
+    if (isCustomId) {
+      existingPatient = await prisma.patient.findUnique({ where: { patientId } });
+    } else if (input.fullName && input.fullName.trim()) {
+      existingPatient = await prisma.patient.findFirst({
+        where: { fullName: { equals: input.fullName.trim(), mode: 'insensitive' } },
+      });
     }
 
-    if (isCustomId) {
-      const existing = await prisma.patient.findUnique({ where: { patientId } });
-      if (existing) {
-        throw new Error(`Patient Registration No / ID "${patientId}" already exists in system. Please enter a unique ID or search existing records.`);
+    if (existingPatient) {
+      const updateData: any = {};
+      if (input.fullName && input.fullName.trim() && !existingPatient.fullName) updateData.fullName = input.fullName.trim();
+      if (input.partnerName && input.partnerName.trim()) updateData.partnerName = input.partnerName.trim();
+      if (input.phone && input.phone.trim()) updateData.phone = input.phone.trim();
+      if (input.partnerPhone && input.partnerPhone.trim()) updateData.partnerPhone = input.partnerPhone.trim();
+      if (input.email && input.email.trim()) updateData.email = input.email.trim();
+      if (input.partnerEmail && input.partnerEmail.trim()) updateData.partnerEmail = input.partnerEmail.trim();
+      if (input.dob && input.dob.trim()) updateData.dob = input.dob.trim();
+      if (input.partnerDob && input.partnerDob.trim()) updateData.partnerDob = input.partnerDob.trim();
+      if (input.patientAge && input.patientAge.trim()) updateData.patientAge = input.patientAge.trim();
+      if (input.partnerAge && input.partnerAge.trim()) updateData.partnerAge = input.partnerAge.trim();
+      if (input.doctorName && input.doctorName.trim()) updateData.doctorName = input.doctorName.trim();
+      if (input.comments && input.comments.trim()) updateData.comments = input.comments.trim();
+
+      if (Object.keys(updateData).length > 0) {
+        return await prisma.patient.update({
+          where: { id: existingPatient.id },
+          data: updateData,
+        });
       }
-    } else {
+      return existingPatient;
+    }
+
+    if (!isCustomId) {
       patientId = await this.generateNextPatientId();
     }
 

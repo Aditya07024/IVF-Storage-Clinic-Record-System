@@ -1392,7 +1392,9 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           })();
 
                           const globalStrawNum = batchOffset + origIdx + 1;
-                          const displayLabel = `Straw #${globalStrawNum}`;
+                          const displayLabel = (straw.strawId && !straw.strawId.startsWith('STR-'))
+                            ? (straw.strawId.startsWith('#') ? `Straw ${straw.strawId}` : `Straw #${straw.strawId}`)
+                            : `Straw #${globalStrawNum}`;
                           const isDonorEgg = isOocyte && (quickThawPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
                           const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
                           const countLabel = isOocyte
@@ -2595,7 +2597,9 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                         ).map(({ straw, origIdx }: { straw: any; origIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
                           const globalStrawNum = batchStrawOffset + origIdx + 1;
-                          const displayLabel = `#${globalStrawNum}`;
+                          const displayLabel = (straw.strawId && !straw.strawId.startsWith('STR-'))
+                            ? (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`)
+                            : `#${globalStrawNum}`;
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
                           const isOocyte = isOocyteSpecimen(selectedPatient);
 

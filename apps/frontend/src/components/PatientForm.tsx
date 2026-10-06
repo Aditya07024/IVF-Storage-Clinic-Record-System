@@ -1236,14 +1236,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
           triggerValidationError('Patient Full Name and Doctor Name are required.');
           return;
         }
-        if (!dob.trim()) {
-          triggerValidationError('Patient Date of Birth (DOB) is required.');
-          return;
-        }
-        if (!email.trim()) {
-          triggerValidationError('Patient Email Address is required.');
-          return;
-        }
         if (!phone.trim() && !partnerPhone.trim()) {
           triggerValidationError('Please enter at least 1 Mobile Phone number (Patient or Partner).');
           return;
@@ -2205,7 +2197,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                     <DateInputDDMMYYYY
                       label="Patient Date of Birth (DOB)"
                       value={dob}
-                      required
                       onChange={(val) => {
                         setDob(val);
                         if (val) {
@@ -2247,7 +2238,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   <div className="min-w-0 max-w-full">
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                        Patient Email Address <span className="text-rose-600 font-bold">*</span>
+                        Patient Email Address
                       </label>
                       {isEmailVerified ? (
                         <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
@@ -2273,7 +2264,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                         setIsEmailVerified(false);
                       }}
                       placeholder="e.g. patient@example.com"
-                      required
                       className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 block"
                     />
 
