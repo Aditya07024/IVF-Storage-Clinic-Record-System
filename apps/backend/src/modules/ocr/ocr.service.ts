@@ -1127,8 +1127,8 @@ ${rawText}`;
                 return `${(g || '4AA').trim()}${fTxt}`;
               }).join(', ');
             } else {
-              const fragText = (st.fragmentation === '+' || st.fragmentation === '++') ? ` (Fragmentation: ${st.fragmentation})` : '';
-              if (!combinedGrade.includes('Fragmentation:')) {
+              const fragText = (st.fragmentation === '+' || st.fragmentation === '++' || st.fragmentation === '+++') ? ` (${st.fragmentation})` : '';
+              if (!combinedGrade.includes('(')) {
                 combinedGrade = `${combinedGrade}${fragText}`;
               }
             }
@@ -1155,8 +1155,8 @@ ${rawText}`;
             for (let e = 1; e <= eCount; e++) {
               const eg = (st.embryoGrades?.[e - 1] || st.grade || '4AA').trim();
               const ef = st.embryoFrags?.[e - 1] || st.fragmentation || 'No';
-              const efTxt = (ef === '+' || ef === '++') ? ` (Fragmentation: ${ef})` : '';
-              const eFinalGrade = eg.includes('Fragmentation:') ? eg : `${eg}${efTxt}`;
+              const efTxt = (ef === '+' || ef === '++' || ef === '+++') ? ` (${ef})` : '';
+              const eFinalGrade = eg.includes('(') ? eg : `${eg}${efTxt}`;
 
               await tx.embryo.create({
                 data: {

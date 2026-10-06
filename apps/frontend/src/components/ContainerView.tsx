@@ -1397,7 +1397,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           } else if (embryoCount > 1 && eGrade && !eGrade.includes(',')) {
                             gradeStr = Array(embryoCount).fill(eGrade).join(', ');
                           }
-                          const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
+                          const fragStr = (eFrag && eFrag !== 'N/A' && eFrag !== 'NO' && eFrag !== 'NONE') ? ` (${eFrag})` : '';
                           const commentStr = eComment ? ` - (${eComment})` : '';
 
                           return (

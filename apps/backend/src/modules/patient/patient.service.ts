@@ -454,8 +454,10 @@ export class PatientService {
     const includeQuery = {
       notes: { orderBy: { createdAt: 'desc' as const } },
       batches: {
+        orderBy: { createdAt: 'asc' as const },
         include: {
           straws: {
+            orderBy: { createdAt: 'asc' as const },
             include: { embryos: true, visoTube: true },
           },
         },

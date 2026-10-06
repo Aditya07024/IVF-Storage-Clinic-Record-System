@@ -1349,14 +1349,15 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
                       <div className="grid grid-cols-1 gap-2.5">
                         {([...batchStraws]
-                          .map((straw: any, sIdx: number) => ({ straw, sIdx }))
+                          .sort((a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
+                          .map((straw: any, origIdx: number) => ({ straw, origIdx }))
                           .sort((a, b) => {
                             const aThawed = a.straw.status === 'THAWED' || a.straw.status === 'VACANT';
                             const bThawed = b.straw.status === 'THAWED' || b.straw.status === 'VACANT';
                             if (aThawed !== bThawed) return aThawed ? 1 : -1;
-                            return a.sIdx - b.sIdx;
+                            return a.origIdx - b.origIdx;
                           })
-                        ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
+                        ).map(({ straw, origIdx }: { straw: any; origIdx: number }) => {
                           const isSelected = selectedStrawIds.includes(straw.id);
                           const isThawed = straw.status === 'THAWED' || straw.status === 'VACANT';
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
@@ -1372,7 +1373,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           const eComment = (straw.comments || '').trim();
 
                           const gradeStr = eGrade ? eGrade : 'N/A';
-                          const fragStr = (straw.embryos && straw.embryos.length >= 1) ? '' : ((eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '');
+                          const fragStr = (straw.embryos && straw.embryos.length >= 1) ? '' : (eFrag && eFrag !== 'N/A' && eFrag !== 'NO' && eFrag !== 'NONE' ? ` (${eFrag})` : '');
                           const commentStr = (() => {
                             if (straw.embryos && straw.embryos.length >= 1) {
                               const sortedNotes = straw.embryos
@@ -1390,7 +1391,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             return cleanComment ? ` - (${cleanComment})` : '';
                           })();
 
-                          const globalStrawNum = batchOffset + sIdx + 1;
+                          const globalStrawNum = batchOffset + origIdx + 1;
                           const displayLabel = `Straw #${globalStrawNum}`;
                           const isDonorEgg = isOocyte && (quickThawPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
                           const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
@@ -1407,11 +1408,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                               .map((emb: any) => (emb.grade || eGrade || (isOocyte ? 'MII' : 'N/A')).trim().toUpperCase())
                               .join(', ');
                           }
-                          if (eGrade.includes(',')) return eGrade;
-                          if (embryoCount > 1 && eGrade) {
-                            return Array(embryoCount).fill(eGrade).join(', ');
-                          }
-                          return gradeStr || (isOocyte ? (quickThawPatient.oocyteStage || 'MII') : 'N/A');
+                          return eGrade || gradeStr || (isOocyte ? (quickThawPatient.oocyteStage || 'MII') : 'N/A');
                         })());
 
                         return (
@@ -2587,16 +2584,17 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           </span>
                         </div>
                         {([...allStraws]
-                          .map((straw: any, sIdx: number) => ({ straw, sIdx }))
+                          .sort((a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
+                          .map((straw: any, origIdx: number) => ({ straw, origIdx }))
                           .sort((a, b) => {
                             const aThawed = a.straw.status !== 'OCCUPIED';
                             const bThawed = b.straw.status !== 'OCCUPIED';
                             if (aThawed !== bThawed) return aThawed ? 1 : -1;
-                            return a.sIdx - b.sIdx;
+                            return a.origIdx - b.origIdx;
                           })
-                        ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
+                        ).map(({ straw, origIdx }: { straw: any; origIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
-                          const globalStrawNum = batchStrawOffset + sIdx + 1;
+                          const globalStrawNum = batchStrawOffset + origIdx + 1;
                           const displayLabel = `#${globalStrawNum}`;
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
                           const isOocyte = isOocyteSpecimen(selectedPatient);
@@ -2611,7 +2609,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           const eComment = (straw.comments || '').trim();
 
                           const gradeStr = eGrade ? eGrade : 'N/A';
-                          const fragStr = (straw.embryos && straw.embryos.length >= 1) ? '' : (eFrag ? ` (Fragmentation: ${eFrag})` : '');
+                          const fragStr = (straw.embryos && straw.embryos.length >= 1) ? '' : (eFrag && eFrag !== 'N/A' && eFrag !== 'NO' && eFrag !== 'NONE' ? ` (${eFrag})` : '');
                           const commentStr = (() => {
                             if (straw.embryos && straw.embryos.length >= 1) {
                               const sortedNotes = straw.embryos
@@ -2628,7 +2626,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             const cleanComment = eComment.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').replace(/^[,\s]+|[,\s]+$/g, '').trim();
                             return (cleanComment && cleanComment !== ',' && cleanComment !== 'N/A') ? ` - (${cleanComment})` : '';
                           })();
-                          const prevCount = allStraws.slice(0, sIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
+                          const orderedStraws = [...allStraws].sort((a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+                          const prevCount = orderedStraws.slice(0, origIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
                           const startNum = batchEmbryoOffset + prevCount + 1;
                           const endNum = batchEmbryoOffset + prevCount + embryoCount;
                           const numRangeStr = embryoCount === 1 ? `#${startNum}` : `#${startNum}–#${endNum}`;
@@ -2666,11 +2665,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                                         .filter((g: string) => g && g !== ',');
                                       if (validGrades.length > 0) return validGrades.join(', ');
                                     }
-                                    const fallbackG = (gradeStr && gradeStr !== 'N/A' && gradeStr !== ',') ? gradeStr : (isOocyte ? (selectedPatient.oocyteStage || 'MII') : 'N/A');
-                                    if (embryoCount > 1 && fallbackG && fallbackG !== 'N/A' && !fallbackG.includes(',')) {
-                                      return Array(embryoCount).fill(fallbackG).join(', ');
-                                    }
-                                    return fallbackG;
+                                    return (gradeStr && gradeStr !== 'N/A' && gradeStr !== ',') ? gradeStr : (isOocyte ? (selectedPatient.oocyteStage || 'MII') : 'N/A');
                                   })())}{fragStr}{commentStr}
                                 </span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${!isOccupied ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>

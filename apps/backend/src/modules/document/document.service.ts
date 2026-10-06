@@ -47,9 +47,13 @@ export class DocumentService {
       include: {
         notes: { orderBy: { createdAt: 'desc' } },
         batches: {
+          orderBy: { createdAt: 'asc' },
           include: {
             visoTube: true,
-            straws: { include: { embryos: true } },
+            straws: {
+              orderBy: { createdAt: 'asc' },
+              include: { embryos: true },
+            },
           },
         },
         thawRecords: { orderBy: { thawDate: 'desc' } },

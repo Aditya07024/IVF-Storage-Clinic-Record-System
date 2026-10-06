@@ -280,13 +280,15 @@ export function getSortedFreezingDates(patient: any): string {
 
 export function cleanDuplicateGradeString(rawGradeStr?: string): string {
   if (!rawGradeStr) return 'N/A';
-  const cleanStr = rawGradeStr.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,+/g, ',').trim();
+  let cleanStr = rawGradeStr.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,+/g, ',').trim();
+  cleanStr = cleanStr.replace(/\(\s*FRAGMENTATION:\s*([^\)]+)\)/gi, '($1)').replace(/FRAGMENTATION:\s*/gi, '').trim();
   if (!cleanStr || cleanStr === 'N/A' || cleanStr === 'null') return 'N/A';
 
   const parts = cleanStr.split(',').map((p) => p.trim()).filter((p) => p && p !== ',');
   if (parts.length === 0) return 'N/A';
 
-  return parts.join(', ');
+  const uniqueParts = parts.filter((item, index) => parts.indexOf(item) === index);
+  return uniqueParts.join(', ');
 }
 
 export function groupBatchesByFreezingDate(rawBatches?: any[], patientAspDate?: string): any[] {
@@ -465,18 +467,7 @@ export function normalizeFlexibleDateToDDMMYYYY(input: string): { formatted: str
   // Also try 8 digits (DDMMYYYY) or 6 digits (DDMMYY)
   const digits = str.replace(/\D/g, '');
   if (digits.length === 8) {
-    if (digits.startsWith('19') || digits.startsWith('20')) {
-      const year = parseInt(digits.substring(0, 4), 10);
-      const month = parseInt(digits.substring(4, 6), 10);
-      const day = parseInt(digits.substring(6, 8), 10);
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
-        const dd = day.toString().padStart(2, '0');
-        const mm = month.toString().padStart(2, '0');
-        const yyyy = year.toString();
-        return { formatted: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
-      }
-    }
-
+    // Check DDMMYYYY format first (e.g., 19051995 -> DD=19, MM=05, YYYY=1995)
     const day = parseInt(digits.substring(0, 2), 10);
     const month = parseInt(digits.substring(2, 4), 10);
     const year = parseInt(digits.substring(4, 8), 10);
@@ -485,6 +476,17 @@ export function normalizeFlexibleDateToDDMMYYYY(input: string): { formatted: str
       const dd = day.toString().padStart(2, '0');
       const mm = month.toString().padStart(2, '0');
       const yyyy = year.toString();
+      return { formatted: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
+    }
+
+    // Fallback: check YYYYMMDD format (e.g. 19950519 -> YYYY=1995, MM=05, DD=19)
+    const yIso = parseInt(digits.substring(0, 4), 10);
+    const mIso = parseInt(digits.substring(4, 6), 10);
+    const dIso = parseInt(digits.substring(6, 8), 10);
+    if (dIso >= 1 && dIso <= 31 && mIso >= 1 && mIso <= 12 && yIso >= 1900 && yIso <= 2100) {
+      const dd = dIso.toString().padStart(2, '0');
+      const mm = mIso.toString().padStart(2, '0');
+      const yyyy = yIso.toString();
       return { formatted: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
     }
   } else if (digits.length === 6) {
@@ -544,13 +546,16 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
 }) => {
   const [displayValue, setDisplayValue] = useState(() => {
     const { formatted } = normalizeFlexibleDateToDDMMYYYY(value);
-    return formatted || formatISOToDDMMYYYY(value);
+    return formatted || formatISOToDDMMYYYY(value) || value || '';
   });
   const hiddenDateRef = useRef<HTMLInputElement>(null);
+  const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    const { formatted } = normalizeFlexibleDateToDDMMYYYY(value);
-    setDisplayValue(formatted || formatISOToDDMMYYYY(value));
+    if (!isFocusedRef.current) {
+      const { formatted } = normalizeFlexibleDateToDDMMYYYY(value);
+      setDisplayValue(formatted || formatISOToDDMMYYYY(value) || value || '');
+    }
   }, [value]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -566,8 +571,16 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
     }
   };
 
+  const handleFocus = () => {
+    isFocusedRef.current = true;
+  };
+
   const handleBlur = () => {
-    if (!displayValue) return;
+    isFocusedRef.current = false;
+    if (!displayValue) {
+      onChange('');
+      return;
+    }
     const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(displayValue);
     if (iso) {
       setDisplayValue(formatted);
@@ -604,6 +617,7 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
           type="text"
           value={displayValue}
           onChange={handleTextChange}
+          onFocus={handleFocus}
           onBlur={handleBlur}
           placeholder={placeholder}
           maxLength={10}
@@ -632,8 +646,11 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
           value={currentIso || ''}
           onChange={(e) => {
             const iso = e.target.value;
-            onChange(iso);
-            setDisplayValue(formatISOToDDMMYYYY(iso));
+            if (iso) {
+              const { formatted } = normalizeFlexibleDateToDDMMYYYY(iso);
+              setDisplayValue(formatted);
+              onChange(iso);
+            }
           }}
           className="sr-only pointer-events-none"
         />
@@ -715,7 +732,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
   const checkRegistrationIdInstant = async (idToTest?: string) => {
     const val = (idToTest !== undefined ? idToTest : customPatientId).trim();
-    if (selectedExistingPatient || !val || val.length < 2) {
+    if (formMode === 'existing' || selectedExistingPatient || !val || val.length < 2) {
       setExistingIdMatch(null);
       setIsIdVerifiedUnique(false);
       return;
@@ -755,16 +772,37 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
   };
 
   useEffect(() => {
-    if (selectedExistingPatient || !customPatientId || customPatientId.trim().length < 2) {
-      setExistingIdMatch(null);
-      setIsIdVerifiedUnique(false);
-      return;
+    if (selectedExistingPatient) return;
+    if (formMode === 'existing') {
+      if (!customPatientId || customPatientId.trim().length < 2) return;
+      const timer = setTimeout(async () => {
+        try {
+          const res = await apiRequest(`/api/patients?q=${encodeURIComponent(customPatientId.trim())}`);
+          if (res.success && res.patients && res.patients.length > 0) {
+            const matched = res.patients.find(
+              (p: any) => p.patientId && p.patientId.trim().toLowerCase() === customPatientId.trim().toLowerCase()
+            );
+            if (matched) {
+              handleSelectExistingPatient(matched);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to lookup existing patient by ID:', err);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      if (!customPatientId || customPatientId.trim().length < 2) {
+        setExistingIdMatch(null);
+        setIsIdVerifiedUnique(false);
+        return;
+      }
+      const timer = setTimeout(() => {
+        checkRegistrationIdInstant(customPatientId);
+      }, 50);
+      return () => clearTimeout(timer);
     }
-    const timer = setTimeout(() => {
-      checkRegistrationIdInstant(customPatientId);
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [customPatientId, selectedExistingPatient]);
+  }, [customPatientId, selectedExistingPatient, formMode]);
 
   // Email OTP Verification States
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -884,8 +922,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     setSearchingExisting(true);
     try {
       const res = await apiRequest(`/api/patients?q=${encodeURIComponent(q.trim())}`);
-      if (res.success) {
+      if (res.success && res.patients) {
         setExistingSearchResults(res.patients);
+        const exactMatch = res.patients.find(
+          (p: any) => p.patientId && p.patientId.trim().toLowerCase() === q.trim().toLowerCase()
+        );
+        if (exactMatch && !selectedExistingPatient) {
+          handleSelectExistingPatient(exactMatch);
+        }
       }
     } catch (err: any) {
       console.error('Failed to search existing patients:', err);
@@ -919,8 +963,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     setDonorPhone(pt.donorPhone || '');
     setVitrificationIndication(pt.vitrificationIndication || 'Social egg freezing');
     setOocyteStage(pt.oocyteStage || 'MII');
-    if (pt.photoUrl) setPhotoPreviewUrl(pt.photoUrl);
-    if (pt.partnerPhotoUrl) setPartnerPhotoPreviewUrl(pt.partnerPhotoUrl);
+    if (pt.photoUrl) setPhotoPreviewUrl(getImageUrl(pt.photoUrl));
+    if (pt.partnerPhotoUrl) setPartnerPhotoPreviewUrl(getImageUrl(pt.partnerPhotoUrl));
   };
 
   // Select Existing Patient & Auto-Fill Fields
@@ -1437,7 +1481,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
           </button>
           <button
             type="button"
-            onClick={() => setFormMode('existing')}
+            onClick={() => {
+              setFormMode('existing');
+              setExistingIdMatch(null);
+            }}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-center ${
               formMode === 'existing'
                 ? 'bg-white text-emerald-950 shadow-sm border border-slate-200'
@@ -1929,7 +1976,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   }`}
                 />
 
-                {existingIdMatch && !selectedExistingPatient && (
+                {formMode === 'new' && existingIdMatch && !selectedExistingPatient && (
                   <div className="mt-2.5 p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium animate-in fade-in shadow-2xs flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -1948,7 +1995,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   </div>
                 )}
 
-                {!existingIdMatch && !selectedExistingPatient && isIdVerifiedUnique && customPatientId.trim().length >= 2 && (
+                {formMode === 'new' && !existingIdMatch && !selectedExistingPatient && isIdVerifiedUnique && customPatientId.trim().length >= 2 && (
                   <div className="mt-2.5 p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-xs text-emerald-900 font-medium animate-in fade-in shadow-2xs">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>
@@ -3059,16 +3106,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
         <div className="flex items-center justify-end gap-4">
           <button
             type="submit"
-            disabled={loading || (!selectedExistingPatient && !!existingIdMatch)}
+            disabled={loading || (formMode === 'new' && !selectedExistingPatient && !!existingIdMatch)}
             className={`px-8 py-4 font-bold text-sm rounded-2xl shadow-lg flex items-center gap-2 transition-all ${
-              !selectedExistingPatient && existingIdMatch
+              formMode === 'new' && !selectedExistingPatient && existingIdMatch
                 ? 'bg-slate-300 text-slate-600 border border-slate-400 cursor-not-allowed'
                 : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
             }`}
           >
             {loading ? (
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : !selectedExistingPatient && existingIdMatch ? (
+            ) : formMode === 'new' && !selectedExistingPatient && existingIdMatch ? (
               <>
                 <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
                 <span>Registration ID Already Exists (Please Change Registration ID or Select Existing Patient)</span>
@@ -3576,7 +3623,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                               const eComment = ((item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '') || '').trim();
 
                               const gradeStr = eGrade ? eGrade : 'N/A';
-                              const fragStr = (eFrag === '+' || eFrag === '++') ? ` (Fragmentation: ${eFrag})` : '';
+                              const fragStr = (eFrag && eFrag !== 'N/A' && eFrag !== 'NO' && eFrag !== 'NONE') ? ` (${eFrag})` : '';
                               const commentStr = eComment ? ` - (${eComment})` : '';
                               const itemTypeLabel = specimenType === 'OOCYTE' ? 'Oocyte' : 'Embryo';
                               const stageTypeLabel = specimenType === 'OOCYTE' ? 'Stage' : 'Grade';
