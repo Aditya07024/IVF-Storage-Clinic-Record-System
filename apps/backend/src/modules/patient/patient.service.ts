@@ -450,30 +450,39 @@ export class PatientService {
     });
   }
 
-  async getPatientById(id: string) {
-    const patient = await prisma.patient.findUnique({
-      where: { id },
-      include: {
-        notes: { orderBy: { createdAt: 'desc' } },
-        batches: {
-          include: {
-            straws: {
-              include: { embryos: true, visoTube: true },
-            },
+  async getPatientById(idOrPatientId: string) {
+    const includeQuery = {
+      notes: { orderBy: { createdAt: 'desc' as const } },
+      batches: {
+        include: {
+          straws: {
+            include: { embryos: true, visoTube: true },
           },
         },
-        thawRecords: {
-          orderBy: { thawDate: 'desc' },
-          include: {
-            straw: {
-              include: { embryos: true, visoTube: true },
-            },
-          },
-        },
-        ocrRecords: { orderBy: { createdAt: 'desc' } },
-        emailLogs: { orderBy: { sentAt: 'desc' } },
       },
+      thawRecords: {
+        orderBy: { thawDate: 'desc' as const },
+        include: {
+          straw: {
+            include: { embryos: true, visoTube: true },
+          },
+        },
+      },
+      ocrRecords: { orderBy: { createdAt: 'desc' as const } },
+      emailLogs: { orderBy: { sentAt: 'desc' as const } },
+    };
+
+    let patient = await prisma.patient.findUnique({
+      where: { id: idOrPatientId },
+      include: includeQuery,
     });
+
+    if (!patient) {
+      patient = await prisma.patient.findFirst({
+        where: { patientId: { equals: idOrPatientId, mode: 'insensitive' } },
+        include: includeQuery,
+      });
+    }
 
     if (!patient) return null;
 

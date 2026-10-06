@@ -711,6 +711,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
   const [isIdVerifiedUnique, setIsIdVerifiedUnique] = useState(false);
   const [idChecking, setIdChecking] = useState(false);
+  const [isIdSavedEffect, setIsIdSavedEffect] = useState(false);
 
   const checkRegistrationIdInstant = async (idToTest?: string) => {
     const val = (idToTest !== undefined ? idToTest : customPatientId).trim();
@@ -743,6 +744,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     } finally {
       setIdChecking(false);
     }
+  };
+
+  const handleSaveRegistrationId = async () => {
+    await checkRegistrationIdInstant(customPatientId);
+    setIsIdSavedEffect(true);
+    setTimeout(() => {
+      setIsIdSavedEffect(false);
+    }, 2500);
   };
 
   useEffect(() => {
@@ -1902,36 +1911,23 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   {idChecking && <span className="text-xs text-slate-500 font-normal animate-pulse">Checking availability...</span>}
                 </label>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={customPatientId}
-                    onChange={(e) => setCustomPatientId(e.target.value)}
-                    onPaste={(e) => {
-                      const pasted = e.clipboardData.getData('text');
-                      checkRegistrationIdInstant(pasted);
-                    }}
-                    readOnly={!!selectedExistingPatient}
-                    placeholder="e.g. IVF-2026-000001"
-                    required
-                    className={`flex-1 min-w-0 h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
-                      selectedExistingPatient
-                        ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
-                        : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
-                    }`}
-                  />
-
-                  {!selectedExistingPatient && (
-                    <button
-                      type="button"
-                      onClick={() => checkRegistrationIdInstant(customPatientId)}
-                      className="px-4 h-11 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                    >
-                      <Save className="w-3.5 h-3.5 text-emerald-200" />
-                      <span>Save Registration ID</span>
-                    </button>
-                  )}
-                </div>
+                <input
+                  type="text"
+                  value={customPatientId}
+                  onChange={(e) => setCustomPatientId(e.target.value)}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData('text');
+                    checkRegistrationIdInstant(pasted);
+                  }}
+                  readOnly={!!selectedExistingPatient}
+                  placeholder="e.g. IVF-2026-000001"
+                  required
+                  className={`w-full min-w-0 max-w-full h-11 box-border border rounded-xl px-4 text-sm font-mono font-bold focus:outline-none block ${
+                    selectedExistingPatient
+                      ? 'bg-slate-100 text-slate-700 border-slate-300 cursor-not-allowed'
+                      : 'bg-slate-50 text-slate-900 border-slate-300 focus:border-emerald-500'
+                  }`}
+                />
 
                 {existingIdMatch && !selectedExistingPatient && (
                   <div className="mt-2.5 p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium animate-in fade-in shadow-2xs flex-wrap gap-2">
@@ -3063,11 +3059,20 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
         <div className="flex items-center justify-end gap-4">
           <button
             type="submit"
-            disabled={loading}
-            className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all"
+            disabled={loading || (!selectedExistingPatient && !!existingIdMatch)}
+            className={`px-8 py-4 font-bold text-sm rounded-2xl shadow-lg flex items-center gap-2 transition-all ${
+              !selectedExistingPatient && existingIdMatch
+                ? 'bg-slate-300 text-slate-600 border border-slate-400 cursor-not-allowed'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+            }`}
           >
             {loading ? (
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : !selectedExistingPatient && existingIdMatch ? (
+              <>
+                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+                <span>Registration ID Already Exists (Please Change Registration ID or Select Existing Patient)</span>
+              </>
             ) : (
               <>
                 <Save className="w-5 h-5" />

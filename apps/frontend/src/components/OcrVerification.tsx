@@ -135,6 +135,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
   const [existingIdMatch, setExistingIdMatch] = useState<any | null>(null);
   const [isIdVerifiedUnique, setIsIdVerifiedUnique] = useState(false);
   const [idChecking, setIdChecking] = useState(false);
+  const [isIdSavedEffect, setIsIdSavedEffect] = useState(false);
 
   const checkRegistrationIdInstant = async (idToTest?: string) => {
     const val = (idToTest !== undefined ? idToTest : patientId).trim();
@@ -167,6 +168,14 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     } finally {
       setIdChecking(false);
     }
+  };
+
+  const handleSaveRegistrationId = async () => {
+    await checkRegistrationIdInstant(patientId);
+    setIsIdSavedEffect(true);
+    setTimeout(() => {
+      setIsIdSavedEffect(false);
+    }, 2500);
   };
 
   useEffect(() => {
@@ -1308,27 +1317,17 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={patientId}
-                      onChange={(e) => setPatientId(e.target.value)}
-                      onPaste={(e) => {
-                        const pasted = e.clipboardData.getData('text');
-                        checkRegistrationIdInstant(pasted);
-                      }}
-                      className="flex-1 bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      placeholder="e.g. IVF-2026-000007"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => checkRegistrationIdInstant(patientId)}
-                      className="px-4 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                    >
-                      <Save className="w-3.5 h-3.5 text-emerald-200" />
-                      <span>Save Registration ID</span>
-                    </button>
-                  </div>
+                  <input
+                    type="text"
+                    value={patientId}
+                    onChange={(e) => setPatientId(e.target.value)}
+                    onPaste={(e) => {
+                      const pasted = e.clipboardData.getData('text');
+                      checkRegistrationIdInstant(pasted);
+                    }}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-mono font-bold"
+                    placeholder="e.g. IVF-2026-000007"
+                  />
 
                   {existingIdMatch && (
                     <div className="mt-2.5 p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-medium animate-in fade-in shadow-2xs flex-wrap gap-2">
@@ -1861,11 +1860,20 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
 
                 <button
                   type="submit"
-                  disabled={verifying}
-                  className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+                  disabled={verifying || !!existingIdMatch}
+                  className={`flex-1 py-3.5 font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all ${
+                    existingIdMatch
+                      ? 'bg-slate-300 text-slate-600 border border-slate-400 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                  }`}
                 >
                   {verifying ? (
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : existingIdMatch ? (
+                    <>
+                      <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Registration ID Already Exists (Please Change Registration ID or View Patient)</span>
+                    </>
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
