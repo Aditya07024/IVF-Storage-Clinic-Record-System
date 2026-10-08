@@ -170,7 +170,7 @@ export function isOocyteSpecimen(obj?: any, specimenTypeParam?: string, vitrific
 
 export function formatDayStage(stage: string | null | undefined): string {
   if (!stage) return '';
-  return stage.replace(/\bDay\s*([0-9]+)/gi, 'day$1');
+  return stage.replace(/\bday\s*([0-9]+)/gi, 'Day $1');
 }
 
 export function sortStageKeys(stages: string[]): string[] {
@@ -341,8 +341,7 @@ export function cleanDuplicateGradeString(rawGradeStr?: string): string {
   const parts = cleanStr.split(',').map((p) => p.trim()).filter((p) => p && p !== ',');
   if (parts.length === 0) return 'N/A';
 
-  const uniqueParts = parts.filter((item, index) => parts.indexOf(item) === index);
-  return uniqueParts.join(', ');
+  return parts.join(', ');
 }
 
 export function groupBatchesByFreezingDate(rawBatches?: any[], patientAspDate?: string): any[] {
@@ -1530,7 +1529,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     const isSupernumerary = specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing';
     const effectivePatientId = isSupernumerary ? (customPatientId.trim() || donorRegNo.trim()) : customPatientId.trim();
     const effectiveFullName = isSupernumerary ? (donorName.trim() ? `${donorName.trim()} (Donor)` : `Donor ${donorRegNo.trim()}`) : fullName.trim();
-    const effectiveEmail = isSupernumerary ? (email.trim() || `${(donorRegNo.trim() || 'donor').toLowerCase()}@clinic.local`) : email.trim();
+    const effectiveEmail = isSupernumerary
+      ? (email.trim() || `${(donorRegNo.trim() || 'donor').toLowerCase()}@clinic.local`)
+      : (email.trim() || undefined);
     const effectivePhone = isSupernumerary ? (donorPhone.trim() || 'N/A') : phone.trim();
     const effectiveDob = isSupernumerary ? (dob.trim() || '1995-01-01') : dob.trim();
 
@@ -1998,12 +1999,20 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                                           <strong className="text-amber-900 font-bold">{batch.donorRegNo || ''} {batch.donorName ? `(${batch.donorName})` : ''}</strong>
                                         </div>
                                       )}
-                                      {batch.embryoStage && (
-                                        <div>
-                                          <span className="text-slate-400 font-sans">Stage:</span>{' '}
-                                          <strong className="text-blue-700 font-bold">{batch.embryoStage}</strong>
-                                        </div>
-                                      )}
+                                      {(() => {
+                                        const isOocyte = batch.specimenType === 'OOCYTE' || isOocyteSpecimen(selectedExistingPatient);
+                                        const aspDate = batch.aspirationDate || selectedExistingPatient?.aspirationDate;
+                                        const frzDate = batch.freezingDate || batch.storageDate;
+                                        const calculatedStage = (aspDate && frzDate) ? calculateEmbryoStage(aspDate, frzDate) : '';
+                                        const stageVal = isOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || calculatedStage);
+                                        if (!stageVal) return null;
+                                        return (
+                                          <div>
+                                            <span className="text-slate-400 font-sans">Stage:</span>{' '}
+                                            <strong className="text-blue-700 font-bold">{formatDayStage(stageVal)}</strong>
+                                          </div>
+                                        );
+                                      })()}
                                       <div>
                                         <span className="text-slate-400 font-sans">Storage:</span>{' '}
                                         <strong className="text-slate-900 font-extrabold">{activeStrawsCount} Active ({totalStrawsCount} Straws)</strong>

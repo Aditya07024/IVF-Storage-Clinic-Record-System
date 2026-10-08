@@ -1018,9 +1018,9 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           allBatches.forEach((batch: any) => {
                             (batch.straws || []).forEach((s: any) => {
                               const pIsOocyte = isOocyteSpecimen(p);
-                              const aspDate = p.aspirationDate || batch.aspirationDate || p.visitDate;
+                              const aspDate = batch.aspirationDate || p.aspirationDate || p.visitDate;
                               const frzDate = s.freezingDate || batch.freezingDate || batch.storageDate;
-                              let computedStage = s.stage || batch.embryoStage;
+                              let computedStage = s.stage || (pIsOocyte ? batch.oocyteStage : batch.embryoStage);
                               if (!computedStage && !pIsOocyte && aspDate && frzDate) {
                                 computedStage = calculateEmbryoStage(aspDate, frzDate);
                               }
@@ -1358,11 +1358,19 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                         <span className="text-slate-700 font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
                           Batch Stored: {formatDateDDMMYYYY(batch.storageDate || batch.freezingDate)}
                         </span>
-                        {batch.embryoStage && (
-                          <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 font-mono font-bold text-[11px]">
-                            Stage: {formatDayStage(batch.embryoStage)}
-                          </span>
-                        )}
+                        {(() => {
+                          const isOocyte = batch.specimenType === 'OOCYTE' || isOocyteSpecimen(quickThawPatient);
+                          const aspDate = batch.aspirationDate || quickThawPatient?.aspirationDate || quickThawPatient?.visitDate;
+                          const frzDate = batch.freezingDate || batch.storageDate;
+                          const calculatedStage = (aspDate && frzDate) ? calculateEmbryoStage(aspDate, frzDate) : '';
+                          const stageVal = isOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || calculatedStage);
+                          if (!stageVal) return null;
+                          return (
+                            <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 font-mono font-bold text-[11px]">
+                              Stage: {formatDayStage(stageVal)}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <div className="grid grid-cols-1 gap-2.5">
@@ -2613,11 +2621,19 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 font-bold">
                             Frozen: {formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}
                           </span>
-                          {batch.embryoStage && (
-                            <span className="bg-slate-200 text-slate-900 px-2 py-0.5 rounded border border-slate-300 font-bold">
-                              Stage: {formatDayStage(batch.embryoStage)}
-                            </span>
-                          )}
+                          {(() => {
+                            const isOocyte = batch.specimenType === 'OOCYTE' || isOocyteSpecimen(selectedPatient);
+                            const aspDate = batch.aspirationDate || selectedPatient?.aspirationDate || selectedPatient?.visitDate;
+                            const frzDate = batch.freezingDate || batch.storageDate;
+                            const calculatedStage = (aspDate && frzDate) ? calculateEmbryoStage(aspDate, frzDate) : '';
+                            const stageVal = isOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || calculatedStage);
+                            if (!stageVal) return null;
+                            return (
+                              <span className="bg-slate-200 text-slate-900 px-2 py-0.5 rounded border border-slate-300 font-bold">
+                                Stage: {formatDayStage(stageVal)}
+                              </span>
+                            );
+                          })()}
                           {isAllThawed && (
                             <span className="bg-rose-100 text-rose-950 px-2 py-0.5 rounded border border-rose-300 font-bold flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3 text-rose-700" />

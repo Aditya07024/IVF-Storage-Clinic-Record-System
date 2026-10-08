@@ -1140,6 +1140,15 @@ ${rawText}`;
           const actualFrzStr = frzKey === '__default__' ? input.freezingDate : frzKey;
           const parsedFreezing = parseFlexibleDate(actualFrzStr) || parseFlexibleDate(input.freezingDate) || new Date();
 
+          const computeStageFromDates = (asp?: Date | null, frz?: Date | null, specimen?: string) => {
+            if (specimen === 'OOCYTE') return 'MII';
+            if (!asp || !frz) return 'Day 5';
+            const diffMs = frz.getTime() - asp.getTime();
+            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+            return diffDays >= 0 ? `Day ${diffDays}` : 'Day 5';
+          };
+          const calculatedBatchStage = computeStageFromDates(parsedAsp, parsedFreezing, input.specimenType);
+
           const batch = await tx.storageBatch.create({
             data: {
               batchId: batchCode,
@@ -1147,6 +1156,7 @@ ${rawText}`;
               storageDate: new Date(),
               freezingDate: parsedFreezing,
               aspirationDate: parsedAsp,
+              embryoStage: calculatedBatchStage,
               totalStraws: groupStraws.length,
               totalEmbryos: groupStraws.reduce((acc: number, s: any) => acc + (s.embryoCount || 1), 0),
               visoTubeId: targetVisoTube.id,
