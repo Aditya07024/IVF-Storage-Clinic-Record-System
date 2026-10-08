@@ -1170,16 +1170,31 @@ ${rawText}`;
             const uniqueStrawCode = rawCode;
             const eCount = st.embryoCount || 1;
 
-            let combinedGrade = (st.grade || '4AA').trim();
+            const isOocyteSpecimen = input.specimenType === 'OOCYTE' || (input.vitrificationIndication && input.vitrificationIndication.toLowerCase().includes('egg'));
+            const defaultGradeVal = isOocyteSpecimen ? 'MII' : '4AA';
+            const defaultFragVal = isOocyteSpecimen ? '' : 'No';
+
+            let combinedGrade = (st.grade || defaultGradeVal).trim();
             if (Array.isArray(st.embryoGrades) && st.embryoGrades.length > 0) {
               combinedGrade = st.embryoGrades.slice(0, eCount).map((g: string, idx: number) => {
-                const f = st.embryoFrags?.[idx] || st.fragmentation || 'No';
-                const fTxt = (f === '+' || f === '++') ? ` (${f})` : '';
-                return `${(g || '4AA').trim()}${fTxt}`;
+                const f = st.embryoFrags?.[idx] || st.fragmentation || defaultFragVal;
+                let fTxt = '';
+                if (isOocyteSpecimen) {
+                  fTxt = (f && f !== 'No') ? ` (${f.trim()})` : '';
+                } else {
+                  fTxt = (f === '+' || f === '++' || f === '+++') ? ` (${f})` : '';
+                }
+                return `${(g || defaultGradeVal).trim()}${fTxt}`;
               }).join(', ');
             } else {
-              const fragText = (st.fragmentation === '+' || st.fragmentation === '++' || st.fragmentation === '+++') ? ` (${st.fragmentation})` : '';
-              if (!combinedGrade.includes('(')) {
+              const f = st.fragmentation || defaultFragVal;
+              let fragText = '';
+              if (isOocyteSpecimen) {
+                fragText = (f && f !== 'No') ? ` (${f.trim()})` : '';
+              } else {
+                fragText = (f === '+' || f === '++' || f === '+++') ? ` (${f})` : '';
+              }
+              if (fragText && !combinedGrade.includes('(')) {
                 combinedGrade = `${combinedGrade}${fragText}`;
               }
             }
@@ -1204,9 +1219,14 @@ ${rawText}`;
             });
 
             for (let e = 1; e <= eCount; e++) {
-              const eg = (st.embryoGrades?.[e - 1] || st.grade || '4AA').trim();
-              const ef = st.embryoFrags?.[e - 1] || st.fragmentation || 'No';
-              const efTxt = (ef === '+' || ef === '++' || ef === '+++') ? ` (${ef})` : '';
+              const eg = (st.embryoGrades?.[e - 1] || st.grade || defaultGradeVal).trim();
+              const ef = st.embryoFrags?.[e - 1] || st.fragmentation || defaultFragVal;
+              let efTxt = '';
+              if (isOocyteSpecimen) {
+                efTxt = (ef && ef !== 'No') ? ` (${ef.trim()})` : '';
+              } else {
+                efTxt = (ef === '+' || ef === '++' || ef === '+++') ? ` (${ef})` : '';
+              }
               const eFinalGrade = eg.includes('(') ? eg : `${eg}${efTxt}`;
 
               await tx.embryo.create({
