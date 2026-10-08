@@ -199,20 +199,6 @@ export class StorageService {
     const requiredStraws = requiredStrawsCount;
     const embryoCount = requiredStraws * 2;
 
-    // Check if patient already has a batch created on the SAME DATE
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const sameDateBatch = await prisma.storageBatch.findFirst({
-      where: {
-        patientId,
-        storageDate: { gte: todayStart },
-      },
-      include: {
-        visoTube: true,
-      },
-    });
-
     const visoTubes = await prisma.visoTube.findMany({
       include: {
         straws: { where: { status: 'OCCUPIED' } },
@@ -231,28 +217,61 @@ export class StorageService {
     });
 
     let primaryRecommendation = null;
-    const fallbackRecommendations = [];
+    let previousPatientLocation = null;
+    const fallbackRecommendations: any[] = [];
 
-    // If existing same-day batch exists and VisoTube has capacity, prioritize same VisoTube
-    if (sameDateBatch) {
-      const sameTube = visoTubes.find((t) => t.id === sameDateBatch.visoTubeId);
-      if (sameTube) {
-        const available = 14 - sameTube.straws.length;
-        if (available >= requiredStraws) {
-          const parsed = parseLocationCode(sameTube.locationCode);
-          primaryRecommendation = {
-            visoTubeId: sameTube.id,
-            locationCode: sameTube.locationCode,
-            formattedLocation: parsed.formatted,
-            breakdown: parsed,
-            availableSlots: available,
-            matchType: 'SAME_PATIENT_SAME_DATE',
-            explanation: `Recommended to group with patient's existing batch on ${sameDateBatch.storageDate.toISOString().split('T')[0]} in ${parsed.formatted}.`,
-          };
+    // Prioritize patient's PREVIOUS stored straw / batch location if patient has existing active storage
+    if (patientId && patientId !== 'NEW_PATIENT') {
+      const patientRecord = await prisma.patient.findFirst({
+        where: {
+          OR: [
+            { id: patientId },
+            { patientId: patientId },
+          ],
+        },
+      });
+
+      const targetDbId = patientRecord?.id || patientId;
+      const targetRegId = patientRecord?.patientId || patientId;
+
+      const patientBatches = await prisma.storageBatch.findMany({
+        where: {
+          OR: [
+            { patientId: targetDbId },
+            { patientId: targetRegId },
+          ],
+        },
+        include: { visoTube: true, straws: true },
+        orderBy: { storageDate: 'desc' },
+      });
+
+      for (const batch of patientBatches) {
+        if (batch.visoTubeId) {
+          const tube = visoTubes.find((t) => t.id === batch.visoTubeId);
+          if (tube) {
+            const occupiedCount = tube.straws.length;
+            const available = 14 - occupiedCount;
+            if (available >= requiredStraws) {
+              const parsed = parseLocationCode(tube.locationCode);
+              const recItem = {
+                visoTubeId: tube.id,
+                locationCode: tube.locationCode,
+                formattedLocation: parsed.formatted,
+                breakdown: parsed,
+                availableSlots: available,
+                matchType: 'SAME_PATIENT_PREVIOUS_LOCATION',
+                explanation: `Recommended: Automatically chosen patient's previous stored straw location in ${parsed.formatted} (${available} vacant slots remaining).`,
+              };
+              previousPatientLocation = recItem;
+              primaryRecommendation = recItem;
+              break;
+            }
+          }
         }
       }
     }
 
+    // Populate remaining candidates & fallbacks
     for (const tube of visoTubes) {
       const occupiedCount = tube.straws.length;
       const available = 14 - occupiedCount;
@@ -268,7 +287,7 @@ export class StorageService {
           explanation: `${parsed.formatted} (${available} vacant straw slots available).`,
         };
 
-        if (!primaryRecommendation && tube.id !== sameDateBatch?.visoTubeId) {
+        if (!primaryRecommendation) {
           primaryRecommendation = item;
         } else if (tube.id !== primaryRecommendation?.visoTubeId) {
           fallbackRecommendations.push(item);
@@ -281,6 +300,7 @@ export class StorageService {
       embryoCount,
       maxEmbryosPerStraw: 2,
       primaryRecommendation,
+      previousPatientLocation,
       alternativeLocations: fallbackRecommendations.slice(0, 5),
     };
   }

@@ -1064,7 +1064,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
   // Storage Allocation State
   const [assignStorageEnabled, setAssignStorageEnabled] = useState(false);
-  const [allocationMode, setAllocationMode] = useState<'recommended' | 'manual'>('manual');
+  const [allocationMode, setAllocationMode] = useState<'recommended' | 'previous_location' | 'manual'>('recommended');
   const [strawsCount, setStrawsCount] = useState(1);
   const [strawItems, setStrawItems] = useState<Array<{
     color: string;
@@ -1369,20 +1369,53 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     setError(null);
     setSearchingStorage(true);
     try {
+      const pId = selectedExistingPatient
+        ? (selectedExistingPatient.id || selectedExistingPatient.patientId)
+        : (customPatientId.trim() || 'NEW_PATIENT');
+
       const res = await apiRequest('/api/storage/find-empty', {
         method: 'POST',
         body: JSON.stringify({
-          patientId: selectedExistingPatient ? selectedExistingPatient.id : 'NEW_PATIENT',
+          patientId: pId,
           storageDate: freezingDate,
           embryoCount: strawsCount * 2,
         }),
       });
 
       if (res.success) {
-        setRecommendation(res);
-        if (res.primaryRecommendation) {
-          setSelectedVisoTubeId(res.primaryRecommendation.visoTubeId);
-          setSelectedLocationCode(res.primaryRecommendation.locationCode);
+        let updatedRes = { ...res };
+
+        // Fallback check against in-memory patient batches if backend recommendation didn't catch it
+        if (!updatedRes.previousPatientLocation && selectedExistingPatient?.batches) {
+          const activeBatch = selectedExistingPatient.batches.find((b: any) =>
+            b.visoTubeId && (b.straws ? b.straws.some((s: any) => s.status === 'OCCUPIED') : true)
+          );
+
+          if (activeBatch && activeBatch.visoTubeId) {
+            const locCode = activeBatch.visoTube?.locationCode || activeBatch.locationCode || '';
+            const parsed = locCode ? parseLocationCode(locCode) : null;
+            if (parsed) {
+              const recItem = {
+                visoTubeId: activeBatch.visoTubeId,
+                locationCode: locCode,
+                formattedLocation: parsed.formatted,
+                breakdown: parsed,
+                availableSlots: 10,
+                matchType: 'SAME_PATIENT_PREVIOUS_LOCATION',
+                explanation: `Recommended: Grouped with patient's existing stored straws in ${parsed.formatted}.`,
+              };
+              updatedRes.previousPatientLocation = recItem;
+              if (allocationMode === 'previous_location' || !updatedRes.primaryRecommendation) {
+                updatedRes.primaryRecommendation = recItem;
+              }
+            }
+          }
+        }
+
+        setRecommendation(updatedRes);
+        if (updatedRes.primaryRecommendation) {
+          setSelectedVisoTubeId(updatedRes.primaryRecommendation.visoTubeId);
+          setSelectedLocationCode(updatedRes.primaryRecommendation.locationCode);
         }
       }
     } catch (err: any) {
@@ -1396,7 +1429,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
   const fetchRecommendation = handleFindStorage;
 
   useEffect(() => {
-    if (assignStorageEnabled && allocationMode === 'recommended') {
+    if (assignStorageEnabled && (allocationMode === 'recommended' || allocationMode === 'previous_location')) {
       handleFindStorage();
     }
   }, [assignStorageEnabled, allocationMode, strawsCount, freezingDate, selectedExistingPatient]);
@@ -2807,8 +2840,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
           {assignStorageEnabled && (
             <div className="space-y-4 sm:space-y-6 w-full">
-              {/* Storage Method Toggle */}
-              <div className="flex flex-col sm:flex-row items-stretch gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full">
+              {/* Storage Method Toggle - All 3 Systems Enabled */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full">
                 <button
                   type="button"
                   onClick={() => setAllocationMode('recommended')}
@@ -2819,7 +2852,20 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   }`}
                 >
                   <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Use Recommended Storage (Auto-Optimal)</span>
+                  <span>1. Auto-Optimal (Recommended)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAllocationMode('previous_location')}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                    allocationMode === 'previous_location'
+                      ? 'bg-white text-purple-950 shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Snowflake className="w-4 h-4 text-purple-600 shrink-0" />
+                  <span>2. Same Patient Location</span>
                 </button>
 
                 <button
@@ -2827,12 +2873,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   onClick={() => setAllocationMode('manual')}
                   className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     allocationMode === 'manual'
-                      ? 'bg-white text-emerald-950 shadow-xs border border-slate-200'
+                      ? 'bg-white text-blue-950 shadow-xs border border-slate-200'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Layers className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>Choose Storage Location Manually</span>
+                  <span>3. Manual Storage Location</span>
                 </button>
               </div>
 
@@ -3233,8 +3279,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                 </div>
               </div>
 
-              {/* RECOMMENDED MODE UI */}
-              {allocationMode === 'recommended' && (
+              {/* RECOMMENDED MODE & PREVIOUS LOCATION MODE UI */}
+              {(allocationMode === 'recommended' || allocationMode === 'previous_location') && (
                 <div className="space-y-4">
                   <div className="pt-2">
                     <button
@@ -3247,7 +3293,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
                         <>
-                          <span>Calculate Optimal Storage Location Recommendation</span>
+                          <Sparkles className="w-4 h-4 text-emerald-400" />
+                          <span>{allocationMode === 'previous_location' ? 'Find Patient Existing VisoTube Location' : 'Calculate Optimal Storage Location Recommendation'}</span>
                         </>
                       )}
                     </button>
@@ -3255,15 +3302,33 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
                   {recommendation && recommendation.primaryRecommendation && (
                     <div className="p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl space-y-4">
-                      <div className="flex items-center justify-between border-b border-emerald-200/60 pb-3">
+                      <div className="flex items-center justify-between border-b border-emerald-200/60 pb-3 flex-wrap gap-2">
                         <div className="flex items-center gap-2 text-emerald-950 font-bold text-sm">
                           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                          <span>Recommended Physical Storage Location</span>
+                          <span>
+                            {recommendation.primaryRecommendation.matchType === 'SAME_PATIENT_PREVIOUS_LOCATION'
+                              ? "Matched Patient's Existing Straw Location"
+                              : "Recommended Physical Storage Location"}
+                          </span>
                         </div>
                         <span className="text-[10px] font-mono font-bold bg-emerald-200/80 text-emerald-900 px-2.5 py-1 rounded-full border border-emerald-300">
                           {strawsCount} Straw(s) Required
                         </span>
                       </div>
+
+                      {recommendation.primaryRecommendation.matchType === 'SAME_PATIENT_PREVIOUS_LOCATION' && (
+                        <div className="p-3 bg-purple-100/90 border border-purple-300 rounded-xl text-xs font-bold text-purple-950 flex items-center gap-2 shadow-xs">
+                          <Snowflake className="w-4 h-4 text-purple-700 shrink-0" />
+                          <span>Automatically matched & grouped with patient's existing stored straws in this Viso Tube box! ({recommendation.primaryRecommendation.availableSlots} vacant slots remaining)</span>
+                        </div>
+                      )}
+
+                      {allocationMode === 'previous_location' && !recommendation.previousPatientLocation && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs font-bold text-amber-900 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>No previous active straws stored for this patient. Auto-Optimal storage recommendation assigned below.</span>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                         <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
