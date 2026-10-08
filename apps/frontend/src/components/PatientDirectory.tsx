@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { EditBatchModal } from './EditBatchModal';
@@ -2566,6 +2566,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
               {(() => {
                 const allBatches = groupBatchesByFreezingDate(selectedPatient.batches, selectedPatient.aspirationDate || selectedPatient.visitDate);
+                const { cycleMap, totalCycles } = calculateCycleNumbers(allBatches);
 
                 if (allBatches.length === 0) {
                   return (
@@ -2588,13 +2589,14 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
                   const activeStraws = allStraws.filter((s: any) => s.status === 'OCCUPIED');
                   const isAllThawed = allStraws.length > 0 && activeStraws.length === 0;
+                  const cycleNum = cycleMap[batch.id || batch.batchId] || index + 1;
 
                   return (
-                    <div key={batch.id} className={`p-4 rounded-2xl border space-y-3 shadow-2xs transition-all duration-300 ${isAllThawed ? 'group/thawedBatch bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-slate-50 hover:border-slate-300 hover:border-solid hover:shadow-md' : 'bg-slate-50 border-slate-300'}`}>
+                    <div key={batch.id || index} className={`p-4 rounded-2xl border space-y-3 shadow-2xs transition-all duration-300 ${isAllThawed ? 'group/thawedBatch bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-slate-50 hover:border-slate-300 hover:border-solid hover:shadow-md' : 'bg-slate-50 border-slate-300'}`}>
                       <div className="flex flex-wrap items-center justify-between text-xs border-b border-slate-200 pb-2 gap-2">
                         <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700 flex-wrap">
                           <span className="bg-indigo-100 text-indigo-900 px-2.5 py-0.5 rounded border border-indigo-300 font-bold">
-                            Cycle #{index + 1}
+                            Cycle #{cycleNum}
                           </span>
                           <span className="bg-amber-100 text-amber-950 px-2.5 py-0.5 rounded border border-amber-300 font-extrabold flex items-center gap-1">
                             <span>Egg Pick Up:</span>

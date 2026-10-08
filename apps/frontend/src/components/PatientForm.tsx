@@ -434,6 +434,41 @@ export function calculateDobFromAge(ageInput?: string | number, currentDob?: str
   return `${birthYear}-01-01`;
 }
 
+export function calculateCycleNumbers(batches: any[]): { cycleMap: Record<string, number>; totalCycles: number } {
+  if (!batches || batches.length === 0) {
+    return { cycleMap: {}, totalCycles: 0 };
+  }
+
+  // Sort batches by aspirationDate (or freezingDate/storageDate/createdAt) ascending
+  const sorted = [...batches].sort((a, b) => {
+    const dateA = new Date(a.aspirationDate || a.freezingDate || a.storageDate || a.createdAt || 0).getTime();
+    const dateB = new Date(b.aspirationDate || b.freezingDate || b.storageDate || b.createdAt || 0).getTime();
+    return dateA - dateB;
+  });
+
+  const cycleMap: Record<string, number> = {};
+  let currentCycleNum = 0;
+  let lastRetrievalDateKey = '';
+
+  sorted.forEach((batch) => {
+    const rawDate = batch.aspirationDate || batch.freezingDate || batch.storageDate || '';
+    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(rawDate);
+    const dateKey = iso || formatted || rawDate || 'unknown';
+
+    if (!lastRetrievalDateKey || dateKey !== lastRetrievalDateKey) {
+      currentCycleNum++;
+      lastRetrievalDateKey = dateKey;
+    }
+
+    const key = batch.id || batch.batchId;
+    if (key) {
+      cycleMap[key] = currentCycleNum;
+    }
+  });
+
+  return { cycleMap, totalCycles: currentCycleNum };
+}
+
 
 export function formatISOToDDMMYYYY(isoStr?: string | null): string {
   if (!isoStr) return '';
@@ -1705,44 +1740,51 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
       {/* CYCLES & CRYO STORAGE BATCHES TIMELINE FOR EXISTING PATIENT */}
       {selectedExistingPatient && (
         <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-5 rounded-3xl text-white shadow-lg space-y-4 border border-slate-800">
-          <div className="flex flex-wrap items-center justify-between border-b border-slate-700/80 pb-3 gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
-                <Layers className="w-4 h-4 text-indigo-300" />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                  Egg Retrieval & Freezing Cycles Timeline
-                </h3>
-                <p className="text-[11px] text-slate-300">
-                  Recorded cycles for {selectedExistingPatient.fullName} ({selectedExistingPatient.batches?.length || 0} Cycle{(selectedExistingPatient.batches?.length || 0) !== 1 ? 's' : ''})
-                </p>
-              </div>
-            </div>
+          {(() => {
+            const batchesList = selectedExistingPatient.batches || [];
+            const { cycleMap, totalCycles } = calculateCycleNumbers(batchesList);
 
-            <button
-              type="button"
-              onClick={handleAddNewCycle}
-              className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Add New Cycle / Batch</span>
-            </button>
-          </div>
+            return (
+              <>
+                <div className="flex flex-wrap items-center justify-between border-b border-slate-700/80 pb-3 gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
+                      <Layers className="w-4 h-4 text-indigo-300" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                        Egg Retrieval & Freezing Cycles Timeline
+                      </h3>
+                      <p className="text-[11px] text-slate-300">
+                        Recorded cycles for {selectedExistingPatient.fullName} ({totalCycles} Retrieval Cycle{totalCycles !== 1 ? 's' : ''}, {batchesList.length} Batch{batchesList.length !== 1 ? 'es' : ''})
+                      </p>
+                    </div>
+                  </div>
 
-          {selectedExistingPatient.batches && selectedExistingPatient.batches.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {selectedExistingPatient.batches.map((batch: any, index: number) => {
-                const activeStrawsCount = batch.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                const totalStrawsCount = batch.straws?.length || 0;
+                  <button
+                    type="button"
+                    onClick={handleAddNewCycle}
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Add New Cycle / Batch</span>
+                  </button>
+                </div>
 
-                return (
-                  <div key={batch.id} className="p-3.5 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 rounded-2xl space-y-2.5 shadow-xs transition-all">
-                    <div className="flex items-center justify-between border-b border-slate-700/60 pb-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-bold text-xs rounded-md">
-                          Cycle #{index + 1}
-                        </span>
+                {batchesList.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {batchesList.map((batch: any, index: number) => {
+                      const activeStrawsCount = batch.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
+                      const totalStrawsCount = batch.straws?.length || 0;
+                      const cycleNum = cycleMap[batch.id || batch.batchId] || index + 1;
+
+                      return (
+                        <div key={batch.id || index} className="p-3.5 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 rounded-2xl space-y-2.5 shadow-xs transition-all">
+                          <div className="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-bold text-xs rounded-md">
+                                Cycle #{cycleNum}
+                              </span>
                         <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-400/30 font-bold text-xs rounded-md">
                           {batch.specimenType === 'OOCYTE' ? '🥚 Egg Freezing' : '🧬 Embryo Freezing'}
                         </span>
@@ -1799,6 +1841,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
               No previous freezing cycles recorded yet for this patient. Click "+ Add New Cycle / Batch" to add one.
             </div>
           )}
+              </>
+            );
+          })()}
         </div>
       )}
 
