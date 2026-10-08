@@ -3243,7 +3243,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                                   {specimenType === 'OOCYTE' ? (
                                     <input
                                       type="text"
-                                      value={(item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '')}
+                                      value={(item as any)[eCommentKey] ?? ''}
                                       onChange={(e) => {
                                         const next = [...strawItems];
                                         (next[idx] as any)[eCommentKey] = e.target.value;

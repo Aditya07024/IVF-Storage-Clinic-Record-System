@@ -1862,7 +1862,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                             </label>
                                             <input
                                               type="text"
-                                              value={st.embryoFrags?.[eIdx] || st.fragmentation || ''}
+                                              value={st.embryoFrags?.[eIdx] ?? ''}
                                               onChange={(e) => {
                                                 const newFrags = [...(st.embryoFrags || Array.from({ length: st.embryoCount || 1 }, () => ''))];
                                                 newFrags[eIdx] = e.target.value;
