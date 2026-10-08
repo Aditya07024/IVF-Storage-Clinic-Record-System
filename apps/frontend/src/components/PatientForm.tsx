@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import brandLogo from '../assets/image.png';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check, Eye, Dna, Edit3 } from 'lucide-react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check, Eye, Dna, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
@@ -277,6 +277,59 @@ export function getSortedFreezingDates(patient: any): string {
   });
 
   return uniqueFormatted.length > 0 ? uniqueFormatted.join(', ') : 'N/A';
+}
+
+export function getSortedRetrievalDates(patient: any): { allFormatted: string; firstFormatted: string } {
+  if (!patient) return { allFormatted: 'N/A', firstFormatted: 'N/A' };
+  const dates: { dateObj: Date; formatted: string }[] = [];
+
+  const addDate = (dStr: any) => {
+    if (!dStr) return;
+    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(typeof dStr === 'string' ? dStr : dStr.toISOString?.() || String(dStr));
+    const d = iso ? new Date(iso) : new Date(dStr);
+    if (!isNaN(d.getTime())) {
+      dates.push({ dateObj: d, formatted: formatted || formatDateDDMMYYYY(dStr) });
+    }
+  };
+
+  if (patient.batches && Array.isArray(patient.batches) && patient.batches.length > 0) {
+    patient.batches.forEach((b: any) => {
+      addDate(b.aspirationDate);
+    });
+  }
+  if (patient.aspirationDate) {
+    addDate(patient.aspirationDate);
+  }
+
+  if (dates.length === 0) {
+    // Fallback to freezing dates if no aspiration date exists
+    if (patient.batches && Array.isArray(patient.batches) && patient.batches.length > 0) {
+      patient.batches.forEach((b: any) => {
+        addDate(b.freezingDate || b.storageDate);
+      });
+    }
+    if (patient.freezingDate) {
+      addDate(patient.freezingDate);
+    }
+  }
+
+  if (dates.length === 0) {
+    return { allFormatted: 'N/A', firstFormatted: 'N/A' };
+  }
+
+  dates.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+
+  const uniqueFormatted: string[] = [];
+  dates.forEach((item) => {
+    if (!uniqueFormatted.includes(item.formatted)) {
+      uniqueFormatted.push(item.formatted);
+    }
+  });
+
+  const allFormatted = uniqueFormatted.length > 0 ? uniqueFormatted.join(', ') : 'N/A';
+  const firstFormatted = uniqueFormatted.length > 0 ? uniqueFormatted[0] : 'N/A';
+
+  return { allFormatted, firstFormatted };
 }
 
 export function cleanDuplicateGradeString(rawGradeStr?: string): string {
@@ -756,6 +809,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
   const [searchingExisting, setSearchingExisting] = useState(false);
   const [selectedExistingPatient, setSelectedExistingPatient] = useState<any | null>(null);
   const [editingBatch, setEditingBatch] = useState<any | null>(null);
+  const [showCyclesTimeline, setShowCyclesTimeline] = useState(false);
+  const [showActiveStoredEmbryos, setShowActiveStoredEmbryos] = useState(false);
 
   // Thaw Modal States
   const [thawModalStraw, setThawModalStraw] = useState<any | null>(null);
@@ -1703,39 +1758,40 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
       )}
 
       {/* Selected Existing Patient Highlight Banner */}
-      {selectedExistingPatient && (
-        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-emerald-950 text-xs shadow-sm">
-          <div className="flex items-center gap-3">
-            <UserCheck className="w-5 h-5 text-emerald-600 shrink-0" />
-            <div>
-              <div className="font-bold text-sm text-slate-900">
-                Existing Patient Selected: {selectedExistingPatient.fullName}
-              </div>
-              <div className="text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                <span>Reg ID: {selectedExistingPatient.patientId}</span>
+      {selectedExistingPatient && (() => {
+        const batchesList = selectedExistingPatient.batches || [];
+        const { totalCycles } = calculateCycleNumbers(batchesList);
+
+        const activeStrawsCount = batchesList.reduce((acc: number, b: any) => {
+          return acc + (b.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0);
+        }, 0);
+
+        return (
+          <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-emerald-950 text-xs shadow-sm">
+            <div className="flex items-center gap-3">
+              <UserCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <div className="font-bold text-sm text-slate-900">
+                  Existing Patient Selected: {selectedExistingPatient.fullName}
+                </div>
+                <div className="text-slate-600 font-mono font-bold flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                  <span>Reg ID: {selectedExistingPatient.patientId}</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={handleAddNewCycle}
-              className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Add New Cycle / Batch</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleClearSelectedExisting}
-              className="px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-100 font-bold text-xs rounded-xl border border-slate-300 shadow-xs cursor-pointer"
-            >
-              Change Patient
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleClearSelectedExisting}
+                className="px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-100 font-bold text-xs rounded-xl border border-slate-300 shadow-xs cursor-pointer ml-1"
+              >
+                Change Patient
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* CYCLES & CRYO STORAGE BATCHES TIMELINE FOR EXISTING PATIENT */}
       {selectedExistingPatient && (
@@ -1763,16 +1819,17 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
                   <button
                     type="button"
-                    onClick={handleAddNewCycle}
-                    className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                    onClick={() => setShowCyclesTimeline(!showCyclesTimeline)}
+                    className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />
-                    <span>+ Add New Cycle / Batch</span>
+                    {showCyclesTimeline ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    <span>{showCyclesTimeline ? 'Hide Cycles Timeline' : 'View Cycles Timeline'}</span>
                   </button>
                 </div>
 
-                {batchesList.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {showCyclesTimeline && (
+                  batchesList.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {batchesList.map((batch: any, index: number) => {
                       const activeStrawsCount = batch.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
                       const totalStrawsCount = batch.straws?.length || 0;
@@ -1835,12 +1892,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   </div>
                 );
               })}
-            </div>
-          ) : (
-            <div className="p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl text-xs text-slate-400 font-medium text-center">
-              No previous freezing cycles recorded yet for this patient. Click "+ Add New Cycle / Batch" to add one.
-            </div>
-          )}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl text-xs text-slate-400 font-medium text-center">
+                      No previous freezing cycles recorded yet for this patient.
+                    </div>
+                  )
+                )}
               </>
             );
           })()}
@@ -1917,17 +1975,25 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
         return (
           <div className="bg-white p-5 rounded-3xl border border-rose-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2 text-rose-950 font-bold text-sm">
                 <Flame className="w-5 h-5 text-rose-600" />
                 <span>Active Stored Embryos ({activeStraws.length} Active Straws in Cryo Storage)</span>
               </div>
-              <span className="text-[10px] text-emerald-800 font-bold font-mono bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                Click any straw to view full specimen details
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowActiveStoredEmbryos(!showActiveStoredEmbryos)}
+                  className="px-3.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-950 font-bold text-xs rounded-xl border border-rose-300 shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                >
+                  {showActiveStoredEmbryos ? <ChevronUp className="w-4 h-4 text-rose-700" /> : <ChevronDown className="w-4 h-4 text-rose-700" />}
+                  <span>{showActiveStoredEmbryos ? 'Hide Active Stored Embryos' : `View Active Stored Embryos (${activeStraws.length})`}</span>
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {showActiveStoredEmbryos && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {activeStraws.map((straw: any) => {
                 const locCode = straw.visoTube?.locationCode || '';
                 const parsedLoc = locCode ? parseLocationCode(locCode).formatted : '';
@@ -1982,7 +2048,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   </div>
                 );
               })}
-            </div>
+              </div>
+            )}
           </div>
         );
       })()}

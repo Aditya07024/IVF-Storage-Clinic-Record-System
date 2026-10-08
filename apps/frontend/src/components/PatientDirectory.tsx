@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, getSortedRetrievalDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { EditBatchModal } from './EditBatchModal';
@@ -934,8 +934,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                   const sameNameCount = patients.filter(item => item.fullName.toLowerCase() === p.fullName.toLowerCase()).length;
                   const isDuplicateName = sameNameCount > 1;
 
-                  const eggRetrievalObj = p.aspirationDate || p.batches?.[0]?.aspirationDate || p.freezingDate || p.batches?.[0]?.storageDate;
-                  const eggRetrievalDateStr = formatDateDDMMYYYY(eggRetrievalObj);
+                  const retrievalDates = getSortedRetrievalDates(p);
+                  const eggRetrievalDateStr = retrievalDates.firstFormatted;
                   const isOpeningDetail = loadingDetailId === p.id;
 
                   return (
@@ -2210,8 +2210,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
                 <div className="bg-amber-50/80 p-3 rounded-2xl border border-amber-200/80 shadow-2xs space-y-0.5">
                   <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">Egg Pick Up Date</span>
-                  <span className="font-mono font-bold text-amber-950 text-sm block">
-                    {formatDateDDMMYYYY(selectedPatient.aspirationDate || selectedPatient.batches?.[0]?.aspirationDate)}
+                  <span className="font-mono font-bold text-amber-950 text-xs block">
+                    {getSortedRetrievalDates(selectedPatient).allFormatted}
                   </span>
                 </div>
 
