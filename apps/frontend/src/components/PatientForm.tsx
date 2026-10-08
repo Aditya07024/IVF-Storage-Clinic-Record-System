@@ -522,6 +522,48 @@ export function calculateCycleNumbers(batches: any[]): { cycleMap: Record<string
   return { cycleMap, totalCycles: currentCycleNum };
 }
 
+export interface CycleGroup {
+  cycleNumber: number;
+  retrievalDateStr: string;
+  aspirationDate: string;
+  batches: any[];
+}
+
+export function groupBatchesByCycle(batches: any[]): CycleGroup[] {
+  if (!batches || batches.length === 0) return [];
+
+  const sorted = [...batches].sort((a, b) => {
+    const dateA = new Date(a.aspirationDate || a.freezingDate || a.storageDate || a.createdAt || 0).getTime();
+    const dateB = new Date(b.aspirationDate || b.freezingDate || b.storageDate || b.createdAt || 0).getTime();
+    return dateA - dateB;
+  });
+
+  const cycleGroups: CycleGroup[] = [];
+  let currentCycleNum = 0;
+  let lastRetrievalKey = '';
+
+  sorted.forEach((batch) => {
+    const rawDate = batch.aspirationDate || batch.freezingDate || batch.storageDate || '';
+    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(rawDate);
+    const dateKey = iso || formatted || rawDate || 'unknown';
+
+    if (!lastRetrievalKey || dateKey !== lastRetrievalKey) {
+      currentCycleNum++;
+      lastRetrievalKey = dateKey;
+      cycleGroups.push({
+        cycleNumber: currentCycleNum,
+        retrievalDateStr: formatted || formatDateDDMMYYYY(rawDate) || 'N/A',
+        aspirationDate: rawDate,
+        batches: [batch],
+      });
+    } else {
+      cycleGroups[cycleGroups.length - 1].batches.push(batch);
+    }
+  });
+
+  return cycleGroups;
+}
+
 
 export function formatISOToDDMMYYYY(isoStr?: string | null): string {
   if (!isoStr) return '';
@@ -1795,23 +1837,24 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
       {/* CYCLES & CRYO STORAGE BATCHES TIMELINE FOR EXISTING PATIENT */}
       {selectedExistingPatient && (
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-5 rounded-3xl text-white shadow-lg space-y-4 border border-slate-800">
+        <div className="bg-white p-5 rounded-3xl text-slate-900 shadow-sm space-y-4 border border-indigo-200">
           {(() => {
             const batchesList = selectedExistingPatient.batches || [];
-            const { cycleMap, totalCycles } = calculateCycleNumbers(batchesList);
+            const cycleGroups = groupBatchesByCycle(batchesList);
+            const totalCycles = cycleGroups.length;
 
             return (
               <>
-                <div className="flex flex-wrap items-center justify-between border-b border-slate-700/80 pb-3 gap-3">
+                <div className="flex flex-wrap items-center justify-between border-b border-indigo-100 pb-3 gap-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
-                      <Layers className="w-4 h-4 text-indigo-300" />
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+                      <Layers className="w-4 h-4 text-indigo-600" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                      <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                         Egg Retrieval & Freezing Cycles Timeline
                       </h3>
-                      <p className="text-[11px] text-slate-300">
+                      <p className="text-[11px] text-slate-500 font-medium">
                         Recorded cycles for {selectedExistingPatient.fullName} ({totalCycles} Retrieval Cycle{totalCycles !== 1 ? 's' : ''}, {batchesList.length} Batch{batchesList.length !== 1 ? 'es' : ''})
                       </p>
                     </div>
@@ -1820,81 +1863,118 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   <button
                     type="button"
                     onClick={() => setShowCyclesTimeline(!showCyclesTimeline)}
-                    className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                    className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
                   >
-                    {showCyclesTimeline ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {showCyclesTimeline ? <ChevronUp className="w-4 h-4 text-indigo-600" /> : <ChevronDown className="w-4 h-4 text-indigo-600" />}
                     <span>{showCyclesTimeline ? 'Hide Cycles Timeline' : 'View Cycles Timeline'}</span>
                   </button>
                 </div>
 
                 {showCyclesTimeline && (
-                  batchesList.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {batchesList.map((batch: any, index: number) => {
-                      const activeStrawsCount = batch.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
-                      const totalStrawsCount = batch.straws?.length || 0;
-                      const cycleNum = cycleMap[batch.id || batch.batchId] || index + 1;
+                  cycleGroups.length > 0 ? (
+                    <div className="space-y-4">
+                      {cycleGroups.map((group) => {
+                        const cycleActiveStraws = group.batches.reduce((acc: number, b: any) => {
+                          return acc + (b.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0);
+                        }, 0);
+                        const cycleTotalStraws = group.batches.reduce((acc: number, b: any) => {
+                          return acc + (b.straws?.length || 0);
+                        }, 0);
 
-                      return (
-                        <div key={batch.id || index} className="p-3.5 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 rounded-2xl space-y-2.5 shadow-xs transition-all">
-                          <div className="flex items-center justify-between border-b border-slate-700/60 pb-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-bold text-xs rounded-md">
-                                Cycle #{cycleNum}
-                              </span>
-                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-400/30 font-bold text-xs rounded-md">
-                          {batch.specimenType === 'OOCYTE' ? '🥚 Egg Freezing' : '🧬 Embryo Freezing'}
-                        </span>
-                      </div>
+                        return (
+                          <div
+                            key={group.cycleNumber}
+                            className="p-4 bg-slate-50/70 border-2 border-indigo-200/80 hover:border-indigo-300 rounded-2xl space-y-3 shadow-xs transition-all"
+                          >
+                            {/* Group Header: Same Cycle Straws / Batches in One Box */}
+                            <div className="flex flex-wrap items-center justify-between border-b border-indigo-100 pb-2.5 gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-3 py-1 bg-indigo-600 text-white font-extrabold text-xs rounded-lg shadow-xs flex items-center gap-1">
+                                  Cycle #{group.cycleNumber}
+                                </span>
+                                <span className="px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-300 font-bold text-xs rounded-lg flex items-center gap-1">
+                                  <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Egg Pick Up: <strong>{group.retrievalDateStr}</strong></span>
+                                </span>
+                              </div>
+                              <div className="text-[11px] font-mono text-slate-500 font-semibold bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-xs">
+                                {group.batches.length} Batch{group.batches.length !== 1 ? 'es' : ''} • Storage: <strong className="text-emerald-700">{cycleActiveStraws} Active</strong> ({cycleTotalStraws} Straws)
+                              </div>
+                            </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setEditingBatch(batch)}
-                        className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/30 font-bold text-[11px] rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-amber-300" />
-                        <span>Edit Cycle</span>
-                      </button>
-                    </div>
+                            {/* Batches within this Cycle Box */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {group.batches.map((batch: any, bIdx: number) => {
+                                const activeStrawsCount = batch.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
+                                const totalStrawsCount = batch.straws?.length || 0;
 
-                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300">
-                      <div>
-                        <span className="text-slate-400">Egg Pick Up:</span>{' '}
-                        <strong className="text-amber-300 font-extrabold">{formatDateDDMMYYYY(batch.aspirationDate || batch.freezingDate)}</strong>
-                      </div>
-                      <div>
-                        <span className="text-slate-400">Freezing:</span>{' '}
-                        <strong className="text-emerald-300">{formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}</strong>
-                      </div>
-                      {(batch.donorRegNo || batch.donorName) && (
-                        <div className="col-span-2">
-                          <span className="text-slate-400">Donor Info:</span>{' '}
-                          <strong className="text-amber-200">{batch.donorRegNo || ''} {batch.donorName ? `(${batch.donorName})` : ''}</strong>
-                        </div>
-                      )}
-                      {batch.embryoStage && (
-                        <div>
-                          <span className="text-slate-400">Stage:</span>{' '}
-                          <strong className="text-blue-300">{batch.embryoStage}</strong>
-                        </div>
-                      )}
-                      <div>
-                        <span className="text-slate-400">Storage:</span>{' '}
-                        <strong className="text-white">{activeStrawsCount} Active ({totalStrawsCount} Straws)</strong>
-                      </div>
-                    </div>
+                                return (
+                                  <div
+                                    key={batch.id || bIdx}
+                                    className="p-3.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-xl space-y-2.5 shadow-xs transition-all"
+                                  >
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-md">
+                                          Cycle #{group.cycleNumber}
+                                        </span>
+                                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 font-bold text-xs rounded-md">
+                                          {batch.specimenType === 'OOCYTE' ? '🥚 Egg Freezing' : '🧬 Embryo Freezing'}
+                                        </span>
+                                      </div>
 
-                    {batch.notes && (
-                      <p className="text-[11px] text-slate-300 italic line-clamp-1 border-t border-slate-700/40 pt-1.5">
-                        "{batch.notes}"
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingBatch(batch)}
+                                        className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[11px] rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                                        <span>Edit Cycle</span>
+                                      </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-700">
+                                      <div>
+                                        <span className="text-slate-400 font-sans">Egg Pick Up:</span>{' '}
+                                        <strong className="text-amber-800 font-extrabold">{formatDateDDMMYYYY(batch.aspirationDate || batch.freezingDate)}</strong>
+                                      </div>
+                                      <div>
+                                        <span className="text-slate-400 font-sans">Freezing:</span>{' '}
+                                        <strong className="text-emerald-700 font-bold">{formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}</strong>
+                                      </div>
+                                      {(batch.donorRegNo || batch.donorName) && (
+                                        <div className="col-span-2">
+                                          <span className="text-slate-400 font-sans">Donor Info:</span>{' '}
+                                          <strong className="text-amber-900 font-bold">{batch.donorRegNo || ''} {batch.donorName ? `(${batch.donorName})` : ''}</strong>
+                                        </div>
+                                      )}
+                                      {batch.embryoStage && (
+                                        <div>
+                                          <span className="text-slate-400 font-sans">Stage:</span>{' '}
+                                          <strong className="text-blue-700 font-bold">{batch.embryoStage}</strong>
+                                        </div>
+                                      )}
+                                      <div>
+                                        <span className="text-slate-400 font-sans">Storage:</span>{' '}
+                                        <strong className="text-slate-900 font-extrabold">{activeStrawsCount} Active ({totalStrawsCount} Straws)</strong>
+                                      </div>
+                                    </div>
+
+                                    {batch.notes && (
+                                      <p className="text-[11px] text-slate-600 italic line-clamp-1 border-t border-slate-100 pt-1.5">
+                                        "{batch.notes}"
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
-                    <div className="p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl text-xs text-slate-400 font-medium text-center">
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-500 font-medium text-center">
                       No previous freezing cycles recorded yet for this patient.
                     </div>
                   )
