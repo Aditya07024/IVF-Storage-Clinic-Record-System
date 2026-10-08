@@ -411,28 +411,58 @@ export class StorageService {
         }
       }
 
-      const batch = await tx.storageBatch.create({
-        data: {
-          batchId: finalBatchId,
-          patientId: input.patientId,
-          storageDate: freezingDateObj,
-          freezingDate: freezingDateObj,
-          aspirationDate: aspirationDateObj,
-          embryoStage: input.embryoStage || null,
-          specimenType: input.specimenType || 'EMBRYO',
-          cycleType: input.cycleType || 'SELF',
-          donorName: input.donorName || null,
-          donorRegNo: input.donorRegNo || null,
-          donorAge: input.donorAge || null,
-          donorPhone: input.donorPhone || null,
-          vitrificationIndication: input.vitrificationIndication || null,
-          oocyteStage: input.oocyteStage || null,
-          totalStraws: requiredStraws,
-          totalEmbryos: totalEmbryos,
-          visoTubeId: input.visoTubeId,
-          notes: input.notes || null,
-        },
-      });
+      let batch: any = null;
+
+      if (aspirationDateObj && input.patientId) {
+        const startOfDay = new Date(aspirationDateObj);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(aspirationDateObj);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        batch = await tx.storageBatch.findFirst({
+          where: {
+            patientId: input.patientId,
+            aspirationDate: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+          },
+        });
+      }
+
+      if (batch) {
+        batch = await tx.storageBatch.update({
+          where: { id: batch.id },
+          data: {
+            totalStraws: batch.totalStraws + requiredStraws,
+            totalEmbryos: batch.totalEmbryos + totalEmbryos,
+            notes: input.notes ? (batch.notes ? `${batch.notes}\n${input.notes}` : input.notes) : batch.notes,
+          },
+        });
+      } else {
+        const batch = await tx.storageBatch.create({
+          data: {
+            batchId: finalBatchId,
+            patientId: input.patientId,
+            storageDate: freezingDateObj,
+            freezingDate: freezingDateObj,
+            aspirationDate: aspirationDateObj,
+            embryoStage: input.embryoStage || null,
+            specimenType: input.specimenType || 'EMBRYO',
+            cycleType: input.cycleType || 'SELF',
+            donorName: input.donorName || null,
+            donorRegNo: input.donorRegNo || null,
+            donorAge: input.donorAge || null,
+            donorPhone: input.donorPhone || null,
+            vitrificationIndication: input.vitrificationIndication || null,
+            oocyteStage: input.oocyteStage || null,
+            totalStraws: requiredStraws,
+            totalEmbryos: totalEmbryos,
+            visoTubeId: input.visoTubeId,
+            notes: input.notes || null,
+          },
+        });
+      }
 
       // Update patient's aspirationDate & freezingDate on record allocation
       await tx.patient.update({

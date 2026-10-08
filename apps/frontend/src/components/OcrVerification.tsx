@@ -1400,10 +1400,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                     onChange={(e) => {
                       const val = e.target.value;
                       setPatientAge(val);
-                      if (!dob) {
-                        const estimatedDob = calculateDobFromAge(val);
-                        if (estimatedDob) setDob(estimatedDob);
-                      }
+                      const estimatedDob = calculateDobFromAge(val, dob);
+                      if (estimatedDob) setDob(estimatedDob);
                     }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
                     placeholder="e.g. 36 Yrs"
@@ -1463,10 +1461,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                     onChange={(e) => {
                       const val = e.target.value;
                       setPartnerAge(val);
-                      if (!partnerDob) {
-                        const estimatedDob = calculateDobFromAge(val);
-                        if (estimatedDob) setPartnerDob(estimatedDob);
-                      }
+                      const estimatedDob = calculateDobFromAge(val, partnerDob);
+                      if (estimatedDob) setPartnerDob(estimatedDob);
                     }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
                     placeholder="e.g. 36 Yrs"

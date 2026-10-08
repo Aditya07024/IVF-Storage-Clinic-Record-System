@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { EditBatchModal } from './EditBatchModal';
@@ -1744,23 +1744,33 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                    <span>Patient DOB</span>
-                    {editPatientAge && (
-                      <span className="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded text-[10px] font-bold border border-amber-300">
-                        {editPatientAge}
-                      </span>
-                    )}
+                  <DateInputDDMMYYYY
+                    label="Patient Date of Birth (DOB)"
+                    value={editDob}
+                    onChange={(val) => {
+                      setEditDob(val);
+                      if (val) {
+                        setEditPatientAge(calculateAgeFromDob(val));
+                      }
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Patient Age
                   </label>
                   <input
-                    type="date"
-                    value={editDob}
+                    type="text"
+                    value={editPatientAge}
                     onChange={(e) => {
                       const val = e.target.value;
-                      setEditDob(val);
-                      setEditPatientAge(calculateAgeFromDob(val));
+                      setEditPatientAge(val);
+                      const estimatedDob = calculateDobFromAge(val, editDob);
+                      if (estimatedDob) setEditDob(estimatedDob);
                     }}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                    placeholder="e.g. 36 Yrs"
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
@@ -1801,23 +1811,33 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                    <span>Partner DOB</span>
-                    {editPartnerAge && (
-                      <span className="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded text-[10px] font-bold border border-amber-300">
-                        {editPartnerAge}
-                      </span>
-                    )}
+                  <DateInputDDMMYYYY
+                    label="Partner Date of Birth (DOB)"
+                    value={editPartnerDob}
+                    onChange={(val) => {
+                      setEditPartnerDob(val);
+                      if (val) {
+                        setEditPartnerAge(calculateAgeFromDob(val));
+                      }
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Partner Age
                   </label>
                   <input
-                    type="date"
-                    value={editPartnerDob}
+                    type="text"
+                    value={editPartnerAge}
                     onChange={(e) => {
                       const val = e.target.value;
-                      setEditPartnerDob(val);
-                      setEditPartnerAge(calculateAgeFromDob(val));
+                      setEditPartnerAge(val);
+                      const estimatedDob = calculateDobFromAge(val, editPartnerDob);
+                      if (estimatedDob) setEditPartnerDob(estimatedDob);
                     }}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                    placeholder="e.g. 36 Yrs"
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
@@ -2576,16 +2596,23 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           <span className="bg-indigo-100 text-indigo-900 px-2.5 py-0.5 rounded border border-indigo-300 font-bold">
                             Cycle #{index + 1}
                           </span>
-                          {batch.aspirationDate && (
-                            <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 font-bold">
-                              Egg Retrieval: {formatDateDDMMYYYY(batch.aspirationDate)}
+                          <span className="bg-amber-100 text-amber-950 px-2.5 py-0.5 rounded border border-amber-300 font-extrabold flex items-center gap-1">
+                            <span>Egg Pick Up:</span>
+                            <span className="font-mono text-slate-900">{formatDateDDMMYYYY(batch.aspirationDate || batch.freezingDate)}</span>
+                          </span>
+                          <span className={`px-2 py-0.5 rounded border font-bold ${batch.specimenType === 'OOCYTE' ? 'bg-purple-100 text-purple-900 border-purple-300' : 'bg-blue-100 text-blue-900 border-blue-300'}`}>
+                            {batch.specimenType === 'OOCYTE' ? '🥚 Egg Freezing' : '🧬 Embryo Freezing'}
+                          </span>
+                          {(batch.donorRegNo || batch.donorName) && (
+                            <span className="bg-amber-50 text-amber-900 px-2 py-0.5 rounded border border-amber-300 font-bold">
+                              Donor: {batch.donorRegNo || ''} {batch.donorName ? `(${batch.donorName})` : ''}
                             </span>
                           )}
                           <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 font-bold">
                             Frozen: {formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}
                           </span>
                           {batch.embryoStage && (
-                            <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 font-bold">
+                            <span className="bg-slate-200 text-slate-900 px-2 py-0.5 rounded border border-slate-300 font-bold">
                               Stage: {formatDayStage(batch.embryoStage)}
                             </span>
                           )}

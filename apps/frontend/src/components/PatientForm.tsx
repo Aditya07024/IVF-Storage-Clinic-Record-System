@@ -411,13 +411,26 @@ export function calculateAgeFromDob(dobString?: string): string {
   return '';
 }
 
-export function calculateDobFromAge(ageInput?: string | number): string {
-  if (!ageInput) return '';
+export function calculateDobFromAge(ageInput?: string | number, currentDob?: string): string {
+  if (ageInput === undefined || ageInput === null || ageInput === '') return '';
   const clean = String(ageInput).replace(/\D/g, '');
   if (!clean) return '';
   const ageNum = parseInt(clean, 10);
   if (isNaN(ageNum) || ageNum <= 0 || ageNum > 120) return '';
-  const birthYear = new Date().getFullYear() - ageNum;
+  const currentYear = new Date().getFullYear();
+  const birthYear = currentYear - ageNum;
+
+  if (currentDob) {
+    const normalized = normalizeFlexibleDateToDDMMYYYY(currentDob);
+    if (normalized.iso && normalized.iso.length === 10) {
+      const parts = normalized.iso.split('-');
+      if (parts.length === 3) {
+        const [, mm, dd] = parts;
+        return `${birthYear}-${mm}-${dd}`;
+      }
+    }
+  }
+
   return `${birthYear}-01-01`;
 }
 
@@ -585,8 +598,9 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
   const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    if (!isFocusedRef.current) {
-      const { formatted } = normalizeFlexibleDateToDDMMYYYY(value);
+    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(value);
+    const { iso: currentIso } = normalizeFlexibleDateToDDMMYYYY(displayValue);
+    if (!isFocusedRef.current || (iso && iso !== currentIso)) {
       setDisplayValue(formatted || formatISOToDDMMYYYY(value) || value || '');
     }
   }, [value]);
@@ -1725,12 +1739,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                 return (
                   <div key={batch.id} className="p-3.5 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 rounded-2xl space-y-2.5 shadow-xs transition-all">
                     <div className="flex items-center justify-between border-b border-slate-700/60 pb-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-bold text-xs rounded-md">
                           Cycle #{index + 1}
                         </span>
-                        <span className="text-xs font-semibold text-slate-200">
-                          {batch.batchId || `Batch ${index + 1}`}
+                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-400/30 font-bold text-xs rounded-md">
+                          {batch.specimenType === 'OOCYTE' ? '🥚 Egg Freezing' : '🧬 Embryo Freezing'}
                         </span>
                       </div>
 
@@ -1745,16 +1759,20 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300">
-                      {batch.aspirationDate && (
-                        <div>
-                          <span className="text-slate-400">Retrieval:</span>{' '}
-                          <strong className="text-amber-300">{formatDateDDMMYYYY(batch.aspirationDate)}</strong>
-                        </div>
-                      )}
+                      <div>
+                        <span className="text-slate-400">Egg Pick Up:</span>{' '}
+                        <strong className="text-amber-300 font-extrabold">{formatDateDDMMYYYY(batch.aspirationDate || batch.freezingDate)}</strong>
+                      </div>
                       <div>
                         <span className="text-slate-400">Freezing:</span>{' '}
                         <strong className="text-emerald-300">{formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}</strong>
                       </div>
+                      {(batch.donorRegNo || batch.donorName) && (
+                        <div className="col-span-2">
+                          <span className="text-slate-400">Donor Info:</span>{' '}
+                          <strong className="text-amber-200">{batch.donorRegNo || ''} {batch.donorName ? `(${batch.donorName})` : ''}</strong>
+                        </div>
+                      )}
                       {batch.embryoStage && (
                         <div>
                           <span className="text-slate-400">Stage:</span>{' '}
@@ -2383,10 +2401,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                       onChange={(e) => {
                         const val = e.target.value;
                         setPatientAge(val);
-                        if (!dob) {
-                          const estimatedDob = calculateDobFromAge(val);
-                          if (estimatedDob) setDob(estimatedDob);
-                        }
+                        const estimatedDob = calculateDobFromAge(val, dob);
+                        if (estimatedDob) setDob(estimatedDob);
                       }}
                       placeholder="e.g. 36 Yrs"
                       className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
@@ -2514,10 +2530,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                       onChange={(e) => {
                         const val = e.target.value;
                         setPartnerAge(val);
-                        if (!partnerDob) {
-                          const estimatedDob = calculateDobFromAge(val);
-                          if (estimatedDob) setPartnerDob(estimatedDob);
-                        }
+                        const estimatedDob = calculateDobFromAge(val, partnerDob);
+                        if (estimatedDob) setPartnerDob(estimatedDob);
                       }}
                       placeholder="e.g. 36 Yrs"
                       className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
