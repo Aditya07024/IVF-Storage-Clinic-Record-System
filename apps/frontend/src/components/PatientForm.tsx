@@ -1385,19 +1385,38 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
       if (res.success) {
         let updatedRes = { ...res };
 
-        // Fallback check against in-memory patient batches if backend recommendation didn't catch it
+        // Fallback check against in-memory patient batches & straws if backend recommendation didn't catch it
         if (!updatedRes.previousPatientLocation && selectedExistingPatient?.batches) {
-          const activeBatch = selectedExistingPatient.batches.find((b: any) =>
-            b.visoTubeId && (b.straws ? b.straws.some((s: any) => s.status === 'OCCUPIED') : true)
-          );
+          let foundTubeId = '';
+          let foundLocCode = '';
 
-          if (activeBatch && activeBatch.visoTubeId) {
-            const locCode = activeBatch.visoTube?.locationCode || activeBatch.locationCode || '';
-            const parsed = locCode ? parseLocationCode(locCode) : null;
+          for (const b of selectedExistingPatient.batches) {
+            if (b.straws && Array.isArray(b.straws)) {
+              for (const s of b.straws) {
+                if (s.status === 'OCCUPIED') {
+                  const tId = s.visoTubeId || b.visoTubeId;
+                  const lCode = s.visoTube?.locationCode || b.visoTube?.locationCode || s.locationCode || b.locationCode || '';
+                  if (tId && lCode) {
+                    foundTubeId = tId;
+                    foundLocCode = lCode;
+                    break;
+                  }
+                }
+              }
+            }
+            if (!foundTubeId && b.visoTubeId) {
+              foundTubeId = b.visoTubeId;
+              foundLocCode = b.visoTube?.locationCode || b.locationCode || '';
+            }
+            if (foundTubeId && foundLocCode) break;
+          }
+
+          if (foundTubeId && foundLocCode) {
+            const parsed = parseLocationCode(foundLocCode);
             if (parsed) {
               const recItem = {
-                visoTubeId: activeBatch.visoTubeId,
-                locationCode: locCode,
+                visoTubeId: foundTubeId,
+                locationCode: foundLocCode,
                 formattedLocation: parsed.formatted,
                 breakdown: parsed,
                 availableSlots: 10,
@@ -1405,9 +1424,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                 explanation: `Recommended: Grouped with patient's existing stored straws in ${parsed.formatted}.`,
               };
               updatedRes.previousPatientLocation = recItem;
-              if (allocationMode === 'previous_location' || !updatedRes.primaryRecommendation) {
-                updatedRes.primaryRecommendation = recItem;
-              }
+              updatedRes.primaryRecommendation = recItem;
             }
           }
         }
