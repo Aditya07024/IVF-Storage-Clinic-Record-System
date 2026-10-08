@@ -5,6 +5,7 @@ import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, isOocyteSpecimen, calculateAgeFromDob, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
+import { EditBatchModal } from './EditBatchModal';
 
 const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink', 2: 'Grey', 3: 'Red', 4: 'Black', 5: 'Green',
@@ -136,6 +137,23 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
   const [editStrawComments, setEditStrawComments] = useState('');
   const [savingStrawEdit, setSavingStrawEdit] = useState(false);
   const [editStrawError, setEditStrawError] = useState<string | null>(null);
+
+  // Edit Cycle / Batch Modal State
+  const [editingBatch, setEditingBatch] = useState<any | null>(null);
+
+  const handleBatchUpdatedInDirectory = async () => {
+    if (selectedPatient?.id) {
+      try {
+        const res = await apiRequest(`/api/patients/${selectedPatient.id}`);
+        if (res.success && res.patient) {
+          setSelectedPatient(res.patient);
+          setPatients((prev) => prev.map((p) => (p.id === res.patient.id ? res.patient : p)));
+        }
+      } catch (err) {
+        console.error('Error refreshing patient in directory after batch edit:', err);
+      }
+    }
+  };
 
   const parseStrawFragmentationAndComments = (straw: any) => {
     let frag = (straw?.fragmentation || straw?.frag || '').trim();
@@ -2540,7 +2558,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                 let runningStrawCount = 0;
                 let runningEmbryoCount = 0;
 
-                return allBatches.map((batch: any) => {
+                return allBatches.map((batch: any, index: number) => {
                   const allStraws = batch.straws || [];
                   const batchStrawOffset = runningStrawCount;
                   const batchEmbryoOffset = runningEmbryoCount;
@@ -2555,6 +2573,9 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                     <div key={batch.id} className={`p-4 rounded-2xl border space-y-3 shadow-2xs transition-all duration-300 ${isAllThawed ? 'group/thawedBatch bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-slate-50 hover:border-slate-300 hover:border-solid hover:shadow-md' : 'bg-slate-50 border-slate-300'}`}>
                       <div className="flex flex-wrap items-center justify-between text-xs border-b border-slate-200 pb-2 gap-2">
                         <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700 flex-wrap">
+                          <span className="bg-indigo-100 text-indigo-900 px-2.5 py-0.5 rounded border border-indigo-300 font-bold">
+                            Cycle #{index + 1}
+                          </span>
                           {batch.aspirationDate && (
                             <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 font-bold">
                               Egg Retrieval: {formatDateDDMMYYYY(batch.aspirationDate)}
@@ -2575,6 +2596,15 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             </span>
                           )}
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setEditingBatch(batch)}
+                          className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-bold text-[11px] rounded-lg flex items-center gap-1 transition-all active:scale-95 cursor-pointer ml-auto"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Edit Cycle</span>
+                        </button>
                       </div>
 
                       {/* Straws List */}
@@ -3308,6 +3338,14 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
           </div>
         </div>
       )}
+
+      {/* Edit Cycle / Specimen Batch Modal */}
+      <EditBatchModal
+        isOpen={!!editingBatch}
+        batch={editingBatch}
+        onClose={() => setEditingBatch(null)}
+        onSuccess={handleBatchUpdatedInDirectory}
+      />
     </div>
   );
 };

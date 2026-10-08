@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileScan, Upload, CheckCircle2, ShieldAlert, FileText, Check, X, Sparkles, Camera, Crop, Sliders, Trash2, RotateCcw, RotateCw, Calendar, Plus, Dna, ShieldCheck, UserCheck, MapPin, Database, Printer, Edit3, Edit, AlertTriangle, Eye, Save, Search } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, getApiBaseUrl, getImageUrl } from '../api/client';
-import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass, formatRawToDDMMYYYYMask, normalizeFlexibleDateToDDMMYYYY, calculateAgeFromDob } from './PatientForm';
+import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, getStrawColorBadgeClass, formatRawToDDMMYYYYMask, normalizeFlexibleDateToDDMMYYYY, calculateAgeFromDob, calculateDobFromAge } from './PatientForm';
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
@@ -1226,12 +1226,49 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                   </div>
                 </div>
 
-                {/* Donor Details Card (Rendered if Donor Cycle is active) */}
-                {(cycleType === 'DONOR_RECIPIENT' || donorName || donorRegNo) && (
+                {/* Egg Freezing Clinical Details (Rendered if Egg/Oocyte specimen) */}
+                {specimenType === 'OOCYTE' && (
+                  <div className="p-3 bg-indigo-50/80 border border-indigo-200 rounded-xl space-y-2.5">
+                    <div className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider flex items-center justify-between">
+                      <span>Egg Freezing Details</span>
+                      <span className="bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded text-[9px] font-bold">OOCYTE SPECS</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="space-y-1">
+                        <label className="font-semibold text-slate-700 text-[10px]">Vitrification Indication</label>
+                        <select
+                          value={vitrificationIndication}
+                          onChange={(e) => setVitrificationIndication(e.target.value)}
+                          className="w-full bg-white border border-indigo-300 rounded-lg p-2 text-slate-900 font-medium text-xs focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="Social egg freezing">Social egg freezing</option>
+                          <option value="Medical indication (Onco-fertility)">Medical indication (Onco-fertility)</option>
+                          <option value="Supernumerary donor egg freezing">Supernumerary donor egg freezing</option>
+                          <option value="Elective / Other">Elective / Other</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-semibold text-slate-700 text-[10px]">Oocyte Stage</label>
+                        <select
+                          value={oocyteStage}
+                          onChange={(e) => setOocyteStage(e.target.value)}
+                          className="w-full bg-white border border-indigo-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="MII">MII (Metaphase II - Mature)</option>
+                          <option value="MI">MI (Metaphase I)</option>
+                          <option value="GV">GV (Germinal Vesicle)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Donor Details Card (Rendered if Donor Cycle is active or Supernumerary Donor Egg Freezing) */}
+                {(cycleType === 'DONOR_RECIPIENT' || (specimenType === 'OOCYTE' && vitrificationIndication === 'Supernumerary donor egg freezing') || donorName || donorRegNo) && (
                   <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2.5">
                     <div className="text-[10px] font-bold text-amber-900 uppercase tracking-wider flex items-center justify-between">
-                      <span>Donor & Egg Freezing Information</span>
-                      <span className="bg-amber-200 text-amber-900 px-2 py-0.5 rounded text-[9px]">DONOR RECORD</span>
+                      <span>Donor Profile Information (D-R Cycle)</span>
+                      <span className="bg-amber-200 text-amber-900 px-2 py-0.5 rounded text-[9px] font-bold">DONOR RECORD</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                       <div className="space-y-1">
@@ -1240,7 +1277,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           type="text"
                           value={donorRegNo}
                           onChange={(e) => setDonorRegNo(e.target.value)}
-                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-mono font-bold"
+                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-mono font-bold text-xs"
                           placeholder="e.g. D-9948"
                         />
                       </div>
@@ -1250,7 +1287,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           type="text"
                           value={donorName}
                           onChange={(e) => setDonorName(capitalizeWords(e.target.value))}
-                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-bold"
+                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-bold text-xs"
                           placeholder="Donor Name"
                         />
                       </div>
@@ -1260,7 +1297,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           type="text"
                           value={donorAge}
                           onChange={(e) => setDonorAge(e.target.value)}
-                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-medium"
+                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-medium text-xs"
                           placeholder="e.g. 24 Yrs"
                         />
                       </div>
@@ -1270,39 +1307,10 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           type="text"
                           value={donorPhone}
                           onChange={(e) => setDonorPhone(e.target.value)}
-                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-mono"
+                          className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-mono text-xs"
                           placeholder="e.g. +91 98765 43210"
                         />
                       </div>
-                      {specimenType === 'OOCYTE' && (
-                        <>
-                          <div className="space-y-1">
-                            <label className="font-semibold text-slate-700 text-[10px]">Vitrification Indication</label>
-                            <select
-                              value={vitrificationIndication}
-                              onChange={(e) => setVitrificationIndication(e.target.value)}
-                              className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-medium"
-                            >
-                              <option value="Social egg freezing">Social egg freezing</option>
-                              <option value="Medical indication (Onco-fertility)">Medical indication (Onco-fertility)</option>
-                              <option value="Supernumerary donor egg freezing">Supernumerary donor egg freezing</option>
-                              <option value="Elective / Other">Elective / Other</option>
-                            </select>
-                          </div>
-                          <div className="space-y-1">
-                            <label className="font-semibold text-slate-700 text-[10px]">Oocyte Stage</label>
-                            <select
-                              value={oocyteStage}
-                              onChange={(e) => setOocyteStage(e.target.value)}
-                              className="w-full bg-white border border-amber-300 rounded-lg p-2 text-slate-900 font-bold"
-                            >
-                              <option value="MII">MII (Metaphase II - Mature)</option>
-                              <option value="MI">MI (Metaphase I)</option>
-                              <option value="GV">GV (Germinal Vesicle)</option>
-                            </select>
-                          </div>
-                        </>
-                      )}
                     </div>
                   </div>
                 )}
@@ -1389,7 +1397,14 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                   <input
                     type="text"
                     value={patientAge}
-                    onChange={(e) => setPatientAge(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPatientAge(val);
+                      if (!dob) {
+                        const estimatedDob = calculateDobFromAge(val);
+                        if (estimatedDob) setDob(estimatedDob);
+                      }
+                    }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
                     placeholder="e.g. 36 Yrs"
                   />
@@ -1445,7 +1460,14 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                   <input
                     type="text"
                     value={partnerAge}
-                    onChange={(e) => setPartnerAge(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPartnerAge(val);
+                      if (!partnerDob) {
+                        const estimatedDob = calculateDobFromAge(val);
+                        if (estimatedDob) setPartnerDob(estimatedDob);
+                      }
+                    }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-emerald-500 font-bold"
                     placeholder="e.g. 36 Yrs"
                   />

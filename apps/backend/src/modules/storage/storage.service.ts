@@ -1,5 +1,12 @@
 import { prisma, withDbRetry } from '../../common/prisma.js';
 
+function parseFlexibleDate(dateStr?: string | null): Date | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  return d;
+}
+
 export function parseLocationCode(code: string) {
   if (!code) return { raw: '', formatted: '', can: '', canister: '', level: '', tube: '', tubeColor: '' };
 
@@ -741,6 +748,91 @@ export class StorageService {
       });
 
       return updatedStraw;
+    }, { timeout: 20000, maxWait: 10000 });
+  }
+
+  async updateBatchDetails(
+    batchId: string,
+    data: {
+      aspirationDate?: string;
+      freezingDate?: string;
+      embryoStage?: string;
+      specimenType?: string;
+      cycleType?: string;
+      donorName?: string;
+      donorRegNo?: string;
+      donorAge?: string;
+      donorPhone?: string;
+      vitrificationIndication?: string;
+      oocyteStage?: string;
+      notes?: string;
+    },
+    staffUserId: string,
+    staffName: string
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const existing = await tx.storageBatch.findUnique({
+        where: { id: batchId },
+        include: { straws: true },
+      });
+
+      if (!existing) {
+        throw new Error('Storage batch cycle record not found.');
+      }
+
+      const updatePayload: any = {};
+      if (data.aspirationDate !== undefined) {
+        updatePayload.aspirationDate = data.aspirationDate ? parseFlexibleDate(data.aspirationDate) : null;
+      }
+      if (data.freezingDate !== undefined) {
+        updatePayload.freezingDate = data.freezingDate ? parseFlexibleDate(data.freezingDate) : null;
+      }
+      if (data.embryoStage !== undefined) updatePayload.embryoStage = data.embryoStage ? data.embryoStage.trim() : null;
+      if (data.specimenType !== undefined) updatePayload.specimenType = data.specimenType ? data.specimenType.trim() : 'EMBRYO';
+      if (data.cycleType !== undefined) updatePayload.cycleType = data.cycleType ? data.cycleType.trim() : 'SELF';
+      if (data.donorName !== undefined) updatePayload.donorName = data.donorName ? data.donorName.trim() : null;
+      if (data.donorRegNo !== undefined) updatePayload.donorRegNo = data.donorRegNo ? data.donorRegNo.trim() : null;
+      if (data.donorAge !== undefined) updatePayload.donorAge = data.donorAge ? data.donorAge.trim() : null;
+      if (data.donorPhone !== undefined) updatePayload.donorPhone = data.donorPhone ? data.donorPhone.trim() : null;
+      if (data.vitrificationIndication !== undefined) updatePayload.vitrificationIndication = data.vitrificationIndication ? data.vitrificationIndication.trim() : null;
+      if (data.oocyteStage !== undefined) updatePayload.oocyteStage = data.oocyteStage ? data.oocyteStage.trim() : null;
+      if (data.notes !== undefined) updatePayload.notes = data.notes ? data.notes.trim() : null;
+
+      const updatedBatch = await tx.storageBatch.update({
+        where: { id: batchId },
+        data: updatePayload,
+      });
+
+      // If freezingDate was updated on batch, sync freezingDate to straws if straws don't have explicit freezingDate
+      if (data.freezingDate && existing.straws.length > 0) {
+        const parsedFreezing = parseFlexibleDate(data.freezingDate);
+        if (parsedFreezing) {
+          await tx.straw.updateMany({
+            where: { batchId: existing.id },
+            data: { freezingDate: parsedFreezing },
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: staffUserId,
+          userName: staffName,
+          action: 'STORAGE_BATCH_UPDATED',
+          entityName: 'StorageBatch',
+          entityId: batchId,
+          oldData: JSON.stringify({
+            aspirationDate: existing.aspirationDate,
+            freezingDate: existing.freezingDate,
+            embryoStage: existing.embryoStage,
+            specimenType: existing.specimenType,
+            notes: existing.notes,
+          }),
+          newData: JSON.stringify(updatePayload),
+        },
+      });
+
+      return updatedBatch;
     }, { timeout: 20000, maxWait: 10000 });
   }
 }

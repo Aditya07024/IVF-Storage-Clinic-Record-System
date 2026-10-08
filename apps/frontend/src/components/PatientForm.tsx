@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import brandLogo from '../assets/image.png';
-import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check, Eye, Dna } from 'lucide-react';
+import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check, Eye, Dna, Edit3 } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { rotateImageFile } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
+import { EditBatchModal } from './EditBatchModal';
 
 export const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink',
@@ -410,6 +411,16 @@ export function calculateAgeFromDob(dobString?: string): string {
   return '';
 }
 
+export function calculateDobFromAge(ageInput?: string | number): string {
+  if (!ageInput) return '';
+  const clean = String(ageInput).replace(/\D/g, '');
+  if (!clean) return '';
+  const ageNum = parseInt(clean, 10);
+  if (isNaN(ageNum) || ageNum <= 0 || ageNum > 120) return '';
+  const birthYear = new Date().getFullYear() - ageNum;
+  return `${birthYear}-01-01`;
+}
+
 
 export function formatISOToDDMMYYYY(isoStr?: string | null): string {
   if (!isoStr) return '';
@@ -695,6 +706,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
   const [existingSearchResults, setExistingSearchResults] = useState<any[]>([]);
   const [searchingExisting, setSearchingExisting] = useState(false);
   const [selectedExistingPatient, setSelectedExistingPatient] = useState<any | null>(null);
+  const [editingBatch, setEditingBatch] = useState<any | null>(null);
 
   // Thaw Modal States
   const [thawModalStraw, setThawModalStraw] = useState<any | null>(null);
@@ -1009,6 +1021,54 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
       console.error('Failed to load patient detail batches:', err);
     } finally {
       setReloadingPatientDetails(false);
+    }
+  };
+
+  // Add New Cycle / Batch for Selected Existing Patient
+  const handleAddNewCycle = () => {
+    if (!selectedExistingPatient) return;
+    setAspirationDate('');
+    setFreezingDate(new Date().toISOString().split('T')[0]);
+    setEmbryoStage('');
+    setComments('');
+    setStrawItems([
+      {
+        id: 1,
+        color: 'Pink',
+        grade: '',
+        embryoGrades: [''],
+        embryoFrags: ['No'],
+        embryoComments: [''],
+        isPgtTested: false,
+        embryoCount: 1,
+        fragmentation: 'No',
+        comments: '',
+      },
+    ]);
+    setStrawsCount(1);
+    setSelectedVisoTubeId('');
+    setThawSuccessMsg(`New cycle initialized for ${selectedExistingPatient.fullName}. Patient demographic details retained.`);
+
+    const elem = document.getElementById('specimen-classification-section') || document.getElementById('cryo-storage-section');
+    if (elem) {
+      elem.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Reload Patient Batches After Batch Update
+  const handleBatchUpdated = async () => {
+    if (selectedExistingPatient?.id) {
+      setReloadingPatientDetails(true);
+      try {
+        const res = await apiRequest(`/api/patients/${selectedExistingPatient.id}`);
+        if (res.success && res.patient) {
+          setSelectedExistingPatient(res.patient);
+        }
+      } catch (err) {
+        console.error('Failed to reload patient after batch update:', err);
+      } finally {
+        setReloadingPatientDetails(false);
+      }
     }
   };
 
@@ -1595,7 +1655,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
       {/* Selected Existing Patient Highlight Banner */}
       {selectedExistingPatient && (
-        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center justify-between text-emerald-950 text-xs shadow-sm">
+        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-emerald-950 text-xs shadow-sm">
           <div className="flex items-center gap-3">
             <UserCheck className="w-5 h-5 text-emerald-600 shrink-0" />
             <div>
@@ -1608,13 +1668,119 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleClearSelectedExisting}
-            className="px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-100 font-bold text-xs rounded-xl border border-slate-300 shadow-xs"
-          >
-            Change Patient
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleAddNewCycle}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Add New Cycle / Batch</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleClearSelectedExisting}
+              className="px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-100 font-bold text-xs rounded-xl border border-slate-300 shadow-xs cursor-pointer"
+            >
+              Change Patient
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* CYCLES & CRYO STORAGE BATCHES TIMELINE FOR EXISTING PATIENT */}
+      {selectedExistingPatient && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-5 rounded-3xl text-white shadow-lg space-y-4 border border-slate-800">
+          <div className="flex flex-wrap items-center justify-between border-b border-slate-700/80 pb-3 gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
+                <Layers className="w-4 h-4 text-indigo-300" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                  Egg Retrieval & Freezing Cycles Timeline
+                </h3>
+                <p className="text-[11px] text-slate-300">
+                  Recorded cycles for {selectedExistingPatient.fullName} ({selectedExistingPatient.batches?.length || 0} Cycle{(selectedExistingPatient.batches?.length || 0) !== 1 ? 's' : ''})
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddNewCycle}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Add New Cycle / Batch</span>
+            </button>
+          </div>
+
+          {selectedExistingPatient.batches && selectedExistingPatient.batches.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {selectedExistingPatient.batches.map((batch: any, index: number) => {
+                const activeStrawsCount = batch.straws?.filter((s: any) => s.status === 'OCCUPIED').length || 0;
+                const totalStrawsCount = batch.straws?.length || 0;
+
+                return (
+                  <div key={batch.id} className="p-3.5 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 rounded-2xl space-y-2.5 shadow-xs transition-all">
+                    <div className="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-bold text-xs rounded-md">
+                          Cycle #{index + 1}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-200">
+                          {batch.batchId || `Batch ${index + 1}`}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditingBatch(batch)}
+                        className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/30 font-bold text-[11px] rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Edit Cycle</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300">
+                      {batch.aspirationDate && (
+                        <div>
+                          <span className="text-slate-400">Retrieval:</span>{' '}
+                          <strong className="text-amber-300">{formatDateDDMMYYYY(batch.aspirationDate)}</strong>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-slate-400">Freezing:</span>{' '}
+                        <strong className="text-emerald-300">{formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}</strong>
+                      </div>
+                      {batch.embryoStage && (
+                        <div>
+                          <span className="text-slate-400">Stage:</span>{' '}
+                          <strong className="text-blue-300">{batch.embryoStage}</strong>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-slate-400">Storage:</span>{' '}
+                        <strong className="text-white">{activeStrawsCount} Active ({totalStrawsCount} Straws)</strong>
+                      </div>
+                    </div>
+
+                    {batch.notes && (
+                      <p className="text-[11px] text-slate-300 italic line-clamp-1 border-t border-slate-700/40 pt-1.5">
+                        "{batch.notes}"
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl text-xs text-slate-400 font-medium text-center">
+              No previous freezing cycles recorded yet for this patient. Click "+ Add New Cycle / Batch" to add one.
+            </div>
+          )}
         </div>
       )}
 
@@ -2214,7 +2380,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                     <input
                       type="text"
                       value={patientAge}
-                      onChange={(e) => setPatientAge(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPatientAge(val);
+                        if (!dob) {
+                          const estimatedDob = calculateDobFromAge(val);
+                          if (estimatedDob) setDob(estimatedDob);
+                        }
+                      }}
                       placeholder="e.g. 36 Yrs"
                       className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
                     />
@@ -2338,7 +2511,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                     <input
                       type="text"
                       value={partnerAge}
-                      onChange={(e) => setPartnerAge(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPartnerAge(val);
+                        if (!partnerDob) {
+                          const estimatedDob = calculateDobFromAge(val);
+                          if (estimatedDob) setPartnerDob(estimatedDob);
+                        }
+                      }}
                       placeholder="e.g. 36 Yrs"
                       className="w-full min-w-0 max-w-full h-11 box-border bg-white border border-slate-300 rounded-xl px-4 text-sm text-slate-900 font-bold focus:outline-none focus:border-emerald-500 block"
                     />
@@ -3688,6 +3868,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
           </div>
         </div>
       )}
+
+      {/* Edit Cycle / Specimen Batch Modal */}
+      <EditBatchModal
+        isOpen={!!editingBatch}
+        batch={editingBatch}
+        onClose={() => setEditingBatch(null)}
+        onSuccess={handleBatchUpdated}
+      />
     </div>
   );
 };

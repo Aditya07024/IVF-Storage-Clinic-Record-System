@@ -832,6 +832,16 @@ app.put('/api/storage/straws/:id', accessKeyGuard, jwtAuthGuard, async (req: Aut
   }
 });
 
+app.put('/api/storage/batches/:id', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const batch = await storageService.updateBatchDetails(req.params.id, req.body, req.user!.userId, req.user!.name || req.user!.staffId);
+    serverCache.clear(); // Invalidate cache on batch update
+    return res.json({ success: true, batch });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // --- THAW / WITHDRAWAL ROUTES ---
 app.post('/api/thaw', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {

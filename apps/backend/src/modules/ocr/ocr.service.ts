@@ -462,10 +462,17 @@ ${rawText}`;
             const parsed = JSON.parse(jsonMatch[0]);
             if (parsed && (parsed.fullName || parsed.patientId || parsed.canisterName || parsed.straws?.length)) {
               console.log(`[OcrService] Gemini AI (${modelName}) successfully structured document fields.`);
-              const dobVal = parsed.dob || '';
-              const partnerDobVal = parsed.partnerDob || '';
+              let dobVal = parsed.dob || '';
+              let partnerDobVal = parsed.partnerDob || '';
               const patientAgeVal = parsed.patientAge || (dobVal ? calculateBackendAgeStr(dobVal) : '');
               const partnerAgeVal = parsed.partnerAge || (partnerDobVal ? calculateBackendAgeStr(partnerDobVal) : '');
+
+              if (!dobVal && patientAgeVal) {
+                dobVal = calculateBackendDobFromAgeStr(patientAgeVal);
+              }
+              if (!partnerDobVal && partnerAgeVal) {
+                partnerDobVal = calculateBackendDobFromAgeStr(partnerAgeVal);
+              }
 
               return {
                 patientId: parsed.patientId || undefined,
@@ -542,6 +549,16 @@ ${rawText}`;
         }
       }
       return '';
+    }
+
+    function calculateBackendDobFromAgeStr(ageStr?: string): string {
+      if (!ageStr) return '';
+      const clean = String(ageStr).replace(/\D/g, '');
+      if (!clean) return '';
+      const ageNum = parseInt(clean, 10);
+      if (isNaN(ageNum) || ageNum <= 0 || ageNum > 120) return '';
+      const birthYear = new Date().getFullYear() - ageNum;
+      return `${birthYear}-01-01`;
     }
 
     // Patient ID / Reg No
