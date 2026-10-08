@@ -452,10 +452,12 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     const defaultStrawColor = CLINIC_STRAW_COLORS.includes(col as any) ? col : 'Pink';
     const mainFreezingDate = json.freezingDate ? (json.freezingDate.includes('/') ? json.freezingDate : formatDateDDMMYYYY(json.freezingDate)) : '';
     const currentSpecimenType = (json.specimenType || (json.vitrificationIndication || json.donorName || json.oocyteStage ? 'OOCYTE' : 'EMBRYO')).toUpperCase() as any;
+    const defaultGrade = currentSpecimenType === 'OOCYTE' ? (json.oocyteStage || 'MII') : '4AA';
+    const defaultStage = currentSpecimenType === 'OOCYTE' ? (json.oocyteStage || 'MII') : 'Day 5';
 
     const rawStraws = Array.isArray(json.straws) && json.straws.length > 0
       ? json.straws
-      : [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: 'Day 5', grade: '4AA', fragmentation: 'No', freezingDate: mainFreezingDate }];
+      : [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: defaultStage, grade: defaultGrade, fragmentation: 'No', freezingDate: mainFreezingDate }];
 
     // Group straws by freezingDate
     const groupedMap = new Map<string, any[]>();
@@ -477,14 +479,14 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
         groupedMap.set(groupKey, []);
       }
 
-      const autoStage = calculateStageFromDates(json.visitDate || json.aspirationDate || '', sDate, currentSpecimenType);
+      const autoStage = calculateStageFromDates(json.visitDate || json.aspirationDate || '', sDate, currentSpecimenType) || defaultStage;
 
       groupedMap.get(groupKey)!.push({
         strawId: s.strawId || `STR-0${groupedMap.get(groupKey)!.length + 1}`,
         colorTag: sCol,
         embryoCount: s.embryoCount ?? 1,
         stage: autoStage,
-        grade: s.grade || '4AA',
+        grade: s.grade || defaultGrade,
         fragmentation: s.fragmentation || 'No',
         embryoGrades: s.embryoGrades,
         embryoFrags: s.embryoFrags,
@@ -508,7 +510,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
       parsedGroups.push({
         id: 'fg-1',
         freezingDate: mainFreezingDate,
-        straws: [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: 'Day 5', grade: '4AA', fragmentation: 'No' }],
+        straws: [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: defaultStage, grade: defaultGrade, fragmentation: 'No' }],
       });
     }
 
@@ -580,14 +582,18 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
 
   const handleSpecimenTypeChange = (type: 'EMBRYO' | 'OOCYTE') => {
     setSpecimenType(type);
+    const defaultGrade = type === 'OOCYTE' ? (oocyteStage || 'MII') : '4AA';
+    const defaultStage = type === 'OOCYTE' ? (oocyteStage || 'MII') : 'Day 5';
+
     setFreezingGroups((prevGroups) =>
       prevGroups.map((group) => {
-        const computedStage = calculateStageFromDates(visitDate, group.freezingDate, type);
+        const computedStage = calculateStageFromDates(visitDate, group.freezingDate, type) || defaultStage;
         return {
           ...group,
           straws: group.straws.map((st) => ({
             ...st,
             stage: computedStage,
+            grade: (!st.grade || st.grade === '4AA' || st.grade === 'MII') ? defaultGrade : st.grade,
           })),
         };
       })
@@ -598,6 +604,9 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     setFreezingGroups((prevGroups) => {
       const defaultColor = CLINIC_STRAW_COLORS.includes(visoTubeColor as any) ? visoTubeColor : 'Pink';
       const totalStraws = prevGroups.reduce((acc, g) => acc + g.straws.length, 0);
+      const defaultGrade = specimenType === 'OOCYTE' ? (oocyteStage || 'MII') : '4AA';
+      const defaultStage = specimenType === 'OOCYTE' ? (oocyteStage || 'MII') : 'Day 5';
+
       const newGroup: FreezingGroup = {
         id: `fg-${Date.now()}`,
         freezingDate: '',
@@ -606,8 +615,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
             strawId: `STR-0${totalStraws + 1}`,
             colorTag: defaultColor,
             embryoCount: 1,
-            stage: 'Day 5',
-            grade: '4AA',
+            stage: defaultStage,
+            grade: defaultGrade,
             fragmentation: 'No',
             thawDate: '',
           },
@@ -1242,6 +1251,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           className="w-full bg-white border border-indigo-300 rounded-lg p-2 text-slate-900 font-medium text-xs focus:outline-none focus:border-indigo-500"
                         >
                           <option value="Social egg freezing">Social egg freezing</option>
+                          <option value="Emergency egg freezing">Emergency egg freezing</option>
+                          <option value="Onco fertility preservation">Onco fertility preservation</option>
                           <option value="Medical indication (Onco-fertility)">Medical indication (Onco-fertility)</option>
                           <option value="Supernumerary donor egg freezing">Supernumerary donor egg freezing</option>
                           <option value="Elective / Other">Elective / Other</option>

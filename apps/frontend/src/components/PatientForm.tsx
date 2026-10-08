@@ -2350,18 +2350,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                     onChange={(e) => setVitrificationIndication(e.target.value)}
                     className="w-full h-10 bg-white border border-emerald-300 rounded-lg px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500 cursor-pointer"
                   >
-                    {cycleType === 'SELF' ? (
-                      <>
-                        <option value="Social egg freezing">Social egg freezing</option>
-                        <option value="Onco fertility preservation">Onco fertility preservation</option>
-                        <option value="Emergency egg freezing">Emergency egg freezing</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="Emergency egg freezing">Emergency egg freezing</option>
-                        <option value="Supernumerary donor egg freezing">Supernumerary donor egg freezing</option>
-                      </>
-                    )}
+                    <option value="Social egg freezing">Social egg freezing</option>
+                    <option value="Emergency egg freezing">Emergency egg freezing</option>
+                    <option value="Onco fertility preservation">Onco fertility preservation</option>
+                    <option value="Medical indication (Onco-fertility)">Medical indication (Onco-fertility)</option>
+                    <option value="Supernumerary donor egg freezing">Supernumerary donor egg freezing</option>
+                    <option value="Elective / Other">Elective / Other</option>
                   </select>
                 </div>
               </div>
@@ -2966,7 +2960,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                     <span className="uppercase tracking-wider">Straw Configuration</span>
                     {specimenType === 'OOCYTE' ? (
                       <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 font-bold normal-case shadow-2xs">
-                        TOTAL: {getBatchSummaryText(strawItems, specimenType)}
+                        TOTAL: {strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0)} {strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0) === 1 ? 'oocyte' : 'oocytes'} frozen in {strawsCount} {strawsCount === 1 ? 'straw' : 'straws'} ({getBatchSummaryText(strawItems, specimenType)})
                       </span>
                     ) : (
                       <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-bold normal-case">
@@ -3588,7 +3582,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                 <Save className="w-5 h-5" />
                 <span>
                   {selectedExistingPatient
-                    ? `Save New Embryo Batch for ${selectedExistingPatient.fullName}`
+                    ? (specimenType === 'OOCYTE' ? `Save & Allocate Egg Storage Record for ${selectedExistingPatient.fullName}` : `Save & Allocate Embryo Storage Record for ${selectedExistingPatient.fullName}`)
                     : 'Save & Allocate Embryo/Egg Storage Record'}
                 </span>
               </>

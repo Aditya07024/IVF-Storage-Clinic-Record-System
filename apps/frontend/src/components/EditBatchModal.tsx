@@ -221,6 +221,8 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({
                     className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-xl text-xs text-slate-900 font-medium"
                   >
                     <option value="Social egg freezing">Social egg freezing</option>
+                    <option value="Emergency egg freezing">Emergency egg freezing</option>
+                    <option value="Onco fertility preservation">Onco fertility preservation</option>
                     <option value="Medical indication (Onco-fertility)">Medical indication (Onco-fertility)</option>
                     <option value="Supernumerary donor egg freezing">Supernumerary donor egg freezing</option>
                     <option value="Elective / Other">Elective / Other</option>

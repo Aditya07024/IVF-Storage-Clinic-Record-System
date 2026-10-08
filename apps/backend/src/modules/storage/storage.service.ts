@@ -234,37 +234,88 @@ export class StorageService {
       const targetDbId = patientRecord?.id || patientId;
       const targetRegId = patientRecord?.patientId || patientId;
 
-      const patientBatches = await prisma.storageBatch.findMany({
+      // 1) Search active Straws belonging to patient
+      const activeStraws = await prisma.straw.findMany({
         where: {
-          OR: [
-            { patientId: targetDbId },
-            { patientId: targetRegId },
-          ],
+          status: 'OCCUPIED',
+          batch: {
+            OR: [
+              { patientId: targetDbId },
+              { patientId: targetRegId },
+              { patient: { id: targetDbId } },
+              { patient: { patientId: targetRegId } },
+            ],
+          },
         },
-        include: { visoTube: true, straws: true },
-        orderBy: { storageDate: 'desc' },
+        include: {
+          visoTube: {
+            include: {
+              straws: { where: { status: 'OCCUPIED' } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
       });
 
-      for (const batch of patientBatches) {
-        if (batch.visoTubeId) {
-          const tube = visoTubes.find((t) => t.id === batch.visoTubeId);
-          if (tube) {
-            const occupiedCount = tube.straws.length;
-            const available = 14 - occupiedCount;
-            if (available >= requiredStraws) {
-              const parsed = parseLocationCode(tube.locationCode);
-              const recItem = {
-                visoTubeId: tube.id,
-                locationCode: tube.locationCode,
-                formattedLocation: parsed.formatted,
-                breakdown: parsed,
-                availableSlots: available,
-                matchType: 'SAME_PATIENT_PREVIOUS_LOCATION',
-                explanation: `Recommended: Automatically chosen patient's previous stored straw location in ${parsed.formatted} (${available} vacant slots remaining).`,
-              };
-              previousPatientLocation = recItem;
-              primaryRecommendation = recItem;
-              break;
+      for (const s of activeStraws) {
+        if (s.visoTube) {
+          const tube = s.visoTube;
+          const occupiedCount = tube.straws.length;
+          const available = 14 - occupiedCount;
+          if (available >= requiredStraws) {
+            const parsed = parseLocationCode(tube.locationCode);
+            const recItem = {
+              visoTubeId: tube.id,
+              locationCode: tube.locationCode,
+              formattedLocation: parsed.formatted,
+              breakdown: parsed,
+              availableSlots: available,
+              matchType: 'SAME_PATIENT_PREVIOUS_LOCATION',
+              explanation: `Recommended: Automatically chosen patient's previous stored straw location in ${parsed.formatted} (${available} vacant slots remaining).`,
+            };
+            previousPatientLocation = recItem;
+            primaryRecommendation = recItem;
+            break;
+          }
+        }
+      }
+
+      // 2) Fallback to StorageBatch search if no active straw match found
+      if (!previousPatientLocation) {
+        const patientBatches = await prisma.storageBatch.findMany({
+          where: {
+            OR: [
+              { patientId: targetDbId },
+              { patientId: targetRegId },
+              { patient: { id: targetDbId } },
+              { patient: { patientId: targetRegId } },
+            ],
+          },
+          include: { visoTube: true, straws: true },
+          orderBy: { storageDate: 'desc' },
+        });
+
+        for (const batch of patientBatches) {
+          if (batch.visoTubeId) {
+            const tube = visoTubes.find((t) => t.id === batch.visoTubeId);
+            if (tube) {
+              const occupiedCount = tube.straws.length;
+              const available = 14 - occupiedCount;
+              if (available >= requiredStraws) {
+                const parsed = parseLocationCode(tube.locationCode);
+                const recItem = {
+                  visoTubeId: tube.id,
+                  locationCode: tube.locationCode,
+                  formattedLocation: parsed.formatted,
+                  breakdown: parsed,
+                  availableSlots: available,
+                  matchType: 'SAME_PATIENT_PREVIOUS_LOCATION',
+                  explanation: `Recommended: Automatically chosen patient's previous stored straw location in ${parsed.formatted} (${available} vacant slots remaining).`,
+                };
+                previousPatientLocation = recItem;
+                primaryRecommendation = recItem;
+                break;
+              }
             }
           }
         }
