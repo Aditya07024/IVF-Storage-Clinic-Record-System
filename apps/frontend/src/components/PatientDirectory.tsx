@@ -119,6 +119,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
   const [editFreezingDate, setEditFreezingDate] = useState('');
   const [editAspirationDate, setEditAspirationDate] = useState('');
   const [editVisitDate, setEditVisitDate] = useState('');
+  const [editCycleType, setEditCycleType] = useState<'SELF' | 'DONOR_RECIPIENT'>('SELF');
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccessMsg, setEditSuccessMsg] = useState<string | null>(null);
