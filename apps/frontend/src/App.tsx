@@ -17,10 +17,17 @@ import { apiRequest } from './api/client';
 export const AppContent: React.FC = () => {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<NavTab>(() => {
+    return (sessionStorage.getItem('activeTab') as NavTab) || 'dashboard';
+  });
   const [selectedCanCode, setSelectedCanCode] = useState<string>('CAN-01');
   const [selectedPatientIdForDirectory, setSelectedPatientIdForDirectory] = useState<string | null>(null);
   const [preselectedPatientForAddStraws, setPreselectedPatientForAddStraws] = useState<any | null>(null);
+
+  const handleSetActiveTab = (tab: NavTab) => {
+    sessionStorage.setItem('activeTab', tab);
+    setActiveTab(tab);
+  };
 
   useEffect(() => {
     checkCurrentUser();
@@ -30,19 +37,19 @@ export const AppContent: React.FC = () => {
     if (canCode) {
       setSelectedCanCode(canCode);
     }
-    setActiveTab(tab);
+    handleSetActiveTab(tab);
   };
 
   const handleNavigateToPatientDirectory = (patientId?: string) => {
     if (patientId) {
       setSelectedPatientIdForDirectory(patientId);
     }
-    setActiveTab('patients');
+    handleSetActiveTab('patients');
   };
 
   const handleAddMoreStraws = (patient: any) => {
     setPreselectedPatientForAddStraws(patient);
-    setActiveTab('new-patient');
+    handleSetActiveTab('new-patient');
   };
 
   const checkCurrentUser = async () => {
@@ -97,7 +104,7 @@ export const AppContent: React.FC = () => {
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 text-slate-900">
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleSetActiveTab}
         user={user}
         onLogout={handleLogout}
       />

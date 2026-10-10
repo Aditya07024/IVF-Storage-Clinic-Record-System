@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatPhoneNumber, getImageUrl } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, getSortedFreezingDates, sortStrawsDeterministically, calculateCycleNumbers } from './PatientForm';
+import { getStrawColorBadgeClass, getSortedFreezingDates, sortStrawsDeterministically, calculateCycleNumbers, buildPatientCycleStrawSequenceMap } from './PatientForm';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
 function parseLocationCode(code: string) {
@@ -1320,6 +1320,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
               {(() => {
                 const allBatches = viewingPatientModal.batches || [];
                 const { cycleMap } = calculateCycleNumbers(allBatches);
+                const { strawCycleSeqMap, strawDisplayLabelMap } = buildPatientCycleStrawSequenceMap(allBatches);
 
                 if (allBatches.length === 0) {
                   return (
@@ -1375,19 +1376,16 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           })
                         ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
-                          const cycleStrawNum = sIdx + 1;
+                          const strawKey = straw.id || straw.strawId;
+                          const cycleStrawNum = strawCycleSeqMap[straw.id] || strawCycleSeqMap[strawKey] || (sIdx + 1);
                           const rawStrawId = (straw.strawId || '').trim();
                           const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
                           const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
                           const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(rawStrawId) || rawStrawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
 
-                          const displayLabel = dotMatch
-                            ? `#${dotMatch[1]}.${dotMatch[2]}`
-                            : (cycleMatch
-                                ? `#${cycleMatch[1]}.${cycleMatch[2]}`
-                                : (isGenericOrSeqStrawId
-                                    ? `#${cycleNum}.${cycleStrawNum}`
-                                    : (rawStrawId.startsWith('#') ? rawStrawId : `#${rawStrawId}`)));
+                          const displayLabel = strawDisplayLabelMap[straw.id] || strawDisplayLabelMap[strawKey] || (isGenericOrSeqStrawId
+                            ? `#${cycleNum}.${cycleStrawNum}`
+                            : (rawStrawId.startsWith('#') ? rawStrawId : `#${rawStrawId}`));
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
 
                           const eGrade = (straw.grade || '').trim().toUpperCase();

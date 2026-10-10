@@ -7,6 +7,34 @@ function parseFlexibleDate(dateStr?: string | null): Date | null {
   return d;
 }
 
+function calculateBatchCycleNumbers(batches: any[]): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!batches || batches.length === 0) return map;
+
+  const sorted = [...batches].sort((a, b) => {
+    const timeA = new Date(a.aspirationDate || a.freezingDate || a.storageDate || a.createdAt || 0).getTime();
+    const timeB = new Date(b.aspirationDate || b.freezingDate || b.storageDate || b.createdAt || 0).getTime();
+    return timeA - timeB;
+  });
+
+  let currentCycleNum = 0;
+  let lastRetrievalDateKey = '';
+
+  for (const b of sorted) {
+    const rawDate = b.aspirationDate ? b.aspirationDate.toISOString().split('T')[0] : (b.freezingDate ? b.freezingDate.toISOString().split('T')[0] : '');
+    const dateKey = rawDate || 'unknown';
+
+    if (!lastRetrievalDateKey || dateKey !== lastRetrievalDateKey) {
+      currentCycleNum++;
+      lastRetrievalDateKey = dateKey;
+    }
+
+    map.set(b.id, currentCycleNum);
+  }
+
+  return map;
+}
+
 export function parseLocationCode(code: string) {
   if (!code) return { raw: '', formatted: '', can: '', canister: '', level: '', tube: '', tubeColor: '' };
 
@@ -511,7 +539,7 @@ export class StorageService {
           },
         });
       } else {
-        const batch = await tx.storageBatch.create({
+        batch = await tx.storageBatch.create({
           data: {
             batchId: finalBatchId,
             patientId: input.patientId,
@@ -544,21 +572,53 @@ export class StorageService {
         },
       });
 
-      // Determine cycle number for the batch
+      // Determine cycle number for the batch and count existing straws in this cycle
       const allPatientBatches = await tx.storageBatch.findMany({
         where: { patientId: input.patientId },
+        include: { straws: true },
         orderBy: [
           { aspirationDate: 'asc' },
           { storageDate: 'asc' },
           { createdAt: 'asc' },
         ],
       });
-      let currentCycleNum = allPatientBatches.length;
-      if (batch) {
-        const foundIdx = allPatientBatches.findIndex((b) => b.id === batch.id);
-        currentCycleNum = foundIdx !== -1 ? foundIdx + 1 : allPatientBatches.length;
+
+      const batchCycleMap = calculateBatchCycleNumbers(allPatientBatches);
+      let targetCycleNum = (batch && batchCycleMap.has(batch.id))
+        ? batchCycleMap.get(batch.id)!
+        : 1;
+
+      if (batch && !batchCycleMap.has(batch.id)) {
+        const rawDate = batch.aspirationDate ? batch.aspirationDate.toISOString().split('T')[0] : (batch.freezingDate ? batch.freezingDate.toISOString().split('T')[0] : '');
+        const dateKey = rawDate || 'unknown';
+        let matchCycle: number | null = null;
+        for (const b of allPatientBatches) {
+          const bRawDate = b.aspirationDate ? b.aspirationDate.toISOString().split('T')[0] : (b.freezingDate ? b.freezingDate.toISOString().split('T')[0] : '');
+          const bDateKey = bRawDate || 'unknown';
+          if (bDateKey === dateKey && b.id !== batch.id) {
+            matchCycle = batchCycleMap.get(b.id) || null;
+            break;
+          }
+        }
+        if (matchCycle !== null) {
+          targetCycleNum = matchCycle;
+        } else {
+          let maxCycle = 0;
+          for (const c of batchCycleMap.values()) {
+            if (c > maxCycle) maxCycle = c;
+          }
+          targetCycleNum = maxCycle + 1;
+        }
       }
-      if (currentCycleNum < 1) currentCycleNum = 1;
+
+      // Count existing straws across all batches in this same cycle
+      let existingStrawsInThisCycle = 0;
+      for (const b of allPatientBatches) {
+        const cNum = batchCycleMap.get(b.id);
+        if (cNum === targetCycleNum) {
+          existingStrawsInThisCycle += (b.straws ? b.straws.length : 0);
+        }
+      }
 
       const createdStraws: any[] = [];
       let totalEmbryosSoFar = 0;
@@ -566,14 +626,14 @@ export class StorageService {
         const item = strawItems[i];
         const embryosInThisStraw = item.embryoCount || 1;
         const color = item.color || 'Pink';
-        const seqNum = i + 1;
+        const seqNum = existingStrawsInThisCycle + i + 1;
 
         const customId = (item as any).strawCustomId?.trim();
         let strawIdCode: string;
         if (customId && !/^#?\d+$/.test(customId) && !/^\d+\.\d+$/.test(customId)) {
           strawIdCode = customId;
         } else {
-          strawIdCode = `${currentCycleNum}.${seqNum}`;
+          strawIdCode = `${targetCycleNum}.${seqNum}`;
         }
 
         const straw = await tx.straw.create({
@@ -820,11 +880,8 @@ export class StorageService {
             { createdAt: 'asc' },
           ],
         });
-        let cycleNum = 1;
-        const bIdx = allBatches.findIndex((b) => b.id === straw.batchId);
-        if (bIdx !== -1) {
-          cycleNum = bIdx + 1;
-        }
+        const batchCycleMap = calculateBatchCycleNumbers(allBatches);
+        const cycleNum = batchCycleMap.get(straw.batchId) || 1;
 
         // If user entered a generic number like "#2", "2", "C2-S2", or "2.2", format as {cycleNum}.{num}
         const numericMatch = newCustomId.match(/^#?(\d+)$/);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import brandLogo from '../assets/image.png';
 import { UserPlus, Save, Search, CheckCircle2, ShieldAlert, Sparkles, Layers, Info, UserCheck, AlertTriangle, RefreshCw, Plus, Minus, Flame, Snowflake, X, Calendar, Printer, Mail, Camera, Upload, User, RotateCcw, RotateCw, Check, Eye, Dna, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
 import { apiRequest, formatDateDDMMYYYY, calculateEmbryoStage } from '../api/client';
@@ -629,6 +629,88 @@ export function groupBatchesByCycle(batches: any[]): CycleGroup[] {
   });
 
   return cycleGroups;
+}
+
+export function buildPatientCycleStrawSequenceMap(
+  batches?: any[],
+  defaultAspirationDate?: string
+): {
+  strawCycleSeqMap: Record<string, number>;
+  strawCycleNumMap: Record<string, number>;
+  strawDisplayLabelMap: Record<string, string>;
+} {
+  const strawCycleSeqMap: Record<string, number> = {};
+  const strawCycleNumMap: Record<string, number> = {};
+  const strawDisplayLabelMap: Record<string, string> = {};
+
+  if (!batches || !Array.isArray(batches) || batches.length === 0) {
+    return { strawCycleSeqMap, strawCycleNumMap, strawDisplayLabelMap };
+  }
+
+  // Calculate cycle numbers for all batches
+  const { cycleMap } = calculateCycleNumbers(batches);
+
+  // Group batches by assigned cycle number
+  const batchesByCycle: Record<number, any[]> = {};
+  batches.forEach((batch, idx) => {
+    const cycleNum = cycleMap[batch.id || batch.batchId] || idx + 1;
+    if (!batchesByCycle[cycleNum]) {
+      batchesByCycle[cycleNum] = [];
+    }
+    batchesByCycle[cycleNum].push(batch);
+  });
+
+  const cycleNums = Object.keys(batchesByCycle).map(Number).sort((a, b) => a - b);
+
+  for (const cNum of cycleNums) {
+    const cycleBatches = batchesByCycle[cNum];
+
+    // Sort batches within cycle chronologically
+    cycleBatches.sort((a, b) => {
+      const timeA = new Date(a.freezingDate || a.storageDate || a.createdAt || 0).getTime();
+      const timeB = new Date(b.freezingDate || b.storageDate || b.createdAt || 0).getTime();
+      return timeA - timeB;
+    });
+
+    let currentStrawSeq = 0;
+
+    for (const batch of cycleBatches) {
+      const straws = sortStrawsDeterministically(batch.straws || []);
+      for (let sIdx = 0; sIdx < straws.length; sIdx++) {
+        const straw = straws[sIdx];
+        currentStrawSeq++;
+
+        const rawStrawId = String(straw.strawId || straw.customId || '').trim();
+        const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
+        const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
+        const isGenericOrSeqStrawId = !rawStrawId || /^#?\d+$/.test(rawStrawId) || rawStrawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
+
+        let displayLabel: string;
+        if (isGenericOrSeqStrawId) {
+          displayLabel = `#${cNum}.${currentStrawSeq}`;
+        } else {
+          displayLabel = rawStrawId.startsWith('#') ? rawStrawId : `#${rawStrawId}`;
+        }
+
+        const batchIndexKey = `${batch.id || batch.batchId}_${sIdx}`;
+        strawCycleSeqMap[batchIndexKey] = currentStrawSeq;
+        strawCycleNumMap[batchIndexKey] = cNum;
+        strawDisplayLabelMap[batchIndexKey] = displayLabel;
+
+        if (straw.id) {
+          strawCycleSeqMap[straw.id] = currentStrawSeq;
+          strawCycleNumMap[straw.id] = cNum;
+          strawDisplayLabelMap[straw.id] = displayLabel;
+        } else if (straw.strawId) {
+          strawCycleSeqMap[straw.strawId] = currentStrawSeq;
+          strawCycleNumMap[straw.strawId] = cNum;
+          strawDisplayLabelMap[straw.strawId] = displayLabel;
+        }
+      }
+    }
+  }
+
+  return { strawCycleSeqMap, strawCycleNumMap, strawDisplayLabelMap };
 }
 
 
@@ -1332,6 +1414,44 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
   const [error, setError] = useState<string | null>(null);
   const [reportMailPatient, setReportMailPatient] = useState<any | null>(null);
 
+  // Compute form cycle number & starting straw sequence for current patient and aspiration date
+  const { currentFormCycleNum, currentFormCycleStrawStart } = useMemo(() => {
+    if (!selectedExistingPatient || !selectedExistingPatient.batches || selectedExistingPatient.batches.length === 0) {
+      return { currentFormCycleNum: 1, currentFormCycleStrawStart: 0 };
+    }
+    const batches = selectedExistingPatient.batches;
+    const { cycleMap, totalCycles } = calculateCycleNumbers(batches);
+
+    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(aspirationDate);
+    const curDateKey = iso || formatted || aspirationDate;
+
+    let matchCycle = 0;
+    if (curDateKey) {
+      for (const b of batches) {
+        const bRaw = b.aspirationDate || b.freezingDate || b.storageDate || '';
+        const bNorm = normalizeFlexibleDateToDDMMYYYY(bRaw);
+        const bKey = bNorm.iso || bNorm.formatted || bRaw;
+        if (bKey && bKey === curDateKey) {
+          matchCycle = cycleMap[b.id || b.batchId] || 1;
+          break;
+        }
+      }
+    }
+
+    if (matchCycle > 0) {
+      let count = 0;
+      for (const b of batches) {
+        const cNum = cycleMap[b.id || b.batchId] || 1;
+        if (cNum === matchCycle) {
+          count += (b.straws ? b.straws.length : 0);
+        }
+      }
+      return { currentFormCycleNum: matchCycle, currentFormCycleStrawStart: count };
+    }
+
+    return { currentFormCycleNum: (totalCycles || 0) + 1, currentFormCycleStrawStart: 0 };
+  }, [selectedExistingPatient, aspirationDate]);
+
   // Handle Existing Patient Search
   const handleSearchExisting = async (q: string) => {
     setExistingSearchQuery(q);
@@ -1507,6 +1627,11 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
   // Clear Selected Existing Patient & Reset ALL Form Fields Completely
   const handleClearSelectedExisting = () => {
     setSelectedExistingPatient(null);
+    setFormMode('new');
+    setSelectedVisoTubeId('');
+    setSelectedLocationCode('');
+    setExistingIdMatch(null);
+    setIsIdVerifiedUnique(false);
     setCustomPatientId('');
     setFullName('');
     setPartnerName('');
@@ -1526,6 +1651,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     setComments('');
     setPhotoFile(null);
     setPhotoPreviewUrl(null);
+    setPartnerPhotoFile(null);
+    setPartnerPhotoPreviewUrl(null);
     setCropModalFile(null);
     setAssignStorageEnabled(false);
     setStrawsCount(1);
@@ -1807,7 +1934,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
       selectedLocationCode,
       storageDate: freezingDate,
       strawsCount,
-      strawItems: [...strawItems],
+      strawItems: strawItems.map((item, idx) => ({
+        ...item,
+        strawCustomId: (item as any).strawCustomId?.trim() || `${currentFormCycleNum}.${currentFormCycleStrawStart + idx + 1}`,
+      })),
       totalEmbryosCount,
       isEmailVerified,
       specimenType,
@@ -1820,15 +1950,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
       oocyteStage: oocyteStage.trim(),
     };
 
-    // Reset photo state
-    setPhotoFile(null);
-    setPhotoPreviewUrl(null);
-    setPartnerPhotoFile(null);
-    setPartnerPhotoPreviewUrl(null);
-
-    if (formMode === 'new') {
-      handleClearSelectedExisting();
-    }
+    // Immediately clear all patient details, photos, and selections
+    handleClearSelectedExisting();
 
     // Queue task in top-left background queue stack
     enqueueTask({
@@ -1947,7 +2070,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
         return fullRes.patient || targetPatient;
       },
       onSuccess: (updatedPatient) => {
-        onSuccess(updatedPatient);
+        if (onSuccess) {
+          onSuccess(updatedPatient);
+        }
+        window.location.reload();
       },
       onError: (err) => {
         triggerValidationError(err.message || 'Background save failed.');
@@ -3240,7 +3366,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
                 <div className="grid grid-cols-1 gap-3">
                   {strawItems.map((item, idx) => {
-                    const strawDisplayNum = idx + 1;
+                    const strawDisplayNum = `${currentFormCycleNum}.${currentFormCycleStrawStart + idx + 1}`;
                     const badgeClass = getStrawColorBadgeClass(item.color);
                     return (
                       <div key={idx} className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
@@ -4298,8 +4424,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
                   <div className="space-y-2.5">
                     {strawItems.map((item, sIdx) => {
-                      const currentFormCycle = (selectedExistingPatient?.batches?.length || 0) + 1;
-                      const strawDisplayNum = `${currentFormCycle}.${sIdx + 1}`;
+                      const strawDisplayNum = `${currentFormCycleNum}.${currentFormCycleStrawStart + sIdx + 1}`;
                       const badgeClass = getStrawColorBadgeClass(item.color);
                       const count = item.embryoCount || 1;
                       const stageSummary = getStrawStageSummary(item, specimenType);

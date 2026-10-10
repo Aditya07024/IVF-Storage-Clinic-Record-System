@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, getSortedRetrievalDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys, sortStrawsDeterministically, extractStrawSequenceNumber } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, getSortedRetrievalDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys, sortStrawsDeterministically, extractStrawSequenceNumber, buildPatientCycleStrawSequenceMap } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { EditBatchModal } from './EditBatchModal';
@@ -1373,6 +1373,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
               {(() => {
                 const thawBatches = groupBatchesByFreezingDate(quickThawPatient.batches, quickThawPatient.aspirationDate || quickThawPatient.visitDate);
                 const { cycleMap: thawCycleMap } = calculateCycleNumbers(thawBatches);
+                const { strawCycleSeqMap: thawStrawSeqMap, strawDisplayLabelMap: thawDisplayLabelMap } = buildPatientCycleStrawSequenceMap(thawBatches);
                 if (thawBatches.length === 0) {
                   return (
                     <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 border border-slate-200 text-center">
@@ -1450,19 +1451,18 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             return cleanComment ? ` - (${cleanComment})` : '';
                           })();
 
-                          const cycleStrawNum = origIdx + 1;
+                          const strawKey = straw.id || straw.strawId;
+                          const cycleStrawNum = thawStrawSeqMap[straw.id] || thawStrawSeqMap[strawKey] || (origIdx + 1);
                           const rawStrawId = (straw.strawId || '').trim();
                           const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
                           const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
                           const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(rawStrawId) || rawStrawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
 
-                          const displayLabel = dotMatch
-                            ? `Straw #${dotMatch[1]}.${dotMatch[2]}`
-                            : (cycleMatch
-                                ? `Straw #${cycleMatch[1]}.${cycleMatch[2]}`
-                                : (isGenericOrSeqStrawId
-                                    ? `Straw #${cycleNum}.${cycleStrawNum}`
-                                    : (straw.strawId.startsWith('Straw') ? straw.strawId : `Straw ${straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`} `)));
+                          const displayLabel = (thawDisplayLabelMap[straw.id] || thawDisplayLabelMap[strawKey])
+                            ? `Straw ${thawDisplayLabelMap[straw.id] || thawDisplayLabelMap[strawKey]}`
+                            : (isGenericOrSeqStrawId
+                                ? `Straw #${cycleNum}.${cycleStrawNum}`
+                                : (straw.strawId.startsWith('Straw') ? straw.strawId : `Straw ${straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`} `));
                           const isDonorEgg = isOocyte && (quickThawPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
                           const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
                           const countLabel = isOocyte
@@ -2134,6 +2134,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
               {(() => {
                 const allBatches = groupBatchesByFreezingDate(selectedPatient.batches, selectedPatient.aspirationDate || selectedPatient.visitDate);
                 const { cycleMap, totalCycles } = calculateCycleNumbers(allBatches);
+                const { strawCycleSeqMap, strawDisplayLabelMap } = buildPatientCycleStrawSequenceMap(allBatches);
 
                 if (allBatches.length === 0) {
                   return (
@@ -2222,19 +2223,16 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           })
                         ).map(({ straw, origIdx }: { straw: any; origIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
-                          const cycleStrawNum = origIdx + 1;
+                          const strawKey = straw.id || straw.strawId;
+                          const cycleStrawNum = strawCycleSeqMap[straw.id] || strawCycleSeqMap[strawKey] || (origIdx + 1);
                           const rawStrawId = (straw.strawId || '').trim();
                           const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
                           const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
                           const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(rawStrawId) || rawStrawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
 
-                          const displayLabel = dotMatch
-                            ? `#${dotMatch[1]}.${dotMatch[2]}`
-                            : (cycleMatch
-                                ? `#${cycleMatch[1]}.${cycleMatch[2]}`
-                                : (isGenericOrSeqStrawId
-                                    ? `#${cycleNum}.${cycleStrawNum}`
-                                    : (rawStrawId.startsWith('#') ? rawStrawId : `#${rawStrawId}`)));
+                          const displayLabel = strawDisplayLabelMap[straw.id] || strawDisplayLabelMap[strawKey] || (isGenericOrSeqStrawId
+                            ? `#${cycleNum}.${cycleStrawNum}`
+                            : (rawStrawId.startsWith('#') ? rawStrawId : `#${rawStrawId}`));
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
                           const isOocyte = isOocyteSpecimen(selectedPatient);
 

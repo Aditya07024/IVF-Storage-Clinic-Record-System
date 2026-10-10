@@ -538,6 +538,46 @@ export class DocumentService {
         doc.text(`Active Cryo Storage Specimen Straws`, 30, currentSectionY);
         currentSectionY += 16;
 
+        // Calculate cycle numbers and straw sequences across batches in the same cycle
+        const sortedBatches = [...batchesToRender].sort((a, b) => {
+          const timeA = new Date(a.aspirationDate || a.freezingDate || a.storageDate || a.createdAt || 0).getTime();
+          const timeB = new Date(b.aspirationDate || b.freezingDate || b.storageDate || b.createdAt || 0).getTime();
+          return timeA - timeB;
+        });
+
+        const cycleBatchMap = new Map<string, number>();
+        let currentCycleNum = 0;
+        let lastDateKey = '';
+        sortedBatches.forEach((b) => {
+          const rawDate = b.aspirationDate ? b.aspirationDate.toISOString().split('T')[0] : (b.freezingDate ? b.freezingDate.toISOString().split('T')[0] : '');
+          const dKey = rawDate || 'unknown';
+          if (!lastDateKey || dKey !== lastDateKey) {
+            currentCycleNum++;
+            lastDateKey = dKey;
+          }
+          cycleBatchMap.set(b.id, currentCycleNum);
+        });
+
+        const strawCycleSeqMap = new Map<string, number>();
+        const cycleBatchesGroup: Record<number, any[]> = {};
+        batchesToRender.forEach((b, idx) => {
+          const cNum = cycleBatchMap.get(b.id) || (idx + 1);
+          if (!cycleBatchesGroup[cNum]) cycleBatchesGroup[cNum] = [];
+          cycleBatchesGroup[cNum].push(b);
+        });
+
+        Object.keys(cycleBatchesGroup).map(Number).sort((a, b) => a - b).forEach((cNum) => {
+          const cBatches = cycleBatchesGroup[cNum];
+          let seq = 0;
+          for (const b of cBatches) {
+            const bStraws = b.straws || [];
+            for (const s of bStraws) {
+              seq++;
+              strawCycleSeqMap.set(s.id, seq);
+            }
+          }
+        });
+
         batchesToRender.forEach((batch: any, bIdx: number) => {
           const batchStraws = (batch.straws || []).filter((s: any) => s.status === 'OCCUPIED' || isThaw);
           const strawsToDisplay = batchStraws.length > 0 ? batchStraws : (batch.straws || []);
@@ -572,20 +612,16 @@ export class DocumentService {
 
             const strawBoxY = currentSectionY;
             const embryoCount = straw.embryoCount || (straw.embryos ? straw.embryos.length : 1);
-            const cycleNum = bIdx + 1;
-            const cycleStrawNum = sIdx + 1;
+            const cycleNum = cycleBatchMap.get(batch.id) || (bIdx + 1);
+            const cycleStrawNum = strawCycleSeqMap.get(straw.id) || (sIdx + 1);
             const rawStrawId = (straw.strawId || '').trim();
             const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
             const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
             const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(rawStrawId) || straw.strawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
 
-            const displayLabel = dotMatch
-              ? `#${dotMatch[1]}.${dotMatch[2]}`
-              : (cycleMatch
-                  ? `#${cycleMatch[1]}.${cycleMatch[2]}`
-                  : (isGenericOrSeqStrawId
-                      ? `#${cycleNum}.${cycleStrawNum}`
-                      : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`)));
+            const displayLabel = isGenericOrSeqStrawId
+              ? `#${cycleNum}.${cycleStrawNum}`
+              : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);
 
             const strawColor = straw.color || 'Pink';
             let colorBg = '#fce7f3';
