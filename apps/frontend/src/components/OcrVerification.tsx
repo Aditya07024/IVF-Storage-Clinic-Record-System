@@ -1673,11 +1673,6 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                               inputClassName="w-full bg-white border border-amber-300 rounded-lg text-xs font-mono font-bold text-amber-950 focus:outline-none focus:border-amber-600 shadow-2xs"
                             />
                           </div>
-                          {group.freezingDate && visitDate && (
-                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-md border border-emerald-300 shadow-2xs">
-                              Stage: {calculateStageFromDates(visitDate, group.freezingDate, specimenType)}
-                            </span>
-                          )}
                         </div>
                       </div>
 
