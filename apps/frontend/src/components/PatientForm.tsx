@@ -772,76 +772,170 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
   className,
   inputClassName,
   compact,
-  placeholder = 'DD/MM/YYYY',
   hideBadge,
 }) => {
-  const [displayValue, setDisplayValue] = useState(() => {
-    const { formatted } = normalizeFlexibleDateToDDMMYYYY(value);
-    return formatted || formatISOToDDMMYYYY(value) || value || '';
-  });
+  const parseToParts = (val?: string) => {
+    if (!val) return { day: '', month: '', year: '' };
+    const { formatted } = normalizeFlexibleDateToDDMMYYYY(val);
+    if (formatted && formatted.includes('/')) {
+      const [d, m, y] = formatted.split('/');
+      return { day: d || '', month: m || '', year: y || '' };
+    }
+    return { day: '', month: '', year: '' };
+  };
+
+  const [parts, setParts] = useState(parseToParts(value));
+  const dayRef = useRef<HTMLInputElement>(null);
+  const monthRef = useRef<HTMLInputElement>(null);
+  const yearRef = useRef<HTMLInputElement>(null);
   const hiddenDateRef = useRef<HTMLInputElement>(null);
-  const isFocusedRef = useRef(false);
+  const isInternalChangeRef = useRef(false);
 
   useEffect(() => {
-    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(value);
-    const { iso: currentIso } = normalizeFlexibleDateToDDMMYYYY(displayValue);
-    if (!isFocusedRef.current || (iso && iso !== currentIso)) {
-      setDisplayValue(formatted || formatISOToDDMMYYYY(value) || value || '');
+    if (isInternalChangeRef.current) {
+      isInternalChangeRef.current = false;
+      return;
     }
+    setParts(parseToParts(value));
   }, [value]);
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    const formatted = formatRawToDDMMYYYYMask(raw);
-    setDisplayValue(formatted);
-
-    const { iso } = normalizeFlexibleDateToDDMMYYYY(formatted);
-    if (iso && iso.length === 10) {
-      onChange(iso);
-    } else if (!formatted) {
-      onChange('');
-    }
-  };
-
-  const handleFocus = () => {
-    isFocusedRef.current = true;
-  };
-
-  const handleBlur = () => {
-    isFocusedRef.current = false;
-    if (!displayValue) {
+  const notifyChange = (newParts: { day: string; month: string; year: string }) => {
+    isInternalChangeRef.current = true;
+    const { day, month, year } = newParts;
+    if (!day && !month && !year) {
       onChange('');
       return;
     }
-    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(displayValue);
-    if (iso) {
-      setDisplayValue(formatted);
-      onChange(iso);
+    if (day.length === 2 && month.length === 2 && year.length === 4) {
+      const d = parseInt(day, 10);
+      const m = parseInt(month, 10);
+      const y = parseInt(year, 10);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+        const iso = `${y}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        onChange(iso);
+        return;
+      }
     }
   };
 
-  const handleOpenPicker = () => {
-    if (hiddenDateRef.current) {
-      try {
-        if (typeof hiddenDateRef.current.showPicker === 'function') {
-          hiddenDateRef.current.showPicker();
-        } else {
-          hiddenDateRef.current.click();
-        }
-      } catch (err) {
-        try {
-          hiddenDateRef.current.click();
-        } catch (_) {}
+  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value.replace(/\D/g, '');
+    if (raw.length > 2) raw = raw.slice(0, 2);
+
+    if (raw.length === 2 && parseInt(raw, 10) > 31) {
+      raw = '31';
+    }
+
+    const nextParts = { ...parts, day: raw };
+    setParts(nextParts);
+    notifyChange(nextParts);
+
+    // Auto-advance: if 2 digits, or if first digit is > 3 (4-9 can only be 04-09)
+    if (raw.length === 2) {
+      monthRef.current?.focus();
+      monthRef.current?.select();
+    } else if (raw.length === 1 && parseInt(raw, 10) > 3) {
+      const padded = `0${raw}`;
+      const paddedParts = { ...parts, day: padded };
+      setParts(paddedParts);
+      notifyChange(paddedParts);
+      monthRef.current?.focus();
+      monthRef.current?.select();
+    }
+  };
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value.replace(/\D/g, '');
+    if (raw.length > 2) raw = raw.slice(0, 2);
+
+    if (raw.length === 2 && parseInt(raw, 10) > 12) {
+      raw = '12';
+    }
+
+    const nextParts = { ...parts, month: raw };
+    setParts(nextParts);
+    notifyChange(nextParts);
+
+    // Auto-advance: if 2 digits, or if first digit is > 1 (2-9 can only be 02-09)
+    if (raw.length === 2) {
+      yearRef.current?.focus();
+      yearRef.current?.select();
+    } else if (raw.length === 1 && parseInt(raw, 10) > 1) {
+      const padded = `0${raw}`;
+      const paddedParts = { ...parts, month: padded };
+      setParts(paddedParts);
+      notifyChange(paddedParts);
+      yearRef.current?.focus();
+      yearRef.current?.select();
+    }
+  };
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value.replace(/\D/g, '');
+    if (raw.length > 4) raw = raw.slice(0, 4);
+
+    const nextParts = { ...parts, year: raw };
+    setParts(nextParts);
+    notifyChange(nextParts);
+  };
+
+  const handleDayKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowRight' && dayRef.current?.selectionStart === parts.day.length) {
+      monthRef.current?.focus();
+    }
+  };
+
+  const handleMonthKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && parts.month === '') {
+      dayRef.current?.focus();
+    } else if (e.key === 'ArrowLeft' && monthRef.current?.selectionStart === 0) {
+      dayRef.current?.focus();
+    } else if (e.key === 'ArrowRight' && monthRef.current?.selectionStart === parts.month.length) {
+      yearRef.current?.focus();
+    }
+  };
+
+  const handleYearKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && parts.year === '') {
+      monthRef.current?.focus();
+    } else if (e.key === 'ArrowLeft' && yearRef.current?.selectionStart === 0) {
+      monthRef.current?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text');
+    if (!pasted) return;
+    const { formatted, iso } = normalizeFlexibleDateToDDMMYYYY(pasted);
+    if (formatted && formatted.includes('/')) {
+      const [d, m, y] = formatted.split('/');
+      const nextParts = { day: d || '', month: m || '', year: y || '' };
+      setParts(nextParts);
+      if (iso) {
+        onChange(iso);
       }
     }
   };
 
   const currentIso = normalizeFlexibleDateToDDMMYYYY(value).iso || value;
 
+  const handleCalendarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const iso = e.target.value;
+    if (iso) {
+      const { formatted } = normalizeFlexibleDateToDDMMYYYY(iso);
+      if (formatted && formatted.includes('/')) {
+        const [d, m, y] = formatted.split('/');
+        setParts({ day: d || '', month: m || '', year: y || '' });
+      }
+      onChange(iso);
+    }
+  };
+
   return (
     <div className={`min-w-0 max-w-full ${className || ''}`}>
       {label && (
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between flex-wrap gap-1">
           <span>{label} {required && <span className="text-rose-600 font-bold">*</span>}</span>
           {!hideBadge && (extraBadge || (
             <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
@@ -850,49 +944,97 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
           ))}
         </label>
       )}
-      <div className="relative flex items-center">
-        <input
-          type="text"
-          value={displayValue}
-          onChange={handleTextChange}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          placeholder={placeholder || '__/__/____'}
-          maxLength={10}
-          required={required}
-          className={
-            inputClassName
-              ? inputClassName
-              : compact
-              ? 'w-full min-w-0 max-w-full h-8 box-border bg-slate-50 border border-slate-300 rounded-lg px-2 pr-7 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block placeholder:text-slate-400 placeholder:font-mono placeholder:tracking-wider'
-              : 'w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 pr-10 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block placeholder:text-slate-400 placeholder:font-mono placeholder:tracking-wider'
-          }
-        />
-        <div
-          onClick={handleOpenPicker}
-          className={`absolute text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer flex items-center justify-center overflow-hidden z-10 ${
-            compact ? 'right-1 p-1 w-6 h-6' : 'right-2 p-1.5 w-7 h-7'
-          }`}
-          title="Pick date from calendar"
-        >
-          <Calendar className={compact ? 'w-3.5 h-3.5 pointer-events-none' : 'w-4 h-4 pointer-events-none'} />
-          <input
-            ref={hiddenDateRef}
-            type="date"
-            value={currentIso || ''}
-            onChange={(e) => {
-              const iso = e.target.value;
-              if (iso) {
-                const { formatted } = normalizeFlexibleDateToDDMMYYYY(iso);
-                setDisplayValue(formatted);
-                onChange(iso);
-              }
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-            tabIndex={-1}
-            aria-label="Pick date from calendar"
-          />
+
+      {/* 3-Part Segmented Box: [ DD ] / [ MM ] / [ YYYY ] + Calendar */}
+      <div
+        className={`w-full min-w-0 max-w-full box-border bg-slate-50 border border-slate-300 rounded-xl flex items-center justify-between transition-all focus-within:bg-white focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 shadow-2xs ${
+          compact ? 'h-8 px-2' : 'h-11 px-3'
+        } ${inputClassName || ''}`}
+        onPaste={handlePaste}
+      >
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
+          {/* Day Slot */}
+          <div className="flex flex-col items-center">
+            <input
+              ref={dayRef}
+              type="text"
+              inputMode="numeric"
+              value={parts.day}
+              onChange={handleDayChange}
+              onKeyDown={handleDayKeyDown}
+              placeholder="DD"
+              maxLength={2}
+              required={required}
+              className={`w-7 sm:w-8 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
+                compact ? 'text-xs' : 'text-sm'
+              }`}
+              title="Day (01-31)"
+            />
+          </div>
+
+          <span className="text-slate-400 font-mono font-bold select-none text-xs sm:text-sm">/</span>
+
+          {/* Month Slot */}
+          <div className="flex flex-col items-center">
+            <input
+              ref={monthRef}
+              type="text"
+              inputMode="numeric"
+              value={parts.month}
+              onChange={handleMonthChange}
+              onKeyDown={handleMonthKeyDown}
+              placeholder="MM"
+              maxLength={2}
+              required={required}
+              className={`w-7 sm:w-8 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
+                compact ? 'text-xs' : 'text-sm'
+              }`}
+              title="Month (01-12)"
+            />
+          </div>
+
+          <span className="text-slate-400 font-mono font-bold select-none text-xs sm:text-sm">/</span>
+
+          {/* Year Slot */}
+          <div className="flex flex-col items-center">
+            <input
+              ref={yearRef}
+              type="text"
+              inputMode="numeric"
+              value={parts.year}
+              onChange={handleYearChange}
+              onKeyDown={handleYearKeyDown}
+              placeholder="YYYY"
+              maxLength={4}
+              required={required}
+              className={`w-12 sm:w-14 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
+                compact ? 'text-xs' : 'text-sm'
+              }`}
+              title="Year (YYYY)"
+            />
+          </div>
+        </div>
+
+        {/* Calendar Picker Icon with Native Picker Overlay */}
+        <div className="relative border-l border-slate-200 pl-2 ml-1 flex items-center justify-center shrink-0">
+          <div
+            className={`text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer flex items-center justify-center overflow-hidden ${
+              compact ? 'w-6 h-6' : 'w-7 h-7'
+            }`}
+            title="Pick date from calendar"
+          >
+            <Calendar className={compact ? 'w-3.5 h-3.5 pointer-events-none' : 'w-4 h-4 pointer-events-none'} />
+            <input
+              ref={hiddenDateRef}
+              type="date"
+              value={currentIso || ''}
+              onChange={handleCalendarPick}
+              onClick={(e) => e.stopPropagation()}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              tabIndex={-1}
+              aria-label="Pick date from calendar"
+            />
+          </div>
         </div>
       </div>
     </div>
