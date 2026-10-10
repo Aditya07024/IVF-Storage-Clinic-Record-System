@@ -545,16 +545,12 @@ export class StorageService {
       });
 
       const createdStraws: any[] = [];
-      const existingPatientStrawCount = await tx.straw.count({
-        where: { batch: { patientId: input.patientId } },
-      });
-
       let totalEmbryosSoFar = 0;
       for (let i = 0; i < requiredStraws; i++) {
         const item = strawItems[i];
         const embryosInThisStraw = item.embryoCount || 1;
         const color = item.color || 'Pink';
-        const seqNum = existingPatientStrawCount + i + 1;
+        const seqNum = i + 1;
 
         const customId = (item as any).strawCustomId?.trim();
         const strawIdCode = customId || `#${seqNum}`;

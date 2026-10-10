@@ -822,10 +822,16 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
 
   const handleOpenPicker = () => {
     if (hiddenDateRef.current) {
-      if (typeof hiddenDateRef.current.showPicker === 'function') {
-        hiddenDateRef.current.showPicker();
-      } else {
-        hiddenDateRef.current.click();
+      try {
+        if (typeof hiddenDateRef.current.showPicker === 'function') {
+          hiddenDateRef.current.showPicker();
+        } else {
+          hiddenDateRef.current.click();
+        }
+      } catch (err) {
+        try {
+          hiddenDateRef.current.click();
+        } catch (_) {}
       }
     }
   };
@@ -851,41 +857,43 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
           onChange={handleTextChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          placeholder={placeholder}
+          placeholder={placeholder || '__/__/____'}
           maxLength={10}
           required={required}
           className={
             inputClassName
               ? inputClassName
               : compact
-              ? 'w-full min-w-0 max-w-full h-8 box-border bg-slate-50 border border-slate-300 rounded-lg px-2 pr-7 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block'
-              : 'w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 pr-10 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block'
+              ? 'w-full min-w-0 max-w-full h-8 box-border bg-slate-50 border border-slate-300 rounded-lg px-2 pr-7 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block placeholder:text-slate-400 placeholder:font-mono placeholder:tracking-wider'
+              : 'w-full min-w-0 max-w-full h-11 box-border bg-slate-50 border border-slate-300 rounded-xl px-4 pr-10 text-sm text-slate-900 font-mono font-bold focus:outline-none focus:border-emerald-500 block placeholder:text-slate-400 placeholder:font-mono placeholder:tracking-wider'
           }
         />
-        <button
-          type="button"
+        <div
           onClick={handleOpenPicker}
-          className={`absolute text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-200/60 transition-colors ${
-            compact ? 'right-1 p-1' : 'right-2 p-1.5'
+          className={`absolute text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer flex items-center justify-center overflow-hidden z-10 ${
+            compact ? 'right-1 p-1 w-6 h-6' : 'right-2 p-1.5 w-7 h-7'
           }`}
           title="Pick date from calendar"
         >
-          <Calendar className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
-        </button>
-        <input
-          ref={hiddenDateRef}
-          type="date"
-          value={currentIso || ''}
-          onChange={(e) => {
-            const iso = e.target.value;
-            if (iso) {
-              const { formatted } = normalizeFlexibleDateToDDMMYYYY(iso);
-              setDisplayValue(formatted);
-              onChange(iso);
-            }
-          }}
-          className="sr-only pointer-events-none"
-        />
+          <Calendar className={compact ? 'w-3.5 h-3.5 pointer-events-none' : 'w-4 h-4 pointer-events-none'} />
+          <input
+            ref={hiddenDateRef}
+            type="date"
+            value={currentIso || ''}
+            onChange={(e) => {
+              const iso = e.target.value;
+              if (iso) {
+                const { formatted } = normalizeFlexibleDateToDDMMYYYY(iso);
+                setDisplayValue(formatted);
+                onChange(iso);
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            tabIndex={-1}
+            aria-label="Pick date from calendar"
+          />
+        </div>
       </div>
     </div>
   );
@@ -2968,6 +2976,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                   <DateInputDDMMYYYY
                     label="Date of Egg Retrieval"
                     value={aspirationDate}
+                    placeholder="DD/MM/YYYY"
                     onChange={(val) => {
                       setAspirationDate(val);
                       if (val && freezingDate) {
@@ -2980,6 +2989,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                     label="Date of Freezing"
                     required
                     value={freezingDate}
+                    placeholder="__/__/____"
                     onChange={(val) => {
                       setFreezingDate(val);
                       setStorageDate(val);
@@ -3053,11 +3063,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
                 <div className="grid grid-cols-1 gap-3">
                   {strawItems.map((item, idx) => {
-                    const existingOffset = selectedExistingPatient?.batches?.reduce(
-                      (acc: number, b: any) => acc + (b.straws ? b.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0),
-                      0
-                    ) || 0;
-                    const strawDisplayNum = existingOffset + idx + 1;
+                    const strawDisplayNum = idx + 1;
                     const badgeClass = getStrawColorBadgeClass(item.color);
                     return (
                       <div key={idx} className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
@@ -4115,11 +4121,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
                   <div className="space-y-2.5">
                     {strawItems.map((item, sIdx) => {
-                      const existingOffset = selectedExistingPatient?.batches?.reduce(
-                        (acc: number, b: any) => acc + (b.straws ? b.straws.filter((s: any) => s.status === 'OCCUPIED').length : 0),
-                        0
-                      ) || 0;
-                      const strawDisplayNum = existingOffset + sIdx + 1;
+                      const strawDisplayNum = sIdx + 1;
                       const badgeClass = getStrawColorBadgeClass(item.color);
                       const count = item.embryoCount || 1;
                       const stageSummary = getStrawStageSummary(item, specimenType);

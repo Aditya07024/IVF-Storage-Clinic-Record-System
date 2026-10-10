@@ -1373,8 +1373,11 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                           })
                         ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
-                          const cleanLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
-                          const displayLabel = cleanLabel.startsWith('#') ? cleanLabel : `Straw #${sIdx + 1}`;
+                          const cycleStrawNum = sIdx + 1;
+                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-');
+                          const displayLabel = isGenericOrSeqStrawId
+                            ? `#${cycleStrawNum}`
+                            : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
 
                           const eGrade = (straw.grade || '').trim().toUpperCase();

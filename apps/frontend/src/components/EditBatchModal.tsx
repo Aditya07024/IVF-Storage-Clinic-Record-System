@@ -34,18 +34,18 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({
 
   useEffect(() => {
     if (batch) {
-      setAspirationDate(
-        batch.aspirationDate
-          ? (typeof batch.aspirationDate === 'string' ? batch.aspirationDate.split('T')[0] : '')
-          : ''
-      );
-      setFreezingDate(
-        batch.freezingDate || batch.storageDate
-          ? (typeof (batch.freezingDate || batch.storageDate) === 'string'
-              ? (batch.freezingDate || batch.storageDate).split('T')[0]
-              : '')
-          : ''
-      );
+      const rawAsp = batch.aspirationDate || batch.straws?.[0]?.aspirationDate || '';
+      const parsedAsp = rawAsp
+        ? (typeof rawAsp === 'string' ? rawAsp.split('T')[0] : (rawAsp instanceof Date ? rawAsp.toISOString().split('T')[0] : ''))
+        : '';
+      setAspirationDate(parsedAsp);
+
+      const rawFrz = batch.freezingDate || batch.storageDate || batch.straws?.[0]?.freezingDate || batch.straws?.[0]?.storageDate || '';
+      const parsedFrz = rawFrz
+        ? (typeof rawFrz === 'string' ? rawFrz.split('T')[0] : (rawFrz instanceof Date ? rawFrz.toISOString().split('T')[0] : ''))
+        : new Date().toISOString().split('T')[0];
+      setFreezingDate(parsedFrz);
+
       setEmbryoStage(batch.embryoStage || '');
       setSpecimenType(batch.specimenType || 'EMBRYO');
       setCycleType(batch.cycleType || (batch.donorName || batch.donorRegNo ? 'DONOR_RECIPIENT' : 'SELF'));
@@ -70,32 +70,50 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({
     setSuccessMsg(null);
 
     try {
-      const res = await apiRequest(`/api/storage/batches/${batch.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          aspirationDate: aspirationDate || null,
-          freezingDate: freezingDate || null,
-          embryoStage: embryoStage || null,
-          specimenType,
-          cycleType,
-          donorName: donorName || null,
-          donorRegNo: donorRegNo || null,
-          donorAge: donorAge || null,
-          donorPhone: donorPhone || null,
-          vitrificationIndication: specimenType === 'OOCYTE' ? vitrificationIndication : null,
-          oocyteStage: specimenType === 'OOCYTE' ? oocyteStage : null,
-          notes: notes || null,
-        }),
-      });
+      const payload = {
+        aspirationDate: aspirationDate || null,
+        freezingDate: freezingDate || null,
+        embryoStage: embryoStage || null,
+        specimenType,
+        cycleType,
+        donorName: donorName || null,
+        donorRegNo: donorRegNo || null,
+        donorAge: donorAge || null,
+        donorPhone: donorPhone || null,
+        vitrificationIndication: specimenType === 'OOCYTE' ? vitrificationIndication : null,
+        notes: notes || null,
+      };
 
-      if (res.success) {
+      let res: any = null;
+      try {
+        res = await apiRequest(`/api/storage/batches/${batch.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+      } catch (err: any) {
+        // If /api/storage/batches/:id returns 404, fallback to /api/patients/:id
+        const patId = batch.patientId || batch.patient?.id;
+        if (err.message?.includes('404') && patId) {
+          res = await apiRequest(`/api/patients/${patId}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          });
+          if (res && res.success) {
+            res = { success: true, batch: { ...batch, ...payload } };
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      if (res && res.success) {
         setSuccessMsg('Cycle details updated successfully!');
         setTimeout(() => {
-          onSuccess(res.batch);
+          onSuccess(res.batch || { ...batch, ...payload });
           onClose();
         }, 600);
       } else {
-        setError(res.error || 'Failed to update cycle details');
+        setError(res?.error || 'Failed to update cycle details');
       }
     } catch (err: any) {
       console.error('Error updating cycle details:', err);
@@ -157,23 +175,23 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({
           {/* Primary Defining Date: Egg Pick Up Date */}
           <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl space-y-1.5">
             <DateInputDDMMYYYY
-              label="Egg Pick Up Date (Retrieval / Aspiration Date)"
+              label="Date of Egg Retrieval"
               value={aspirationDate}
               onChange={(isoVal) => setAspirationDate(isoVal)}
               placeholder="DD/MM/YYYY"
             />
             <p className="text-[10.5px] text-amber-900 font-medium">
-              Primary date defining this cycle entry in the clinic system.
+              Egg Pick Up / Aspiration Date defining this treatment cycle.
             </p>
           </div>
 
           {/* Freezing Date */}
           <div className="space-y-1.5">
             <DateInputDDMMYYYY
-              label="Freezing Date"
+              label="Date of Freezing"
               value={freezingDate}
               onChange={(isoVal) => setFreezingDate(isoVal)}
-              placeholder="DD/MM/YYYY"
+              placeholder="__/__/____"
               required
             />
           </div>
@@ -228,18 +246,6 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({
                     <option value="Onco fertility preservation">Onco fertility preservation</option>
                     <option value="Supernumerary donor egg freezing">Supernumerary donor egg freezing</option>
                     <option value="Elective / Other">Elective / Other</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-semibold text-slate-700">Oocyte Stage</label>
-                  <select
-                    value={oocyteStage}
-                    onChange={(e) => setOocyteStage(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-xl text-xs text-slate-900 font-bold"
-                  >
-                    <option value="MII">MII (Metaphase II - Mature)</option>
-                    <option value="MI">MI (Metaphase I)</option>
-                    <option value="GV">GV (Germinal Vesicle)</option>
                   </select>
                 </div>
               </div>

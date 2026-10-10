@@ -572,8 +572,11 @@ export class DocumentService {
 
             const strawBoxY = currentSectionY;
             const embryoCount = straw.embryoCount || (straw.embryos ? straw.embryos.length : 1);
-            const strawLabel = (straw.strawId || `#${sIdx + 1}`).replace(/^Straw\s*/i, '').split(' (')[0];
-            const displayLabel = strawLabel.startsWith('#') ? strawLabel : `#${sIdx + 1}`;
+            const cycleStrawNum = sIdx + 1;
+            const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-');
+            const displayLabel = isGenericOrSeqStrawId
+              ? `#${cycleStrawNum}`
+              : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);
 
             const strawColor = straw.color || 'Pink';
             let colorBg = '#fce7f3';

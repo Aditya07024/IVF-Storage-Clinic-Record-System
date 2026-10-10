@@ -196,9 +196,9 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
     return () => window.removeEventListener('edit-patient-details', handleEditPatientEvent);
   }, []);
 
-  const openEditStrawModal = (straw: any) => {
+  const openEditStrawModal = (straw: any, defaultDisplayLabel?: string) => {
     setEditingStraw(straw);
-    setEditStrawCustomId(straw.strawId || '');
+    setEditStrawCustomId(defaultDisplayLabel || straw.strawId || '');
     setEditStrawColor(straw.color || 'Pink');
 
     const isOocyte = isOocyteSpecimen(selectedPatient);
@@ -1348,12 +1348,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                   );
                 }
 
-                let runningStrawCount = 0;
-
                 return thawBatches.map((batch: any) => {
                   const batchStraws = batch.straws || [];
-                  const batchOffset = runningStrawCount;
-                  runningStrawCount += batchStraws.length;
 
                   return (
                     <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
@@ -1420,10 +1416,11 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             return cleanComment ? ` - (${cleanComment})` : '';
                           })();
 
-                          const globalStrawNum = batchOffset + origIdx + 1;
-                          const displayLabel = (straw.strawId && !straw.strawId.startsWith('STR-'))
-                            ? (straw.strawId.startsWith('#') ? `Straw ${straw.strawId}` : `Straw #${straw.strawId}`)
-                            : `Straw #${globalStrawNum}`;
+                          const cycleStrawNum = origIdx + 1;
+                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-');
+                          const displayLabel = isGenericOrSeqStrawId
+                            ? `Straw #${cycleStrawNum}`
+                            : (straw.strawId.startsWith('Straw') ? straw.strawId : `Straw ${straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`}`);
                           const isDonorEgg = isOocyte && (quickThawPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
                           const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
                           const countLabel = isOocyte
@@ -2104,16 +2101,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                   );
                 }
 
-                let runningStrawCount = 0;
-                let runningEmbryoCount = 0;
-
                 return allBatches.map((batch: any, index: number) => {
                   const allStraws = batch.straws || [];
-                  const batchStrawOffset = runningStrawCount;
-                  const batchEmbryoOffset = runningEmbryoCount;
-
-                  runningStrawCount += allStraws.length;
-                  runningEmbryoCount += allStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
 
                   const activeStraws = allStraws.filter((s: any) => s.status === 'OCCUPIED');
                   const isAllThawed = allStraws.length > 0 && activeStraws.length === 0;
@@ -2191,10 +2180,11 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           })
                         ).map(({ straw, origIdx }: { straw: any; origIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
-                          const globalStrawNum = batchStrawOffset + origIdx + 1;
-                          const displayLabel = (straw.strawId && !straw.strawId.startsWith('STR-'))
-                            ? (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`)
-                            : `#${globalStrawNum}`;
+                          const cycleStrawNum = origIdx + 1;
+                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-');
+                          const displayLabel = isGenericOrSeqStrawId
+                            ? `#${cycleStrawNum}`
+                            : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
                           const isOocyte = isOocyteSpecimen(selectedPatient);
 
@@ -2227,8 +2217,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           })();
                           const orderedStraws = sortStrawsDeterministically(allStraws);
                           const prevCount = orderedStraws.slice(0, origIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
-                          const startNum = batchEmbryoOffset + prevCount + 1;
-                          const endNum = batchEmbryoOffset + prevCount + embryoCount;
+                          const startNum = prevCount + 1;
+                          const endNum = prevCount + embryoCount;
                           const numRangeStr = embryoCount === 1 ? `#${startNum}` : `#${startNum}–#${endNum}`;
                           const isDonorEgg = isOocyte && (selectedPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
                           const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
@@ -2292,7 +2282,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        openEditStrawModal(straw);
+                                        openEditStrawModal(straw, displayLabel);
                                       }}
                                       className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-300 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs active:scale-95"
                                       title="Edit Straw Properties"
@@ -2988,6 +2978,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                   <DateInputDDMMYYYY
                     label="Date of Egg Retrieval"
                     value={editAspirationDate}
+                    placeholder="DD/MM/YYYY"
                     onChange={(val) => setEditAspirationDate(val)}
                   />
                 </div>
@@ -2996,6 +2987,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                   <DateInputDDMMYYYY
                     label="Date of Freezing"
                     value={editFreezingDate}
+                    placeholder="__/__/____"
                     onChange={(val) => setEditFreezingDate(val)}
                   />
                 </div>
