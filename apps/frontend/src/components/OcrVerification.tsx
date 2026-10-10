@@ -2045,7 +2045,6 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                           className="w-3.5 h-3.5 accent-amber-600 rounded cursor-pointer"
                                           title="Tick box to thaw this specific straw"
                                         />
-                                        <span>Thaw</span>
                                       </label>
                                       {(st.isThawing || st.thawDate) && (
                                         <div className="w-44 sm:w-48 shrink-0">
