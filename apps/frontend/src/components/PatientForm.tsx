@@ -344,13 +344,59 @@ export function cleanDuplicateGradeString(rawGradeStr?: string): string {
   return parts.join(', ');
 }
 
+export function extractStrawSequenceNumber(straw: any): number {
+  if (!straw) return 999999;
+  const rawId = String(straw.strawId || straw.customId || straw.id || '');
+  const match = rawId.match(/\d+/);
+  if (match) {
+    return parseInt(match[0], 10);
+  }
+  return 999999;
+}
+
+export function sortStrawsDeterministically(straws: any[]): any[] {
+  if (!straws || !Array.isArray(straws)) return [];
+  return [...straws].sort((a: any, b: any) => {
+    // 1. Natural numeric sequence from strawId (#1, #2, #3, ...)
+    const numA = extractStrawSequenceNumber(a);
+    const numB = extractStrawSequenceNumber(b);
+    if (numA !== numB) {
+      return numA - numB;
+    }
+
+    // 2. Straw ID string comparison (case-insensitive / alphanumeric)
+    const idStrA = String(a.strawId || '');
+    const idStrB = String(b.strawId || '');
+    if (idStrA !== idStrB) {
+      return idStrA.localeCompare(idStrB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+
+    // 3. createdAt timestamp ascending
+    const timeA = new Date(a.createdAt || 0).getTime();
+    const timeB = new Date(b.createdAt || 0).getTime();
+    if (timeA !== timeB) {
+      return timeA - timeB;
+    }
+
+    // 4. Stable tie-breaker with primary key id
+    return String(a.id || '').localeCompare(String(b.id || ''));
+  });
+}
+
 export function groupBatchesByFreezingDate(rawBatches?: any[], patientAspDate?: string): any[] {
   if (!rawBatches || !Array.isArray(rawBatches) || rawBatches.length === 0) return [];
 
+  // Sort raw batches by aspirationDate or freezingDate ascending
+  const sortedRaw = [...rawBatches].sort((a, b) => {
+    const timeA = new Date(a.aspirationDate || a.freezingDate || a.storageDate || a.createdAt || 0).getTime();
+    const timeB = new Date(b.aspirationDate || b.freezingDate || b.storageDate || b.createdAt || 0).getTime();
+    return timeA - timeB;
+  });
+
   const displayBatches: any[] = [];
 
-  rawBatches.forEach((batch: any) => {
-    const allStraws = batch.straws || [];
+  sortedRaw.forEach((batch: any) => {
+    const allStraws = sortStrawsDeterministically(batch.straws || []);
     if (allStraws.length === 0) {
       displayBatches.push(batch);
       return;
@@ -368,29 +414,39 @@ export function groupBatchesByFreezingDate(rawBatches?: any[], patientAspDate?: 
       mapByDate.get(key)!.push(st);
     });
 
+    const isOocyte = batch.specimenType === 'OOCYTE' || isOocyteSpecimen(null, batch.specimenType);
+
     if (mapByDate.size <= 1) {
-      displayBatches.push(batch);
+      displayBatches.push({
+        ...batch,
+        straws: allStraws,
+        embryoStage: isOocyte ? null : batch.embryoStage,
+      });
     } else {
       let subIdx = 1;
       mapByDate.forEach((strawsGroup, dateKey) => {
         const actualFreezingDate = dateKey === '__default__' ? (batch.freezingDate || batch.storageDate) : dateKey;
         const aspDate = batch.aspirationDate || patientAspDate;
-        const computedStage = aspDate && actualFreezingDate
-          ? calculateEmbryoStage(aspDate, actualFreezingDate)
-          : batch.embryoStage;
+        const computedStage = isOocyte
+          ? null
+          : (aspDate && actualFreezingDate ? calculateEmbryoStage(aspDate, actualFreezingDate) : batch.embryoStage);
 
         displayBatches.push({
           ...batch,
           id: `${batch.id}-sub-${subIdx++}`,
           freezingDate: actualFreezingDate,
           embryoStage: computedStage,
-          straws: strawsGroup,
+          straws: sortStrawsDeterministically(strawsGroup),
         });
       });
     }
   });
 
-  return displayBatches;
+  return displayBatches.sort((a, b) => {
+    const timeA = new Date(a.aspirationDate || a.freezingDate || a.storageDate || a.createdAt || 0).getTime();
+    const timeB = new Date(b.aspirationDate || b.freezingDate || b.storageDate || b.createdAt || 0).getTime();
+    return timeA - timeB;
+  });
 }
 
 export function getBatchSummaryText(strawItems: any[], specimenType?: string, cycleType?: string, vitrificationIndication?: string): string {

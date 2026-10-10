@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatPhoneNumber, getImageUrl } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, getSortedFreezingDates } from './PatientForm';
+import { getStrawColorBadgeClass, getSortedFreezingDates, sortStrawsDeterministically } from './PatientForm';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
 function parseLocationCode(code: string) {
@@ -1058,12 +1058,6 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                         {viewingPatientModal.vitrificationIndication}
                       </span>
                     )}
-
-                    {viewingPatientModal.oocyteStage && (
-                      <span className="text-indigo-950 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300 w-fit">
-                        Oocyte Stage: {viewingPatientModal.oocyteStage}
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
@@ -1369,7 +1363,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                         <div className="text-xs font-bold text-slate-800">
                           Embryo Details ({allStraws.length} Straw(s) - {allStraws.reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0)} Embryo(s))
                         </div>
-                        {([...allStraws]
+                        {(sortStrawsDeterministically(allStraws)
                           .map((straw: any, sIdx: number) => ({ straw, sIdx }))
                           .sort((a, b) => {
                             const aThawed = a.straw.status !== 'OCCUPIED';

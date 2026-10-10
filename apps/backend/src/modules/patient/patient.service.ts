@@ -477,11 +477,14 @@ export class PatientService {
     const includeQuery = {
       notes: { orderBy: { createdAt: 'desc' as const } },
       batches: {
-        orderBy: { createdAt: 'asc' as const },
+        orderBy: [{ storageDate: 'asc' as const }, { createdAt: 'asc' as const }],
         include: {
           straws: {
-            orderBy: { createdAt: 'asc' as const },
-            include: { embryos: true, visoTube: true },
+            orderBy: [{ createdAt: 'asc' as const }, { strawId: 'asc' as const }, { id: 'asc' as const }],
+            include: {
+              embryos: { orderBy: { embryoNumber: 'asc' as const } },
+              visoTube: true,
+            },
           },
         },
       },
@@ -489,7 +492,10 @@ export class PatientService {
         orderBy: { thawDate: 'desc' as const },
         include: {
           straw: {
-            include: { embryos: true, visoTube: true },
+            include: {
+              embryos: { orderBy: { embryoNumber: 'asc' as const } },
+              visoTube: true,
+            },
           },
         },
       },
@@ -634,6 +640,7 @@ export class PatientService {
               embryoStage: true,
               oocyteStage: true,
               straws: {
+                orderBy: [{ createdAt: 'asc' }, { strawId: 'asc' }, { id: 'asc' }],
                 select: {
                   id: true,
                   strawId: true,

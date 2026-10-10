@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, getSortedRetrievalDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, getSortedRetrievalDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys, sortStrawsDeterministically, extractStrawSequenceNumber } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { EditBatchModal } from './EditBatchModal';
@@ -74,7 +74,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
       .then((res) => {
         if (res.success && res.user) setCurrentUser(res.user);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
             setSelectedPatient(res.patient);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [initialSelectedPatientId]);
 
@@ -476,6 +476,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
     setEditPartnerAge(patient.partnerAge || calculateAgeFromDob(patient.partnerDob));
     setEditPartnerPhone(patient.partnerPhone || '');
     setEditPartnerEmail(patient.partnerEmail || '');
+    const initialCycleType = (patient.cycleType === 'DONOR_RECIPIENT' || patient.donorName || patient.donorRegNo) ? 'DONOR_RECIPIENT' : 'SELF';
+    setEditCycleType(initialCycleType);
     setEditDonorName(patient.donorName || '');
     setEditDonorRegNo(patient.donorRegNo || '');
     setEditDonorAge(patient.donorAge || '');
@@ -511,10 +513,11 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
         partnerAge: editPartnerAge.trim() || calculateAgeFromDob(editPartnerDob),
         partnerPhone: editPartnerPhone.trim(),
         partnerEmail: editPartnerEmail.trim(),
-        donorName: editDonorName.trim(),
-        donorRegNo: editDonorRegNo.trim(),
-        donorAge: editDonorAge.trim(),
-        donorPhone: editDonorPhone.trim(),
+        cycleType: editCycleType,
+        donorName: editCycleType === 'DONOR_RECIPIENT' ? editDonorName.trim() : '',
+        donorRegNo: editCycleType === 'DONOR_RECIPIENT' ? editDonorRegNo.trim() : '',
+        donorAge: editCycleType === 'DONOR_RECIPIENT' ? editDonorAge.trim() : '',
+        donorPhone: editCycleType === 'DONOR_RECIPIENT' ? editDonorPhone.trim() : '',
         doctorName: editDoctorName.trim(),
         comments: editComments.trim(),
         aspirationDate: editAspirationDate ? editAspirationDate : null,
@@ -943,9 +946,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                     <tr
                       key={p.id}
                       onClick={() => handleSelectPatient(p.id)}
-                      className={`hover:bg-emerald-50/40 cursor-pointer transition-colors relative group ${
-                        isOpeningDetail ? 'bg-emerald-50/80' : ''
-                      }`}
+                      className={`hover:bg-emerald-50/40 cursor-pointer transition-colors relative group ${isOpeningDetail ? 'bg-emerald-50/80' : ''
+                        }`}
                     >
                       <td className="px-4 py-3.5 font-mono font-bold text-emerald-700 whitespace-nowrap">
                         <div className="flex items-center gap-2">
@@ -1015,7 +1017,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                         {(() => {
                           const allBatches = p.batches || [];
                           const allStraws: any[] = [];
-                          
+
                           allBatches.forEach((batch: any) => {
                             (batch.straws || []).forEach((s: any) => {
                               const pIsOocyte = isOocyteSpecimen(p);
@@ -1113,8 +1115,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             const specimenLabel = isOocyte
                               ? (totalEmbryos === 1 ? 'Oocyte' : 'Oocytes')
                               : p.specimenType === 'SPERM'
-                              ? 'Sperm'
-                              : (totalEmbryos === 1 ? 'Embryo' : 'Embryos');
+                                ? 'Sperm'
+                                : (totalEmbryos === 1 ? 'Embryo' : 'Embryos');
 
                             const specimenIcon = isOocyte ? '🥚' : p.specimenType === 'SPERM' ? '🧪' : '🧬';
 
@@ -1361,10 +1363,11 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                         </span>
                         {(() => {
                           const isOocyte = batch.specimenType === 'OOCYTE' || isOocyteSpecimen(quickThawPatient);
+                          if (isOocyte) return null; // Do not show stage badge for oocytes
                           const aspDate = batch.aspirationDate || quickThawPatient?.aspirationDate || quickThawPatient?.visitDate;
                           const frzDate = batch.freezingDate || batch.storageDate;
                           const calculatedStage = (aspDate && frzDate) ? calculateEmbryoStage(aspDate, frzDate) : '';
-                          const stageVal = isOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || calculatedStage);
+                          const stageVal = batch.embryoStage || calculatedStage;
                           if (!stageVal) return null;
                           return (
                             <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded border border-blue-300 font-mono font-bold text-[11px]">
@@ -1375,8 +1378,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                       </div>
 
                       <div className="grid grid-cols-1 gap-2.5">
-                        {([...batchStraws]
-                          .sort((a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
+                        {(sortStrawsDeterministically(batchStraws)
                           .map((straw: any, origIdx: number) => ({ straw, origIdx }))
                           .sort((a, b) => {
                             const aThawed = a.straw.status === 'THAWED' || a.straw.status === 'VACANT';
@@ -1428,74 +1430,73 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             ? `${embryoCount} ${eggTypeName}`
                             : (embryoCount === 1 ? `1 embryo` : `${embryoCount} embryos`);
 
-                        const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
+                          const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
 
-                        const formattedGradeDisplay = cleanDuplicateGradeString((() => {
-                          if (straw.embryos && straw.embryos.length > 0) {
-                            return straw.embryos
-                              .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                              .map((emb: any) => (emb.grade || eGrade || (isOocyte ? 'MII' : 'N/A')).trim().toUpperCase())
-                              .join(', ');
-                          }
-                          return eGrade || gradeStr || (isOocyte ? (quickThawPatient.oocyteStage || 'MII') : 'N/A');
-                        })());
+                          const formattedGradeDisplay = cleanDuplicateGradeString((() => {
+                            if (straw.embryos && straw.embryos.length > 0) {
+                              return straw.embryos
+                                .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
+                                .map((emb: any) => (emb.grade || eGrade || (isOocyte ? 'MII' : 'N/A')).trim().toUpperCase())
+                                .join(', ');
+                            }
+                            return eGrade || gradeStr || (isOocyte ? (quickThawPatient.oocyteStage || 'MII') : 'N/A');
+                          })());
 
-                        return (
-                          <div
-                            key={straw.id}
-                            onClick={() => !isThawed && toggleStrawSelection(straw.id)}
-                            className={`p-3.5 rounded-2xl border transition-all duration-300 ${
-                              isThawed
-                                ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale filter blur-[0.4px] select-none cursor-not-allowed hover:opacity-100 hover:grayscale-0 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
-                                : isSelected
-                                ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500/40 cursor-pointer shadow-md'
-                                : 'bg-white border-slate-200 hover:border-rose-300 cursor-pointer shadow-2xs'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between text-xs font-bold flex-wrap gap-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  disabled={isThawed}
-                                  onChange={() => {}}
-                                  className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
-                                />
-                                <span className={`font-mono px-2.5 py-0.5 rounded-lg text-xs font-bold ${isThawed ? 'bg-slate-700 text-slate-300 line-through group-hover/thawed:no-underline group-hover/thawed:bg-slate-900 group-hover/thawed:text-white' : 'bg-slate-900 text-white'}`}>
-                                  {displayLabel}
-                                </span>
-                                <span className={`bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200 text-xs font-mono font-bold ${isThawed ? 'line-through text-slate-500 group-hover/thawed:no-underline group-hover/thawed:text-slate-800' : ''}`}>
-                                  ({countLabel}{stageSummary ? ` • ${stageSummary}` : ''})
-                                </span>
+                          return (
+                            <div
+                              key={straw.id}
+                              onClick={() => !isThawed && toggleStrawSelection(straw.id)}
+                              className={`p-3.5 rounded-2xl border transition-all duration-300 ${isThawed
+                                  ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale filter blur-[0.4px] select-none cursor-not-allowed hover:opacity-100 hover:grayscale-0 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
+                                  : isSelected
+                                    ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500/40 cursor-pointer shadow-md'
+                                    : 'bg-white border-slate-200 hover:border-rose-300 cursor-pointer shadow-2xs'
+                                }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold flex-wrap gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    disabled={isThawed}
+                                    onChange={() => { }}
+                                    className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
+                                  />
+                                  <span className={`font-mono px-2.5 py-0.5 rounded-lg text-xs font-bold ${isThawed ? 'bg-slate-700 text-slate-300 line-through group-hover/thawed:no-underline group-hover/thawed:bg-slate-900 group-hover/thawed:text-white' : 'bg-slate-900 text-white'}`}>
+                                    {displayLabel}
+                                  </span>
+                                  <span className={`bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md border border-slate-200 text-xs font-mono font-bold ${isThawed ? 'line-through text-slate-500 group-hover/thawed:no-underline group-hover/thawed:text-slate-800' : ''}`}>
+                                    ({countLabel}{stageSummary ? ` • ${stageSummary}` : ''})
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${isThawed ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>
+                                    {straw.color || 'Pink'}
+                                  </span>
+                                  <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold border ${isThawed ? 'bg-rose-100 text-rose-950 border-rose-300 font-extrabold' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
+                                    {isThawed ? 'THAWED' : 'OCCUPIED'}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${isThawed ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>
-                                  {straw.color || 'Pink'}
-                                </span>
-                                <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold border ${isThawed ? 'bg-rose-100 text-rose-950 border-rose-300 font-extrabold' : 'bg-emerald-100 text-emerald-950 border-emerald-300'}`}>
-                                  {isThawed ? 'THAWED' : 'OCCUPIED'}
-                                </span>
-                              </div>
-                            </div>
 
-                            {/* Detailed Embryo Grade & Notes */}
-                            <div className="mt-2.5 flex items-center gap-2 text-xs flex-wrap font-mono font-bold">
-                              <span className="bg-amber-100/90 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
-                                {isOocyte ? 'Stage' : 'Grade'}: {formattedGradeDisplay}{fragStr}{commentStr}
-                              </span>
-                              {straw.isPgt && !isOocyte && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
-                                  PGT TESTED
+                              {/* Detailed Embryo Grade & Notes */}
+                              <div className="mt-2.5 flex items-center gap-2 text-xs flex-wrap font-mono font-bold">
+                                <span className="bg-amber-100/90 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
+                                  {isOocyte ? 'Stage' : 'Grade'}: {formattedGradeDisplay}{fragStr}{commentStr}
                                 </span>
+                                {straw.isPgt && !isOocyte && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
+                                    PGT TESTED
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Storage Location Guide */}
+                              {locCode && (
+                                <div className="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600 flex items-center justify-between font-mono">
+                                  <span>📍 Location: <strong className="text-slate-900">{parseVisoTubeLocation(locCode)}</strong></span>
+                                </div>
                               )}
-                            </div>
-
-                            {/* Storage Location Guide */}
-                            {locCode && (
-                              <div className="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600 flex items-center justify-between font-mono">
-                                <span>📍 Location: <strong className="text-slate-900">{parseVisoTubeLocation(locCode)}</strong></span>
-                              </div>
-                            )}
                             </div>
                           );
                         })}
@@ -1546,468 +1547,6 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
           </div>
         </div>
       )}
-
-      {/* Edit Patient Details Modal */}
-      {editingPatient && (
-        <div className="fixed inset-0 z-[2000] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-          <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl text-slate-900 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden min-w-0">
-            {/* FIXED HEADER */}
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 shrink-0">
-                  <Edit3 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Edit Patient Medical Records</h2>
-                  <p className="text-xs text-slate-500 font-mono font-bold">
-                    Editing Record ID: {editingPatient.patientId}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditingPatient(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* SCROLLABLE MIDDLE BODY */}
-            <form onSubmit={handleSavePatientEdit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 min-w-0">
-              {editError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                  <span>{editError}</span>
-                </div>
-              )}
-
-              {editSuccessMsg && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
-                  <Check className="w-4 h-4 shrink-0 text-emerald-600" />
-                  <span>{editSuccessMsg}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Registration ID (Unique Key) <span className="text-rose-600 font-bold">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editPatientId}
-                    onChange={(e) => setEditPatientId(e.target.value)}
-                    required
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                {/* DUAL PHOTO UPLOADER IN EDIT MODAL */}
-                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 shadow-2xs">
-                  {/* Wife Photo */}
-                  <div className="p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-3 shadow-2xs">
-                    <div
-                      className="relative shrink-0 cursor-pointer group"
-                      onClick={() => {
-                        if (editingPatient?.photoUrl) {
-                          handleEditExistingPhotoCrop(editingPatient.id, editingPatient.photoUrl, 'patient');
-                        } else {
-                          document.getElementById('edit-patient-photo-input')?.click();
-                        }
-                      }}
-                      title="Click/Tap to Crop, Rotate, or Upload Wife Photo"
-                    >
-                      {editingPatient?.photoUrl ? (
-                        <div className="relative">
-                          <img
-                            src={getImageUrl(editingPatient.photoUrl)}
-                            alt="Wife Profile"
-                            className="w-14 h-14 rounded-xl border-2 border-emerald-500 object-cover shadow-md transition-transform active:scale-95"
-                          />
-                          <div className="absolute inset-0 bg-slate-950/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Camera className="w-4 h-4 text-white" />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-14 h-14 rounded-xl bg-slate-50 border-2 border-dashed border-emerald-300 flex flex-col items-center justify-center text-center p-1 text-emerald-700 font-bold text-xs hover:bg-emerald-100/50 transition-all active:scale-95 shadow-2xs">
-                          <Camera className="w-5 h-5 text-emerald-600 shrink-0" />
-                          <span className="text-[9px] text-emerald-800 font-semibold text-center leading-tight mt-0.5 w-full block truncate">Wife Photo</span>
-                        </div>
-                      )}
-
-                      <input
-                        id="edit-patient-photo-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file && editingPatient) {
-                            setCropModalFile({ patientId: editingPatient.id, file, target: 'patient' });
-                          }
-                          e.target.value = '';
-                        }}
-                      />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-slate-800 text-xs flex items-center gap-1">
-                        <Camera className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>Wife Photo</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                        {editingPatient?.photoUrl ? 'Tap to edit/crop photo' : 'Upload Wife picture'}
-                      </p>
-                      {editingPatient?.photoUrl && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePhoto(editingPatient.id, 'patient')}
-                          className="mt-1.5 px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded border border-rose-200 flex items-center gap-1 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3 text-rose-600" />
-                          <span>Delete Photo</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Husband Photo */}
-                  <div className="p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-3 shadow-2xs">
-                    <div
-                      className="relative shrink-0 cursor-pointer group"
-                      onClick={() => {
-                        if (editingPatient?.partnerPhotoUrl) {
-                          handleEditExistingPhotoCrop(editingPatient.id, editingPatient.partnerPhotoUrl, 'partner');
-                        } else {
-                          document.getElementById('edit-partner-photo-input')?.click();
-                        }
-                      }}
-                      title="Click/Tap to Crop, Rotate, or Upload Husband Photo"
-                    >
-                      {editingPatient?.partnerPhotoUrl ? (
-                        <div className="relative">
-                          <img
-                            src={getImageUrl(editingPatient.partnerPhotoUrl)}
-                            alt="Husband Profile"
-                            className="w-14 h-14 rounded-xl border-2 border-blue-500 object-cover shadow-md transition-transform active:scale-95"
-                          />
-                          <div className="absolute inset-0 bg-slate-950/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Camera className="w-4 h-4 text-white" />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-14 h-14 rounded-xl bg-slate-50 border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-center p-1 text-blue-700 font-bold text-xs hover:bg-blue-100/50 transition-all active:scale-95 shadow-2xs">
-                          <Camera className="w-5 h-5 text-blue-600 shrink-0" />
-                          <span className="text-[9px] text-blue-800 font-semibold text-center leading-tight mt-0.5 w-full block truncate">Husband Photo</span>
-                        </div>
-                      )}
-
-                      <input
-                        id="edit-partner-photo-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file && editingPatient) {
-                            setCropModalFile({ patientId: editingPatient.id, file, target: 'partner' });
-                          }
-                          e.target.value = '';
-                        }}
-                      />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-slate-800 text-xs flex items-center gap-1">
-                        <Camera className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span>Husband Photo</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                        {editingPatient?.partnerPhotoUrl ? 'Tap to edit/crop photo' : 'Upload Husband picture'}
-                      </p>
-                      {editingPatient?.partnerPhotoUrl && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePhoto(editingPatient.id, 'partner')}
-                          className="mt-1.5 px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded border border-rose-200 flex items-center gap-1 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3 text-rose-600" />
-                          <span>Delete Photo</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Patient Full Name <span className="text-rose-600 font-bold">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editFullName}
-                    onChange={(e) => setEditFullName(capitalizeWords(e.target.value))}
-                    required
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <DateInputDDMMYYYY
-                    label="Patient Date of Birth (DOB)"
-                    value={editDob}
-                    onChange={(val) => {
-                      setEditDob(val);
-                      if (val) {
-                        setEditPatientAge(calculateAgeFromDob(val));
-                      }
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Patient Age
-                  </label>
-                  <input
-                    type="text"
-                    value={editPatientAge}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setEditPatientAge(val);
-                      const estimatedDob = calculateDobFromAge(val, editDob);
-                      if (estimatedDob) setEditDob(estimatedDob);
-                    }}
-                    placeholder="e.g. 36 Yrs"
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Patient Mobile Phone
-                  </label>
-                  <input
-                    type="text"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Patient Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Partner Name
-                  </label>
-                  <input
-                    type="text"
-                    value={editPartnerName}
-                    onChange={(e) => setEditPartnerName(capitalizeWords(e.target.value))}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <DateInputDDMMYYYY
-                    label="Partner Date of Birth (DOB)"
-                    value={editPartnerDob}
-                    onChange={(val) => {
-                      setEditPartnerDob(val);
-                      if (val) {
-                        setEditPartnerAge(calculateAgeFromDob(val));
-                      }
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Partner Age
-                  </label>
-                  <input
-                    type="text"
-                    value={editPartnerAge}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setEditPartnerAge(val);
-                      const estimatedDob = calculateDobFromAge(val, editPartnerDob);
-                      if (estimatedDob) setEditPartnerDob(estimatedDob);
-                    }}
-                    placeholder="e.g. 36 Yrs"
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Partner Mobile Phone
-                  </label>
-                  <input
-                    type="text"
-                    value={editPartnerPhone}
-                    onChange={(e) => setEditPartnerPhone(e.target.value)}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Partner Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={editPartnerEmail}
-                    onChange={(e) => setEditPartnerEmail(e.target.value)}
-                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                {/* Egg / Oocyte Donor Profile (D-R Cycle) */}
-                {editCycleType === 'DONOR_RECIPIENT' && (
-                  <div className="sm:col-span-2 p-3.5 bg-amber-50/90 rounded-2xl border border-amber-300/80 space-y-3">
-                    <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
-                      <span className="text-xs font-extrabold text-amber-950 flex items-center gap-1.5 uppercase tracking-wider">
-                        <UserCheck className="w-4 h-4 text-amber-600" />
-                        <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
-                      </span>
-                      <span className="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full border border-amber-400/60">
-                        Donor Details
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
-                          Donor Reg No.
-                        </label>
-                        <input
-                          type="text"
-                          value={editDonorRegNo}
-                          onChange={(e) => setEditDonorRegNo(e.target.value)}
-                          placeholder="e.g. DON-2026-8901"
-                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
-                          Donor Name
-                        </label>
-                        <input
-                          type="text"
-                          value={editDonorName}
-                          onChange={(e) => setEditDonorName(capitalizeWords(e.target.value))}
-                          placeholder="e.g. Anjali"
-                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
-                          Donor Age
-                        </label>
-                        <input
-                          type="text"
-                          value={editDonorAge}
-                          onChange={(e) => setEditDonorAge(e.target.value)}
-                          placeholder="e.g. 32y"
-                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
-                          Donor Mobile Phone
-                        </label>
-                        <input
-                          type="text"
-                          value={editDonorPhone}
-                          onChange={(e) => setEditDonorPhone(e.target.value)}
-                          placeholder="e.g. +91 98765 43210"
-                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="sm:col-span-2">
-                  <DoctorSelect
-                    label="Doctor Name / Attending Physician"
-                    value={editDoctorName}
-                    onChange={(val) => setEditDoctorName(val)}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <DateInputDDMMYYYY
-                    label="Date of Egg Retrieval"
-                    value={editAspirationDate}
-                    onChange={(val) => setEditAspirationDate(val)}
-                  />
-                </div>
-
-                <div>
-                  <DateInputDDMMYYYY
-                    label="Date of Freezing"
-                    value={editFreezingDate}
-                    onChange={(val) => setEditFreezingDate(val)}
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Clinical Comments & Doctor Remarks
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={editComments}
-                    onChange={(e) => setEditComments(e.target.value)}
-                    placeholder="Enter any additional clinical notes or comments..."
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-amber-500 font-medium"
-                  />
-                </div>
-              </div>
-
-              {/* FIXED FOOTER BUTTONS */}
-              <div className="sticky bottom-0 bg-white pt-3 pb-1 border-t border-slate-100 flex items-center justify-between z-10 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setEditingPatient(null)}
-                  className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={savingEdit}
-                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
-                >
-                  {savingEdit ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Save Changes</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Detail Drawer Modal */}
       {selectedPatient && (
         <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[100] bg-slate-950/50 backdrop-blur-xs sm:backdrop-blur-sm flex justify-end overflow-hidden !m-0 !mt-0 !my-0 p-0 [margin-top:0!important]">
@@ -2138,26 +1677,6 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                     {isOocyteSpecimen(selectedPatient) && selectedPatient.vitrificationIndication && (
                       <span className="text-teal-950 bg-teal-100 px-2.5 py-0.5 rounded-lg border border-teal-300 w-fit">
                         {selectedPatient.vitrificationIndication}
-                      </span>
-                    )}
-
-                    {isOocyteSpecimen(selectedPatient) && (
-                      <span className="text-indigo-950 bg-indigo-100 px-2.5 py-0.5 rounded-lg border border-indigo-300 w-fit">
-                        Oocyte Stage: {(() => {
-                          const allEmbryos = selectedPatient.batches?.flatMap((b: any) => b.straws?.flatMap((s: any) => s.embryos || []) || []) || [];
-                          if (allEmbryos.length > 0) {
-                            const sortedStages = allEmbryos
-                              .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                              .map((emb: any) => (emb.grade || 'MII').trim().toUpperCase())
-                              .filter(Boolean);
-                            const uniqueStages: string[] = [];
-                            sortedStages.forEach((stg: string) => {
-                              if (!uniqueStages.includes(stg)) uniqueStages.push(stg);
-                            });
-                            if (uniqueStages.length > 0) return uniqueStages.join(', ');
-                          }
-                          return selectedPatient.oocyteStage || 'MII';
-                        })()}
                       </span>
                     )}
                   </div>
@@ -2624,10 +2143,11 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           </span>
                           {(() => {
                             const isOocyte = batch.specimenType === 'OOCYTE' || isOocyteSpecimen(selectedPatient);
+                            if (isOocyte) return null; // Do not show stage badge for oocyte / egg specimens as requested
                             const aspDate = batch.aspirationDate || selectedPatient?.aspirationDate || selectedPatient?.visitDate;
                             const frzDate = batch.freezingDate || batch.storageDate;
                             const calculatedStage = (aspDate && frzDate) ? calculateEmbryoStage(aspDate, frzDate) : '';
-                            const stageVal = isOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || calculatedStage);
+                            const stageVal = batch.embryoStage || calculatedStage;
                             if (!stageVal) return null;
                             return (
                               <span className="bg-slate-200 text-slate-900 px-2 py-0.5 rounded border border-slate-300 font-bold">
@@ -2661,8 +2181,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             {getBatchSummaryText(allStraws, selectedPatient.specimenType, selectedPatient.cycleType, selectedPatient.vitrificationIndication)}
                           </span>
                         </div>
-                        {([...allStraws]
-                          .sort((a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
+                        {(sortStrawsDeterministically(allStraws)
                           .map((straw: any, origIdx: number) => ({ straw, origIdx }))
                           .sort((a, b) => {
                             const aThawed = a.straw.status !== 'OCCUPIED';
@@ -2706,7 +2225,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             const cleanComment = eComment.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').replace(/^[,\s]+|[,\s]+$/g, '').trim();
                             return (cleanComment && cleanComment !== ',' && cleanComment !== 'N/A') ? ` - (${cleanComment})` : '';
                           })();
-                          const orderedStraws = [...allStraws].sort((a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+                          const orderedStraws = sortStrawsDeterministically(allStraws);
                           const prevCount = orderedStraws.slice(0, origIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
                           const startNum = batchEmbryoOffset + prevCount + 1;
                           const endNum = batchEmbryoOffset + prevCount + embryoCount;
@@ -2723,11 +2242,10 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           return (
                             <div
                               key={straw.id}
-                              className={`text-xs p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-2 transition-all duration-300 cursor-pointer ${
-                                isOccupied
+                              className={`text-xs p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-2 transition-all duration-300 cursor-pointer ${isOccupied
                                   ? 'bg-white border-slate-200 shadow-2xs'
                                   : 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
-                              }`}
+                                }`}
                             >
                               <div className="font-mono font-bold text-slate-800 flex items-center gap-2 flex-wrap">
                                 <span className={`px-2.5 py-0.5 rounded-lg text-white font-bold text-xs ${isOccupied ? 'bg-slate-900' : 'bg-slate-700 line-through group-hover/thawed:no-underline group-hover/thawed:bg-slate-900 group-hover/thawed:text-white'}`}>
@@ -2799,11 +2317,10 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                       {(() => {
                         const locCode = allStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
                         return (
-                          <div className={`text-xs p-3 rounded-xl border space-y-0.5 transition-all duration-300 ${
-                            isAllThawed
+                          <div className={`text-xs p-3 rounded-xl border space-y-0.5 transition-all duration-300 ${isAllThawed
                               ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md cursor-pointer'
                               : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
-                          }`}>
+                            }`}>
                             <div className="text-[10px] text-slate-500 font-semibold uppercase">
                               Physical Location Guide: {isAllThawed ? '(Capacity Liberated / Thawed)' : ''}
                             </div>
@@ -2935,15 +2452,14 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                                 {formatTimestampDDMMYYYY(log.createdAt)}
                               </td>
                               <td className="py-2.5 px-3">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  log.action === 'EMBRYO_THAWED'
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${log.action === 'EMBRYO_THAWED'
                                     ? 'bg-rose-100 text-rose-900 border-rose-300'
                                     : log.action === 'EMBRYO_STORAGE_ALLOCATED' || log.action === 'STORAGE_ALLOCATED'
-                                    ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
-                                    : log.action === 'OCR_VERIFIED'
-                                    ? 'bg-teal-100 text-teal-900 border-teal-300'
-                                    : 'bg-slate-200 text-slate-900 border-slate-300'
-                                }`}>
+                                      ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                                      : log.action === 'OCR_VERIFIED'
+                                        ? 'bg-teal-100 text-teal-900 border-teal-300'
+                                        : 'bg-slate-200 text-slate-900 border-slate-300'
+                                  }`}>
                                   {log.action}
                                 </span>
                               </td>
@@ -3028,7 +2544,502 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
               </div>
             )} */}
 
-           
+
+          </div>
+        </div>
+      )}
+
+      {/* Edit Patient Details Modal - Positioned OVER Patient Details Drawer with High Stacking Index */}
+      {editingPatient && (
+        <div
+          className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-hidden"
+          style={{ zIndex: 9999 }}
+        >
+          <div className="w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl text-slate-900 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden min-w-0">
+            {/* FIXED HEADER */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 shrink-0">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Edit Patient Medical Records</h2>
+                  <p className="text-xs text-slate-500 font-mono font-bold">
+                    Editing Record ID: {editingPatient.patientId}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingPatient(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* SCROLLABLE MIDDLE BODY */}
+            <form onSubmit={handleSavePatientEdit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 min-w-0">
+              {editError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              {editSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
+                  <Check className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <span>{editSuccessMsg}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Registration ID (Unique Key) <span className="text-rose-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientId}
+                    onChange={(e) => setEditPatientId(e.target.value)}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* DUAL PHOTO UPLOADER IN EDIT MODAL */}
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 shadow-2xs">
+                  {/* Wife Photo */}
+                  <div className="p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-3 shadow-2xs">
+                    <div
+                      className="relative shrink-0 cursor-pointer group"
+                      onClick={() => {
+                        if (editingPatient?.photoUrl) {
+                          handleEditExistingPhotoCrop(editingPatient.id, editingPatient.photoUrl, 'patient');
+                        } else {
+                          document.getElementById('edit-patient-photo-input')?.click();
+                        }
+                      }}
+                      title="Click/Tap to Crop, Rotate, or Upload Wife Photo"
+                    >
+                      {editingPatient?.photoUrl ? (
+                        <div className="relative">
+                          <img
+                            src={getImageUrl(editingPatient.photoUrl)}
+                            alt="Wife Profile"
+                            className="w-14 h-14 rounded-xl border-2 border-emerald-500 object-cover shadow-md transition-transform active:scale-95"
+                          />
+                          <div className="absolute inset-0 bg-slate-950/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-slate-50 border-2 border-dashed border-emerald-300 flex flex-col items-center justify-center text-center p-1 text-emerald-700 font-bold text-xs hover:bg-emerald-100/50 transition-all active:scale-95 shadow-2xs">
+                          <Camera className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <span className="text-[9px] text-emerald-800 font-semibold text-center leading-tight mt-0.5 w-full block truncate">Wife Photo</span>
+                        </div>
+                      )}
+
+                      <input
+                        id="edit-patient-photo-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && editingPatient) {
+                            setCropModalFile({ patientId: editingPatient.id, file, target: 'patient' });
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-slate-800 text-xs flex items-center gap-1">
+                        <Camera className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Wife Photo</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                        {editingPatient?.photoUrl ? 'Tap to edit/crop photo' : 'Upload Wife picture'}
+                      </p>
+                      {editingPatient?.photoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePhoto(editingPatient.id, 'patient')}
+                          className="mt-1.5 px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded border border-rose-200 flex items-center gap-1 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3 text-rose-600" />
+                          <span>Delete Photo</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Husband Photo */}
+                  <div className="p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-3 shadow-2xs">
+                    <div
+                      className="relative shrink-0 cursor-pointer group"
+                      onClick={() => {
+                        if (editingPatient?.partnerPhotoUrl) {
+                          handleEditExistingPhotoCrop(editingPatient.id, editingPatient.partnerPhotoUrl, 'partner');
+                        } else {
+                          document.getElementById('edit-partner-photo-input')?.click();
+                        }
+                      }}
+                      title="Click/Tap to Crop, Rotate, or Upload Husband Photo"
+                    >
+                      {editingPatient?.partnerPhotoUrl ? (
+                        <div className="relative">
+                          <img
+                            src={getImageUrl(editingPatient.partnerPhotoUrl)}
+                            alt="Husband Profile"
+                            className="w-14 h-14 rounded-xl border-2 border-blue-500 object-cover shadow-md transition-transform active:scale-95"
+                          />
+                          <div className="absolute inset-0 bg-slate-950/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-slate-50 border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-center p-1 text-blue-700 font-bold text-xs hover:bg-blue-100/50 transition-all active:scale-95 shadow-2xs">
+                          <Camera className="w-5 h-5 text-blue-600 shrink-0" />
+                          <span className="text-[9px] text-blue-800 font-semibold text-center leading-tight mt-0.5 w-full block truncate">Husband Photo</span>
+                        </div>
+                      )}
+
+                      <input
+                        id="edit-partner-photo-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && editingPatient) {
+                            setCropModalFile({ patientId: editingPatient.id, file, target: 'partner' });
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-slate-800 text-xs flex items-center gap-1">
+                        <Camera className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <span>Husband Photo</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                        {editingPatient?.partnerPhotoUrl ? 'Tap to edit/crop photo' : 'Upload Husband picture'}
+                      </p>
+                      {editingPatient?.partnerPhotoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePhoto(editingPatient.id, 'partner')}
+                          className="mt-1.5 px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded border border-rose-200 flex items-center gap-1 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3 text-rose-600" />
+                          <span>Delete Photo</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Patient Full Name <span className="text-rose-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(capitalizeWords(e.target.value))}
+                    required
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <DateInputDDMMYYYY
+                    label="Patient Date of Birth (DOB)"
+                    value={editDob}
+                    onChange={(val) => {
+                      setEditDob(val);
+                      if (val) {
+                        setEditPatientAge(calculateAgeFromDob(val));
+                      }
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Patient Age
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientAge}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditPatientAge(val);
+                      const estimatedDob = calculateDobFromAge(val, editDob);
+                      if (estimatedDob) setEditDob(estimatedDob);
+                    }}
+                    placeholder="e.g. 36 Yrs"
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Patient Mobile Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Patient Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Partner Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editPartnerName}
+                    onChange={(e) => setEditPartnerName(capitalizeWords(e.target.value))}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <DateInputDDMMYYYY
+                    label="Partner Date of Birth (DOB)"
+                    value={editPartnerDob}
+                    onChange={(val) => {
+                      setEditPartnerDob(val);
+                      if (val) {
+                        setEditPartnerAge(calculateAgeFromDob(val));
+                      }
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Partner Age
+                  </label>
+                  <input
+                    type="text"
+                    value={editPartnerAge}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditPartnerAge(val);
+                      const estimatedDob = calculateDobFromAge(val, editPartnerDob);
+                      if (estimatedDob) setEditPartnerDob(estimatedDob);
+                    }}
+                    placeholder="e.g. 36 Yrs"
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Partner Mobile Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={editPartnerPhone}
+                    onChange={(e) => setEditPartnerPhone(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Partner Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={editPartnerEmail}
+                    onChange={(e) => setEditPartnerEmail(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Treatment Cycle Type Toggle */}
+                <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Treatment Cycle Type
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setEditCycleType('SELF')}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-2 ${editCycleType === 'SELF'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Self / Autologous Cycle</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditCycleType('DONOR_RECIPIENT')}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-2 ${editCycleType === 'DONOR_RECIPIENT'
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>Donor - Recipient (D-R Cycle)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Egg / Oocyte Donor Profile (D-R Cycle) */}
+                {editCycleType === 'DONOR_RECIPIENT' && (
+                  <div className="sm:col-span-2 p-3.5 bg-amber-50/90 rounded-2xl border border-amber-300/80 space-y-3">
+                    <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                      <span className="text-xs font-extrabold text-amber-950 flex items-center gap-1.5 uppercase tracking-wider">
+                        <UserCheck className="w-4 h-4 text-amber-600" />
+                        <span>Egg / Oocyte Donor Profile (D-R Cycle)</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full border border-amber-400/60">
+                        Donor Details
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                          Donor Reg No.
+                        </label>
+                        <input
+                          type="text"
+                          value={editDonorRegNo}
+                          onChange={(e) => setEditDonorRegNo(e.target.value)}
+                          placeholder="e.g. DON-2026-8901"
+                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                          Donor Name
+                        </label>
+                        <input
+                          type="text"
+                          value={editDonorName}
+                          onChange={(e) => setEditDonorName(capitalizeWords(e.target.value))}
+                          placeholder="e.g. Anjali"
+                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                          Donor Age
+                        </label>
+                        <input
+                          type="text"
+                          value={editDonorAge}
+                          onChange={(e) => setEditDonorAge(e.target.value)}
+                          placeholder="e.g. 32y"
+                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                          Donor Mobile Phone
+                        </label>
+                        <input
+                          type="text"
+                          value={editDonorPhone}
+                          onChange={(e) => setEditDonorPhone(e.target.value)}
+                          placeholder="e.g. +91 98765 43210"
+                          className="w-full h-10 bg-white border border-amber-300 rounded-xl px-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="sm:col-span-2">
+                  <DoctorSelect
+                    label="Doctor Name / Attending Physician"
+                    value={editDoctorName}
+                    onChange={(val) => setEditDoctorName(val)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <DateInputDDMMYYYY
+                    label="Date of Egg Retrieval"
+                    value={editAspirationDate}
+                    onChange={(val) => setEditAspirationDate(val)}
+                  />
+                </div>
+
+                <div>
+                  <DateInputDDMMYYYY
+                    label="Date of Freezing"
+                    value={editFreezingDate}
+                    onChange={(val) => setEditFreezingDate(val)}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Clinical Comments & Doctor Remarks
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editComments}
+                    onChange={(e) => setEditComments(e.target.value)}
+                    placeholder="Enter any additional clinical notes or comments..."
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-amber-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* FIXED FOOTER BUTTONS */}
+              <div className="sticky bottom-0 bg-white pt-3 pb-1 border-t border-slate-100 flex items-center justify-between z-10 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEditingPatient(null)}
+                  className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
+                >
+                  {savingEdit ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -3306,7 +3317,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                   <p className="text-[11px] text-slate-400 font-medium">Full Resolution Document Scan Preview</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -3348,13 +3359,12 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
       {deletionStatus && (
         <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto">
           <div
-            className={`p-4 rounded-2xl shadow-2xl border flex items-center gap-3.5 backdrop-blur-md transition-all ${
-              deletionStatus.status === 'deleting'
+            className={`p-4 rounded-2xl shadow-2xl border flex items-center gap-3.5 backdrop-blur-md transition-all ${deletionStatus.status === 'deleting'
                 ? 'bg-slate-900/95 text-amber-300 border-amber-500/40 shadow-amber-950/40 ring-1 ring-amber-500/20'
                 : deletionStatus.status === 'success'
-                ? 'bg-slate-900/95 text-emerald-300 border-emerald-500/40 shadow-emerald-950/40 ring-1 ring-emerald-500/20'
-                : 'bg-slate-900/95 text-rose-300 border-rose-500/40 shadow-rose-950/40 ring-1 ring-rose-500/20'
-            }`}
+                  ? 'bg-slate-900/95 text-emerald-300 border-emerald-500/40 shadow-emerald-950/40 ring-1 ring-emerald-500/20'
+                  : 'bg-slate-900/95 text-rose-300 border-rose-500/40 shadow-rose-950/40 ring-1 ring-rose-500/20'
+              }`}
           >
             {deletionStatus.status === 'deleting' && (
               <Loader2 className="w-5 h-5 animate-spin text-amber-400 shrink-0" />
@@ -3370,8 +3380,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                 {deletionStatus.status === 'deleting'
                   ? 'Purging Patient Data (Background)'
                   : deletionStatus.status === 'success'
-                  ? 'Purge Complete'
-                  : 'Purge Failed'}
+                    ? 'Purge Complete'
+                    : 'Purge Failed'}
               </h4>
               <p className="text-xs font-semibold text-slate-100 mt-0.5 truncate">{deletionStatus.message}</p>
             </div>
