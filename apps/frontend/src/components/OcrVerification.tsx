@@ -1257,18 +1257,6 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           <option value="Elective / Other">Elective / Other</option>
                         </select>
                       </div>
-                      <div className="space-y-1">
-                        <label className="font-semibold text-slate-700 text-[10px]">Oocyte Stage</label>
-                        <select
-                          value={oocyteStage}
-                          onChange={(e) => setOocyteStage(e.target.value)}
-                          className="w-full bg-white border border-indigo-300 rounded-lg p-2 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="MII">MII (Metaphase II - Mature)</option>
-                          <option value="MI">MI (Metaphase I)</option>
-                          <option value="GV">GV (Germinal Vesicle)</option>
-                        </select>
-                      </div>
                     </div>
                   </div>
                 )}
