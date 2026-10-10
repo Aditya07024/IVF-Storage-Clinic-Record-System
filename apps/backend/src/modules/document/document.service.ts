@@ -538,7 +538,7 @@ export class DocumentService {
         doc.text(`Active Cryo Storage Specimen Straws`, 30, currentSectionY);
         currentSectionY += 16;
 
-        batchesToRender.forEach((batch: any) => {
+        batchesToRender.forEach((batch: any, bIdx: number) => {
           const batchStraws = (batch.straws || []).filter((s: any) => s.status === 'OCCUPIED' || isThaw);
           const strawsToDisplay = batchStraws.length > 0 ? batchStraws : (batch.straws || []);
 
@@ -572,11 +572,20 @@ export class DocumentService {
 
             const strawBoxY = currentSectionY;
             const embryoCount = straw.embryoCount || (straw.embryos ? straw.embryos.length : 1);
+            const cycleNum = bIdx + 1;
             const cycleStrawNum = sIdx + 1;
-            const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
-            const displayLabel = isGenericOrSeqStrawId
-              ? `#${cycleStrawNum}`
-              : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);
+            const rawStrawId = (straw.strawId || '').trim();
+            const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
+            const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
+            const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(rawStrawId) || straw.strawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
+
+            const displayLabel = dotMatch
+              ? `#${dotMatch[1]}.${dotMatch[2]}`
+              : (cycleMatch
+                  ? `#${cycleMatch[1]}.${cycleMatch[2]}`
+                  : (isGenericOrSeqStrawId
+                      ? `#${cycleNum}.${cycleStrawNum}`
+                      : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`)));
 
             const strawColor = straw.color || 'Pink';
             let colorBg = '#fce7f3';

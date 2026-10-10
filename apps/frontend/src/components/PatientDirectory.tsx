@@ -198,8 +198,22 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
   const openEditStrawModal = (straw: any, defaultDisplayLabel?: string, cycleNum: number = 1) => {
     setEditingStraw({ ...straw, _cycleNum: cycleNum });
-    const isGeneric = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
-    setEditStrawCustomId(isGeneric ? (defaultDisplayLabel || `#${straw._cycleStrawNum || 1}`) : (straw.strawId || ''));
+    const rawStrawId = (straw.strawId || '').trim();
+    const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
+    const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
+    const isGeneric = !straw.strawId || /^#?\d+$/.test(rawStrawId) || rawStrawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
+
+    let defaultIdValue = '';
+    if (dotMatch) {
+      defaultIdValue = `${dotMatch[1]}.${dotMatch[2]}`;
+    } else if (cycleMatch) {
+      defaultIdValue = `${cycleMatch[1]}.${cycleMatch[2]}`;
+    } else if (isGeneric) {
+      defaultIdValue = `${cycleNum}.${straw._cycleStrawNum || 1}`;
+    } else {
+      defaultIdValue = rawStrawId;
+    }
+    setEditStrawCustomId(defaultIdValue);
     setEditStrawColor(straw.color || 'Pink');
 
     const isOocyte = isOocyteSpecimen(selectedPatient);
@@ -290,8 +304,15 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
       const cycleNum = (editingStraw as any)?._cycleNum || 1;
       let payloadCustomId = editStrawCustomId.trim();
       const numMatch = payloadCustomId.match(/^#?(\d+)$/);
-      if (numMatch) {
-        payloadCustomId = `C${cycleNum}-S${numMatch[1]}`;
+      const dotMatch = payloadCustomId.match(/^(\d+)\.(\d+)$/);
+      const cycleMatch = payloadCustomId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
+
+      if (dotMatch) {
+        payloadCustomId = `${dotMatch[1]}.${dotMatch[2]}`;
+      } else if (numMatch) {
+        payloadCustomId = `${cycleNum}.${numMatch[1]}`;
+      } else if (cycleMatch) {
+        payloadCustomId = `${cycleMatch[1]}.${cycleMatch[2]}`;
       }
 
       const res = await apiRequest(`/api/storage/straws/${editingStraw.id}`, {
@@ -1348,6 +1369,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
               {(() => {
                 const thawBatches = groupBatchesByFreezingDate(quickThawPatient.batches, quickThawPatient.aspirationDate || quickThawPatient.visitDate);
+                const { cycleMap: thawCycleMap } = calculateCycleNumbers(thawBatches);
                 if (thawBatches.length === 0) {
                   return (
                     <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 border border-slate-200 text-center">
@@ -1356,8 +1378,9 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                   );
                 }
 
-                return thawBatches.map((batch: any) => {
+                return thawBatches.map((batch: any, bIdx: number) => {
                   const batchStraws = batch.straws || [];
+                  const cycleNum = thawCycleMap[batch.id || batch.batchId] || (bIdx + 1);
 
                   return (
                     <div key={batch.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
@@ -1425,10 +1448,18 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           })();
 
                           const cycleStrawNum = origIdx + 1;
-                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
-                          const displayLabel = isGenericOrSeqStrawId
-                            ? `Straw #${cycleStrawNum}`
-                            : (straw.strawId.startsWith('Straw') ? straw.strawId : `Straw ${straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`}`);
+                          const rawStrawId = (straw.strawId || '').trim();
+                          const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
+                          const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
+                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(rawStrawId) || rawStrawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
+
+                          const displayLabel = dotMatch
+                            ? `Straw #${dotMatch[1]}.${dotMatch[2]}`
+                            : (cycleMatch
+                                ? `Straw #${cycleMatch[1]}.${cycleMatch[2]}`
+                                : (isGenericOrSeqStrawId
+                                    ? `Straw #${cycleNum}.${cycleStrawNum}`
+                                    : (straw.strawId.startsWith('Straw') ? straw.strawId : `Straw ${straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`} `)));
                           const isDonorEgg = isOocyte && (quickThawPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
                           const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
                           const countLabel = isOocyte
@@ -2189,10 +2220,18 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                         ).map(({ straw, origIdx }: { straw: any; origIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
                           const cycleStrawNum = origIdx + 1;
-                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
-                          const displayLabel = isGenericOrSeqStrawId
-                            ? `#${cycleStrawNum}`
-                            : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);
+                          const rawStrawId = (straw.strawId || '').trim();
+                          const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
+                          const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
+                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(rawStrawId) || rawStrawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
+
+                          const displayLabel = dotMatch
+                            ? `#${dotMatch[1]}.${dotMatch[2]}`
+                            : (cycleMatch
+                                ? `#${cycleMatch[1]}.${cycleMatch[2]}`
+                                : (isGenericOrSeqStrawId
+                                    ? `#${cycleNum}.${cycleStrawNum}`
+                                    : (rawStrawId.startsWith('#') ? rawStrawId : `#${rawStrawId}`)));
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
                           const isOocyte = isOocyteSpecimen(selectedPatient);
 

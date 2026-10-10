@@ -50,6 +50,49 @@ export function parseFlexibleDate(dateVal?: string | Date | null): Date | null {
   return isNaN(parsed.getTime()) ? null : parsed;
 }
 
+export function parseTankFromRawText(rawText?: string, fallbackJsonTank?: string): string {
+  if (rawText && typeof rawText === 'string') {
+    // 1. Explicit Can / Canister combination or Tank / Canister: "Can / Canister: 2 / 4", "Tank / Canister: 2 / 4"
+    const comboMatch = rawText.match(/(?:Can|Tank)\s*\/\s*Canister[\s#.:-]*(\d+)/i);
+    if (comboMatch) {
+      const num = parseInt(comboMatch[1], 10);
+      if (num >= 1 && num <= 30) return `CAN-${num.toString().padStart(2, '0')}`;
+    }
+
+    const canisterComboMatch = rawText.match(/Canister\s*\/\s*(?:Can|Tank)[\s#.:-]*\d+[\s\/-]+(\d+)/i);
+    if (canisterComboMatch) {
+      const num = parseInt(canisterComboMatch[1], 10);
+      if (num >= 1 && num <= 30) return `CAN-${num.toString().padStart(2, '0')}`;
+    }
+
+    // 2. Specific standard code patterns: CAN-01 .. CAN-20, TANK-01 .. TANK-20, CAN 1, CAN 02
+    const explicitCodeMatch = rawText.match(/\b(?:CAN|TANK)-?(\d{1,2})\b/i);
+    if (explicitCodeMatch) {
+      const num = parseInt(explicitCodeMatch[1], 10);
+      if (num >= 1 && num <= 30) return `CAN-${num.toString().padStart(2, '0')}`;
+    }
+
+    // 3. Tank / Cryotank / Cryo Can / Cryocan / LN2 Tank / Tank No / Can No (strictly excluding Canister)
+    const tankMatch = rawText.match(/(?:Cryo\s*(?:Tank|Can)|Cryotank|Cryocan|LN2\s*Tank|\bTank\b|\bCan\b)(?!\s*ister)[\s#.:-]*(\d{1,2})\b/i);
+    if (tankMatch) {
+      const num = parseInt(tankMatch[1], 10);
+      if (num >= 1 && num <= 30) return `CAN-${num.toString().padStart(2, '0')}`;
+    }
+  }
+
+  // 4. Fallback to Gemini JSON extraction if provided
+  if (fallbackJsonTank && typeof fallbackJsonTank === 'string') {
+    const digits = fallbackJsonTank.replace(/\D/g, '');
+    if (digits) {
+      const num = parseInt(digits, 10);
+      if (num >= 1 && num <= 30) return `CAN-${num.toString().padStart(2, '0')}`;
+    }
+  }
+
+  // 5. Default fallback strictly when no Can or Tank is detected in text
+  return 'CAN-01';
+}
+
 export class OcrService {
   private visionClient: any = null;
   private genAI: GoogleGenerativeAI | null = null;
@@ -311,6 +354,7 @@ export class OcrService {
     freezingDate?: string;
     thawDate?: string;
     embryoCount?: number;
+    tankName?: string;
     canisterName?: string;
     visoTubeColor?: string;
     visoTubeId?: string;
@@ -364,19 +408,22 @@ export class OcrService {
     } catch (e) {}
 
     let clinicInventoryContext = `Exact Clinic Physical Container Hierarchy:
+- Cans / Tanks: CAN-01 (Can 01), CAN-02 (Can 02), CAN-03 (Can 03), CAN-04 (Can 04), CAN-05 (Can 05), CAN-08 (Can 08), CAN-10 (Can 10), CAN-11 (Can 11), CAN-14 (Can 14)
 - Canisters: C01, C02, C03, C04, C05, C06, C07, C08, C09, C10
 - Levels: Level 1 (Bottom), Level 2 (Top)
 - 11 Physical Viso Tube Colors: Viso Tube - Pink, Viso Tube - Grey, Viso Tube - Red, Viso Tube - Black, Viso Tube - Green, Viso Tube - Rust, Viso Tube - Blue, Viso Tube - Purple, Viso Tube - Yellow, Viso Tube - Orange, Viso Tube - Skyblue.
 - Official Clinic Doctor List: [${doctorNamesList.join(', ')}].`;
 
     try {
+      const activeCans = await prisma.can.findMany({ orderBy: { code: 'asc' } });
       const activeCanisters = await prisma.canister.findMany({
         include: { can: true },
         orderBy: { canisterNumber: 'asc' },
       });
       if (activeCanisters.length > 0) {
+        const canNames = (activeCans.length > 0 ? activeCans : [{ code: 'CAN-01', name: 'Can 01' }]).map(c => `${c.code} (${c.name})`).join(', ');
         const canisterNames = activeCanisters.map(c => `C${c.canisterNumber.toString().padStart(2, '0')} (Canister ${c.canisterNumber})`).join(', ');
-        clinicInventoryContext = `Active Clinic Storage Inventory: Canisters: [${canisterNames}]; 11 Physical Viso Tube Colors: [Pink, Grey, Red, Black, Green, Rust, Blue, Purple, Yellow, Orange, Skyblue]; Levels: [Level 1 (Bottom), Level 2 (Top)]; Known Clinic Doctors: [${doctorNamesList.join(', ')}].`;
+        clinicInventoryContext = `Active Clinic Storage Inventory: Cans / Tanks: [${canNames}]; Canisters: [${canisterNames}]; 11 Physical Viso Tube Colors: [Pink, Grey, Red, Black, Green, Rust, Blue, Purple, Yellow, Orange, Skyblue]; Levels: [Level 1 (Bottom), Level 2 (Top)]; Known Clinic Doctors: [${doctorNamesList.join(', ')}].`;
       }
     } catch (e) {}
 
@@ -397,7 +444,7 @@ STRICT EXTRACTION RULES:
 5. SPECIMEN TYPE ("specimenType"): Return "OOCYTE" if document mentions eggs, oocytes, MII, MI, oocyte freezing, donor eggs, supernumerary donor; otherwise return "EMBRYO".
 6. CYCLE TYPE ("cycleType"): Return "DONOR_RECIPIENT" if document mentions donor, donor reg no, donor egg, donor name; otherwise return "SELF".
 7. Extract Donor fields if present: "donorName", "donorRegNo", "donorAge", "donorPhone", "vitrificationIndication", "oocyteStage" (e.g. "MII" or "MI").
-8. Extract Storage Location fields STRICTLY from document text: "canisterName" (e.g. "C01", "C08"), "level" (e.g. "Level 1", "Level 2"), "visoTubeId" (e.g. "V01", "V05"), "visoTubeColor".
+8. Extract Storage Location fields STRICTLY from document text: "tankName" (e.g. "CAN-01", "CAN-02", "CAN-03", "CAN-04", "CAN-05", "CAN-08", "CAN-10", "CAN-11", "CAN-14" or "Can 1", "Can 2", "Tank 1", "Tank 2". If document mentions a Can/Tank number, return in "CAN-XX" format; if no Can/Tank is mentioned, return null), "canisterName" (e.g. "C01", "C08"), "level" (e.g. "Level 1", "Level 2"), "visoTubeId" (e.g. "V01", "V05"), "visoTubeColor".
 9. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage, grade, fragmentation, freezingDate. Straw colorTag MUST ONLY be one of these 5 clinic straw colors: Pink, Green, Blue, Yellow, or White. If unstated, return null.
 10. Extract Date of Birth ("dob" for Patient, "partnerDob" for Partner/Husband) if present in document text (look for DOB, Date of Birth, D.O.B., Birth Date). Return in YYYY-MM-DD format. If DOB is present and Age is missing, calculate Age from DOB.
 
@@ -427,6 +474,7 @@ Return ONLY valid JSON matching this schema:
   "vitrificationIndication": "string or null",
   "oocyteStage": "string or null",
   "embryoCount": number or null,
+  "tankName": "string or null",
   "canisterName": "string or null",
   "visoTubeColor": "string or null",
   "visoTubeId": "string or null",
@@ -501,6 +549,7 @@ ${rawText}`;
                 vitrificationIndication: parsed.vitrificationIndication || 'Social egg freezing',
                 oocyteStage: parsed.oocyteStage || 'MII',
                 embryoCount: parsed.embryoCount || undefined,
+                tankName: parseTankFromRawText(rawText, parsed.tankName),
                 canisterName: parsed.canisterName || '',
                 visoTubeColor: parsed.visoTubeColor || '',
                 visoTubeId: parsed.visoTubeId || '',
@@ -670,12 +719,20 @@ ${rawText}`;
     const freezingDate = parseDateStr(frzMatch?.[1]);
     const thawDate = parseDateStr(thawMatch?.[1]);
 
-    // Storage Location
+    // Storage Location - Tank / Can (First priority: raw text)
+    const tankName = parseTankFromRawText(rawText);
+
+    // Storage Location - Canister (strictly excluding Can alone)
     let canisterName = '';
-    const canisterMatch = rawText.match(/(?:Canister|cayo\s*can|Can)[:\s]*([A-Za-z0-9\s]+)/i);
+    const canisterMatch = rawText.match(/(?:Canister|cayo\s*canister)[\s#.:-]*([A-Za-z0-9]+)/i);
     if (canisterMatch) {
       const digits = canisterMatch[1].replace(/\D/g, '');
       if (digits) canisterName = `C${digits.padStart(2, '0')}`;
+    } else {
+      const cCodeMatch = rawText.match(/\bC(0[1-9]|1[0-9]|20)\b/i);
+      if (cCodeMatch) {
+        canisterName = cCodeMatch[0].toUpperCase();
+      }
     }
 
     let visoTubeColor = '';
@@ -783,6 +840,7 @@ ${rawText}`;
       vitrificationIndication: vitrificationIndication || 'Social egg freezing',
       oocyteStage: oocyteStage || 'MII',
       embryoCount: straws.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
+      tankName: tankName || 'CAN-01',
       canisterName: canisterName || '',
       visoTubeColor: visoTubeColor || '',
       visoTubeId: '',
@@ -1179,10 +1237,10 @@ ${rawText}`;
             const seqNum = i + 1;
             const customId = st.strawId && !st.strawId.startsWith('STR-') ? st.strawId.trim() : '';
             let uniqueStrawCode: string;
-            if (customId && !/^#?\d+$/.test(customId)) {
+            if (customId && !/^#?\d+$/.test(customId) && !/^\d+\.\d+$/.test(customId)) {
               uniqueStrawCode = customId;
             } else {
-              uniqueStrawCode = `C${cycleNumberForGroup}-S${seqNum}`;
+              uniqueStrawCode = `${cycleNumberForGroup}.${seqNum}`;
             }
             const eCount = st.embryoCount || 1;
 

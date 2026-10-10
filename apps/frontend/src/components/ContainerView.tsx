@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatPhoneNumber, getImageUrl } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, getSortedFreezingDates, sortStrawsDeterministically } from './PatientForm';
+import { getStrawColorBadgeClass, getSortedFreezingDates, sortStrawsDeterministically, calculateCycleNumbers } from './PatientForm';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
 function parseLocationCode(code: string) {
@@ -1319,6 +1319,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
 
               {(() => {
                 const allBatches = viewingPatientModal.batches || [];
+                const { cycleMap } = calculateCycleNumbers(allBatches);
 
                 if (allBatches.length === 0) {
                   return (
@@ -1328,10 +1329,11 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                   );
                 }
 
-                return allBatches.map((batch: any) => {
+                return allBatches.map((batch: any, bIdx: number) => {
                   const allStraws = batch.straws || [];
                   const activeStraws = allStraws.filter((s: any) => s.status === 'OCCUPIED');
                   const isAllThawed = allStraws.length > 0 && activeStraws.length === 0;
+                  const cycleNum = cycleMap[batch.id || batch.batchId] || (bIdx + 1);
 
                   return (
                     <div key={batch.id} className={`p-4 rounded-2xl border space-y-3 shadow-2xs ${isAllThawed ? 'bg-slate-100/70 border-slate-300' : 'bg-slate-50 border-slate-300'}`}>
@@ -1374,10 +1376,18 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                         ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
                           const cycleStrawNum = sIdx + 1;
-                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
-                          const displayLabel = isGenericOrSeqStrawId
-                            ? `#${cycleStrawNum}`
-                            : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);
+                          const rawStrawId = (straw.strawId || '').trim();
+                          const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
+                          const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
+                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(rawStrawId) || rawStrawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
+
+                          const displayLabel = dotMatch
+                            ? `#${dotMatch[1]}.${dotMatch[2]}`
+                            : (cycleMatch
+                                ? `#${cycleMatch[1]}.${cycleMatch[2]}`
+                                : (isGenericOrSeqStrawId
+                                    ? `#${cycleNum}.${cycleStrawNum}`
+                                    : (rawStrawId.startsWith('#') ? rawStrawId : `#${rawStrawId}`)));
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
 
                           const eGrade = (straw.grade || '').trim().toUpperCase();

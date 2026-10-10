@@ -346,7 +346,11 @@ export function cleanDuplicateGradeString(rawGradeStr?: string): string {
 
 export function extractStrawSequenceNumber(straw: any): number {
   if (!straw) return 999999;
-  const rawId = String(straw.strawId || straw.customId || straw.id || '');
+  const rawId = String(straw.strawId || straw.customId || straw.id || '').trim();
+  const dotMatch = rawId.match(/^(\d+)\.(\d+)$/);
+  if (dotMatch) {
+    return parseInt(dotMatch[2], 10);
+  }
   const cycleMatch = rawId.match(/C\d+[-_]?(?:S|#)?(\d+)/i);
   if (cycleMatch) {
     return parseInt(cycleMatch[1], 10);
@@ -4290,7 +4294,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
                   <div className="space-y-2.5">
                     {strawItems.map((item, sIdx) => {
-                      const strawDisplayNum = sIdx + 1;
+                      const currentFormCycle = (selectedExistingPatient?.batches?.length || 0) + 1;
+                      const strawDisplayNum = `${currentFormCycle}.${sIdx + 1}`;
                       const badgeClass = getStrawColorBadgeClass(item.color);
                       const count = item.embryoCount || 1;
                       const stageSummary = getStrawStageSummary(item, specimenType);

@@ -920,7 +920,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
         try {
           clearApiCache();
           window.dispatchEvent(new CustomEvent('storage-updated'));
-        } catch (e) {}
+        } catch (e) { }
       },
     });
   };
@@ -1188,8 +1188,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                         type="button"
                         onClick={() => handleSpecimenTypeChange('EMBRYO')}
                         className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${specimenType === 'EMBRYO'
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                           }`}
                       >
                         Embryo (Embryos)
@@ -1198,8 +1198,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                         type="button"
                         onClick={() => handleSpecimenTypeChange('OOCYTE')}
                         className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${specimenType === 'OOCYTE'
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                           }`}
                       >
                         Egg (Oocyte)
@@ -1215,8 +1215,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                         type="button"
                         onClick={() => setCycleType('SELF')}
                         className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${cycleType === 'SELF'
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                           }`}
                       >
                         Self Cycle
@@ -1225,8 +1225,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                         type="button"
                         onClick={() => setCycleType('DONOR_RECIPIENT')}
                         className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${cycleType === 'DONOR_RECIPIENT'
-                            ? 'bg-amber-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                           }`}
                       >
                         Donor / Recipient
@@ -1696,7 +1696,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white font-mono font-bold text-xs">
-                                        #{sIdx + 1}
+                                        #{gIdx + 1}.{sIdx + 1}
                                       </span>
                                       {st.colorTag ? (
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}`}>
@@ -1789,11 +1789,10 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                                   updateStrawInGroup(gIdx, sIdx, 'embryoGrades', newGrades);
                                                   updateStrawInGroup(gIdx, sIdx, 'grade', newGrades.join(', '));
                                                 }}
-                                                className={`flex-1 py-1 px-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                                  st.embryoCount === count
+                                                className={`flex-1 py-1 px-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${st.embryoCount === count
                                                     ? 'bg-emerald-600 text-white shadow-xs font-mono font-bold'
                                                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
-                                                }`}
+                                                  }`}
                                               >
                                                 {labelText}
                                               </button>
@@ -1831,11 +1830,10 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                                     updateStrawInGroup(gIdx, sIdx, 'embryoGrades', newGrades);
                                                     updateStrawInGroup(gIdx, sIdx, 'grade', newGrades.join(', '));
                                                   }}
-                                                  className={`h-full rounded-md text-xs font-extrabold transition-all border flex items-center justify-center cursor-pointer ${
-                                                    currentGradeVal === stg
+                                                  className={`h-full rounded-md text-xs font-extrabold transition-all border flex items-center justify-center cursor-pointer ${currentGradeVal === stg
                                                       ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
                                                       : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-300'
-                                                  }`}
+                                                    }`}
                                                 >
                                                   {stg}
                                                 </button>
@@ -1888,7 +1886,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                               {group.straws.map((st, sIdx) => (
                                 <tr key={sIdx} className="hover:bg-slate-50/80 font-medium text-slate-800">
                                   <td className="p-1.5 font-mono font-bold text-slate-900 text-[10px] whitespace-nowrap bg-slate-50/80 text-center w-10">
-                                    #{sIdx + 1}
+                                    #{gIdx + 1}.{sIdx + 1}
                                   </td>
                                   <td className="p-1 w-32">
                                     <select
@@ -2088,11 +2086,10 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                 <button
                   type="submit"
                   disabled={verifying || !!existingIdMatch}
-                  className={`flex-1 py-3.5 font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all ${
-                    existingIdMatch
+                  className={`flex-1 py-3.5 font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all ${existingIdMatch
                       ? 'bg-slate-300 text-slate-600 border border-slate-400 cursor-not-allowed'
                       : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-                  }`}
+                    }`}
                 >
                   {verifying ? (
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -2133,8 +2130,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                   key={record.id}
                   onClick={() => selectRecord(record)}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-3 relative group ${activeRecord?.id === record.id
-                      ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20 shadow-md'
-                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20 shadow-md'
+                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                     }`}
                 >
                   <div className="flex items-center justify-between text-xs">
@@ -2200,14 +2197,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                     <span>Patient Profile</span>
                   </span>
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleEditDetailsFromSummary('patient')}
-                      className="text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded border border-amber-300 transition cursor-pointer flex items-center gap-1"
-                    >
-                      <Edit3 className="w-3 h-3 text-amber-600" />
-                      <span>Edit</span>
-                    </button>
+
                     <span className="font-mono font-extrabold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 text-[10px]">
                       ID: {savedSummaryModalData.patientId || 'SAVED'}
                     </span>
@@ -2259,14 +2249,6 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                     <span>Storage Allocation & Dates</span>
                   </span>
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleEditDetailsFromSummary('storage')}
-                      className="text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded border border-amber-300 transition cursor-pointer flex items-center gap-1"
-                    >
-                      <Edit3 className="w-3 h-3 text-amber-600" />
-                      <span>Edit</span>
-                    </button>
                     <span className="font-mono font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-[10px] border border-amber-300">
                       {savedSummaryModalData.totalStraws} Straw{savedSummaryModalData.totalStraws > 1 ? 's' : ''} ({savedSummaryModalData.totalEmbryos} {savedSummaryModalData.specimenType === 'OOCYTE' ? 'Oocytes' : 'Embryos'})
                     </span>
@@ -2325,7 +2307,6 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                       <th className="p-2 w-28">Color Tag</th>
                       <th className="p-2 text-center">{savedSummaryModalData.specimenType === 'OOCYTE' ? 'Oocytes' : 'Embryos'}</th>
                       <th className="p-2">Batch Freezing Date</th>
-                      <th className="p-2">Calculated Stage</th>
                       <th className="p-2">Grade(s) & Fragmentation</th>
                       <th className="p-2 text-center">Status</th>
                     </tr>
@@ -2335,7 +2316,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                       group.straws.map((st: any, sIdx: number) => (
                         <tr key={`${gIdx}-${sIdx}`} className="hover:bg-slate-50 font-medium text-slate-800">
                           <td className="p-2 font-mono font-bold text-slate-900 text-center bg-slate-50/80">
-                            #{sIdx + 1}
+                            #{gIdx + 1}.{sIdx + 1}
                           </td>
                           <td className="p-2">
                             <span className={`px-2 py-0.5 rounded font-bold text-[9px] border inline-block ${getStrawColorBadgeClass(st.colorTag || 'Pink')}`}>
@@ -2348,11 +2329,11 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           <td className="p-2 font-mono font-bold text-slate-900">
                             {group.freezingDate ? formatDateDDMMYYYY(group.freezingDate) : 'N/A'}
                           </td>
-                          <td className="p-2 font-bold text-blue-900">
+                          {/* <td className="p-2 font-bold text-blue-900">
                             <span className="bg-blue-50 text-blue-900 px-2 py-0.5 rounded border border-blue-200">
                               {calculateStageFromDates(savedSummaryModalData.visitDate, group.freezingDate, savedSummaryModalData.specimenType)}
                             </span>
-                          </td>
+                          </td> */}
                           <td className="p-2 font-mono font-semibold text-slate-900">
                             {Array.isArray(st.embryoGrades) && st.embryoGrades.length > 0
                               ? st.embryoGrades.map((g: string, idx: number) => {

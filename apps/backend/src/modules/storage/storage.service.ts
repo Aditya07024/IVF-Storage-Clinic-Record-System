@@ -570,10 +570,10 @@ export class StorageService {
 
         const customId = (item as any).strawCustomId?.trim();
         let strawIdCode: string;
-        if (customId && !/^#?\d+$/.test(customId)) {
+        if (customId && !/^#?\d+$/.test(customId) && !/^\d+\.\d+$/.test(customId)) {
           strawIdCode = customId;
         } else {
-          strawIdCode = `C${currentCycleNum}-S${seqNum}`;
+          strawIdCode = `${currentCycleNum}.${seqNum}`;
         }
 
         const straw = await tx.straw.create({
@@ -826,17 +826,20 @@ export class StorageService {
           cycleNum = bIdx + 1;
         }
 
-        // If user entered a generic number like "#2" or "2", format as C{cycleNum}-S{num}
+        // If user entered a generic number like "#2", "2", "C2-S2", or "2.2", format as {cycleNum}.{num}
         const numericMatch = newCustomId.match(/^#?(\d+)$/);
         const cycleMatch = newCustomId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
+        const dotMatch = newCustomId.match(/^(\d+)\.(\d+)$/);
 
         if (numericMatch) {
           const num = parseInt(numericMatch[1], 10);
-          newCustomId = `C${cycleNum}-S${num}`;
+          newCustomId = `${cycleNum}.${num}`;
         } else if (cycleMatch) {
-          const c = cycleMatch[1];
           const s = cycleMatch[2];
-          newCustomId = `C${c}-S${s}`;
+          newCustomId = `${cycleNum}.${s}`;
+        } else if (dotMatch) {
+          const s = dotMatch[2];
+          newCustomId = `${cycleNum}.${s}`;
         }
 
         if (newCustomId !== straw.strawId) {
