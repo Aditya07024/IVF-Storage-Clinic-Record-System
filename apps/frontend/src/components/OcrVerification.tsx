@@ -1888,26 +1888,26 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                         </div>
                       ) : (
                         /* Straws Table for Embryo Batch */
-                        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
                           <table className="w-full text-left border-collapse text-[9px]">
                             <thead>
                               <tr className="bg-slate-100 text-slate-700 uppercase tracking-wider font-extrabold border-b border-slate-200">
-                                <th className="p-1 w-7 text-center">#</th>
-                                <th className="p-1 w-24">Color Tag</th>
-                                <th className="p-1 text-center">Embryos</th>
-                                <th className="p-1">Grade</th>
-                                <th className="p-1">Fragmentation</th>
-                                <th className="p-1 text-center">Thaw</th>
-                                <th className="p-1 text-center">Action</th>
+                                <th className="p-1.5 w-10 text-center shrink-0">#</th>
+                                <th className="p-1.5 w-32 shrink-0">Color Tag</th>
+                                <th className="p-1.5 w-16 text-center shrink-0">Embryos</th>
+                                <th className="p-1.5 w-28 shrink-0">Grade</th>
+                                <th className="p-1.5 w-24 shrink-0">Fragmentation</th>
+                                <th className="p-1.5 min-w-[210px] text-center">Thaw</th>
+                                <th className="p-1.5 w-12 text-center shrink-0">Action</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                               {group.straws.map((st, sIdx) => (
                                 <tr key={sIdx} className="hover:bg-slate-50/80 font-medium text-slate-800">
-                                  <td className="p-1 font-mono font-bold text-slate-900 text-[10px] whitespace-nowrap bg-slate-50/80 text-center">
+                                  <td className="p-1.5 font-mono font-bold text-slate-900 text-[10px] whitespace-nowrap bg-slate-50/80 text-center w-10">
                                     #{sIdx + 1}
                                   </td>
-                                  <td className="p-0.5">
+                                  <td className="p-1 w-32">
                                     <select
                                       value={st.colorTag || ''}
                                       onChange={(e) => updateStrawInGroup(gIdx, sIdx, 'colorTag', e.target.value)}
@@ -1922,7 +1922,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                       ))}
                                     </select>
                                   </td>
-                                  <td className="p-0.5 text-center">
+                                  <td className="p-1 text-center w-16">
                                     <select
                                       value={st.embryoCount ?? 1}
                                       onChange={(e) => {
@@ -1939,15 +1939,15 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                         updateStrawInGroup(gIdx, sIdx, 'embryoFrags', newFrags);
                                         updateStrawInGroup(gIdx, sIdx, 'grade', newGrades.join(', '));
                                       }}
-                                      className="w-10 bg-slate-50 border border-slate-300 rounded py-0.5 px-0.5 text-center font-bold text-emerald-700 text-[9px] focus:outline-none focus:border-emerald-500 cursor-pointer"
+                                      className="w-12 bg-slate-50 border border-slate-300 rounded py-0.5 px-0.5 text-center font-bold text-emerald-700 text-[9px] focus:outline-none focus:border-emerald-500 cursor-pointer"
                                     >
                                       <option value={1}>1</option>
                                       <option value={2}>2</option>
                                     </select>
                                   </td>
-                                  <td className="p-0.5">
+                                  <td className="p-1 w-28">
                                     {(st.embryoCount || 1) > 1 ? (
-                                      <div className="flex flex-col gap-1 min-w-[65px]">
+                                      <div className="flex flex-col gap-1 w-full min-w-[70px]">
                                         {Array.from({ length: st.embryoCount }).map((_, eIdx) => {
                                           const eGradeList = st.embryoGrades || Array.from({ length: st.embryoCount }, (_, i) => i === 0 ? (st.grade || '4AA') : (st.grade || '4AA'));
                                           const val = eGradeList[eIdx] || '';
@@ -1984,9 +1984,9 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                       />
                                     )}
                                   </td>
-                                  <td className="p-0.5">
+                                  <td className="p-1 w-24">
                                     {(st.embryoCount || 1) > 1 ? (
-                                      <div className="flex flex-col gap-1 min-w-[60px]">
+                                      <div className="flex flex-col gap-1 w-full min-w-[65px]">
                                         {Array.from({ length: st.embryoCount }).map((_, eIdx) => {
                                           const eFragList = st.embryoFrags || Array.from({ length: st.embryoCount }, (_, i) => i === 0 ? (st.fragmentation || 'No') : (st.fragmentation || 'No'));
                                           const val = eFragList[eIdx] || 'No';
@@ -2027,45 +2027,48 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                       </select>
                                     )}
                                   </td>
-                                  <td className="p-0.5 text-center">
-                                    <div className="flex items-center justify-center gap-1">
-                                      <input
-                                        type="checkbox"
-                                        checked={Boolean(st.isThawing || st.thawDate)}
-                                        onChange={(e) => {
-                                          const isChecked = e.target.checked;
-                                          updateStrawInGroup(gIdx, sIdx, 'isThawing', isChecked);
-                                          if (isChecked) {
-                                            updateStrawInGroup(gIdx, sIdx, 'thawDate', st.thawDate || formatDateDDMMYYYY(new Date()));
-                                          } else {
-                                            updateStrawInGroup(gIdx, sIdx, 'thawDate', '');
-                                          }
-                                        }}
-                                        className="w-3.5 h-3.5 accent-amber-600 rounded cursor-pointer"
-                                        title="Tick box to thaw this specific straw"
-                                      />
+                                  <td className="p-1 text-center min-w-[210px]">
+                                    <div className="flex items-center justify-center gap-1.5 flex-wrap sm:flex-nowrap">
+                                      <label className="flex items-center gap-1 text-[9px] font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-1.5 py-1 rounded cursor-pointer shrink-0 transition-colors">
+                                        <input
+                                          type="checkbox"
+                                          checked={Boolean(st.isThawing || st.thawDate)}
+                                          onChange={(e) => {
+                                            const isChecked = e.target.checked;
+                                            updateStrawInGroup(gIdx, sIdx, 'isThawing', isChecked);
+                                            if (isChecked) {
+                                              updateStrawInGroup(gIdx, sIdx, 'thawDate', st.thawDate || formatDateDDMMYYYY(new Date()));
+                                            } else {
+                                              updateStrawInGroup(gIdx, sIdx, 'thawDate', '');
+                                            }
+                                          }}
+                                          className="w-3.5 h-3.5 accent-amber-600 rounded cursor-pointer"
+                                          title="Tick box to thaw this specific straw"
+                                        />
+                                        <span>Thaw</span>
+                                      </label>
                                       {(st.isThawing || st.thawDate) && (
-                                        <div className="w-28 font-mono font-bold">
+                                        <div className="w-44 sm:w-48 shrink-0">
                                           <DateInputDDMMYYYY
                                             value={st.thawDate || ''}
                                             onChange={(isoDate) => updateStrawInGroup(gIdx, sIdx, 'thawDate', isoDate)}
                                             compact
                                             hideBadge
                                             placeholder="DD/MM/YYYY"
-                                            inputClassName="w-full bg-amber-50 border border-amber-400 rounded py-0.5 px-1 pr-6 font-mono text-[8px] text-amber-900 font-bold focus:outline-none focus:border-amber-600 shadow-2xs block"
+                                            inputClassName="w-full bg-amber-50/80 border border-amber-300 rounded-lg text-amber-950 font-bold focus:outline-none focus:border-amber-600 shadow-2xs"
                                           />
                                         </div>
                                       )}
                                     </div>
                                   </td>
-                                  <td className="p-0.5 text-center">
+                                  <td className="p-1 text-center w-12">
                                     <button
                                       type="button"
                                       onClick={() => removeStrawFromGroup(gIdx, sIdx)}
-                                      className="p-0.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                      className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                                       title="Delete Straw"
                                     >
-                                      <Trash2 className="w-3 h-3" />
+                                      <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                   </td>
                                 </tr>

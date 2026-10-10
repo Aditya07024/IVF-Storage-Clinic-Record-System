@@ -973,7 +973,7 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
         } ${inputClassName || ''}`}
         onPaste={handlePaste}
       >
-        <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+        <div className={`flex items-center justify-center ${compact ? 'gap-1' : 'gap-1.5 sm:gap-2'} flex-1 min-w-0`}>
           {/* Day Slot */}
           <div className="flex flex-col items-center">
             <input
@@ -986,9 +986,9 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
               placeholder="DD"
               maxLength={2}
               required={required}
-              className={`w-8 sm:w-9 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
-                compact ? 'text-xs' : 'text-sm'
-              }`}
+              className={`${
+                compact ? 'w-6 text-xs' : 'w-8 sm:w-9 text-sm'
+              } text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold`}
               title="Day (01-31)"
             />
           </div>
@@ -1007,9 +1007,9 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
               placeholder="MM"
               maxLength={2}
               required={required}
-              className={`w-8 sm:w-9 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
-                compact ? 'text-xs' : 'text-sm'
-              }`}
+              className={`${
+                compact ? 'w-6 text-xs' : 'w-8 sm:w-9 text-sm'
+              } text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold`}
               title="Month (01-12)"
             />
           </div>
@@ -1028,9 +1028,9 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
               placeholder="YYYY"
               maxLength={4}
               required={required}
-              className={`w-14 sm:w-16 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
-                compact ? 'text-xs' : 'text-sm'
-              }`}
+              className={`${
+                compact ? 'w-11 sm:w-12 text-xs' : 'w-14 sm:w-16 text-sm'
+              } text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold`}
               title="Year (YYYY)"
             />
           </div>
@@ -1038,14 +1038,14 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
 
         {/* Fallback calendar picker if no label is present */}
         {!label && (
-          <div className="relative border-l border-slate-200 pl-2 ml-1 flex items-center justify-center shrink-0">
+          <div className="relative border-l border-slate-200 pl-1.5 ml-1 flex items-center justify-center shrink-0">
             <div
               className={`text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer flex items-center justify-center overflow-hidden ${
-                compact ? 'w-6 h-6' : 'w-7 h-7'
+                compact ? 'w-5 h-5' : 'w-7 h-7'
               }`}
               title="Pick date from calendar"
             >
-              <Calendar className={compact ? 'w-3.5 h-3.5 pointer-events-none' : 'w-4 h-4 pointer-events-none'} />
+              <Calendar className={compact ? 'w-3 h-3 pointer-events-none' : 'w-4 h-4 pointer-events-none'} />
               <input
                 ref={hiddenDateRef}
                 type="date"
