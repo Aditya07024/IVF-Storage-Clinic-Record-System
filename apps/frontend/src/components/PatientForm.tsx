@@ -935,24 +935,45 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
   return (
     <div className={`min-w-0 max-w-full ${className || ''}`}>
       {label && (
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between flex-wrap gap-1">
+        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between flex-wrap gap-1">
           <span>{label} {required && <span className="text-rose-600 font-bold">*</span>}</span>
-          {!hideBadge && (extraBadge || (
-            <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-              DD/MM/YYYY
-            </span>
-          ))}
+
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+            {!hideBadge && (extraBadge || (
+              <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                DD/MM/YYYY
+              </span>
+            ))}
+
+            {/* Calendar Picker Icon pushed to the last (far right) */}
+            <div
+              className="relative text-slate-500 hover:text-emerald-700 bg-white hover:bg-emerald-50 border border-slate-300 hover:border-emerald-400 rounded-md p-1 transition-all cursor-pointer flex items-center justify-center shadow-2xs group"
+              title="Pick date from calendar"
+            >
+              <Calendar className="w-3.5 h-3.5 pointer-events-none text-emerald-600 group-hover:scale-110 transition-transform" />
+              <input
+                ref={hiddenDateRef}
+                type="date"
+                value={currentIso || ''}
+                onChange={handleCalendarPick}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                tabIndex={-1}
+                aria-label="Pick date from calendar"
+              />
+            </div>
+          </div>
         </label>
       )}
 
-      {/* 3-Part Segmented Box: [ DD ] / [ MM ] / [ YYYY ] + Calendar */}
+      {/* 3-Part Segmented Box: [ DD ] / [ MM ] / [ YYYY ] */}
       <div
         className={`w-full min-w-0 max-w-full box-border bg-slate-50 border border-slate-300 rounded-xl flex items-center justify-between transition-all focus-within:bg-white focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 shadow-2xs ${
           compact ? 'h-8 px-2' : 'h-11 px-3'
         } ${inputClassName || ''}`}
         onPaste={handlePaste}
       >
-        <div className="flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
+        <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-1 min-w-0">
           {/* Day Slot */}
           <div className="flex flex-col items-center">
             <input
@@ -965,7 +986,7 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
               placeholder="DD"
               maxLength={2}
               required={required}
-              className={`w-7 sm:w-8 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
+              className={`w-8 sm:w-9 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
                 compact ? 'text-xs' : 'text-sm'
               }`}
               title="Day (01-31)"
@@ -986,7 +1007,7 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
               placeholder="MM"
               maxLength={2}
               required={required}
-              className={`w-7 sm:w-8 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
+              className={`w-8 sm:w-9 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
                 compact ? 'text-xs' : 'text-sm'
               }`}
               title="Month (01-12)"
@@ -1007,7 +1028,7 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
               placeholder="YYYY"
               maxLength={4}
               required={required}
-              className={`w-12 sm:w-14 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
+              className={`w-14 sm:w-16 text-center font-mono font-bold text-slate-900 bg-transparent outline-none placeholder:text-slate-400 placeholder:font-mono placeholder:font-bold ${
                 compact ? 'text-xs' : 'text-sm'
               }`}
               title="Year (YYYY)"
@@ -1015,27 +1036,29 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
           </div>
         </div>
 
-        {/* Calendar Picker Icon with Native Picker Overlay */}
-        <div className="relative border-l border-slate-200 pl-2 ml-1 flex items-center justify-center shrink-0">
-          <div
-            className={`text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer flex items-center justify-center overflow-hidden ${
-              compact ? 'w-6 h-6' : 'w-7 h-7'
-            }`}
-            title="Pick date from calendar"
-          >
-            <Calendar className={compact ? 'w-3.5 h-3.5 pointer-events-none' : 'w-4 h-4 pointer-events-none'} />
-            <input
-              ref={hiddenDateRef}
-              type="date"
-              value={currentIso || ''}
-              onChange={handleCalendarPick}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              tabIndex={-1}
-              aria-label="Pick date from calendar"
-            />
+        {/* Fallback calendar picker if no label is present */}
+        {!label && (
+          <div className="relative border-l border-slate-200 pl-2 ml-1 flex items-center justify-center shrink-0">
+            <div
+              className={`text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer flex items-center justify-center overflow-hidden ${
+                compact ? 'w-6 h-6' : 'w-7 h-7'
+              }`}
+              title="Pick date from calendar"
+            >
+              <Calendar className={compact ? 'w-3.5 h-3.5 pointer-events-none' : 'w-4 h-4 pointer-events-none'} />
+              <input
+                ref={hiddenDateRef}
+                type="date"
+                value={currentIso || ''}
+                onChange={handleCalendarPick}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                tabIndex={-1}
+                aria-label="Pick date from calendar"
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -3111,7 +3134,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
                 <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2">
                   <Snowflake className="w-4 h-4 text-emerald-600" />
-                  <span>Freezing Batch Details (Asked on Every Freezing)</span>
+                  <span>Freezing Batch Details</span>
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
