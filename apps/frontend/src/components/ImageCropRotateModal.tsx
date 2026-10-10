@@ -199,7 +199,10 @@ export const ImageCropRotateModal: React.FC<ImageCropRotateModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+    <div
+      className="fixed inset-0 z-[5000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in overflow-y-auto"
+      style={{ zIndex: 9999 }}
+    >
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl border border-slate-100 space-y-3.5 sm:space-y-4 relative max-h-[96vh] flex flex-col my-auto">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">

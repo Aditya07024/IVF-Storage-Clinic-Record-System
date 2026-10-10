@@ -3046,7 +3046,10 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
       {/* Edit Freezed Straw Modal */}
       {editingStraw && (
-        <div className="fixed inset-0 z-[3000] bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-[5000] bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto"
+          style={{ zIndex: 9999 }}
+        >
           <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50">
               <div className="flex items-center gap-3">
@@ -3304,7 +3307,10 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
       {/* Full Resolution Image Lightbox Modal */}
       {previewImageModalUrl && (
-        <div className="fixed inset-0 z-[4000] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+        <div
+          className="fixed inset-0 z-[5000] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          style={{ zIndex: 9999 }}
+        >
           <div className="relative w-full max-w-5xl bg-slate-900 rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 backdrop-blur-md text-white">
