@@ -1719,7 +1719,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                   className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:shadow-sm active:scale-95"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>+ Add More Straws</span>
+                  <span>Add More Straws</span>
                 </button>
               </div>
             </div>
