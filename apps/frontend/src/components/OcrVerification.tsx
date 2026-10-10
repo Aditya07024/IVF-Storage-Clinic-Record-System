@@ -480,16 +480,51 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
       }
 
       const autoStage = calculateStageFromDates(json.visitDate || json.aspirationDate || '', sDate, currentSpecimenType) || defaultStage;
+      const count = Math.max(1, s.embryoCount ?? 1);
+      let initGrades: string[] = [];
+      let initGradeStr = (s.grade || defaultGrade).toString().trim();
+
+      if (currentSpecimenType === 'OOCYTE') {
+        const defaultOocyteStg = ['MII', 'MI', 'GV'].includes(initGradeStr) ? initGradeStr : 'MII';
+        if (Array.isArray(s.embryoGrades) && s.embryoGrades.length > 0) {
+          initGrades = Array.from({ length: count }, (_, i) => {
+            const g = (s.embryoGrades[i] || defaultOocyteStg).trim();
+            return ['MII', 'MI', 'GV'].includes(g) ? g : defaultOocyteStg;
+          });
+        } else if (initGradeStr.includes(',')) {
+          const split = initGradeStr.split(',').map((g: string) => g.trim());
+          initGrades = Array.from({ length: count }, (_, i) => {
+            const g = split[i] || defaultOocyteStg;
+            return ['MII', 'MI', 'GV'].includes(g) ? g : defaultOocyteStg;
+          });
+        } else {
+          initGrades = Array.from({ length: count }, () => defaultOocyteStg);
+        }
+        initGradeStr = initGrades.join(', ');
+      } else {
+        // EMBRYO
+        if (Array.isArray(s.embryoGrades) && s.embryoGrades.length > 0) {
+          initGrades = Array.from({ length: count }, (_, i) => s.embryoGrades[i] || initGradeStr || '4AA');
+        } else if (initGradeStr.includes(',')) {
+          const split = initGradeStr.split(',').map((g: string) => g.trim());
+          initGrades = Array.from({ length: count }, (_, i) => split[i] || '4AA');
+        } else {
+          initGrades = Array.from({ length: count }, () => initGradeStr || '4AA');
+        }
+        initGradeStr = initGrades.join(', ');
+      }
+
+      const initFrags = Array.from({ length: count }, (_, i) => (s.embryoFrags?.[i] ?? (i === 0 ? (s.fragmentation || 'No') : 'No')));
 
       groupedMap.get(groupKey)!.push({
         strawId: s.strawId || `STR-0${groupedMap.get(groupKey)!.length + 1}`,
         colorTag: sCol,
-        embryoCount: s.embryoCount ?? 1,
+        embryoCount: count,
         stage: autoStage,
-        grade: s.grade || defaultGrade,
+        grade: initGradeStr,
         fragmentation: s.fragmentation || 'No',
-        embryoGrades: s.embryoGrades,
-        embryoFrags: s.embryoFrags,
+        embryoGrades: initGrades,
+        embryoFrags: initFrags,
         isThawing: s.isThawing,
         thawDate: s.thawDate || json.thawDate || '',
       });
@@ -510,7 +545,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
       parsedGroups.push({
         id: 'fg-1',
         freezingDate: mainFreezingDate,
-        straws: [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: defaultStage, grade: defaultGrade, fragmentation: 'No' }],
+        straws: [{ strawId: 'STR-01', colorTag: defaultStrawColor, embryoCount: 1, stage: defaultStage, grade: defaultGrade, embryoGrades: [defaultGrade], fragmentation: 'No' }],
       });
     }
 
@@ -563,13 +598,16 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
       const defaultColor = CLINIC_STRAW_COLORS.includes(visoTubeColor as any) ? visoTubeColor : 'Pink';
       const autoStage = calculateStageFromDates(visitDate, targetGroup.freezingDate, specimenType);
       const totalStraws = prevGroups.reduce((acc, g) => acc + g.straws.length, 0);
+      const defaultGrade = specimenType === 'OOCYTE' ? (oocyteStage || 'MII') : '4AA';
 
       const newStraw: FreezingGroupStraw = {
         strawId: `STR-0${totalStraws + 1}`,
         colorTag: targetGroup.straws[0]?.colorTag || defaultColor,
         embryoCount: 1,
         stage: autoStage,
-        grade: '4AA',
+        grade: defaultGrade,
+        embryoGrades: [defaultGrade],
+        embryoFrags: ['No'],
         fragmentation: 'No',
         thawDate: '',
       };
@@ -590,11 +628,27 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
         const computedStage = calculateStageFromDates(visitDate, group.freezingDate, type) || defaultStage;
         return {
           ...group,
-          straws: group.straws.map((st) => ({
-            ...st,
-            stage: computedStage,
-            grade: (!st.grade || st.grade === '4AA' || st.grade === 'MII') ? defaultGrade : st.grade,
-          })),
+          straws: group.straws.map((st) => {
+            const count = st.embryoCount || 1;
+            if (type === 'OOCYTE') {
+              const defaultOocyteStg = ['MII', 'MI', 'GV'].includes(st.grade || '') ? (st.grade || 'MII') : (oocyteStage || 'MII');
+              const newGrades = Array.from({ length: count }, (_, i) => (st.embryoGrades?.[i] && ['MII', 'MI', 'GV'].includes(st.embryoGrades[i]) ? st.embryoGrades[i] : defaultOocyteStg));
+              return {
+                ...st,
+                stage: computedStage,
+                grade: newGrades.join(', '),
+                embryoGrades: newGrades,
+              };
+            } else {
+              const newGrades = Array.from({ length: count }, (_, i) => (st.embryoGrades?.[i] && !['MII', 'MI', 'GV'].includes(st.embryoGrades[i]) ? st.embryoGrades[i] : '4AA'));
+              return {
+                ...st,
+                stage: computedStage,
+                grade: newGrades.join(', '),
+                embryoGrades: newGrades,
+              };
+            }
+          }),
         };
       })
     );
@@ -617,6 +671,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
             embryoCount: 1,
             stage: defaultStage,
             grade: defaultGrade,
+            embryoGrades: [defaultGrade],
+            embryoFrags: ['No'],
             fragmentation: 'No',
             thawDate: '',
           },
@@ -831,10 +887,25 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
       },
       freezingGroups: freezingGroups.map((group) => ({
         ...group,
-        straws: group.straws.map((st) => ({
-          ...st,
-          calculatedStage: calculateStageFromDates(visitDate, group.freezingDate, specimenType),
-        })),
+        straws: group.straws.map((st) => {
+          const eCount = st.embryoCount || 1;
+          let finalGrades = st.embryoGrades;
+          if (!finalGrades || finalGrades.length < eCount) {
+            if (specimenType === 'OOCYTE') {
+              const defaultStg = ['MII', 'MI', 'GV'].includes(st.grade || '') ? st.grade : (oocyteStage || 'MII');
+              finalGrades = Array.from({ length: eCount }, (_, i) => st.embryoGrades?.[i] || defaultStg);
+            } else {
+              const defaultStg = st.grade || '4AA';
+              finalGrades = Array.from({ length: eCount }, (_, i) => st.embryoGrades?.[i] || defaultStg);
+            }
+          }
+          return {
+            ...st,
+            embryoGrades: finalGrades,
+            grade: finalGrades.join(', '),
+            calculatedStage: calculateStageFromDates(visitDate, group.freezingDate, specimenType),
+          };
+        }),
       })),
       totalStraws: freezingGroups.reduce((acc, g) => acc + g.straws.length, 0),
       totalEmbryos: freezingGroups.reduce((acc, g) => acc + g.straws.reduce((sAcc, st) => sAcc + (st.embryoCount || 1), 0), 0),
@@ -854,11 +925,26 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     const currentPatientId = patientId.trim() || 'AUTO';
 
     const flattenedStraws = freezingGroups.flatMap((group) =>
-      group.straws.map((st) => ({
-        ...st,
-        stage: st.stage || calculateStageFromDates(visitDate, group.freezingDate, specimenType),
-        freezingDate: group.freezingDate || undefined,
-      }))
+      group.straws.map((st) => {
+        const eCount = st.embryoCount || 1;
+        let finalGrades = st.embryoGrades;
+        if (!finalGrades || finalGrades.length < eCount) {
+          if (specimenType === 'OOCYTE') {
+            const defaultStg = ['MII', 'MI', 'GV'].includes(st.grade || '') ? st.grade : (oocyteStage || 'MII');
+            finalGrades = Array.from({ length: eCount }, (_, i) => st.embryoGrades?.[i] || defaultStg);
+          } else {
+            const defaultStg = st.grade || '4AA';
+            finalGrades = Array.from({ length: eCount }, (_, i) => st.embryoGrades?.[i] || defaultStg);
+          }
+        }
+        return {
+          ...st,
+          embryoGrades: finalGrades,
+          grade: finalGrades.join(', '),
+          stage: st.stage || calculateStageFromDates(visitDate, group.freezingDate, specimenType),
+          freezingDate: group.freezingDate || undefined,
+        };
+      })
     );
     const primaryFreezingDate = freezingGroups.find((g) => g.freezingDate)?.freezingDate || undefined;
 
@@ -1783,11 +1869,31 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                                 key={count}
                                                 type="button"
                                                 onClick={() => {
-                                                  updateStrawInGroup(gIdx, sIdx, 'embryoCount', count);
-                                                  const prevGrades = st.embryoGrades && st.embryoGrades.length > 0 ? st.embryoGrades : [st.grade || 'MII'];
-                                                  const newGrades = Array.from({ length: count }, (_, i) => prevGrades[i] || 'MII');
-                                                  updateStrawInGroup(gIdx, sIdx, 'embryoGrades', newGrades);
-                                                  updateStrawInGroup(gIdx, sIdx, 'grade', newGrades.join(', '));
+                                                  setFreezingGroups((prevGroups) => {
+                                                    const next = [...prevGroups];
+                                                    const targetGroup = { ...next[gIdx] };
+                                                    const targetStraws = [...targetGroup.straws];
+                                                    const currSt = targetStraws[sIdx];
+                                                    const prevGrades = currSt.embryoGrades && currSt.embryoGrades.length > 0
+                                                      ? currSt.embryoGrades
+                                                      : (currSt.grade && currSt.grade.includes(',') ? currSt.grade.split(',').map((g: string) => g.trim()) : [currSt.grade || 'MII']);
+                                                    const newGrades = Array.from({ length: count }, (_, i) => {
+                                                      const g = prevGrades[i] || prevGrades[0] || 'MII';
+                                                      return ['MII', 'MI', 'GV'].includes(g) ? g : 'MII';
+                                                    });
+                                                    const prevFrags = currSt.embryoFrags && currSt.embryoFrags.length > 0 ? currSt.embryoFrags : [currSt.fragmentation || ''];
+                                                    const newFrags = Array.from({ length: count }, (_, i) => prevFrags[i] || '');
+                                                    targetStraws[sIdx] = {
+                                                      ...currSt,
+                                                      embryoCount: count,
+                                                      embryoGrades: newGrades,
+                                                      embryoFrags: newFrags,
+                                                      grade: newGrades.join(', '),
+                                                    };
+                                                    targetGroup.straws = targetStraws;
+                                                    next[gIdx] = targetGroup;
+                                                    return next;
+                                                  });
                                                 }}
                                                 className={`flex-1 py-1 px-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${st.embryoCount === count
                                                     ? 'bg-emerald-600 text-white shadow-xs font-mono font-bold'
@@ -1810,14 +1916,21 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                     </div>
 
                                     {Array.from({ length: st.embryoCount || 1 }).map((_, eIdx) => {
-                                      const prevGrades = st.embryoGrades && st.embryoGrades.length > 0 ? st.embryoGrades : [st.grade || 'MII'];
-                                      const currentGradeVal = ['MII', 'MI', 'GV'].includes(prevGrades[eIdx] || '') ? prevGrades[eIdx] : 'MII';
+                                      const eCount = st.embryoCount || 1;
+                                      const currentGrades = Array.from({ length: eCount }, (_, i) => {
+                                        if (st.embryoGrades && st.embryoGrades[i] && ['MII', 'MI', 'GV'].includes(st.embryoGrades[i])) {
+                                          return st.embryoGrades[i];
+                                        }
+                                        const fallback = st.grade && st.grade.includes(',') ? st.grade.split(',')[i]?.trim() : st.grade;
+                                        return ['MII', 'MI', 'GV'].includes(fallback || '') ? fallback : 'MII';
+                                      });
+                                      const currentGradeVal = currentGrades[eIdx];
 
                                       return (
                                         <div key={eIdx} className="bg-white p-2.5 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center">
                                           <div>
                                             <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                              {(st.embryoCount || 1) > 1 ? `Oocyte #${eIdx + 1} Stage` : 'Oocyte Stage'}
+                                              {eCount > 1 ? `Oocyte #${eIdx + 1} Stage` : 'Oocyte Stage'}
                                             </label>
                                             <div className="grid grid-cols-3 gap-1 h-9">
                                               {['MII', 'MI', 'GV'].map((stg) => (
@@ -1825,10 +1938,29 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                                   key={stg}
                                                   type="button"
                                                   onClick={() => {
-                                                    const newGrades = [...(st.embryoGrades || Array.from({ length: st.embryoCount || 1 }, () => 'MII'))];
-                                                    newGrades[eIdx] = stg;
-                                                    updateStrawInGroup(gIdx, sIdx, 'embryoGrades', newGrades);
-                                                    updateStrawInGroup(gIdx, sIdx, 'grade', newGrades.join(', '));
+                                                    setFreezingGroups((prevGroups) => {
+                                                      const next = [...prevGroups];
+                                                      const targetGroup = { ...next[gIdx] };
+                                                      const targetStraws = [...targetGroup.straws];
+                                                      const currSt = targetStraws[sIdx];
+                                                      const currCount = currSt.embryoCount || 1;
+                                                      const baseGrades = Array.from({ length: currCount }, (_, i) => {
+                                                        if (currSt.embryoGrades && currSt.embryoGrades[i] && ['MII', 'MI', 'GV'].includes(currSt.embryoGrades[i])) {
+                                                          return currSt.embryoGrades[i];
+                                                        }
+                                                        const fallback = currSt.grade && currSt.grade.includes(',') ? currSt.grade.split(',')[i]?.trim() : currSt.grade;
+                                                        return ['MII', 'MI', 'GV'].includes(fallback || '') ? fallback : 'MII';
+                                                      });
+                                                      baseGrades[eIdx] = stg;
+                                                      targetStraws[sIdx] = {
+                                                        ...currSt,
+                                                        embryoGrades: baseGrades,
+                                                        grade: baseGrades.join(', '),
+                                                      };
+                                                      targetGroup.straws = targetStraws;
+                                                      next[gIdx] = targetGroup;
+                                                      return next;
+                                                    });
                                                   }}
                                                   className={`h-full rounded-md text-xs font-extrabold transition-all border flex items-center justify-center cursor-pointer ${currentGradeVal === stg
                                                       ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
@@ -1849,9 +1981,10 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                                               type="text"
                                               value={st.embryoFrags?.[eIdx] ?? ''}
                                               onChange={(e) => {
-                                                const newFrags = [...(st.embryoFrags || Array.from({ length: st.embryoCount || 1 }, () => ''))];
-                                                newFrags[eIdx] = e.target.value;
-                                                updateStrawInGroup(gIdx, sIdx, 'embryoFrags', newFrags);
+                                                const eCountLocal = st.embryoCount || 1;
+                                                const baseFrags = Array.from({ length: eCountLocal }, (_, i) => st.embryoFrags?.[i] ?? '');
+                                                baseFrags[eIdx] = e.target.value;
+                                                updateStrawInGroup(gIdx, sIdx, 'embryoFrags', baseFrags);
                                                 if (eIdx === 0) updateStrawInGroup(gIdx, sIdx, 'fragmentation', e.target.value);
                                               }}
                                               placeholder="e.g. Normal morphology"

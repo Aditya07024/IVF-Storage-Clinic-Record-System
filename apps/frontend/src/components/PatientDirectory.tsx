@@ -197,22 +197,25 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
   }, []);
 
   const openEditStrawModal = (straw: any, defaultDisplayLabel?: string, cycleNum: number = 1) => {
-    setEditingStraw({ ...straw, _cycleNum: cycleNum });
     const rawStrawId = (straw.strawId || '').trim();
+    const cleanDisplayId = defaultDisplayLabel ? defaultDisplayLabel.replace(/^#/, '').trim() : '';
     const dotMatch = rawStrawId.match(/^(\d+)\.(\d+)$/);
     const cycleMatch = rawStrawId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
-    const isGeneric = !straw.strawId || /^#?\d+$/.test(rawStrawId) || rawStrawId.startsWith('STR-') || !!cycleMatch || !!dotMatch;
 
     let defaultIdValue = '';
-    if (dotMatch) {
+    if (cleanDisplayId) {
+      defaultIdValue = cleanDisplayId;
+    } else if (dotMatch) {
       defaultIdValue = `${dotMatch[1]}.${dotMatch[2]}`;
     } else if (cycleMatch) {
       defaultIdValue = `${cycleMatch[1]}.${cycleMatch[2]}`;
-    } else if (isGeneric) {
-      defaultIdValue = `${cycleNum}.${straw._cycleStrawNum || 1}`;
-    } else {
+    } else if (rawStrawId && !rawStrawId.startsWith('STR-')) {
       defaultIdValue = rawStrawId;
+    } else {
+      defaultIdValue = `${cycleNum}.1`;
     }
+
+    setEditingStraw({ ...straw, _cycleNum: cycleNum, _displayId: defaultIdValue });
     setEditStrawCustomId(defaultIdValue);
     setEditStrawColor(straw.color || 'Pink');
 
@@ -3098,7 +3101,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Edit Frozen Straw Properties</h2>
                   <p className="text-xs text-slate-500 font-mono">
-                    Straw ID: <span className="font-bold text-amber-900">{editingStraw.strawId}</span>
+                    Straw ID: <span className="font-bold text-amber-900">#{editStrawCustomId || (editingStraw as any)?._displayId || editingStraw.strawId}</span>
                   </p>
                 </div>
               </div>
@@ -3121,22 +3124,16 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Straw Custom ID / Code <span className="text-rose-600">*</span>
+                    Straw ID (Permanent)
                   </label>
-                  {editingStraw?.strawId && (
-                    <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                      Cycle #{(editingStraw as any)?._cycleNum || 1} System ID: {editingStraw.strawId}
-                    </span>
-                  )}
+                  <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    Cycle #{(editingStraw as any)?._cycleNum || 1}
+                  </span>
                 </div>
-                <input
-                  type="text"
-                  value={editStrawCustomId}
-                  onChange={(e) => setEditStrawCustomId(e.target.value)}
-                  placeholder="e.g. #1 or Custom Code"
-                  required
-                  className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                />
+                <div className="w-full h-10 bg-slate-100 border border-slate-200 rounded-xl px-3.5 flex items-center justify-between text-xs font-mono font-bold text-slate-800 select-none">
+                  <span>#{editStrawCustomId || (editingStraw as any)?._displayId || editingStraw.strawId}</span>
+                  <span className="text-[10px] font-sans font-medium text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded">Fixed ID</span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

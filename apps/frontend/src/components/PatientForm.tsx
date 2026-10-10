@@ -216,9 +216,13 @@ export function getStrawStageSummary(item: any, specimenType?: string, vitrifica
         rawStg = (item.embryos[i].grade || item.embryos[i].notes || '').toString().trim().toUpperCase();
       }
       if (!rawStg) {
-        const itemG = item.grade || item.embryoStage || item.stage || '';
-        const itemGSplit = itemG.includes(',') ? itemG.split(',')[i]?.trim() : itemG;
-        rawStg = ((item as any)[eGradeKey] || itemGSplit || 'MII').toString().trim().toUpperCase();
+        if (Array.isArray(item.embryoGrades) && item.embryoGrades[i]) {
+          rawStg = item.embryoGrades[i].toString().trim().toUpperCase();
+        } else {
+          const itemG = item.grade || item.embryoStage || item.stage || '';
+          const itemGSplit = itemG.includes(',') ? itemG.split(',')[i]?.trim() : itemG;
+          rawStg = ((item as any)[eGradeKey] || itemGSplit || 'MII').toString().trim().toUpperCase();
+        }
       }
       const cleanStg = rawStg.split('(')[0].replace(/\[.*?\]/g, '').trim();
       let stg = ['MII', 'MI', 'GV'].includes(cleanStg) ? cleanStg : (cleanStg || 'MII');
