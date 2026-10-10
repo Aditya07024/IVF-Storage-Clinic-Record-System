@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => {
     define: {
       'import.meta.env.VITE_NODE_ENV': JSON.stringify(rawNodeEnv),
       'import.meta.env.VITE_IS_PRODUCTION_ENV': JSON.stringify(isProdEnv),
+      'process.env.NODE_ENV': JSON.stringify(rawNodeEnv),
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(getRawEnvValue('VITE_API_BASE_URL')),
       'import.meta.env.VITE_BACKEND_URL': JSON.stringify(envBackendUrl),
       'import.meta.env.VITE_PROXY_TARGET': JSON.stringify(targetUrl),

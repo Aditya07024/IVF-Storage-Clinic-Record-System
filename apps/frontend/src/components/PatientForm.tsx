@@ -1225,6 +1225,22 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     if (initialPatient) {
       setFormMode('existing');
       handleSelectExistingPatient(initialPatient);
+      if (initialPatient._ocrPrefill) {
+        const prefill = initialPatient._ocrPrefill;
+        if (prefill.aspirationDate) setAspirationDate(prefill.aspirationDate);
+        if (prefill.freezingDate) setFreezingDate(prefill.freezingDate);
+        if (prefill.specimenType) setSpecimenType(prefill.specimenType);
+        if (prefill.cycleType) setCycleType(prefill.cycleType);
+        if (prefill.doctorName) setDoctorName(prefill.doctorName);
+        if (prefill.comments) setComments(prefill.comments);
+        if (prefill.embryoStage) setEmbryoStage(prefill.embryoStage);
+        if (prefill.oocyteStage) setOocyteStage(prefill.oocyteStage);
+        if (prefill.strawItems && prefill.strawItems.length > 0) {
+          setStrawsCount(prefill.strawItems.length);
+          setStrawItems(prefill.strawItems);
+          setAssignStorageEnabled(true);
+        }
+      }
     }
   }, [initialPatient]);
 

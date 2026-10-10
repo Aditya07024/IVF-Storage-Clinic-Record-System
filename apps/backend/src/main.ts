@@ -928,6 +928,32 @@ app.post('/api/ocr/discard', accessKeyGuard, jwtAuthGuard, async (req: Authentic
   }
 });
 
+// Attach OCR Scanned Document to an Existing Patient
+app.post('/api/ocr/attach-existing', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { ocrRecordId, patientId } = req.body;
+    if (!ocrRecordId || !patientId) {
+      return res.status(400).json({ success: false, error: 'ocrRecordId and patientId are required.' });
+    }
+    const staffUserId = req.user?.userId || null;
+
+    const record = await prisma.ocrRecord.update({
+      where: { id: ocrRecordId },
+      data: {
+        patientId,
+        status: 'ATTACHMENT',
+        verifiedBy: staffUserId,
+        verifiedAt: new Date(),
+      },
+    });
+
+    serverCache.clear();
+    return res.json({ success: true, record });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err?.message || 'Failed to attach OCR record.' });
+  }
+});
+
 // --- DOCUMENT PDF & EMAIL ROUTES ---
 app.get('/api/documents/patient/:id/pdf', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {

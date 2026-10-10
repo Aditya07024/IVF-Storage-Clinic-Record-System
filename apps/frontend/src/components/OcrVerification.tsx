@@ -69,9 +69,10 @@ function calculateStageFromDates(
 
 export interface OcrVerificationProps {
   onNavigateToPatient?: (patientId: string) => void;
+  onNavigateToExistingPatientForm?: (patient: any, ocrPrefill?: any) => void;
 }
 
-export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPatient }) => {
+export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPatient, onNavigateToExistingPatientForm }) => {
   const [file, setFile] = useState<File | null>(null);
   const [cropModalFile, setCropModalFile] = useState<File | null>(null);
   const [pendingRecords, setPendingRecords] = useState<any[]>([]);
@@ -189,6 +190,80 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     }, 50);
     return () => clearTimeout(timer);
   }, [patientId]);
+
+  const [savingToExisting, setSavingToExisting] = useState(false);
+
+  const handleSavePictureAndFillExisting = async () => {
+    if (!existingIdMatch || !activeRecord) return;
+    setSavingToExisting(true);
+    try {
+      // 1. Attach picture/OCR record to existing patient
+      try {
+        await apiRequest('/api/ocr/attach-existing', {
+          method: 'POST',
+          body: JSON.stringify({
+            ocrRecordId: activeRecord.id,
+            patientId: existingIdMatch.id,
+          }),
+        });
+      } catch (attachErr) {
+        console.warn('Could not attach via /api/ocr/attach-existing, attempting document fallback:', attachErr);
+        if (activeRecord.storageKey && activeRecord.storageKey.startsWith('data:')) {
+          try {
+            const formData = new FormData();
+            const res = await fetch(activeRecord.storageKey);
+            const blob = await res.blob();
+            formData.append('document', blob, activeRecord.originalFilename || `scan_${Date.now()}.jpg`);
+            await apiRequest(`/api/patients/${existingIdMatch.id}/documents`, {
+              method: 'POST',
+              body: formData,
+            });
+          } catch (docErr) {
+            console.error('Fallback document upload failed:', docErr);
+          }
+        }
+      }
+
+      // 2. Prepare prefill data from OCR form
+      const ocrPrefill = {
+        aspirationDate: visitDate || '',
+        freezingDate: freezingGroups[0]?.freezingDate || '',
+        specimenType,
+        cycleType,
+        doctorName,
+        comments,
+        embryoStage: freezingGroups[0]?.straws[0]?.stage || '',
+        oocyteStage,
+        strawItems: freezingGroups.flatMap((fg) =>
+          fg.straws.map((s) => ({
+            color: s.colorTag || 'Pink',
+            embryoCount: s.embryoCount || 1,
+            grade: s.grade || '',
+            comments: s.stage || '',
+            isPgt: false,
+          }))
+        ),
+      };
+
+      // 3. Remove activeRecord from pending list locally
+      setPendingRecords((prev) => prev.filter((r) => r.id !== activeRecord.id));
+      setActiveRecord(null);
+
+      // 4. Redirect to existing patient form with details filled
+      if (onNavigateToExistingPatientForm) {
+        onNavigateToExistingPatientForm(existingIdMatch, ocrPrefill);
+      } else if (onNavigateToPatient) {
+        onNavigateToPatient(existingIdMatch.id);
+      }
+    } catch (err: any) {
+      console.error('Error saving picture to existing patient:', err);
+      if (onNavigateToExistingPatientForm) {
+        onNavigateToExistingPatientForm(existingIdMatch);
+      }
+    } finally {
+      setSavingToExisting(false);
+    }
+  };
 
   const handleSelectExistingPatient = (existing: any) => {
     if (!existing) return;
@@ -1431,14 +1506,30 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           Patient with Registration ID <strong>{existingIdMatch.patientId}</strong> already exists: <strong>{existingIdMatch.fullName}</strong>.
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectExistingPatient(existingIdMatch)}
-                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shrink-0 shadow-2xs cursor-pointer flex items-center gap-1"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>View Patient</span>
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          disabled={savingToExisting}
+                          onClick={handleSavePictureAndFillExisting}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+                          title="Save this scanned picture to patient documents and fill form manually"
+                        >
+                          {savingToExisting ? (
+                            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <Save className="w-3.5 h-3.5" />
+                          )}
+                          <span>Save Picture & Add Data Manually</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectExistingPatient(existingIdMatch)}
+                          className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View Directory</span>
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -2216,28 +2307,38 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                   <span>Discard Scan</span>
                 </button>
 
-                <button
-                  type="submit"
-                  disabled={verifying || !!existingIdMatch}
-                  className={`flex-1 py-3.5 font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all ${existingIdMatch
-                      ? 'bg-slate-300 text-slate-600 border border-slate-400 cursor-not-allowed'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-                    }`}
-                >
-                  {verifying ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : existingIdMatch ? (
-                    <>
-                      <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span>Registration ID Already Exists (Please Change Registration ID or View Patient)</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Review & Confirm Record Summary</span>
-                    </>
-                  )}
-                </button>
+                {existingIdMatch ? (
+                  <button
+                    type="button"
+                    disabled={savingToExisting}
+                    onClick={handleSavePictureAndFillExisting}
+                    className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
+                  >
+                    {savingToExisting ? (
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Save Picture & Add Data Manually to Existing Patient</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={verifying}
+                    className="flex-1 py-3.5 font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                  >
+                    {verifying ? (
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Review & Confirm Record Summary</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </form>
           </div>

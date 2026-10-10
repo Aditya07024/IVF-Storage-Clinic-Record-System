@@ -52,6 +52,11 @@ export const AppContent: React.FC = () => {
     handleSetActiveTab('new-patient');
   };
 
+  const handleNavigateToExistingPatientForm = (patient: any, ocrPrefill?: any) => {
+    setPreselectedPatientForAddStraws({ ...patient, _ocrPrefill: ocrPrefill });
+    handleSetActiveTab('new-patient');
+  };
+
   const checkCurrentUser = async () => {
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -124,7 +129,12 @@ export const AppContent: React.FC = () => {
           />
         )}
         {activeTab === 'container-view' && <ContainerView initialCanCode={selectedCanCode} />}
-        {activeTab === 'ocr' && <OcrVerification onNavigateToPatient={handleNavigateToPatientDirectory} />}
+        {activeTab === 'ocr' && (
+          <OcrVerification
+            onNavigateToPatient={handleNavigateToPatientDirectory}
+            onNavigateToExistingPatientForm={handleNavigateToExistingPatientForm}
+          />
+        )}
         {activeTab === 'thaw' && <ThawWorkflow />}
         {activeTab === 'logs' && <AuditLogs />}
         {activeTab === 'support' && <DeveloperSupport />}

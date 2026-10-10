@@ -405,9 +405,15 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
       const res = await apiRequest(`/api/patients/${patientId}/documents`);
       if (res.success && res.documents) {
         setPatientDocs(res.documents);
+      } else {
+        setPatientDocs([]);
       }
-    } catch (err) {
-      console.error('Failed to fetch patient documents:', err);
+    } catch (err: any) {
+      setPatientDocs([]);
+      const msg = err?.message || '';
+      if (!msg.includes('404')) {
+        console.warn('Could not fetch patient documents:', err);
+      }
     }
   };
 
@@ -1252,18 +1258,21 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             );
                           })()}
 
-                          {/* Delete Patient Button - Comment out this block to remove from UI anytime */}
-                          {/* <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePatient(p.id, p.fullName);
-                            }}
-                            className="p-2 bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 rounded-xl border border-slate-200 hover:border-rose-300 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs active:scale-95 cursor-pointer"
-                            title="Delete Patient Record"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
-                            <span>Delete</span>
-                          </button> */}
+                          {/* Delete Patient Button - Only available in development mode (NODE_ENV=development), strictly hidden in production */}
+                          {(import.meta.env.VITE_NODE_ENV === 'development' || (!import.meta.env.VITE_IS_PRODUCTION_ENV && import.meta.env.VITE_NODE_ENV !== 'production')) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePatient(p.id, p.fullName);
+                              }}
+                              className="p-2 bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 rounded-xl border border-slate-200 hover:border-rose-300 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs active:scale-95 cursor-pointer"
+                              title="Delete Patient Record (Development Only)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
+                              <span>Delete</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
