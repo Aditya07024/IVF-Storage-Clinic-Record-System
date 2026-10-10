@@ -1,10 +1,34 @@
 import { prisma, withDbRetry } from '../../common/prisma.js';
 
-function parseFlexibleDate(dateStr?: string | null): Date | null {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return null;
-  return d;
+function parseFlexibleDate(d?: Date | string | null): Date | null {
+  if (!d) return null;
+  if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
+  const str = String(d).trim();
+  if (!str || str === 'N/A' || str === 'null' || str === 'undefined') return null;
+
+  const isoMatch = str.match(/^(\d{4})[\/\.\-](\d{1,2})[\/\.\-](\d{1,2})$/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10) - 1;
+    const day = parseInt(isoMatch[3], 10);
+    const parsed = new Date(Date.UTC(year, month, day, 12, 0, 0));
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const ddmmyyyyMatch = str.match(/^(\d{1,2})[\/\.\-\s](\d{1,2})[\/\.\-\s](\d{2,4})$/);
+  if (ddmmyyyyMatch) {
+    const day = parseInt(ddmmyyyyMatch[1], 10);
+    const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+    let year = parseInt(ddmmyyyyMatch[3], 10);
+    if (year < 100) {
+      year = year >= 50 ? 1900 + year : 2000 + year;
+    }
+    const parsed = new Date(Date.UTC(year, month, day, 12, 0, 0));
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(str);
+  return isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function calculateBatchCycleNumbers(batches: any[]): Map<string, number> {
@@ -493,8 +517,8 @@ export class StorageService {
         throw new Error(`Location ${visoTube.locationCode} does not have enough vacant straw capacity.`);
       }
 
-      const freezingDateObj = input.freezingDate ? new Date(input.freezingDate) : (input.storageDate ? new Date(input.storageDate) : new Date());
-      const aspirationDateObj = input.aspirationDate ? new Date(input.aspirationDate) : null;
+      const freezingDateObj = parseFlexibleDate(input.freezingDate) || parseFlexibleDate(input.storageDate) || new Date();
+      const aspirationDateObj = parseFlexibleDate(input.aspirationDate);
 
       // Pre-check Batch ID uniqueness using read-only findUnique to prevent P2002/25P02 transaction aborts
       let finalBatchId = batchIdCode;

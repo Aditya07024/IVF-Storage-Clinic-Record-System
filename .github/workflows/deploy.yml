@@ -9,6 +9,8 @@ jobs:
   deploy:
     name: Deploy to Production VPS
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Deploy via SSH
@@ -18,15 +20,55 @@ jobs:
           username: ${{ secrets.IVF_USER }}
           key: ${{ secrets.IVF_DEPLOY_KEY }}
           script: |
-            cd /var/www/ivf
-            git fetch origin main
-            git reset --hard origin/main
-            npm ci
-            npm run build
-            sudo -n /usr/bin/pm2 restart ivf-backend
-            sudo -n /usr/bin/pm2 status ivf-backend
+            set -e
 
-      - name: Non-blocking Health Check
+            cd /var/www/ivf
+
+            # Fetch latest commit using GitHub Actions ephemeral token (authenticates private repo)
+            git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git ${{ github.sha }}
+            git reset --hard FETCH_HEAD
+
+            # Build backend with fresh prisma client and typescript
+            cd /var/www/ivf/apps/backend
+            npm install --include=dev
+            npx prisma generate
+            npx tsc
+            cd /var/www/ivf
+
+            # Locate PM2 in user PATH, nvm, or standard system paths
+            export PATH="$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -n 1)/bin:$HOME/.npm-global/bin:/usr/local/bin:/usr/bin:$PATH"
+            PM2_BIN="$(command -v pm2 || which pm2 || echo /usr/bin/pm2)"
+
+            # Restart whichever PM2 instance (user or root) owns "ivf-backend"
+            if "$PM2_BIN" describe ivf-backend > /dev/null 2>&1; then
+              echo "Restarting ivf-backend under $(whoami)'s PM2"
+              "$PM2_BIN" restart ivf-backend --update-env
+              "$PM2_BIN" save
+              "$PM2_BIN" status ivf-backend
+            elif sudo -n "$PM2_BIN" describe ivf-backend > /dev/null 2>&1; then
+              echo "Restarting ivf-backend under root's PM2"
+              sudo -n "$PM2_BIN" restart ivf-backend --update-env
+              sudo -n "$PM2_BIN" save
+              sudo -n "$PM2_BIN" status ivf-backend
+            else
+              echo "ivf-backend process not found in PM2, starting it..."
+              cd /var/www/ivf/apps/backend
+              "$PM2_BIN" start dist/src/main.js --name ivf-backend
+              "$PM2_BIN" save
+              "$PM2_BIN" status ivf-backend
+            fi
+
+      - name: Verify new backend is live
         run: |
-          echo "Executing health check against https://api.sgrhivfcryo.in/health..."
-          curl -s -m 10 https://api.sgrhivfcryo.in/health || echo "Health check completed (endpoint returned non-200 status or timed out, continuing)."
+          sleep 5
+          echo "Checking https://api.sgrhivfcryo.in/api/health ..."
+          curl -sS -m 15 -o /dev/null -w "health HTTP %{http_code}\n" https://api.sgrhivfcryo.in/api/health
+
+          # Check /api/ocr/attach-existing: unauthenticated request returns 401/403 when route exists.
+          # A 404 indicates the old backend build is still running.
+          CODE=$(curl -s -m 15 -o /dev/null -w "%{http_code}" -X POST https://api.sgrhivfcryo.in/api/ocr/attach-existing)
+          echo "attach-existing route HTTP $CODE"
+          if [ "$CODE" = "404" ]; then
+            echo "ERROR: /api/ocr/attach-existing returned 404 - the server is still running an old build."
+            exit 1
+          fi
