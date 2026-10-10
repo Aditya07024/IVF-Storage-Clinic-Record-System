@@ -1134,8 +1134,10 @@ ${rawText}`;
         });
 
         let totalStrawsProcessed = 0;
+        let groupIndex = 0;
 
         for (const [frzKey, groupStraws] of groupedStrawsMap.entries()) {
+          groupIndex++;
           const batchCode = `BAT-${Date.now().toString().slice(-6)}-${totalStrawsProcessed + 1}`;
           const actualFrzStr = frzKey === '__default__' ? input.freezingDate : frzKey;
           const parsedFreezing = parseFlexibleDate(actualFrzStr) || parseFlexibleDate(input.freezingDate) || new Date();
@@ -1171,13 +1173,17 @@ ${rawText}`;
             },
           });
 
+          const cycleNumberForGroup = groupIndex;
           for (let i = 0; i < groupStraws.length; i++) {
             const st = groupStraws[i];
-            const seqNum = totalStrawsProcessed + i + 1;
-            const defaultLabel = `#${seqNum}`;
-            const rawCode = st.strawId && !st.strawId.startsWith('STR-') ? st.strawId.trim() : defaultLabel;
-            
-            const uniqueStrawCode = rawCode;
+            const seqNum = i + 1;
+            const customId = st.strawId && !st.strawId.startsWith('STR-') ? st.strawId.trim() : '';
+            let uniqueStrawCode: string;
+            if (customId && !/^#?\d+$/.test(customId)) {
+              uniqueStrawCode = customId;
+            } else {
+              uniqueStrawCode = `C${cycleNumberForGroup}-S${seqNum}`;
+            }
             const eCount = st.embryoCount || 1;
 
             const isOocyteSpecimen = input.specimenType === 'OOCYTE' || (input.vitrificationIndication && input.vitrificationIndication.toLowerCase().includes('egg'));

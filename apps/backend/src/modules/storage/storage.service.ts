@@ -544,6 +544,22 @@ export class StorageService {
         },
       });
 
+      // Determine cycle number for the batch
+      const allPatientBatches = await tx.storageBatch.findMany({
+        where: { patientId: input.patientId },
+        orderBy: [
+          { aspirationDate: 'asc' },
+          { storageDate: 'asc' },
+          { createdAt: 'asc' },
+        ],
+      });
+      let currentCycleNum = allPatientBatches.length;
+      if (batch) {
+        const foundIdx = allPatientBatches.findIndex((b) => b.id === batch.id);
+        currentCycleNum = foundIdx !== -1 ? foundIdx + 1 : allPatientBatches.length;
+      }
+      if (currentCycleNum < 1) currentCycleNum = 1;
+
       const createdStraws: any[] = [];
       let totalEmbryosSoFar = 0;
       for (let i = 0; i < requiredStraws; i++) {
@@ -553,7 +569,12 @@ export class StorageService {
         const seqNum = i + 1;
 
         const customId = (item as any).strawCustomId?.trim();
-        const strawIdCode = customId || `#${seqNum}`;
+        let strawIdCode: string;
+        if (customId && !/^#?\d+$/.test(customId)) {
+          strawIdCode = customId;
+        } else {
+          strawIdCode = `C${currentCycleNum}-S${seqNum}`;
+        }
 
         const straw = await tx.straw.create({
           data: {
@@ -788,13 +809,47 @@ export class StorageService {
 
       const updatePayload: any = {};
       if (data.strawCustomId !== undefined) {
-        const newCustomId = data.strawCustomId.trim();
+        let newCustomId = data.strawCustomId.trim();
+
+        // Calculate cycle number for this straw's batch
+        const allBatches = await tx.storageBatch.findMany({
+          where: { patientId: straw.batch.patientId },
+          orderBy: [
+            { aspirationDate: 'asc' },
+            { storageDate: 'asc' },
+            { createdAt: 'asc' },
+          ],
+        });
+        let cycleNum = 1;
+        const bIdx = allBatches.findIndex((b) => b.id === straw.batchId);
+        if (bIdx !== -1) {
+          cycleNum = bIdx + 1;
+        }
+
+        // If user entered a generic number like "#2" or "2", format as C{cycleNum}-S{num}
+        const numericMatch = newCustomId.match(/^#?(\d+)$/);
+        const cycleMatch = newCustomId.match(/^C(\d+)[-_]?(?:S|#)?(\d+)$/i);
+
+        if (numericMatch) {
+          const num = parseInt(numericMatch[1], 10);
+          newCustomId = `C${cycleNum}-S${num}`;
+        } else if (cycleMatch) {
+          const c = cycleMatch[1];
+          const s = cycleMatch[2];
+          newCustomId = `C${c}-S${s}`;
+        }
+
         if (newCustomId !== straw.strawId) {
           const existing = await tx.straw.findFirst({
-            where: { strawId: newCustomId, batch: { patientId: straw.batch.patientId } },
+            where: {
+              strawId: newCustomId,
+              batch: { patientId: straw.batch.patientId },
+              id: { not: straw.id },
+            },
           });
           if (existing) {
-            throw new Error(`Straw ID "${newCustomId}" is already assigned to another straw for this patient. Please enter a unique Straw ID.`);
+            const displayLabel = numericMatch ? `#${numericMatch[1]}` : newCustomId;
+            throw new Error(`Straw ID "${displayLabel}" is already assigned to another straw for this patient in Cycle #${cycleNum}. Please enter a unique Straw ID.`);
           }
         }
         updatePayload.strawId = newCustomId;

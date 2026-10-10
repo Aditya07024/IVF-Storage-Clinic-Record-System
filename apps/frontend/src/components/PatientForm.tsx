@@ -347,6 +347,10 @@ export function cleanDuplicateGradeString(rawGradeStr?: string): string {
 export function extractStrawSequenceNumber(straw: any): number {
   if (!straw) return 999999;
   const rawId = String(straw.strawId || straw.customId || straw.id || '');
+  const cycleMatch = rawId.match(/C\d+[-_]?(?:S|#)?(\d+)/i);
+  if (cycleMatch) {
+    return parseInt(cycleMatch[1], 10);
+  }
   const match = rawId.match(/\d+/);
   if (match) {
     return parseInt(match[0], 10);

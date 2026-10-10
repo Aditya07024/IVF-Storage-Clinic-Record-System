@@ -196,9 +196,10 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
     return () => window.removeEventListener('edit-patient-details', handleEditPatientEvent);
   }, []);
 
-  const openEditStrawModal = (straw: any, defaultDisplayLabel?: string) => {
-    setEditingStraw(straw);
-    setEditStrawCustomId(defaultDisplayLabel || straw.strawId || '');
+  const openEditStrawModal = (straw: any, defaultDisplayLabel?: string, cycleNum: number = 1) => {
+    setEditingStraw({ ...straw, _cycleNum: cycleNum });
+    const isGeneric = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
+    setEditStrawCustomId(isGeneric ? (defaultDisplayLabel || `#${straw._cycleStrawNum || 1}`) : (straw.strawId || ''));
     setEditStrawColor(straw.color || 'Pink');
 
     const isOocyte = isOocyteSpecimen(selectedPatient);
@@ -286,10 +287,17 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
       const primaryFrag = editStrawEmbryoFrags[0] || editStrawFragmentation || 'No';
 
+      const cycleNum = (editingStraw as any)?._cycleNum || 1;
+      let payloadCustomId = editStrawCustomId.trim();
+      const numMatch = payloadCustomId.match(/^#?(\d+)$/);
+      if (numMatch) {
+        payloadCustomId = `C${cycleNum}-S${numMatch[1]}`;
+      }
+
       const res = await apiRequest(`/api/storage/straws/${editingStraw.id}`, {
         method: 'PUT',
         body: JSON.stringify({
-          strawCustomId: editStrawCustomId.trim(),
+          strawCustomId: payloadCustomId,
           color: editStrawColor,
           grade: combinedGrades,
           embryoGrades: cleanGradesList,
@@ -1417,7 +1425,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           })();
 
                           const cycleStrawNum = origIdx + 1;
-                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-');
+                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
                           const displayLabel = isGenericOrSeqStrawId
                             ? `Straw #${cycleStrawNum}`
                             : (straw.strawId.startsWith('Straw') ? straw.strawId : `Straw ${straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`}`);
@@ -2181,7 +2189,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                         ).map(({ straw, origIdx }: { straw: any; origIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
                           const cycleStrawNum = origIdx + 1;
-                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-');
+                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
                           const displayLabel = isGenericOrSeqStrawId
                             ? `#${cycleStrawNum}`
                             : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);
@@ -2282,7 +2290,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        openEditStrawModal(straw, displayLabel);
+                                        openEditStrawModal(straw, displayLabel, cycleNum);
                                       }}
                                       className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-300 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs active:scale-95"
                                       title="Edit Straw Properties"
@@ -3072,13 +3080,21 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Straw Custom ID / Code <span className="text-rose-600">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Straw Custom ID / Code <span className="text-rose-600">*</span>
+                  </label>
+                  {editingStraw?.strawId && (
+                    <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      Cycle #{(editingStraw as any)?._cycleNum || 1} System ID: {editingStraw.strawId}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={editStrawCustomId}
                   onChange={(e) => setEditStrawCustomId(e.target.value)}
+                  placeholder="e.g. #1 or Custom Code"
                   required
                   className="w-full h-10 bg-slate-50 border border-slate-300 rounded-xl px-3.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                 />

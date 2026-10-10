@@ -573,7 +573,7 @@ export class DocumentService {
             const strawBoxY = currentSectionY;
             const embryoCount = straw.embryoCount || (straw.embryos ? straw.embryos.length : 1);
             const cycleStrawNum = sIdx + 1;
-            const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-');
+            const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
             const displayLabel = isGenericOrSeqStrawId
               ? `#${cycleStrawNum}`
               : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);

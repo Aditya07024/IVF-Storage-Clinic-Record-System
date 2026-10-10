@@ -1374,7 +1374,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                         ).map(({ straw, sIdx }: { straw: any; sIdx: number }) => {
                           const isOccupied = straw.status === 'OCCUPIED';
                           const cycleStrawNum = sIdx + 1;
-                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-');
+                          const isGenericOrSeqStrawId = !straw.strawId || /^#?\d+$/.test(straw.strawId.trim()) || straw.strawId.startsWith('STR-') || /^C\d+[-_]?(?:S|#)?\d+$/i.test(straw.strawId.trim());
                           const displayLabel = isGenericOrSeqStrawId
                             ? `#${cycleStrawNum}`
                             : (straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`);
