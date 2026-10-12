@@ -111,9 +111,13 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
     };
     window.addEventListener('storage', handleLockUpdate);
     window.addEventListener('dev-lock-change', handleLockUpdate);
+    const interval = setInterval(() => {
+      setDevUnlocked(isDevSandboxUnlocked());
+    }, 10000); // Check every 10 seconds for 20m expiration
     return () => {
       window.removeEventListener('storage', handleLockUpdate);
       window.removeEventListener('dev-lock-change', handleLockUpdate);
+      clearInterval(interval);
     };
   }, []);
 

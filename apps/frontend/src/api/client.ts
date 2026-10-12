@@ -67,12 +67,65 @@ export function isDevelopmentMode(): boolean {
   return false;
 }
 
+export const DEV_SANDBOX_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes auto-lock timeout
+
 /**
- * Checks if the developer sandbox has been unlocked with password "sgrmIVFdev"
+ * Checks if the developer sandbox has been unlocked with password "sgrmIVFdev".
+ * Automatically expires and locks after 20 minutes.
  */
 export function isDevSandboxUnlocked(): boolean {
   if (typeof sessionStorage === 'undefined') return false;
-  return sessionStorage.getItem('dev_sandbox_password') === 'sgrmIVFdev';
+  const pass = sessionStorage.getItem('dev_sandbox_password');
+  if (pass !== 'sgrmIVFdev') return false;
+
+  const rawTime = sessionStorage.getItem('dev_sandbox_unlocked_at');
+  if (!rawTime) {
+    sessionStorage.removeItem('dev_sandbox_password');
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('dev-lock-change'));
+    return false;
+  }
+
+  const unlockedAt = parseInt(rawTime, 10);
+  if (isNaN(unlockedAt) || Date.now() - unlockedAt >= DEV_SANDBOX_TIMEOUT_MS) {
+    sessionStorage.removeItem('dev_sandbox_password');
+    sessionStorage.removeItem('dev_sandbox_unlocked_at');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dev-lock-change'));
+    }
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Returns remaining seconds before developer sandbox auto-locks (max 1200 seconds / 20 mins)
+ */
+export function getDevSandboxRemainingSeconds(): number {
+  if (typeof sessionStorage === 'undefined') return 0;
+  const pass = sessionStorage.getItem('dev_sandbox_password');
+  if (pass !== 'sgrmIVFdev') return 0;
+
+  const rawTime = sessionStorage.getItem('dev_sandbox_unlocked_at');
+  if (!rawTime) return 0;
+
+  const unlockedAt = parseInt(rawTime, 10);
+  if (isNaN(unlockedAt)) return 0;
+
+  const remainingMs = (unlockedAt + DEV_SANDBOX_TIMEOUT_MS) - Date.now();
+  return Math.max(0, Math.floor(remainingMs / 1000));
+}
+
+/**
+ * Resets the 20-minute timer from current moment
+ */
+export function extendDevSandboxSession(): void {
+  if (typeof sessionStorage === 'undefined') return;
+  const pass = sessionStorage.getItem('dev_sandbox_password');
+  if (pass === 'sgrmIVFdev') {
+    sessionStorage.setItem('dev_sandbox_unlocked_at', Date.now().toString());
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('dev-lock-change'));
+  }
 }
 
 let isRefreshingToken = false;
@@ -185,9 +238,8 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const devPassword = typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem('dev_sandbox_password') || '') : '';
-  if (devPassword) {
-    headers['x-dev-password'] = devPassword;
+  if (isDevSandboxUnlocked()) {
+    headers['x-dev-password'] = 'sgrmIVFdev';
   }
 
   const baseUrl = getApiBaseUrl();

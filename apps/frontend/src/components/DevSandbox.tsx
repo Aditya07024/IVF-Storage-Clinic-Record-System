@@ -39,7 +39,14 @@ import {
   Server,
   Zap,
 } from 'lucide-react';
-import { apiRequest, isDevelopmentMode, clearApiCache } from '../api/client';
+import {
+  apiRequest,
+  isDevelopmentMode,
+  clearApiCache,
+  isDevSandboxUnlocked,
+  getDevSandboxRemainingSeconds,
+  extendDevSandboxSession,
+} from '../api/client';
 
 interface TableMeta {
   id: string;
@@ -78,11 +85,9 @@ export const DevSandbox: React.FC = () => {
     action: () => Promise<void>;
   } | null>(null);
 
-  // Developer Sandbox Master Password Lock State
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
-    if (typeof sessionStorage === 'undefined') return false;
-    return sessionStorage.getItem('dev_sandbox_password') === 'sgrmIVFdev';
-  });
+  // Developer Sandbox Master Password Lock State & 20-min Auto-lock Timer
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => isDevSandboxUnlocked());
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(() => getDevSandboxRemainingSeconds());
   const [devPasswordInput, setDevPasswordInput] = useState('');
   const [showDevPassword, setShowDevPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -130,12 +135,57 @@ export const DevSandbox: React.FC = () => {
     }
   }, [isUnlocked, selectedTableId, tablePage, tableLimit]);
 
+  // Listen for storage/dev-lock events across tabs & components
+  useEffect(() => {
+    const handleDevLockEvent = () => {
+      const unlocked = isDevSandboxUnlocked();
+      setIsUnlocked(unlocked);
+      if (!unlocked) {
+        setRemainingSeconds(0);
+        setStats(null);
+        setDbOverview(null);
+        setTableRecords([]);
+        setServerStatus(null);
+      } else {
+        setRemainingSeconds(getDevSandboxRemainingSeconds());
+      }
+    };
+    window.addEventListener('storage', handleDevLockEvent);
+    window.addEventListener('dev-lock-change', handleDevLockEvent);
+    return () => {
+      window.removeEventListener('storage', handleDevLockEvent);
+      window.removeEventListener('dev-lock-change', handleDevLockEvent);
+    };
+  }, []);
+
+  // Active 1-second countdown for 20-minute auto-lock
+  useEffect(() => {
+    if (!isUnlocked) {
+      setRemainingSeconds(0);
+      return;
+    }
+
+    setRemainingSeconds(getDevSandboxRemainingSeconds());
+
+    const interval = setInterval(() => {
+      const left = getDevSandboxRemainingSeconds();
+      setRemainingSeconds(left);
+      if (left <= 0) {
+        handleLock();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isUnlocked]);
+
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (devPasswordInput === 'sgrmIVFdev') {
       sessionStorage.setItem('dev_sandbox_password', 'sgrmIVFdev');
+      sessionStorage.setItem('dev_sandbox_unlocked_at', Date.now().toString());
       window.dispatchEvent(new Event('dev-lock-change'));
       setIsUnlocked(true);
+      setRemainingSeconds(20 * 60);
       setPasswordError(null);
       setDevPasswordInput('');
     } else {
@@ -145,12 +195,20 @@ export const DevSandbox: React.FC = () => {
 
   const handleLock = () => {
     sessionStorage.removeItem('dev_sandbox_password');
+    sessionStorage.removeItem('dev_sandbox_unlocked_at');
     window.dispatchEvent(new Event('dev-lock-change'));
     setIsUnlocked(false);
+    setRemainingSeconds(0);
     setStats(null);
     setDbOverview(null);
     setTableRecords([]);
     setServerStatus(null);
+  };
+
+  const formatTimeRemaining = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   const fetchServerStatus = async () => {
@@ -590,6 +648,9 @@ export const DevSandbox: React.FC = () => {
               <span>Password Required</span>
             </div>
             <h2 className="text-xl font-extrabold text-slate-900">Developer Sandbox Gate</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Protected dev console. Unlocked sessions automatically lock in 20 minutes.
+            </p>
           </div>
 
           <form onSubmit={handleUnlock} className="space-y-4 text-left">
@@ -660,6 +721,24 @@ export const DevSandbox: React.FC = () => {
                 <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full uppercase">
                   {stats?.environment || 'DEV'}
                 </span>
+                <div
+                  className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/30 text-amber-300 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold shadow-sm"
+                  title="Dev Sandbox automatically locks 20 minutes after unlocking"
+                >
+                  <Clock className="w-3 h-3 text-amber-400 animate-pulse" />
+                  <span>Auto-locks in {formatTimeRemaining(remainingSeconds)}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      extendDevSandboxSession();
+                      setRemainingSeconds(getDevSandboxRemainingSeconds());
+                    }}
+                    className="ml-1 text-[10px] font-bold text-amber-300 hover:text-white underline cursor-pointer"
+                    title="Extend session by 20 minutes"
+                  >
+                    +20m
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-slate-300 mt-1">
                 Direct DBMS table explorer, record inspector, search & JSON/CSV exports, plus safety-controlled system resets.
