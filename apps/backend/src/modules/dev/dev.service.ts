@@ -1,9 +1,32 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import argon2 from 'argon2';
 import { prisma } from '../../common/prisma.js';
 import { CONFIG } from '../../common/config.js';
 import { storageService } from '../storage/storage.service.js';
+
+function formatBytes(bytes: number, decimals = 2): string {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
+function formatDuration(seconds: number): string {
+  const d = Math.floor(seconds / (3600 * 24));
+  const h = Math.floor((seconds % (3600 * 24)) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  if (parts.length === 0) parts.push(`${s}s`);
+  return parts.join(' ');
+}
 
 export function isDevAllowed(): boolean {
   return true;
@@ -844,6 +867,187 @@ export class DevService {
       limit: safeLimit,
       totalPages: Math.ceil(total / safeLimit) || 1,
       records: sanitized,
+    };
+  }
+
+  /**
+   * Comprehensive Server, Storage, RAM & PostgreSQL Health Status
+   */
+  async getServerStatus() {
+    // 1. System Memory (RAM)
+    const totalMemBytes = os.totalmem();
+    const freeMemBytes = os.freemem();
+    const usedMemBytes = totalMemBytes - freeMemBytes;
+    const memUsagePercent = Math.round((usedMemBytes / totalMemBytes) * 100);
+
+    // 2. Node.js Process Memory
+    const mem = process.memoryUsage();
+    const heapUsedBytes = mem.heapUsed;
+    const heapTotalBytes = mem.heapTotal;
+    const rssBytes = mem.rss;
+    const heapPercent = Math.round((heapUsedBytes / heapTotalBytes) * 100);
+
+    // 3. Storage & Disk Usage
+    let diskStats: any = null;
+    try {
+      const rootPath = path.resolve('/');
+      const stat = (fs as any).statfsSync ? (fs as any).statfsSync(rootPath) : null;
+      if (stat) {
+        const totalDiskBytes = Number(stat.blocks) * Number(stat.bsize);
+        const freeDiskBytes = Number(stat.bavail) * Number(stat.bsize);
+        const usedDiskBytes = totalDiskBytes - freeDiskBytes;
+        const diskPercentUsed = totalDiskBytes > 0 ? Math.round((usedDiskBytes / totalDiskBytes) * 100) : 0;
+
+        diskStats = {
+          totalDiskBytes,
+          totalDiskFormatted: formatBytes(totalDiskBytes),
+          freeDiskBytes,
+          freeDiskFormatted: formatBytes(freeDiskBytes),
+          usedDiskBytes,
+          usedDiskFormatted: formatBytes(usedDiskBytes),
+          diskPercentUsed,
+        };
+      }
+    } catch (err: any) {
+      console.warn('[DevService] Error reading disk statfs:', err.message);
+    }
+
+    // 4. Uploads Directory Size & File Count
+    let photoFilesCount = 0;
+    let uploadsSizeBytes = 0;
+    const uploadsDir = path.resolve(CONFIG.STORAGE_LOCAL_DIR || './uploads');
+
+    if (fs.existsSync(uploadsDir)) {
+      try {
+        const files = fs.readdirSync(uploadsDir);
+        for (const file of files) {
+          if (file === '.gitkeep') continue;
+          const fullPath = path.join(uploadsDir, file);
+          const stat = fs.statSync(fullPath);
+          if (stat.isFile()) {
+            photoFilesCount++;
+            uploadsSizeBytes += stat.size;
+          }
+        }
+      } catch (err: any) {
+        console.warn('[DevService] Error scanning uploads dir:', err.message);
+      }
+    }
+
+    // 5. PostgreSQL Database Health, Size & Largest Tables
+    let dbStatus = 'CONNECTED';
+    let dbLatencyMs = 0;
+    let dbSizeFormatted = 'N/A';
+    let dbSizeBytes = 0;
+    let activeConnections = 1;
+    let largestTables: Array<{ tableName: string; totalSize: string; bytes: number }> = [];
+
+    try {
+      const pingStart = Date.now();
+      await prisma.$queryRaw`SELECT 1`;
+      dbLatencyMs = Date.now() - pingStart;
+
+      const sizeRes: any = await prisma.$queryRaw`
+        SELECT pg_size_pretty(pg_database_size(current_database())) as size, 
+               pg_database_size(current_database())::text as bytes
+      `;
+      if (sizeRes && sizeRes[0]) {
+        dbSizeFormatted = sizeRes[0].size || 'N/A';
+        dbSizeBytes = parseInt(sizeRes[0].bytes, 10) || 0;
+      }
+
+      const connRes: any = await prisma.$queryRaw`
+        SELECT count(*)::int as count FROM pg_stat_activity WHERE datname = current_database()
+      `;
+      if (connRes && connRes[0]) {
+        activeConnections = connRes[0].count || 1;
+      }
+
+      const tableSizeRes: any = await prisma.$queryRaw`
+        SELECT 
+          relname as table_name,
+          pg_size_pretty(pg_total_relation_size(relid)) as total_size,
+          pg_total_relation_size(relid)::text as bytes
+        FROM pg_catalog.pg_statio_user_tables
+        ORDER BY pg_total_relation_size(relid) DESC
+        LIMIT 8
+      `;
+      if (Array.isArray(tableSizeRes)) {
+        largestTables = tableSizeRes.map((t: any) => ({
+          tableName: t.table_name,
+          totalSize: t.total_size,
+          bytes: parseInt(t.bytes, 10) || 0,
+        }));
+      }
+    } catch (err: any) {
+      dbStatus = `ERROR: ${err.message}`;
+      console.error('[DevService] Error querying Postgres stats:', err.message);
+    }
+
+    // 6. CPUs & Host details
+    const cpus = os.cpus() || [];
+    const cpuModel = cpus[0]?.model || 'Standard CPU';
+    const cpuCores = cpus.length;
+
+    return {
+      success: true,
+      timestamp: new Date().toISOString(),
+      host: {
+        platform: os.platform(),
+        type: os.type(),
+        release: os.release(),
+        arch: os.arch(),
+        hostname: os.hostname(),
+        cpuModel,
+        cpuCores,
+        systemUptimeSeconds: Math.floor(os.uptime()),
+        systemUptimeFormatted: formatDuration(os.uptime()),
+        loadAvg: os.loadavg(),
+      },
+      process: {
+        nodeVersion: process.version,
+        pid: process.pid,
+        processUptimeSeconds: Math.floor(process.uptime()),
+        processUptimeFormatted: formatDuration(process.uptime()),
+        environment: CONFIG.NODE_ENV,
+        port: CONFIG.PORT,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        serverTime: new Date().toISOString(),
+      },
+      memory: {
+        systemTotalMemFormatted: formatBytes(totalMemBytes),
+        systemFreeMemFormatted: formatBytes(freeMemBytes),
+        systemUsedMemFormatted: formatBytes(usedMemBytes),
+        systemTotalMemBytes: totalMemBytes,
+        systemFreeMemBytes: freeMemBytes,
+        systemUsedMemBytes: usedMemBytes,
+        systemMemUsagePercent: memUsagePercent,
+        processHeapUsedFormatted: formatBytes(heapUsedBytes),
+        processHeapTotalFormatted: formatBytes(heapTotalBytes),
+        processRssFormatted: formatBytes(rssBytes),
+        processHeapUsedBytes: heapUsedBytes,
+        processHeapTotalBytes: heapTotalBytes,
+        processRssBytes: rssBytes,
+        processHeapPercent: heapPercent,
+      },
+      storage: {
+        disk: diskStats,
+        uploads: {
+          directory: uploadsDir,
+          fileCount: photoFilesCount,
+          totalSizeBytes: uploadsSizeBytes,
+          totalSizeFormatted: formatBytes(uploadsSizeBytes),
+        },
+      },
+      database: {
+        engine: 'PostgreSQL',
+        status: dbStatus,
+        latencyMs: dbLatencyMs,
+        dbSizeFormatted,
+        dbSizeBytes,
+        activeConnections,
+        largestTables,
+      },
     };
   }
 }

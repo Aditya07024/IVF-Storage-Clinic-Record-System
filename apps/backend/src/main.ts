@@ -1233,6 +1233,16 @@ app.get('/api/dev/db/table/:tableId', accessKeyGuard, jwtAuthGuard, devOnlyGuard
   }
 });
 
+// 1d. Comprehensive Server, Storage, RAM, CPU & Database Health Status
+app.get('/api/dev/server-status', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: Request, res: Response) => {
+  try {
+    const status = await devService.getServerStatus();
+    return res.json(status);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 2. Delete Individual Straw from Database
 app.delete('/api/dev/straws/:id', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {

@@ -34,6 +34,10 @@ import {
   X,
   ExternalLink,
   Table as TableIcon,
+  Activity,
+  Cpu,
+  Server,
+  Zap,
 } from 'lucide-react';
 import { apiRequest, isDevelopmentMode, clearApiCache } from '../api/client';
 
@@ -49,8 +53,12 @@ interface TableMeta {
 export const DevSandbox: React.FC = () => {
   const isDev = isDevelopmentMode();
 
-  // Active Sandbox Section: 'dbms' (Database Explorer) or 'danger' (Wipe & Reset Tools)
-  const [activeSandboxTab, setActiveSandboxTab] = useState<'dbms' | 'danger'>('dbms');
+  // Active Sandbox Section: 'dbms' (Database Explorer), 'server' (Server & Storage Status), or 'danger' (Wipe & Reset Tools)
+  const [activeSandboxTab, setActiveSandboxTab] = useState<'dbms' | 'server' | 'danger'>('dbms');
+
+  // Live Server & Storage Telemetry State
+  const [serverStatus, setServerStatus] = useState<any | null>(null);
+  const [loadingServerStatus, setLoadingServerStatus] = useState<boolean>(false);
 
   // Basic System Stats (Counts & Uploads)
   const [stats, setStats] = useState<any | null>(null);
@@ -111,6 +119,7 @@ export const DevSandbox: React.FC = () => {
     if (isUnlocked) {
       fetchStats();
       fetchDbOverview();
+      fetchServerStatus();
     }
   }, [isUnlocked]);
 
@@ -141,6 +150,21 @@ export const DevSandbox: React.FC = () => {
     setStats(null);
     setDbOverview(null);
     setTableRecords([]);
+    setServerStatus(null);
+  };
+
+  const fetchServerStatus = async () => {
+    setLoadingServerStatus(true);
+    try {
+      const res = await apiRequest('/api/dev/server-status');
+      if (res.success) {
+        setServerStatus(res);
+      }
+    } catch (err: any) {
+      console.warn('[DevSandbox] Error fetching server status:', err.message);
+    } finally {
+      setLoadingServerStatus(false);
+    }
   };
 
   const fetchStats = async () => {
@@ -566,9 +590,6 @@ export const DevSandbox: React.FC = () => {
               <span>Password Required</span>
             </div>
             <h2 className="text-xl font-extrabold text-slate-900">Developer Sandbox Gate</h2>
-            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-              Enter the developer password to unlock full database management, table inspection, wiping options, and deletion buttons in this environment.
-            </p>
           </div>
 
           <form onSubmit={handleUnlock} className="space-y-4 text-left">
@@ -664,6 +685,22 @@ export const DevSandbox: React.FC = () => {
 
               <button
                 type="button"
+                onClick={() => {
+                  setActiveSandboxTab('server');
+                  fetchServerStatus();
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeSandboxTab === 'server'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Server className="w-3.5 h-3.5" />
+                <span>Server & Storage</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveSandboxTab('danger')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeSandboxTab === 'danger'
@@ -680,13 +717,14 @@ export const DevSandbox: React.FC = () => {
               onClick={() => {
                 fetchStats();
                 fetchDbOverview();
+                fetchServerStatus();
                 fetchTableRecords(selectedTableId, tablePage, tableLimit, tableSearchFilter);
               }}
-              disabled={loadingStats || loadingOverview || loadingTableData}
+              disabled={loadingStats || loadingOverview || loadingTableData || loadingServerStatus}
               className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50"
               title="Refresh all table metrics and records"
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${loadingStats || loadingOverview || loadingTableData ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${loadingStats || loadingOverview || loadingTableData || loadingServerStatus ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
 
@@ -1111,7 +1149,383 @@ export const DevSandbox: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: DANGER ZONE & SYSTEM RESET TOOLS */}
+      {/* TAB 2: SERVER HEALTH, STORAGE USAGE & POSTGRESQL METRICS */}
+      {/* ========================================================================= */}
+      {activeSandboxTab === 'server' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Top Quick Status Header */}
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
+                <Activity className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-black text-slate-900">Live Server Telemetry & Storage</h2>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    LIVE
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Host: <strong className="text-slate-800 font-mono">{serverStatus?.host?.hostname || 'localhost'}</strong> ({serverStatus?.host?.platform} / {serverStatus?.host?.arch}) • Node.js <strong className="font-mono">{serverStatus?.process?.nodeVersion || 'v20'}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-center">
+              <span className="text-[11px] font-mono text-slate-400">
+                {serverStatus?.timestamp ? new Date(serverStatus.timestamp).toLocaleTimeString() : 'Ready'}
+              </span>
+              <button
+                type="button"
+                onClick={fetchServerStatus}
+                disabled={loadingServerStatus}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingServerStatus ? 'animate-spin text-blue-600' : 'text-slate-500'}`} />
+                <span>Refresh Status</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 4 Hero Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Disk Storage Usage */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  <HardDrive className="w-4 h-4 text-amber-600" />
+                  <span>Host Disk Storage</span>
+                </span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                  {serverStatus?.storage?.disk?.diskPercentUsed ?? 0}%
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-slate-900 font-mono">
+                    {serverStatus?.storage?.disk?.usedDiskFormatted || '0 GB'}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">
+                    / {serverStatus?.storage?.disk?.totalDiskFormatted || '0 GB'}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (serverStatus?.storage?.disk?.diskPercentUsed || 0) > 90
+                        ? 'bg-rose-500'
+                        : (serverStatus?.storage?.disk?.diskPercentUsed || 0) > 75
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(100, serverStatus?.storage?.disk?.diskPercentUsed || 0)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between font-mono">
+                <span>Free Available:</span>
+                <strong className="text-emerald-700 font-bold">{serverStatus?.storage?.disk?.freeDiskFormatted || '0 GB'}</strong>
+              </div>
+            </div>
+
+            {/* Card 2: System Memory (RAM) */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-blue-600" />
+                  <span>System Memory (RAM)</span>
+                </span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                  {serverStatus?.memory?.systemMemUsagePercent ?? 0}%
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-slate-900 font-mono">
+                    {serverStatus?.memory?.systemUsedMemFormatted || '0 GB'}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">
+                    / {serverStatus?.memory?.systemTotalMemFormatted || '0 GB'}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (serverStatus?.memory?.systemMemUsagePercent || 0) > 90
+                        ? 'bg-rose-500'
+                        : (serverStatus?.memory?.systemMemUsagePercent || 0) > 75
+                        ? 'bg-amber-500'
+                        : 'bg-blue-500'
+                    }`}
+                    style={{ width: `${Math.min(100, serverStatus?.memory?.systemMemUsagePercent || 0)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between font-mono">
+                <span>Process Heap (V8):</span>
+                <strong className="text-blue-700 font-bold">{serverStatus?.memory?.processHeapUsedFormatted || '0 MB'}</strong>
+              </div>
+            </div>
+
+            {/* Card 3: PostgreSQL Database Storage */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  <Database className="w-4 h-4 text-emerald-600" />
+                  <span>PostgreSQL Storage</span>
+                </span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  {serverStatus?.database?.latencyMs ?? 0}ms
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-slate-900 font-mono">
+                    {serverStatus?.database?.dbSizeFormatted || '0 MB'}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">
+                    PostgreSQL
+                  </span>
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  Active Connections: <strong className="font-mono text-slate-800">{serverStatus?.database?.activeConnections || 1}</strong>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between font-mono">
+                <span>Connection Status:</span>
+                <strong className="text-emerald-700 font-bold">{serverStatus?.database?.status || 'CONNECTED'}</strong>
+              </div>
+            </div>
+
+            {/* Card 4: CPU & System Uptime */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                  <Cpu className="w-4 h-4 text-purple-600" />
+                  <span>Host & Uptime</span>
+                </span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                  {serverStatus?.host?.cpuCores || 1} Cores
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="text-xs text-slate-500">System Uptime</div>
+                <div className="text-xl font-black text-slate-900 font-mono truncate">
+                  {serverStatus?.host?.systemUptimeFormatted || '0s'}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between font-mono">
+                <span>Process Uptime:</span>
+                <strong className="text-purple-700 font-bold">{serverStatus?.process?.processUptimeFormatted || '0s'}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Deep Breakdown Grids: Storage & Memory details on Left, Postgres & Host on Right */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* LEFT COLUMN: DISK & MEMORY BREAKDOWN */}
+            <div className="space-y-6">
+              {/* Uploads Directory Storage */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200">
+                      <HardDrive className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Uploads & Document Storage</h3>
+                      <p className="text-xs text-slate-500">Local physical directory for photos, scans, and attachments</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-amber-100 text-amber-900">
+                    {serverStatus?.storage?.uploads?.totalSizeFormatted || '0 MB'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Stored Files</span>
+                    <span className="text-base font-black text-slate-900 font-mono mt-0.5 block">
+                      {serverStatus?.storage?.uploads?.fileCount || 0} files
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Directory Size</span>
+                    <span className="text-base font-black text-amber-700 font-mono mt-0.5 block">
+                      {serverStatus?.storage?.uploads?.totalSizeFormatted || '0 MB'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[11px] font-mono text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200 break-all">
+                  <span className="text-slate-400 block text-[9px] uppercase font-sans font-bold">Filesystem Path:</span>
+                  {serverStatus?.storage?.uploads?.directory || './uploads'}
+                </div>
+              </div>
+
+              {/* Node.js Process V8 Memory Detailed Breakdown */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-200">
+                      <Zap className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Node.js Process Memory (V8 Engine)</h3>
+                      <p className="text-xs text-slate-500">Live RAM allocated to the backend application runtime</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-blue-100 text-blue-900">
+                    PID {serverStatus?.process?.pid || 0}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs font-mono">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Heap Used</span>
+                    <span className="text-sm font-black text-blue-700 mt-0.5 block">
+                      {serverStatus?.memory?.processHeapUsedFormatted || '0 MB'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-sans mt-0.5">
+                      {serverStatus?.memory?.processHeapPercent || 0}% of allocated
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Heap Total</span>
+                    <span className="text-sm font-black text-slate-800 mt-0.5 block">
+                      {serverStatus?.memory?.processHeapTotalFormatted || '0 MB'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-sans mt-0.5">V8 Pool Size</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">RSS (Physical)</span>
+                    <span className="text-sm font-black text-indigo-700 mt-0.5 block">
+                      {serverStatus?.memory?.processRssFormatted || '0 MB'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-sans mt-0.5">Resident Set</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: POSTGRESQL TABLES BREAKDOWN & HOST DETAILS */}
+            <div className="space-y-6">
+              {/* Largest PostgreSQL Tables by Storage Size */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200">
+                      <Database className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">PostgreSQL Table Storage Breakdown</h3>
+                      <p className="text-xs text-slate-500">Largest tables by physical disk allocation in PostgreSQL</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-900">
+                    Total: {serverStatus?.database?.dbSizeFormatted || '0 MB'}
+                  </span>
+                </div>
+
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
+                  {(serverStatus?.database?.largestTables || []).map((t: any, idx: number) => (
+                    <div key={t.tableName || idx} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 font-mono text-[11px] text-slate-400 text-center">{idx + 1}</span>
+                        <span className="font-mono font-bold text-slate-800">{t.tableName}</span>
+                      </div>
+                      <span className="font-mono font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg text-[11px]">
+                        {t.totalSize}
+                      </span>
+                    </div>
+                  ))}
+
+                  {(!serverStatus?.database?.largestTables || serverStatus.database.largestTables.length === 0) && (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      No table size statistics available.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Host Machine & Runtime Environment Details */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-200">
+                      <Server className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Host Environment & Platform Specs</h3>
+                      <p className="text-xs text-slate-500">Hardware processor, kernel, and timezone details</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-purple-100 text-purple-900 uppercase">
+                    {serverStatus?.process?.environment || 'DEV'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 text-xs">
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">CPU Architecture</span>
+                    <span className="font-mono font-bold text-slate-900 mt-0.5 block truncate">
+                      {serverStatus?.host?.cpuModel || 'CPU'} ({serverStatus?.host?.arch})
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">OS Platform</span>
+                    <span className="font-mono font-bold text-slate-900 mt-0.5 block truncate">
+                      {serverStatus?.host?.type} ({serverStatus?.host?.release})
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Server Port</span>
+                    <span className="font-mono font-bold text-slate-900 mt-0.5 block">
+                      :{serverStatus?.process?.port || 4000}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Server Timezone</span>
+                    <span className="font-mono font-bold text-slate-900 mt-0.5 block truncate">
+                      {serverStatus?.process?.timeZone || 'UTC'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-mono flex justify-between items-center">
+                  <span>Server Local Timestamp:</span>
+                  <strong className="text-slate-800">{serverStatus?.process?.serverTime ? new Date(serverStatus.process.serverTime).toLocaleString() : 'N/A'}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: DANGER ZONE & SYSTEM RESET TOOLS */}
       {/* ========================================================================= */}
       {activeSandboxTab === 'danger' && (
         <div className="space-y-6 animate-in fade-in duration-200">
