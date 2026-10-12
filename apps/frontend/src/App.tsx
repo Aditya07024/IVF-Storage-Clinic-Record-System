@@ -10,15 +10,21 @@ import { OcrVerification } from './components/OcrVerification';
 import { ThawWorkflow } from './components/ThawWorkflow';
 import { AuditLogs } from './components/AuditLogs';
 import { DeveloperSupport } from './components/DeveloperSupport';
+import { DevSandbox } from './components/DevSandbox';
 import { AdminPanel } from './components/AdminPanel';
 import { PdfLoadingModal } from './components/PdfLoadingModal';
-import { apiRequest } from './api/client';
+import { apiRequest, isDevelopmentMode } from './api/client';
 
 export const AppContent: React.FC = () => {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const isDev = isDevelopmentMode();
   const [activeTab, setActiveTab] = useState<NavTab>(() => {
-    return (sessionStorage.getItem('activeTab') as NavTab) || 'dashboard';
+    const saved = (sessionStorage.getItem('activeTab') as NavTab) || 'dashboard';
+    if (saved === 'dev-tools' && !isDevelopmentMode()) {
+      return 'dashboard';
+    }
+    return saved;
   });
   const [selectedCanCode, setSelectedCanCode] = useState<string>('CAN-01');
   const [selectedPatientIdForDirectory, setSelectedPatientIdForDirectory] = useState<string | null>(null);
@@ -139,6 +145,7 @@ export const AppContent: React.FC = () => {
         {activeTab === 'logs' && <AuditLogs />}
         {activeTab === 'support' && <DeveloperSupport />}
         {activeTab === 'admin' && <AdminPanel />}
+        {activeTab === 'dev-tools' && isDev && <DevSandbox />}
       </main>
 
       <PdfLoadingModal />

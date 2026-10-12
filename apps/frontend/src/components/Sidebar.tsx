@@ -14,9 +14,11 @@ import {
   X,
   ShieldCheck,
   LifeBuoy,
+  Wrench,
 } from 'lucide-react';
+import { isDevelopmentMode } from '../api/client';
 
-export type NavTab = 'dashboard' | 'new-patient' | 'patients' | 'container-view' | 'ocr' | 'thaw' | 'logs' | 'support' | 'admin';
+export type NavTab = 'dashboard' | 'new-patient' | 'patients' | 'container-view' | 'ocr' | 'thaw' | 'logs' | 'support' | 'admin' | 'dev-tools';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -28,6 +30,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogout }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isDev = isDevelopmentMode();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -39,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
     { id: 'logs', label: 'Audit Logs', icon: ClipboardList },
     { id: 'support', label: 'Developer & Support', icon: LifeBuoy },
     ...(user?.role === 'ADMIN' ? [{ id: 'admin', label: 'Admin Credentials', icon: ShieldCheck }] : []),
+    ...(isDev ? [{ id: 'dev-tools', label: 'Dev Sandbox', icon: Wrench, isDevBadge: true }] : []),
   ];
 
   // Open mobile menu & start 5 second auto-dismiss timer
@@ -133,6 +137,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
                   >
                     <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-700' : 'text-slate-500'}`} />
                     <span>{item.label}</span>
+                    {(item as any).isDevBadge && (
+                      <span className="ml-auto text-[9px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded">
+                        DEV
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -192,6 +201,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
                 >
                   <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
+                  {(item as any).isDevBadge && (
+                    <span className="ml-auto text-[9px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded">
+                      DEV
+                    </span>
+                  )}
                 </button>
               );
             })}

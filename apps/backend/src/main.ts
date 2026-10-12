@@ -18,6 +18,7 @@ import { documentService } from './modules/document/document.service.js';
 import { mailService } from './modules/mail/mail.service.js';
 import { auditService } from './modules/audit/audit.service.js';
 import { dashboardService } from './modules/dashboard/dashboard.service.js';
+import { devService } from './modules/dev/dev.service.js';
 import { serverCache } from './common/cache.js';
 
 const app = express();
@@ -471,6 +472,17 @@ app.post('/api/auth/logout', (req, res) => {
 const adminRoleGuard = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (!req.user || req.user.role !== 'ADMIN') {
     return res.status(403).json({ error: 'Access Denied: Administrator role required.' });
+  }
+  next();
+};
+
+// Strict Development-Only Guard Middleware (Guarantees dev tools are completely disabled in production)
+const devOnlyGuard = (req: Request, res: Response, next: NextFunction) => {
+  if (CONFIG.NODE_ENV === 'production' && process.env.ALLOW_DEV_TOOLS !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'Forbidden: Developer operations and database reset tools are strictly disabled in production mode.',
+    });
   }
   next();
 };
@@ -1165,6 +1177,104 @@ app.get('/api/support/tickets', accessKeyGuard, jwtAuthGuard, async (req: Reques
       take: 20,
     });
     return res.json({ success: true, tickets });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// =========================================================================
+// DEVELOPER SANDBOX & DATABASE MANAGEMENT (STRICTLY DEV-ONLY)
+// =========================================================================
+
+// 1. Get Real-Time Dev System & Storage Stats
+app.get('/api/dev/stats', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: Request, res: Response) => {
+  try {
+    const stats = await devService.getDevStats();
+    return res.json({ success: true, ...stats });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Delete Individual Straw from Database
+app.delete('/api/dev/straws/:id', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const staffId = req.user?.userId || 'DEV';
+    const staffName = req.user?.name || 'Developer';
+    const result = await devService.deleteStraw(req.params.id, staffId, staffName);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Delete Entire Cycle (StorageBatch) from Database
+app.delete('/api/dev/batches/:id', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const staffId = req.user?.userId || 'DEV';
+    const staffName = req.user?.name || 'Developer';
+    const result = await devService.deleteBatch(req.params.id, staffId, staffName);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Wipe All Uploaded Photos & Files on Disk + Clear DB Photo URLs
+app.post('/api/dev/wipe-photos', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await devService.wipePhotosAndFiles();
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Wipe All Patient & Clinical Data from Database
+app.post('/api/dev/wipe-database', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { confirmKey, includePhotos } = req.body || {};
+    if (confirmKey !== 'WIPE-DEV-DATA') {
+      return res.status(400).json({
+        success: false,
+        error: 'Safety check failed: confirmation key "WIPE-DEV-DATA" is required to wipe database.',
+      });
+    }
+    const staffId = req.user?.userId || 'DEV';
+    const staffName = req.user?.name || 'Developer';
+    const result = await devService.wipeClinicalDatabase(includePhotos !== false, staffId, staffName);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 6. Complete System Factory Reset (Wipe clinical data, audit logs, photos, re-seed pristine tanks/admin)
+app.post('/api/dev/factory-reset', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { confirmKey } = req.body || {};
+    if (confirmKey !== 'FACTORY-RESET-DEV') {
+      return res.status(400).json({
+        success: false,
+        error: 'Safety check failed: confirmation key "FACTORY-RESET-DEV" is required for factory reset.',
+      });
+    }
+    const staffId = req.user?.userId || 'DEV';
+    const staffName = req.user?.name || 'Developer';
+    const result = await devService.factoryReset(staffId, staffName);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7. Seed Sample Test Patient (Quick 1-Click Verification)
+app.post('/api/dev/seed-sample-patient', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const staffId = req.user?.userId || 'DEV';
+    const staffName = req.user?.name || 'Developer';
+    const result = await devService.seedSamplePatient(staffId, staffName);
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

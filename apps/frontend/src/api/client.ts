@@ -41,6 +41,32 @@ export function clearApiCache() {
   apiCache.clear();
 }
 
+/**
+ * Strict Environment Detection:
+ * Returns true ONLY in local development environments.
+ * Returns false in all production builds and live domains.
+ */
+export function isDevelopmentMode(): boolean {
+  // 1. Check Vite compile-time environment flags
+  if ((import.meta as any).env?.DEV === true) return true;
+  if ((import.meta as any).env?.MODE === 'development') return true;
+
+  // 2. Fallback check for localhost / local network addresses if in browser
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname.endsWith('.local')
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 let isRefreshingToken = false;
 let activeRefreshPromise: Promise<string | null> | null = null;
 
