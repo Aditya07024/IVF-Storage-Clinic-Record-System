@@ -1492,27 +1492,36 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     setPatientAge(pt.patientAge || calculateAgeFromDob(pt.dob));
     setPartnerAge(pt.partnerAge || calculateAgeFromDob(pt.partnerDob));
     setDoctorName(pt.doctorName || '');
-    if (pt.comments) setComments(pt.comments);
-    if (pt.aspirationDate) setAspirationDate(typeof pt.aspirationDate === 'string' ? pt.aspirationDate.split('T')[0] : '');
     setIsEmailVerified(Boolean(pt.isEmailVerified));
-    setSpecimenType(pt.specimenType || 'EMBRYO');
-    setCycleType(pt.cycleType || 'SELF');
-    setDonorName(pt.donorName || '');
-    setDonorRegNo(pt.donorRegNo || '');
-    setDonorAge(pt.donorAge || '');
-    setDonorPhone(pt.donorPhone || '');
-    setVitrificationIndication(pt.vitrificationIndication || 'Social egg freezing');
-    setOocyteStage(pt.oocyteStage || 'MII');
     if (pt.photoUrl) setPhotoPreviewUrl(getImageUrl(pt.photoUrl));
     if (pt.partnerPhotoUrl) setPartnerPhotoPreviewUrl(getImageUrl(pt.partnerPhotoUrl));
   };
 
-  // Select Existing Patient & Auto-Fill Fields
+  // Select Existing Patient & Auto-Fill Patient Identity Fields Only (Strictly No Cryo Auto-Fill)
   const handleSelectExistingPatient = async (p: any) => {
     setSelectedExistingPatient(p);
     populatePatientFields(p);
-    setFreezingDate(new Date().toISOString().split('T')[0]);
-    setStorageDate(new Date().toISOString().split('T')[0]);
+
+    // CRYO & SPECIMEN DETAILS MUST NEVER BE AUTO-FILLED - LEAVE CLEAN FOR MANUAL ENTRY
+    setAspirationDate('');
+    setFreezingDate('');
+    setStorageDate('');
+    setEmbryoStage('');
+    setComments('');
+    setSpecimenType('EMBRYO');
+    setCycleType('SELF');
+    setDonorName('');
+    setDonorRegNo('');
+    setDonorAge('');
+    setDonorPhone('');
+    setVitrificationIndication('Social egg freezing');
+    setOocyteStage('MII');
+    setAssignStorageEnabled(false);
+    setSelectedVisoTubeId('');
+    setSelectedLocationCode('');
+    setRecommendation(null);
+    setStrawsCount(1);
+    setStrawItems([{ color: '', embryoCount: 1, grade: '', comments: '', isPgt: false }]);
     setExistingSearchResults([]);
     setThawSuccessMsg(null);
 
@@ -1522,6 +1531,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
       if (res.success && res.patient) {
         setSelectedExistingPatient(res.patient);
         populatePatientFields(res.patient);
+        // Ensure cryo details remain strictly blank after fetching patient details
+        setAspirationDate('');
+        setFreezingDate('');
+        setStorageDate('');
+        setEmbryoStage('');
+        setComments('');
+        setAssignStorageEnabled(false);
+        setSelectedVisoTubeId('');
+        setSelectedLocationCode('');
+        setRecommendation(null);
       }
     } catch (err: any) {
       console.error('Failed to load patient detail batches:', err);
