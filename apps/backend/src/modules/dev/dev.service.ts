@@ -887,11 +887,12 @@ export class DevService {
     const rssBytes = mem.rss;
     const heapPercent = Math.round((heapUsedBytes / heapTotalBytes) * 100);
 
-    // 3. Storage & Disk Usage
+    // 3. Storage & Disk Usage (Checks active volume directory first, then root)
     let diskStats: any = null;
+    const uploadsDir = path.resolve(CONFIG.STORAGE_LOCAL_DIR || './uploads');
     try {
-      const rootPath = path.resolve('/');
-      const stat = (fs as any).statfsSync ? (fs as any).statfsSync(rootPath) : null;
+      const checkPath = fs.existsSync(uploadsDir) ? uploadsDir : process.cwd();
+      const stat = (fs as any).statfsSync ? ((fs as any).statfsSync(checkPath) || (fs as any).statfsSync('/')) : null;
       if (stat) {
         const totalDiskBytes = Number(stat.blocks) * Number(stat.bsize);
         const freeDiskBytes = Number(stat.bavail) * Number(stat.bsize);
@@ -906,20 +907,27 @@ export class DevService {
           usedDiskBytes,
           usedDiskFormatted: formatBytes(usedDiskBytes),
           diskPercentUsed,
+          mountPath: checkPath,
         };
       }
     } catch (err: any) {
       console.warn('[DevService] Error reading disk statfs:', err.message);
     }
 
-    // 4. Uploads Directory Size & File Count
+    // 4. Uploads Directory Categorization & Breakdown
     let photoFilesCount = 0;
     let uploadsSizeBytes = 0;
-    const uploadsDir = path.resolve(CONFIG.STORAGE_LOCAL_DIR || './uploads');
+    const fileTypeBreakdown: Record<string, { count: number; bytes: number; formatted: string }> = {
+      images: { count: 0, bytes: 0, formatted: '0 B' },
+      documents: { count: 0, bytes: 0, formatted: '0 B' },
+      other: { count: 0, bytes: 0, formatted: '0 B' },
+    };
+    const recentUploads: Array<{ filename: string; sizeFormatted: string; modified: string }> = [];
 
     if (fs.existsSync(uploadsDir)) {
       try {
         const files = fs.readdirSync(uploadsDir);
+        const fileStatList: Array<{ name: string; size: number; mtime: Date }> = [];
         for (const file of files) {
           if (file === '.gitkeep') continue;
           const fullPath = path.join(uploadsDir, file);
@@ -927,26 +935,75 @@ export class DevService {
           if (stat.isFile()) {
             photoFilesCount++;
             uploadsSizeBytes += stat.size;
+            fileStatList.push({ name: file, size: stat.size, mtime: stat.mtime });
+
+            const ext = path.extname(file).toLowerCase();
+            if (['.jpg', '.jpeg', '.png', '.webp', '.heic', '.svg', '.bmp'].includes(ext)) {
+              fileTypeBreakdown.images.count++;
+              fileTypeBreakdown.images.bytes += stat.size;
+            } else if (['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx'].includes(ext)) {
+              fileTypeBreakdown.documents.count++;
+              fileTypeBreakdown.documents.bytes += stat.size;
+            } else {
+              fileTypeBreakdown.other.count++;
+              fileTypeBreakdown.other.bytes += stat.size;
+            }
           }
+        }
+
+        fileTypeBreakdown.images.formatted = formatBytes(fileTypeBreakdown.images.bytes);
+        fileTypeBreakdown.documents.formatted = formatBytes(fileTypeBreakdown.documents.bytes);
+        fileTypeBreakdown.other.formatted = formatBytes(fileTypeBreakdown.other.bytes);
+
+        // Sort by most recently modified top 5
+        fileStatList.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+        for (let i = 0; i < Math.min(5, fileStatList.length); i++) {
+          recentUploads.push({
+            filename: fileStatList[i].name,
+            sizeFormatted: formatBytes(fileStatList[i].size),
+            modified: fileStatList[i].mtime.toISOString(),
+          });
         }
       } catch (err: any) {
         console.warn('[DevService] Error scanning uploads dir:', err.message);
       }
     }
 
-    // 5. PostgreSQL Database Health, Size & Largest Tables
+    // 5. PostgreSQL Database Health, Size, Latency & Deep Telemetry
     let dbStatus = 'CONNECTED';
     let dbLatencyMs = 0;
+    let dbVersion = 'PostgreSQL';
+    let dbStartTime: string | null = null;
+    let dbUptimeFormatted = 'N/A';
     let dbSizeFormatted = 'N/A';
     let dbSizeBytes = 0;
     let activeConnections = 1;
-    let largestTables: Array<{ tableName: string; totalSize: string; bytes: number }> = [];
+    let cacheHitRatio = '100.00';
+    let transactions = { commit: '0', rollback: '0' };
+    let tuples = { inserted: '0', updated: '0', deleted: '0' };
+    let connectionStates: Array<{ state: string; count: number }> = [];
+    let largestTables: Array<{ tableName: string; rowCount: number; deadRows: number; totalSize: string; bytes: number }> = [];
 
     try {
       const pingStart = Date.now();
       await prisma.$queryRaw`SELECT 1`;
       dbLatencyMs = Date.now() - pingStart;
 
+      // Version
+      const versionRes: any = await prisma.$queryRaw`SELECT version()`;
+      if (versionRes && versionRes[0]) {
+        dbVersion = versionRes[0].version || 'PostgreSQL';
+      }
+
+      // Start Time & DB Uptime
+      const startTimeRes: any = await prisma.$queryRaw`SELECT pg_postmaster_start_time()::text as start_time`;
+      if (startTimeRes && startTimeRes[0]?.start_time) {
+        dbStartTime = startTimeRes[0].start_time as string;
+        const uptimeSeconds = Math.max(0, Math.floor((Date.now() - new Date(dbStartTime).getTime()) / 1000));
+        dbUptimeFormatted = formatDuration(uptimeSeconds);
+      }
+
+      // Total Database Size
       const sizeRes: any = await prisma.$queryRaw`
         SELECT pg_size_pretty(pg_database_size(current_database())) as size, 
                pg_database_size(current_database())::text as bytes
@@ -956,25 +1013,74 @@ export class DevService {
         dbSizeBytes = parseInt(sizeRes[0].bytes, 10) || 0;
       }
 
-      const connRes: any = await prisma.$queryRaw`
-        SELECT count(*)::int as count FROM pg_stat_activity WHERE datname = current_database()
+      // Buffer Cache Hit Ratio
+      const cacheRes: any = await prisma.$queryRaw`
+        SELECT 
+          CASE WHEN (sum(heap_blks_hit) + sum(heap_blks_read)) > 0 
+            THEN ROUND((sum(heap_blks_hit)::numeric / (sum(heap_blks_hit) + sum(heap_blks_read))::numeric) * 100, 2)::text
+            ELSE '100.00' 
+          END as cache_hit_ratio
+        FROM pg_statio_user_tables
       `;
-      if (connRes && connRes[0]) {
-        activeConnections = connRes[0].count || 1;
+      if (cacheRes && cacheRes[0]?.cache_hit_ratio) {
+        cacheHitRatio = cacheRes[0].cache_hit_ratio;
       }
 
+      // Database Transaction & Row Metrics
+      const dbStatsRes: any = await prisma.$queryRaw`
+        SELECT 
+          xact_commit::text as xact_commit, 
+          xact_rollback::text as xact_rollback, 
+          tup_inserted::text as tup_inserted, 
+          tup_updated::text as tup_updated, 
+          tup_deleted::text as tup_deleted
+        FROM pg_stat_database 
+        WHERE datname = current_database()
+      `;
+      if (dbStatsRes && dbStatsRes[0]) {
+        transactions = {
+          commit: dbStatsRes[0].xact_commit || '0',
+          rollback: dbStatsRes[0].xact_rollback || '0',
+        };
+        tuples = {
+          inserted: dbStatsRes[0].tup_inserted || '0',
+          updated: dbStatsRes[0].tup_updated || '0',
+          deleted: dbStatsRes[0].tup_deleted || '0',
+        };
+      }
+
+      // Active Connections & Connection States
+      const connStatesRes: any = await prisma.$queryRaw`
+        SELECT COALESCE(state, 'unknown') as state, count(*)::int as count 
+        FROM pg_stat_activity 
+        WHERE datname = current_database() 
+        GROUP BY state
+      `;
+      if (Array.isArray(connStatesRes)) {
+        connectionStates = connStatesRes.map((c: any) => ({
+          state: c.state || 'unknown',
+          count: c.count || 0,
+        }));
+        activeConnections = connectionStates.reduce((acc, curr) => acc + curr.count, 0) || 1;
+      }
+
+      // Top Tables with Row Counts and Dead Tuples
       const tableSizeRes: any = await prisma.$queryRaw`
         SELECT 
           relname as table_name,
+          n_live_tup::int as row_count,
+          n_dead_tup::int as dead_rows,
           pg_size_pretty(pg_total_relation_size(relid)) as total_size,
           pg_total_relation_size(relid)::text as bytes
-        FROM pg_catalog.pg_statio_user_tables
+        FROM pg_stat_user_tables
         ORDER BY pg_total_relation_size(relid) DESC
-        LIMIT 8
+        LIMIT 10
       `;
       if (Array.isArray(tableSizeRes)) {
         largestTables = tableSizeRes.map((t: any) => ({
           tableName: t.table_name,
+          rowCount: t.row_count || 0,
+          deadRows: t.dead_rows || 0,
           totalSize: t.total_size,
           bytes: parseInt(t.bytes, 10) || 0,
         }));
@@ -988,6 +1094,28 @@ export class DevService {
     const cpus = os.cpus() || [];
     const cpuModel = cpus[0]?.model || 'Standard CPU';
     const cpuCores = cpus.length;
+
+    // 7. Network Interfaces (IPv4 addresses)
+    const networkInterfaces: Array<{ interface: string; address: string; internal: boolean }> = [];
+    try {
+      const nets = os.networkInterfaces();
+      for (const name of Object.keys(nets)) {
+        for (const net of (nets[name] || [])) {
+          if (net.family === 'IPv4' || (net as any).family === 4) {
+            networkInterfaces.push({
+              interface: name,
+              address: net.address,
+              internal: net.internal,
+            });
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('[DevService] Error listing network interfaces:', err.message);
+    }
+
+    // 8. Process CPU usage
+    const cpuUsage = process.cpuUsage();
 
     return {
       success: true,
@@ -1003,9 +1131,11 @@ export class DevService {
         systemUptimeSeconds: Math.floor(os.uptime()),
         systemUptimeFormatted: formatDuration(os.uptime()),
         loadAvg: os.loadavg(),
+        networkInterfaces,
       },
       process: {
         nodeVersion: process.version,
+        v8Version: process.versions.v8,
         pid: process.pid,
         processUptimeSeconds: Math.floor(process.uptime()),
         processUptimeFormatted: formatDuration(process.uptime()),
@@ -1013,6 +1143,10 @@ export class DevService {
         port: CONFIG.PORT,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
         serverTime: new Date().toISOString(),
+        cpuUsageMs: {
+          user: Math.round(cpuUsage.user / 1000),
+          system: Math.round(cpuUsage.system / 1000),
+        },
       },
       memory: {
         systemTotalMemFormatted: formatBytes(totalMemBytes),
@@ -1025,6 +1159,8 @@ export class DevService {
         processHeapUsedFormatted: formatBytes(heapUsedBytes),
         processHeapTotalFormatted: formatBytes(heapTotalBytes),
         processRssFormatted: formatBytes(rssBytes),
+        processExternalFormatted: formatBytes(mem.external),
+        processArrayBuffersFormatted: formatBytes((mem as any).arrayBuffers || 0),
         processHeapUsedBytes: heapUsedBytes,
         processHeapTotalBytes: heapTotalBytes,
         processRssBytes: rssBytes,
@@ -1037,15 +1173,24 @@ export class DevService {
           fileCount: photoFilesCount,
           totalSizeBytes: uploadsSizeBytes,
           totalSizeFormatted: formatBytes(uploadsSizeBytes),
+          breakdown: fileTypeBreakdown,
+          recent: recentUploads,
         },
       },
       database: {
         engine: 'PostgreSQL',
+        version: dbVersion,
         status: dbStatus,
         latencyMs: dbLatencyMs,
+        startTime: dbStartTime,
+        uptimeFormatted: dbUptimeFormatted,
         dbSizeFormatted,
         dbSizeBytes,
         activeConnections,
+        cacheHitRatio,
+        transactions,
+        tuples,
+        connectionStates,
         largestTables,
       },
     };

@@ -38,6 +38,14 @@ import {
   Cpu,
   Server,
   Zap,
+  Play,
+  Pause,
+  Radio,
+  Wifi,
+  Globe,
+  Gauge,
+  TrendingUp,
+  FolderArchive,
 } from 'lucide-react';
 import {
   apiRequest,
@@ -47,6 +55,63 @@ import {
   getDevSandboxRemainingSeconds,
   extendDevSandboxSession,
 } from '../api/client';
+
+const Sparkline: React.FC<{
+  data: number[];
+  color: string;
+  height?: number;
+  label?: string;
+  unit?: string;
+}> = ({ data, color, height = 32, label, unit = '' }) => {
+  if (!data || data.length < 2) {
+    return (
+      <div className="h-8 flex items-center justify-center text-[10px] text-slate-400 font-mono">
+        Collecting live ticks...
+      </div>
+    );
+  }
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const width = 130;
+  const padding = 3;
+
+  const points = data
+    .map((val, idx) => {
+      const x = (idx / (data.length - 1)) * (width - padding * 2) + padding;
+      const y = height - padding - ((val - min) / range) * (height - padding * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+
+  const currentVal = data[data.length - 1];
+
+  return (
+    <div className="flex items-center justify-between gap-2">
+      {label && (
+        <span className="text-[10px] font-mono text-slate-600">
+          {label}: <strong className="text-slate-900 font-bold">{currentVal}{unit}</strong>
+        </span>
+      )}
+      <svg width={width} height={height} className="overflow-visible shrink-0">
+        <polyline
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={points}
+        />
+        {(() => {
+          const lastX = width - padding;
+          const lastY = height - padding - ((currentVal - min) / range) * (height - padding * 2);
+          return <circle cx={lastX} cy={lastY} r="3" fill={color} />;
+        })()}
+      </svg>
+    </div>
+  );
+};
 
 interface TableMeta {
   id: string;
@@ -66,6 +131,16 @@ export const DevSandbox: React.FC = () => {
   // Live Server & Storage Telemetry State
   const [serverStatus, setServerStatus] = useState<any | null>(null);
   const [loadingServerStatus, setLoadingServerStatus] = useState<boolean>(false);
+  const [liveTracking, setLiveTracking] = useState<boolean>(true);
+  const [liveIntervalSec, setLiveIntervalSec] = useState<number>(3);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [telemetryHistory, setTelemetryHistory] = useState<Array<{
+    time: string;
+    latencyMs: number;
+    heapMb: number;
+    memPercent: number;
+    activeConns: number;
+  }>>([]);
 
   // Basic System Stats (Counts & Uploads)
   const [stats, setStats] = useState<any | null>(null);
@@ -211,19 +286,47 @@ export const DevSandbox: React.FC = () => {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const fetchServerStatus = async () => {
-    setLoadingServerStatus(true);
+  const fetchServerStatus = async (silent: boolean = false) => {
+    if (!silent) setLoadingServerStatus(true);
     try {
-      const res = await apiRequest('/api/dev/server-status');
+      const res = await apiRequest('/api/dev/server-status', { skipCache: true } as any);
       if (res.success) {
         setServerStatus(res);
+        setLastRefreshedAt(new Date());
+
+        const heapMb = Math.round((res.memory?.processHeapUsedBytes || 0) / (1024 * 1024));
+        const latencyMs = res.database?.latencyMs ?? 0;
+        const memPercent = res.memory?.systemMemUsagePercent ?? 0;
+        const activeConns = res.database?.activeConnections ?? 1;
+        const timeStr = new Date().toLocaleTimeString();
+
+        setTelemetryHistory((prev) => [
+          ...prev.slice(-19),
+          { time: timeStr, latencyMs, heapMb, memPercent, activeConns },
+        ]);
       }
     } catch (err: any) {
       console.warn('[DevSandbox] Error fetching server status:', err.message);
     } finally {
-      setLoadingServerStatus(false);
+      if (!silent) setLoadingServerStatus(false);
     }
   };
+
+  // Live Server Telemetry Polling Effect when Server tab is active
+  useEffect(() => {
+    if (!isUnlocked || activeSandboxTab !== 'server' || !liveTracking) {
+      return;
+    }
+
+    // Immediate fresh fetch on entering Server tab or unpausing
+    fetchServerStatus(true);
+
+    const interval = setInterval(() => {
+      fetchServerStatus(true);
+    }, liveIntervalSec * 1000);
+
+    return () => clearInterval(interval);
+  }, [isUnlocked, activeSandboxTab, liveTracking, liveIntervalSec]);
 
   const fetchStats = async () => {
     setLoadingStats(true);
@@ -1230,52 +1333,149 @@ export const DevSandbox: React.FC = () => {
       {/* ========================================================================= */}
       {/* TAB 2: SERVER HEALTH, STORAGE USAGE & POSTGRESQL METRICS */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* TAB 2: LIVE SERVER TELEMETRY, STORAGE USAGE & DEEP POSTGRESQL METRICS */}
+      {/* ========================================================================= */}
       {activeSandboxTab === 'server' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Top Quick Status Header */}
-          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
-                <Activity className="w-6 h-6 text-blue-600" />
+          {/* Top Quick Status & Live Stream Controls Bar */}
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-2xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shrink-0">
+                <Activity className="w-6 h-6" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-base sm:text-lg font-black text-slate-900">Live Server Telemetry & Storage</h2>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    LIVE
+                  {liveTracking ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      <span>LIVE MONITORING</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-300">
+                      <Pause className="w-3 h-3" />
+                      <span>STREAM PAUSED</span>
+                    </span>
+                  )}
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 uppercase">
+                    Every {liveIntervalSec}s
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Host: <strong className="text-slate-800 font-mono">{serverStatus?.host?.hostname || 'localhost'}</strong> ({serverStatus?.host?.platform} / {serverStatus?.host?.arch}) • Node.js <strong className="font-mono">{serverStatus?.process?.nodeVersion || 'v20'}</strong>
+                <p className="text-xs text-slate-500 mt-1">
+                  Host: <strong className="text-slate-800 font-mono">{serverStatus?.host?.hostname || 'localhost'}</strong> ({serverStatus?.host?.platform}/{serverStatus?.host?.arch}) • Node <strong className="font-mono">{serverStatus?.process?.nodeVersion || 'v20'}</strong> (V8 {serverStatus?.process?.v8Version || 'engine'}) • Direct accurate metrics (skipCache: true)
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-center">
-              <span className="text-[11px] font-mono text-slate-400">
-                {serverStatus?.timestamp ? new Date(serverStatus.timestamp).toLocaleTimeString() : 'Ready'}
-              </span>
+            {/* Live Polling Stream Controls */}
+            <div className="flex items-center gap-2 flex-wrap self-end lg:self-center">
+              {/* Interval Switcher Pills */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-mono font-bold">
+                {[2, 3, 5, 10].map((sec) => (
+                  <button
+                    key={sec}
+                    type="button"
+                    onClick={() => setLiveIntervalSec(sec)}
+                    className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
+                      liveIntervalSec === sec
+                        ? 'bg-white text-blue-700 shadow-2xs font-black'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                    title={`Poll every ${sec} seconds`}
+                  >
+                    {sec}s
+                  </button>
+                ))}
+              </div>
+
+              {/* Pause / Resume Button */}
               <button
                 type="button"
-                onClick={fetchServerStatus}
+                onClick={() => setLiveTracking(!liveTracking)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs border ${
+                  liveTracking
+                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                }`}
+                title={liveTracking ? 'Pause live polling' : 'Resume live polling'}
+              >
+                {liveTracking ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                <span>{liveTracking ? 'Pause' : 'Resume'}</span>
+              </button>
+
+              {/* Manual Refresh Button */}
+              <button
+                type="button"
+                onClick={() => fetchServerStatus(false)}
                 disabled={loadingServerStatus}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Immediate force refresh"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingServerStatus ? 'animate-spin text-blue-600' : 'text-slate-500'}`} />
-                <span>Refresh Status</span>
+                <span>Sync Now</span>
               </button>
+
+              <span className="text-[11px] font-mono text-slate-400 pl-1">
+                {lastRefreshedAt ? lastRefreshedAt.toLocaleTimeString() : 'Connecting...'}
+              </span>
             </div>
           </div>
 
-          {/* 4 Hero Metric Cards */}
+          {/* Real-Time Live Trend Sparklines Tray */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Database Ping Latency</span>
+                <span className="text-xl font-black text-emerald-700 font-mono mt-0.5 block flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  {serverStatus?.database?.latencyMs ?? 0} ms
+                </span>
+              </div>
+              <Sparkline
+                data={telemetryHistory.map((h) => h.latencyMs)}
+                color="#10b981"
+                unit="ms"
+              />
+            </div>
+
+            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Node V8 Heap Allocation</span>
+                <span className="text-xl font-black text-blue-700 font-mono mt-0.5 block">
+                  {serverStatus?.memory?.processHeapUsedFormatted || '0 MB'}
+                </span>
+              </div>
+              <Sparkline
+                data={telemetryHistory.map((h) => h.heapMb)}
+                color="#2563eb"
+                unit="MB"
+              />
+            </div>
+
+            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">System Memory (RAM)</span>
+                <span className="text-xl font-black text-amber-700 font-mono mt-0.5 block">
+                  {serverStatus?.memory?.systemMemUsagePercent ?? 0}%
+                </span>
+              </div>
+              <Sparkline
+                data={telemetryHistory.map((h) => h.memPercent)}
+                color="#f59e0b"
+                unit="%"
+              />
+            </div>
+          </div>
+
+          {/* 4 Hero Metric Overview Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1: Disk Storage Usage */}
             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
                   <HardDrive className="w-4 h-4 text-amber-600" />
-                  <span>Host Disk Storage</span>
+                  <span>Volume Disk Storage</span>
                 </span>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                   {serverStatus?.storage?.disk?.diskPercentUsed ?? 0}%
@@ -1292,7 +1492,6 @@ export const DevSandbox: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Progress bar */}
                 <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
@@ -1335,7 +1534,6 @@ export const DevSandbox: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Progress bar */}
                 <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
@@ -1351,8 +1549,8 @@ export const DevSandbox: React.FC = () => {
               </div>
 
               <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between font-mono">
-                <span>Process Heap (V8):</span>
-                <strong className="text-blue-700 font-bold">{serverStatus?.memory?.processHeapUsedFormatted || '0 MB'}</strong>
+                <span>Process RSS (RAM):</span>
+                <strong className="text-indigo-700 font-bold">{serverStatus?.memory?.processRssFormatted || '0 MB'}</strong>
               </div>
             </div>
 
@@ -1364,7 +1562,7 @@ export const DevSandbox: React.FC = () => {
                   <span>PostgreSQL Storage</span>
                 </span>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   {serverStatus?.database?.latencyMs ?? 0}ms
                 </span>
               </div>
@@ -1374,8 +1572,8 @@ export const DevSandbox: React.FC = () => {
                   <span className="text-2xl font-black text-slate-900 font-mono">
                     {serverStatus?.database?.dbSizeFormatted || '0 MB'}
                   </span>
-                  <span className="text-xs font-mono text-slate-400">
-                    PostgreSQL
+                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                    Cache {serverStatus?.database?.cacheHitRatio || '100'}%
                   </span>
                 </div>
 
@@ -1418,9 +1616,9 @@ export const DevSandbox: React.FC = () => {
 
           {/* Deep Breakdown Grids: Storage & Memory details on Left, Postgres & Host on Right */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* LEFT COLUMN: DISK & MEMORY BREAKDOWN */}
+            {/* LEFT COLUMN: UPLOADS STORAGE & NODE PROCESS DETAILS */}
             <div className="space-y-6">
-              {/* Uploads Directory Storage */}
+              {/* Uploads Directory Storage & Categorization Breakdown */}
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
@@ -1428,7 +1626,7 @@ export const DevSandbox: React.FC = () => {
                       <HardDrive className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">Uploads & Document Storage</h3>
+                      <h3 className="text-sm font-bold text-slate-900">Uploads & Document Physical Storage</h3>
                       <p className="text-xs text-slate-500">Local physical directory for photos, scans, and attachments</p>
                     </div>
                   </div>
@@ -1437,29 +1635,69 @@ export const DevSandbox: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                {/* Categorized File Types Badges */}
+                <div className="grid grid-cols-3 gap-3 text-xs font-mono">
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Stored Files</span>
-                    <span className="text-base font-black text-slate-900 font-mono mt-0.5 block">
-                      {serverStatus?.storage?.uploads?.fileCount || 0} files
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Images (JPG/PNG/HEIC)</span>
+                    <span className="text-sm font-black text-slate-900 mt-1 block">
+                      {serverStatus?.storage?.uploads?.breakdown?.images?.count || 0} files
+                    </span>
+                    <span className="text-[11px] font-bold text-amber-700 mt-0.5 block">
+                      {serverStatus?.storage?.uploads?.breakdown?.images?.formatted || '0 B'}
                     </span>
                   </div>
 
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Directory Size</span>
-                    <span className="text-base font-black text-amber-700 font-mono mt-0.5 block">
-                      {serverStatus?.storage?.uploads?.totalSizeFormatted || '0 MB'}
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Scans & PDFs</span>
+                    <span className="text-sm font-black text-slate-900 mt-1 block">
+                      {serverStatus?.storage?.uploads?.breakdown?.documents?.count || 0} files
+                    </span>
+                    <span className="text-[11px] font-bold text-blue-700 mt-0.5 block">
+                      {serverStatus?.storage?.uploads?.breakdown?.documents?.formatted || '0 B'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Other Attachments</span>
+                    <span className="text-sm font-black text-slate-900 mt-1 block">
+                      {serverStatus?.storage?.uploads?.breakdown?.other?.count || 0} files
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-700 mt-0.5 block">
+                      {serverStatus?.storage?.uploads?.breakdown?.other?.formatted || '0 B'}
                     </span>
                   </div>
                 </div>
 
                 <div className="text-[11px] font-mono text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200 break-all">
-                  <span className="text-slate-400 block text-[9px] uppercase font-sans font-bold">Filesystem Path:</span>
+                  <span className="text-slate-400 block text-[9px] uppercase font-sans font-bold">Mount / Storage Path:</span>
                   {serverStatus?.storage?.uploads?.directory || './uploads'}
                 </div>
+
+                {/* 5 Most Recently Stored Files */}
+                {serverStatus?.storage?.uploads?.recent && serverStatus.storage.uploads.recent.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                      <FolderArchive className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Recently Uploaded Files on Disk</span>
+                    </span>
+                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden text-xs font-mono">
+                      {serverStatus.storage.uploads.recent.map((f: any, idx: number) => (
+                        <div key={idx} className="p-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                          <span className="text-slate-800 truncate max-w-[240px] font-semibold">{f.filename}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 text-[11px]">{new Date(f.modified).toLocaleTimeString()}</span>
+                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold">
+                              {f.sizeFormatted}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Node.js Process V8 Memory Detailed Breakdown */}
+              {/* Node.js Process V8 Memory & Runtime Details */}
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
@@ -1467,8 +1705,8 @@ export const DevSandbox: React.FC = () => {
                       <Zap className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">Node.js Process Memory (V8 Engine)</h3>
-                      <p className="text-xs text-slate-500">Live RAM allocated to the backend application runtime</p>
+                      <h3 className="text-sm font-bold text-slate-900">Node.js Process Memory & Engine (V8)</h3>
+                      <p className="text-xs text-slate-500">Live heap pool and execution stats for backend runtime</p>
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-blue-100 text-blue-900">
@@ -1488,27 +1726,47 @@ export const DevSandbox: React.FC = () => {
                   </div>
 
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Heap Total</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Heap Pool Total</span>
                     <span className="text-sm font-black text-slate-800 mt-0.5 block">
                       {serverStatus?.memory?.processHeapTotalFormatted || '0 MB'}
                     </span>
-                    <span className="text-[10px] text-slate-400 block font-sans mt-0.5">V8 Pool Size</span>
+                    <span className="text-[10px] text-slate-400 block font-sans mt-0.5">V8 Pool Limit</span>
                   </div>
 
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">RSS (Physical)</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">RSS (Physical RAM)</span>
                     <span className="text-sm font-black text-indigo-700 mt-0.5 block">
                       {serverStatus?.memory?.processRssFormatted || '0 MB'}
                     </span>
                     <span className="text-[10px] text-slate-400 block font-sans mt-0.5">Resident Set</span>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex justify-between">
+                    <span className="text-slate-500 font-sans">External Memory:</span>
+                    <strong className="text-slate-900">{serverStatus?.memory?.processExternalFormatted || '0 MB'}</strong>
+                  </div>
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex justify-between">
+                    <span className="text-slate-500 font-sans">ArrayBuffers:</span>
+                    <strong className="text-slate-900">{serverStatus?.memory?.processArrayBuffersFormatted || '0 MB'}</strong>
+                  </div>
+                </div>
+
+                {serverStatus?.process?.cpuUsageMs && (
+                  <div className="text-[11px] font-mono text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <span>Process CPU Time (User / System):</span>
+                    <strong className="text-slate-800">
+                      {serverStatus.process.cpuUsageMs.user}ms / {serverStatus.process.cpuUsageMs.system}ms
+                    </strong>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* RIGHT COLUMN: POSTGRESQL TABLES BREAKDOWN & HOST DETAILS */}
+            {/* RIGHT COLUMN: POSTGRESQL DEEP TELEMETRY & HOST MACHINE */}
             <div className="space-y-6">
-              {/* Largest PostgreSQL Tables by Storage Size */}
+              {/* PostgreSQL Engine & Cache Telemetry */}
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
@@ -1516,8 +1774,72 @@ export const DevSandbox: React.FC = () => {
                       <Database className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">PostgreSQL Table Storage Breakdown</h3>
-                      <p className="text-xs text-slate-500">Largest tables by physical disk allocation in PostgreSQL</p>
+                      <h3 className="text-sm font-bold text-slate-900">PostgreSQL Performance & Transactions</h3>
+                      <p className="text-xs text-slate-500">Buffer cache ratio, transactions, and live active session states</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-900">
+                    Cache {serverStatus?.database?.cacheHitRatio || '100'}%
+                  </span>
+                </div>
+
+                {/* Database Metrics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Cache Hit Ratio</span>
+                    <span className="text-base font-black text-emerald-700 mt-1 block">
+                      {serverStatus?.database?.cacheHitRatio || '100'}%
+                    </span>
+                    <span className="text-[10px] text-emerald-600 block font-sans font-semibold mt-0.5">Optimal (&gt;99%)</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Transactions</span>
+                    <span className="text-base font-black text-slate-900 mt-1 block">
+                      {serverStatus?.database?.transactions?.commit || '0'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-sans mt-0.5">
+                      Rollbacks: {serverStatus?.database?.transactions?.rollback || '0'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Rows Inserted</span>
+                    <span className="text-base font-black text-blue-700 mt-1 block">
+                      {serverStatus?.database?.tuples?.inserted || '0'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-sans mt-0.5">
+                      Updated: {serverStatus?.database?.tuples?.updated || '0'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block font-sans">Active Sessions</span>
+                    <span className="text-base font-black text-purple-700 mt-1 block">
+                      {serverStatus?.database?.activeConnections || 1}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-sans mt-0.5">
+                      DB Uptime: {serverStatus?.database?.uptimeFormatted || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[11px] font-mono text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200 break-words">
+                  <span className="text-slate-400 block text-[9px] uppercase font-sans font-bold">PostgreSQL Engine Build:</span>
+                  {serverStatus?.database?.version || 'PostgreSQL'}
+                </div>
+              </div>
+
+              {/* Largest PostgreSQL Tables with Live & Dead Rows */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200">
+                      <TableIcon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">PostgreSQL Table Storage & Row Counts</h3>
+                      <p className="text-xs text-slate-500">Live physical relation size and tuple metrics</p>
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-900">
@@ -1527,14 +1849,26 @@ export const DevSandbox: React.FC = () => {
 
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
                   {(serverStatus?.database?.largestTables || []).map((t: any, idx: number) => (
-                    <div key={t.tableName || idx} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 font-mono text-[11px] text-slate-400 text-center">{idx + 1}</span>
-                        <span className="font-mono font-bold text-slate-800">{t.tableName}</span>
+                    <div key={t.tableName || idx} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-xs font-mono">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-5 text-[11px] text-slate-400 text-center font-bold">{idx + 1}</span>
+                        <span className="font-bold text-slate-900">{t.tableName}</span>
+                        {t.rowCount !== undefined && (
+                          <span className="text-[10px] text-slate-400 font-sans">
+                            ({t.rowCount.toLocaleString()} rows)
+                          </span>
+                        )}
                       </div>
-                      <span className="font-mono font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg text-[11px]">
-                        {t.totalSize}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {t.deadRows > 0 && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-sans bg-amber-50 text-amber-700 border border-amber-200" title="Dead tuples pending vacuum">
+                            {t.deadRows} dead
+                          </span>
+                        )}
+                        <span className="font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg text-[11px]">
+                          {t.totalSize}
+                        </span>
+                      </div>
                     </div>
                   ))}
 
@@ -1546,7 +1880,7 @@ export const DevSandbox: React.FC = () => {
                 </div>
               </div>
 
-              {/* Host Machine & Runtime Environment Details */}
+              {/* Host Machine, Network Interfaces & Platform Specs */}
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
@@ -1554,8 +1888,8 @@ export const DevSandbox: React.FC = () => {
                       <Server className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">Host Environment & Platform Specs</h3>
-                      <p className="text-xs text-slate-500">Hardware processor, kernel, and timezone details</p>
+                      <h3 className="text-sm font-bold text-slate-900">Host Hardware & Network Interfaces</h3>
+                      <p className="text-xs text-slate-500">Hardware processor, load averages, and IP addresses</p>
                     </div>
                   </div>
                   <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-purple-100 text-purple-900 uppercase">
@@ -1579,9 +1913,9 @@ export const DevSandbox: React.FC = () => {
                   </div>
 
                   <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Server Port</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Load Average (1m, 5m, 15m)</span>
                     <span className="font-mono font-bold text-slate-900 mt-0.5 block">
-                      :{serverStatus?.process?.port || 4000}
+                      {(serverStatus?.host?.loadAvg || []).map((l: number) => l.toFixed(2)).join(', ') || 'N/A'}
                     </span>
                   </div>
 
@@ -1592,6 +1926,27 @@ export const DevSandbox: React.FC = () => {
                     </span>
                   </div>
                 </div>
+
+                {/* IPv4 Network Interfaces */}
+                {serverStatus?.host?.networkInterfaces && serverStatus.host.networkInterfaces.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                      <Wifi className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Host Network IPv4 Interfaces</span>
+                    </span>
+                    <div className="flex flex-wrap gap-2 text-xs font-mono">
+                      {serverStatus.host.networkInterfaces.map((net: any, idx: number) => (
+                        <div key={idx} className="px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-1.5">
+                          <span className="font-bold text-slate-700">{net.interface}:</span>
+                          <span className="text-blue-700 font-bold">{net.address}</span>
+                          {net.internal && (
+                            <span className="text-[9px] font-sans px-1 rounded bg-slate-200 text-slate-600">loopback</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-mono flex justify-between items-center">
                   <span>Server Local Timestamp:</span>
