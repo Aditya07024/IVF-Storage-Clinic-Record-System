@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle, Plus } from 'lucide-react';
-import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage, isDevelopmentMode } from '../api/client';
+import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage, isDevelopmentMode, isDevSandboxUnlocked } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
 import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, getSortedRetrievalDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys, sortStrawsDeterministically, extractStrawSequenceNumber, buildPatientCycleStrawSequenceMap } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
@@ -101,6 +101,23 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
   const [devDeleteStrawTarget, setDevDeleteStrawTarget] = useState<any | null>(null);
   const [devDeleteBatchTarget, setDevDeleteBatchTarget] = useState<any | null>(null);
   const [devDeleting, setDevDeleting] = useState(false);
+
+  // Reactive Developer Sandbox Unlock Status: Shows delete buttons in production when unlocked
+  const [devUnlocked, setDevUnlocked] = useState<boolean>(() => isDevSandboxUnlocked());
+
+  useEffect(() => {
+    const handleLockUpdate = () => {
+      setDevUnlocked(isDevSandboxUnlocked());
+    };
+    window.addEventListener('storage', handleLockUpdate);
+    window.addEventListener('dev-lock-change', handleLockUpdate);
+    return () => {
+      window.removeEventListener('storage', handleLockUpdate);
+      window.removeEventListener('dev-lock-change', handleLockUpdate);
+    };
+  }, []);
+
+  const isDevActive = isDevelopmentMode() || devUnlocked;
 
   // Edit Patient Modal States
   const [editingPatient, setEditingPatient] = useState<any | null>(null);
@@ -1313,8 +1330,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             );
                           })()}
 
-                          {/* Delete Patient Button - Only available in development mode (NODE_ENV=development), strictly hidden in production */}
-                          {(import.meta.env.VITE_NODE_ENV === 'development' || (!import.meta.env.VITE_IS_PRODUCTION_ENV && import.meta.env.VITE_NODE_ENV !== 'production')) && (
+                          {/* Delete Patient Button - Visible in development or when Dev Sandbox is unlocked in production */}
+                          {isDevActive && (
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1322,7 +1339,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                                 handleDeletePatient(p.id, p.fullName);
                               }}
                               className="p-2 bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 rounded-xl border border-slate-200 hover:border-rose-300 transition-all inline-flex items-center gap-1.5 text-xs font-bold shadow-xs active:scale-95 cursor-pointer"
-                              title="Delete Patient Record (Development Only)"
+                              title="Delete Patient Record (Dev Sandbox Unlocked)"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
                               <span>Delete</span>
@@ -1827,6 +1844,19 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                   <Plus className="w-4 h-4" />
                   <span>Add More Straws</span>
                 </button>
+
+                {/* Delete Patient (Dev) Button in Drawer - Visible when Dev Sandbox is Unlocked */}
+                {isDevActive && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePatient(selectedPatient.id, selectedPatient.fullName)}
+                    className="w-full py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                    title="Permanently delete this patient record from the database (Dev Sandbox Unlocked)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Delete Patient (Dev)</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2268,12 +2298,12 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             <Edit3 className="w-3.5 h-3.5 text-amber-700" />
                             <span>Edit Cycle</span>
                           </button>
-                          {isDevelopmentMode() && (
+                          {isDevActive && (
                             <button
                               type="button"
                               onClick={() => setDevDeleteBatchTarget({ batch, cycleNum })}
                               className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[11px] rounded-lg flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-2xs"
-                              title="Delete this cycle from the database (Development Only)"
+                              title="Delete this cycle from the database (Dev Sandbox Unlocked)"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                               <span>Delete Cycle (Dev)</span>
@@ -2415,14 +2445,14 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                                       <Edit3 className="w-3 h-3 text-slate-600" />
                                       <span>Edit</span>
                                     </button>
-                                    {isDevelopmentMode() && (
+                                    {isDevActive && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setDevDeleteStrawTarget({ straw, displayLabel, cycleNum });
                                         }}
                                         className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-lg border border-rose-300 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs active:scale-95 cursor-pointer"
-                                        title="Delete this straw from the database (Development Only)"
+                                        title="Delete this straw from the database (Dev Sandbox Unlocked)"
                                       >
                                         <Trash2 className="w-3 h-3 text-rose-600" />
                                         <span>Delete (Dev)</span>
@@ -2435,7 +2465,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                                       <ThermometerSnowflake className="w-3.5 h-3.5 text-rose-700" />
                                       <span>THAWED{thawRec?.thawDate ? ` (${formatDateDDMMYYYY(thawRec.thawDate)})` : ''}</span>
                                     </span>
-                                    {isDevelopmentMode() && (
+                                    {isDevActive && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();

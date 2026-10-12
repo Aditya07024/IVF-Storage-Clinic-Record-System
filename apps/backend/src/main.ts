@@ -1210,6 +1210,29 @@ app.get('/api/dev/stats', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req
   }
 });
 
+// 1b. Complete Database Management (DBMS) Table Overview
+app.get('/api/dev/db/overview', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: Request, res: Response) => {
+  try {
+    const overview = await devService.getDatabaseOverview();
+    return res.json(overview);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 1c. Fetch Paginated Records for Specific Table with Search
+app.get('/api/dev/db/table/:tableId', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 25;
+    const search = (req.query.search as string) || '';
+    const result = await devService.getTableRecords(req.params.tableId, page, limit, search);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 2. Delete Individual Straw from Database
 app.delete('/api/dev/straws/:id', accessKeyGuard, jwtAuthGuard, devOnlyGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {

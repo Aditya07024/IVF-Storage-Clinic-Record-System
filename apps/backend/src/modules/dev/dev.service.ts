@@ -593,6 +593,259 @@ export class DevService {
       };
     }, { timeout: 20000, maxWait: 10000 });
   }
+
+  /**
+   * Complete Database Management System (DBMS) Table Overview
+   * Returns row counts and schema metadata for all database tables
+   */
+  async getDatabaseOverview() {
+    const [
+      patients,
+      batches,
+      straws,
+      embryos,
+      thawRecords,
+      users,
+      cans,
+      canisters,
+      levels,
+      goblets,
+      visoTubes,
+      auditLogs,
+      ocrRecords,
+      storageMovements,
+      patientNotes,
+      emailLogs,
+    ] = await Promise.all([
+      prisma.patient.count(),
+      prisma.storageBatch.count(),
+      prisma.straw.count(),
+      prisma.embryo.count(),
+      prisma.thawRecord.count(),
+      prisma.user.count(),
+      prisma.can.count(),
+      prisma.canister.count(),
+      prisma.level.count(),
+      prisma.goblet.count(),
+      prisma.visoTube.count(),
+      prisma.auditLog.count(),
+      prisma.ocrRecord.count(),
+      prisma.storageMovement.count(),
+      prisma.patientNote.count(),
+      prisma.emailLog.count(),
+    ]);
+
+    const totalRecords =
+      patients + batches + straws + embryos + thawRecords + users +
+      cans + canisters + levels + goblets + visoTubes + auditLogs +
+      ocrRecords + storageMovements + patientNotes + emailLogs;
+
+    return {
+      success: true,
+      totalRecords,
+      dbEngine: 'PostgreSQL',
+      tables: [
+        { id: 'patient', name: 'Patient', label: 'Patients', count: patients, icon: 'Users', description: 'Patient records & clinical metadata' },
+        { id: 'storagebatch', name: 'StorageBatch', label: 'Cycles / Batches', count: batches, icon: 'Layers', description: 'Egg and Embryo collection cycles' },
+        { id: 'straw', name: 'Straw', label: 'Straws', count: straws, icon: 'TestTube', description: 'Cryopreserved straws stored in tanks' },
+        { id: 'embryo', name: 'Embryo', label: 'Embryos', count: embryos, icon: 'Sparkles', description: 'Individual embryo grades and states' },
+        { id: 'thawrecord', name: 'ThawRecord', label: 'Thaw Records', count: thawRecords, icon: 'ThermometerSnowflake', description: 'Thawed straws and clinical warming records' },
+        { id: 'can', name: 'Can', label: 'Cryo Tanks', count: cans, icon: 'Database', description: 'Liquid nitrogen tanks (CAN-01 to CAN-14)' },
+        { id: 'canister', name: 'Canister', label: 'Canisters', count: canisters, icon: 'Box', description: 'Canisters inside cryo storage tanks' },
+        { id: 'level', name: 'Level', label: 'Levels', count: levels, icon: 'Sliders', description: 'Upper and lower tier levels' },
+        { id: 'goblet', name: 'Goblet', label: 'Goblets', count: goblets, icon: 'GlassWater', description: 'Goblet cups holding VisoTubes' },
+        { id: 'visotube', name: 'VisoTube', label: 'VisoTubes', count: visoTubes, icon: 'Pipette', description: 'Location-coded VisoTubes (e.g. CAN-01-C1-L1-G1-T1)' },
+        { id: 'user', name: 'User', label: 'Staff Accounts', count: users, icon: 'Shield', description: 'Clinic doctors, embryologists, and admins' },
+        { id: 'auditlog', name: 'AuditLog', label: 'Audit Logs', count: auditLogs, icon: 'FileText', description: 'Security audit trail of all clinic actions' },
+        { id: 'ocrrecord', name: 'OcrRecord', label: 'OCR Scans', count: ocrRecords, icon: 'FileSpreadsheet', description: 'AI scanned cryo sheet extractions' },
+        { id: 'storagemovement', name: 'StorageMovement', label: 'Straw Movements', count: storageMovements, description: 'Audit history of straw location transfers' },
+        { id: 'patientnote', name: 'PatientNote', label: 'Patient Notes', count: patientNotes, description: 'Clinical doctor notes on patient profiles' },
+        { id: 'emaillog', name: 'EmailLog', label: 'Email Logs', count: emailLogs, icon: 'Mail', description: 'PDF email delivery history' },
+      ],
+    };
+  }
+
+  /**
+   * Fetch paginated raw records for any database table with search & filtering
+   */
+  async getTableRecords(tableId: string, page = 1, limit = 25, search = '') {
+    const tableMapping: Record<string, any> = {
+      patient: prisma.patient,
+      storagebatch: prisma.storageBatch,
+      straw: prisma.straw,
+      embryo: prisma.embryo,
+      thawrecord: prisma.thawRecord,
+      user: prisma.user,
+      can: prisma.can,
+      canister: prisma.canister,
+      level: prisma.level,
+      goblet: prisma.goblet,
+      visotube: prisma.visoTube,
+      auditlog: prisma.auditLog,
+      ocrrecord: prisma.ocrRecord,
+      storagemovement: prisma.storageMovement,
+      patientnote: prisma.patientNote,
+      emaillog: prisma.emailLog,
+    };
+
+    const key = (tableId || '').toLowerCase().trim();
+    const model = tableMapping[key];
+    if (!model) {
+      throw new Error(`Table "${tableId}" not recognized in database schema.`);
+    }
+
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(100, Math.max(1, limit));
+    const skip = (safePage - 1) * safeLimit;
+
+    let where: any = {};
+    if (search && search.trim()) {
+      const q = search.trim();
+      if (key === 'patient') {
+        where = {
+          OR: [
+            { patientId: { contains: q, mode: 'insensitive' } },
+            { fullName: { contains: q, mode: 'insensitive' } },
+            { partnerName: { contains: q, mode: 'insensitive' } },
+            { phone: { contains: q, mode: 'insensitive' } },
+            { email: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'storagebatch') {
+        where = {
+          OR: [
+            { batchId: { contains: q, mode: 'insensitive' } },
+            { patientId: { contains: q, mode: 'insensitive' } },
+            { donorName: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'straw') {
+        where = {
+          OR: [
+            { strawId: { contains: q, mode: 'insensitive' } },
+            { color: { contains: q, mode: 'insensitive' } },
+            { status: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'embryo') {
+        where = {
+          OR: [
+            { grade: { contains: q, mode: 'insensitive' } },
+            { status: { contains: q, mode: 'insensitive' } },
+            { notes: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'thawrecord') {
+        where = {
+          OR: [
+            { doctorName: { contains: q, mode: 'insensitive' } },
+            { status: { contains: q, mode: 'insensitive' } },
+            { originalLocationCode: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'user') {
+        where = {
+          OR: [
+            { staffId: { contains: q, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+            { email: { contains: q, mode: 'insensitive' } },
+            { role: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'can') {
+        where = {
+          OR: [
+            { code: { contains: q, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'visotube') {
+        where = {
+          OR: [
+            { locationCode: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'auditlog') {
+        where = {
+          OR: [
+            { action: { contains: q, mode: 'insensitive' } },
+            { userName: { contains: q, mode: 'insensitive' } },
+            { entityName: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'ocrrecord') {
+        where = {
+          OR: [
+            { originalFilename: { contains: q, mode: 'insensitive' } },
+            { status: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'storagemovement') {
+        where = {
+          OR: [
+            { oldLocationCode: { contains: q, mode: 'insensitive' } },
+            { newLocationCode: { contains: q, mode: 'insensitive' } },
+            { staffName: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'patientnote') {
+        where = {
+          OR: [
+            { noteText: { contains: q, mode: 'insensitive' } },
+            { authorName: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      } else if (key === 'emaillog') {
+        where = {
+          OR: [
+            { recipientEmail: { contains: q, mode: 'insensitive' } },
+            { subject: { contains: q, mode: 'insensitive' } },
+            { status: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      }
+    }
+
+    const total = await model.count({ where });
+
+    let orderBy: any = undefined;
+    if (['patient', 'straw', 'auditlog', 'ocrrecord', 'emaillog', 'patientnote', 'user'].includes(key)) {
+      orderBy = { createdAt: 'desc' };
+    } else if (key === 'storagebatch') {
+      orderBy = { createdAt: 'desc' };
+    } else if (key === 'thawrecord') {
+      orderBy = { thawDate: 'desc' };
+    } else if (key === 'can') {
+      orderBy = { code: 'asc' };
+    } else if (key === 'visotube') {
+      orderBy = { locationCode: 'asc' };
+    }
+
+    const records = await model.findMany({
+      where,
+      take: safeLimit,
+      skip,
+      orderBy,
+    });
+
+    // Sanitize sensitive user credentials
+    const sanitized = records.map((rec: any) => {
+      if (rec.passwordHash) {
+        return { ...rec, passwordHash: '•••••••• (encrypted)' };
+      }
+      return rec;
+    });
+
+    return {
+      success: true,
+      table: key,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit) || 1,
+      records: sanitized,
+    };
+  }
 }
 
 export const devService = new DevService();
