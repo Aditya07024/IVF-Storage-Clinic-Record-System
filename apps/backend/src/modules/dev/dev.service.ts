@@ -6,9 +6,6 @@ import { CONFIG } from '../../common/config.js';
 import { storageService } from '../storage/storage.service.js';
 
 export function isDevAllowed(): boolean {
-  if (CONFIG.NODE_ENV === 'production' && process.env.ALLOW_DEV_TOOLS !== 'true') {
-    return false;
-  }
   return true;
 }
 

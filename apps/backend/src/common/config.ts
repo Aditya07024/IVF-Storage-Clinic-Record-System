@@ -41,6 +41,7 @@ export const CONFIG = {
   
   // Site Access Key Hash (Default 'ivf@sgrm')
   APP_ACCESS_KEY_HASH: process.env.APP_ACCESS_KEY_HASH || '8f3705adafbf4c17c1600f60ca8d6e8aac7b642a7c70614f9e57dd8984757c8d',
+  DEV_SANDBOX_PASSWORD: process.env.DEV_SANDBOX_PASSWORD || 'sgrmIVFdev',
   
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'dev_jwt_access_secret_super_secure_32_bytes_long_2026!',
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'dev_jwt_refresh_secret_super_secure_32_bytes_long_2026!',

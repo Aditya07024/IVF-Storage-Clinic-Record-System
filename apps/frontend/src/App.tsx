@@ -20,11 +20,7 @@ export const AppContent: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const isDev = isDevelopmentMode();
   const [activeTab, setActiveTab] = useState<NavTab>(() => {
-    const saved = (sessionStorage.getItem('activeTab') as NavTab) || 'dashboard';
-    if (saved === 'dev-tools' && !isDevelopmentMode()) {
-      return 'dashboard';
-    }
-    return saved;
+    return (sessionStorage.getItem('activeTab') as NavTab) || 'dashboard';
   });
   const [selectedCanCode, setSelectedCanCode] = useState<string>('CAN-01');
   const [selectedPatientIdForDirectory, setSelectedPatientIdForDirectory] = useState<string | null>(null);
@@ -108,7 +104,14 @@ export const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <LoginForm onLoginSuccess={(u) => setUser(u)} />;
+    return (
+      <LoginForm
+        onLoginSuccess={(u) => {
+          setUser(u);
+          handleSetActiveTab('dashboard');
+        }}
+      />
+    );
   }
 
   return (
@@ -145,7 +148,7 @@ export const AppContent: React.FC = () => {
         {activeTab === 'logs' && <AuditLogs />}
         {activeTab === 'support' && <DeveloperSupport />}
         {activeTab === 'admin' && <AdminPanel />}
-        {activeTab === 'dev-tools' && isDev && <DevSandbox />}
+        {activeTab === 'dev-tools' && <DevSandbox />}
       </main>
 
       <PdfLoadingModal />

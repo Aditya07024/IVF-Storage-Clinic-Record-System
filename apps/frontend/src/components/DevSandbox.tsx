@@ -14,6 +14,10 @@ import {
   CheckCircle2,
   FileText,
   Clock,
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { apiRequest, isDevelopmentMode, clearApiCache } from '../api/client';
 
@@ -43,11 +47,37 @@ export const DevSandbox: React.FC = () => {
     action: () => Promise<void>;
   } | null>(null);
 
+  // Developer Sandbox Master Password Lock State
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    return sessionStorage.getItem('dev_sandbox_password') === 'sgrmIVFdev';
+  });
+  const [devPasswordInput, setDevPasswordInput] = useState('');
+  const [showDevPassword, setShowDevPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (isDev) {
+    if (isUnlocked) {
       fetchStats();
     }
-  }, [isDev]);
+  }, [isUnlocked]);
+
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (devPasswordInput === 'sgrmIVFdev') {
+      sessionStorage.setItem('dev_sandbox_password', 'sgrmIVFdev');
+      setIsUnlocked(true);
+      setPasswordError(null);
+      setDevPasswordInput('');
+    } else {
+      setPasswordError('Incorrect developer password. Access denied.');
+    }
+  };
+
+  const handleLock = () => {
+    sessionStorage.removeItem('dev_sandbox_password');
+    setIsUnlocked(false);
+    setStats(null);
+  };
 
   const fetchStats = async () => {
     setLoadingStats(true);
@@ -55,9 +85,12 @@ export const DevSandbox: React.FC = () => {
       const res = await apiRequest('/api/dev/stats');
       if (res.success) {
         setStats(res);
+      } else if (res.error) {
+        setFeedback({ type: 'error', message: res.error });
       }
     } catch (err: any) {
-      console.error('[DevSandbox] Error fetching stats:', err);
+      console.warn('[DevSandbox] Error fetching stats:', err.message);
+      setFeedback({ type: 'error', message: err.message || 'Developer stats are disabled on this backend.' });
     } finally {
       setLoadingStats(false);
     }
@@ -227,17 +260,67 @@ export const DevSandbox: React.FC = () => {
     }
   };
 
-  if (!isDev) {
+  if (!isUnlocked) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
-        <div className="bg-rose-50 border border-rose-200 rounded-3xl p-6 text-rose-800 flex items-center gap-4">
-          <ShieldAlert className="w-8 h-8 text-rose-600 shrink-0" />
+      <div className="p-4 sm:p-8 max-w-md mx-auto my-12 animate-in fade-in duration-200">
+        <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 text-center">
+          <div className="w-16 h-16 bg-amber-100 text-amber-900 border-2 border-amber-300 rounded-3xl mx-auto flex items-center justify-center shadow-sm">
+            <Lock className="w-8 h-8 text-amber-700" />
+          </div>
+
           <div>
-            <h3 className="font-bold text-base">Development Mode Required</h3>
-            <p className="text-xs text-rose-700 mt-1">
-              The Developer Sandbox is disabled in production environments. Developer API endpoints and deletion utilities are restricted to local development mode.
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold bg-amber-100 text-amber-950 border border-amber-300 uppercase mb-2">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+              <span>Password Required</span>
+            </div>
+            <h2 className="text-xl font-extrabold text-slate-900">Developer Sandbox Gate</h2>
+            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              Enter the developer password to unlock database management, wiping options, and deletion tools in this environment.
             </p>
           </div>
+
+          <form onSubmit={handleUnlock} className="space-y-4 text-left">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
+                Developer Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showDevPassword ? 'text' : 'password'}
+                  placeholder="Enter password..."
+                  value={devPasswordInput}
+                  onChange={(e) => {
+                    setDevPasswordInput(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  autoFocus
+                  className="w-full pl-3.5 pr-10 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDevPassword(!showDevPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                >
+                  {showDevPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {passwordError && (
+                <p className="text-xs text-rose-600 font-semibold mt-1.5 flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>{passwordError}</span>
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={!devPasswordInput.trim()}
+              className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>Unlock Developer Sandbox</span>
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -275,6 +358,14 @@ export const DevSandbox: React.FC = () => {
             >
               <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${loadingStats ? 'animate-spin' : ''}`} />
               <span>Refresh Stats</span>
+            </button>
+            <button
+              onClick={handleLock}
+              className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+              title="Lock sandbox with master password"
+            >
+              <Lock className="w-3.5 h-3.5 text-rose-600" />
+              <span>Lock Sandbox</span>
             </button>
           </div>
         </div>

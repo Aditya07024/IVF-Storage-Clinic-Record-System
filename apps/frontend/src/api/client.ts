@@ -67,6 +67,14 @@ export function isDevelopmentMode(): boolean {
   return false;
 }
 
+/**
+ * Checks if the developer sandbox has been unlocked with password "sgrmIVFdev"
+ */
+export function isDevSandboxUnlocked(): boolean {
+  if (typeof sessionStorage === 'undefined') return false;
+  return sessionStorage.getItem('dev_sandbox_password') === 'sgrmIVFdev';
+}
+
 let isRefreshingToken = false;
 let activeRefreshPromise: Promise<string | null> | null = null;
 
@@ -177,6 +185,11 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const devPassword = typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem('dev_sandbox_password') || '') : '';
+  if (devPassword) {
+    headers['x-dev-password'] = devPassword;
+  }
+
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
 
@@ -224,24 +237,20 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     throw new Error(data.error || 'Session expired. Refreshing page...');
   }
 
-  // Handle 403 / Access Key Errors: Auto-redirect to Security Access Gate screen
+  // Handle Access Key Errors: ONLY redirect to Security Access Gate if backend specifically rejected the site access key
   const isAccessKeyError =
-    response.status === 403 ||
-    (typeof data.error === 'string' && (
-      data.error.toLowerCase().includes('access key') ||
-      data.error.toLowerCase().includes('invalid site access') ||
-      data.error.toLowerCase().includes('access denied')
-    ));
+    typeof data.error === 'string' && (
+      data.error.toLowerCase().includes('invalid site access key') ||
+      data.error.toLowerCase().includes('invalid application access key') ||
+      data.error.toLowerCase().includes('invalid site access key hash')
+    );
 
   if (isAccessKeyError) {
     localStorage.removeItem('app_access_key');
     localStorage.removeItem('app_access_key_timestamp');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
     clearApiCache();
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('access-key-invalid'));
-      window.location.reload();
     }
     throw new Error(data.error || 'Access Key Invalid. Redirecting to Security Access Gate...');
   }

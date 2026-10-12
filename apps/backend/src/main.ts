@@ -476,15 +476,29 @@ const adminRoleGuard = (req: AuthenticatedRequest, res: Response, next: NextFunc
   next();
 };
 
-// Strict Development-Only Guard Middleware (Guarantees dev tools are completely disabled in production)
+// Developer Sandbox Guard Middleware:
+// Protects Dev Sandbox endpoints. In both production and development, allows access if developer password "sgrmIVFdev" is provided.
 const devOnlyGuard = (req: Request, res: Response, next: NextFunction) => {
-  if (CONFIG.NODE_ENV === 'production' && process.env.ALLOW_DEV_TOOLS !== 'true') {
-    return res.status(403).json({
-      success: false,
-      error: 'Forbidden: Developer operations and database reset tools are strictly disabled in production mode.',
-    });
+  const devPassword =
+    (req.headers['x-dev-password'] as string) ||
+    (req.body?.devPassword as string) ||
+    (req.query?.devPassword as string);
+
+  const expectedPass = process.env.DEV_SANDBOX_PASSWORD || CONFIG.DEV_SANDBOX_PASSWORD || 'sgrmIVFdev';
+
+  if (devPassword && devPassword.trim() === expectedPass.trim()) {
+    return next();
   }
-  next();
+
+  // In local development, also allow as convenience if password is not provided
+  if (CONFIG.NODE_ENV !== 'production' || process.env.ALLOW_DEV_TOOLS === 'true') {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    error: 'Forbidden: Developer password "sgrmIVFdev" is required to access the Developer Sandbox in production.',
+  });
 };
 
 app.get('/api/auth/me', accessKeyGuard, jwtAuthGuard, async (req: AuthenticatedRequest, res: Response) => {

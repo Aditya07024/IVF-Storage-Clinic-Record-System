@@ -42,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user,
     { id: 'logs', label: 'Audit Logs', icon: ClipboardList },
     { id: 'support', label: 'Developer & Support', icon: LifeBuoy },
     ...(user?.role === 'ADMIN' ? [{ id: 'admin', label: 'Admin Credentials', icon: ShieldCheck }] : []),
-    ...(isDev ? [{ id: 'dev-tools', label: 'Dev Sandbox', icon: Wrench, isDevBadge: true }] : []),
+    { id: 'dev-tools', label: 'Dev Sandbox', icon: Wrench, isDevBadge: true },
   ];
 
   // Open mobile menu & start 5 second auto-dismiss timer
