@@ -369,13 +369,6 @@ export const DevSandbox: React.FC = () => {
             </button>
           </div>
         </div>
-
-        <div className="mt-4 pt-3 border-t border-amber-200/60 flex items-start gap-2.5 text-amber-900 text-xs">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <span>
-            <strong>Production Protection Active:</strong> This sandbox and its underlying APIs (<code>/api/dev/*</code>) are strictly guarded by <code>NODE_ENV !== 'production'</code>. They are completely disabled and stripped in production builds.
-          </span>
-        </div>
       </div>
 
       {/* Floating Feedback Notification */}
@@ -471,87 +464,6 @@ export const DevSandbox: React.FC = () => {
             <UserPlus className="w-4 h-4" />
             <span>Generate Sample Patient</span>
           </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* TARGET DELETION TOOLS (SINGLE STRAW & SINGLE CYCLE) */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Delete Individual Straw */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center">
-              <Trash2 className="w-5 h-5 text-rose-600" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Delete Straw from Database</h2>
-              <p className="text-xs text-slate-500">
-                Removes straw, associated embryos, and cascades thaw records. Recalculates batch counts.
-              </p>
-            </div>
-          </div>
-
-          <form onSubmit={handleDeleteStraw} className="space-y-3">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                Straw Code or UUID
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. CAN-01-C1-S1 or straw UUID"
-                value={strawInputId}
-                onChange={(e) => setStrawInputId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={actionLoading || !strawInputId.trim()}
-              className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Delete Straw</span>
-            </button>
-          </form>
-        </div>
-
-        {/* Delete Individual Cycle (Batch) */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center">
-              <Layers className="w-5 h-5 text-amber-700" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Delete Cycle (Batch) from Database</h2>
-              <p className="text-xs text-slate-500">
-                Removes the cycle batch and cascades all contained straws, embryos, and thaw records.
-              </p>
-            </div>
-          </div>
-
-          <form onSubmit={handleDeleteBatch} className="space-y-3">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                Batch ID or UUID
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. BATCH-TEST-C1 or batch UUID"
-                value={batchInputId}
-                onChange={(e) => setBatchInputId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={actionLoading || !batchInputId.trim()}
-              className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Delete Cycle Batch</span>
-            </button>
-          </form>
         </div>
       </div>
 
