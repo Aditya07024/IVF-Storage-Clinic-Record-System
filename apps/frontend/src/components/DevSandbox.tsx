@@ -441,33 +441,6 @@ export const DevSandbox: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 1-CLICK TEST PATIENT GENERATOR */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Instant Test Patient Generator</h2>
-              <p className="text-xs text-slate-600">
-                Instantly populate a realistic sample patient with 1 Embryo Freezing cycle (2 straws) and 1 Egg Freezing cycle (1 straw) into available VisoTubes.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleSeedSamplePatient}
-            disabled={actionLoading}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Generate Sample Patient</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
       {/* HIGH-IMPACT WIPE CONTROLS (PHOTOS WIPE & DATABASE WIPE) */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
