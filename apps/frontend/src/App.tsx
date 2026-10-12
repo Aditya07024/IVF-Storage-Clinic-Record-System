@@ -52,8 +52,8 @@ export const AppContent: React.FC = () => {
     handleSetActiveTab('new-patient');
   };
 
-  const handleNavigateToExistingPatientForm = (patient: any, ocrPrefill?: any) => {
-    setPreselectedPatientForAddStraws({ ...patient, _ocrPrefill: ocrPrefill });
+  const handleNavigateToExistingPatientForm = (patient: any) => {
+    setPreselectedPatientForAddStraws(patient);
     handleSetActiveTab('new-patient');
   };
 

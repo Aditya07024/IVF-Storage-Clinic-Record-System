@@ -1039,6 +1039,14 @@ export class StorageService {
         data: updatePayload,
       });
 
+      // Sync updated vitrificationIndication to patient record
+      if (data.vitrificationIndication !== undefined && existing.patientId) {
+        await tx.patient.update({
+          where: { id: existing.patientId },
+          data: { vitrificationIndication: updatePayload.vitrificationIndication },
+        });
+      }
+
       // If freezingDate was updated on batch, sync freezingDate to straws if straws don't have explicit freezingDate
       if (data.freezingDate && existing.straws.length > 0) {
         const parsedFreezing = parseFlexibleDate(data.freezingDate);

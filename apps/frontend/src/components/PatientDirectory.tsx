@@ -1470,8 +1470,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           const displayLabel = (thawDisplayLabelMap[straw.id] || thawDisplayLabelMap[strawKey])
                             ? `Straw ${thawDisplayLabelMap[straw.id] || thawDisplayLabelMap[strawKey]}`
                             : (isGenericOrSeqStrawId
-                                ? `Straw #${cycleNum}.${cycleStrawNum}`
-                                : (straw.strawId.startsWith('Straw') ? straw.strawId : `Straw ${straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`} `));
+                              ? `Straw #${cycleNum}.${cycleStrawNum}`
+                              : (straw.strawId.startsWith('Straw') ? straw.strawId : `Straw ${straw.strawId.startsWith('#') ? straw.strawId : `#${straw.strawId}`} `));
                           const isDonorEgg = isOocyte && (quickThawPatient.cycleType === 'DONOR_RECIPIENT' || straw.cycleType === 'DONOR_RECIPIENT');
                           const eggTypeName = isDonorEgg ? 'donor egg' : 'self egg';
                           const countLabel = isOocyte
@@ -1495,10 +1495,10 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                               key={straw.id}
                               onClick={() => !isThawed && toggleStrawSelection(straw.id)}
                               className={`p-3.5 rounded-2xl border transition-all duration-300 ${isThawed
-                                  ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale filter blur-[0.4px] select-none cursor-not-allowed hover:opacity-100 hover:grayscale-0 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
-                                  : isSelected
-                                    ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500/40 cursor-pointer shadow-md'
-                                    : 'bg-white border-slate-200 hover:border-rose-300 cursor-pointer shadow-2xs'
+                                ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale filter blur-[0.4px] select-none cursor-not-allowed hover:opacity-100 hover:grayscale-0 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
+                                : isSelected
+                                  ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500/40 cursor-pointer shadow-md'
+                                  : 'bg-white border-slate-200 hover:border-rose-300 cursor-pointer shadow-2xs'
                                 }`}
                             >
                               <div className="flex items-center justify-between text-xs font-bold flex-wrap gap-2">
@@ -2290,8 +2290,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             <div
                               key={straw.id}
                               className={`text-xs p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-2 transition-all duration-300 cursor-pointer ${isOccupied
-                                  ? 'bg-white border-slate-200 shadow-2xs'
-                                  : 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
+                                ? 'bg-white border-slate-200 shadow-2xs'
+                                : 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md'
                                 }`}
                             >
                               <div className="font-mono font-bold text-slate-800 flex items-center gap-2 flex-wrap">
@@ -2365,8 +2365,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                         const locCode = allStraws[0]?.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
                         return (
                           <div className={`text-xs p-3 rounded-xl border space-y-0.5 transition-all duration-300 ${isAllThawed
-                              ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md cursor-pointer'
-                              : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
+                            ? 'group/thawed bg-slate-200/50 border-slate-300/90 border-dashed opacity-50 grayscale contrast-75 filter blur-[0.4px] select-none hover:opacity-100 hover:grayscale-0 hover:contrast-100 hover:blur-none hover:bg-white hover:border-slate-300 hover:border-solid hover:shadow-md cursor-pointer'
+                            : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
                             }`}>
                             <div className="text-[10px] text-slate-500 font-semibold uppercase">
                               Physical Location Guide: {isAllThawed ? '(Capacity Liberated / Thawed)' : ''}
@@ -2500,12 +2500,12 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                               </td>
                               <td className="py-2.5 px-3">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${log.action === 'EMBRYO_THAWED'
-                                    ? 'bg-rose-100 text-rose-900 border-rose-300'
-                                    : log.action === 'EMBRYO_STORAGE_ALLOCATED' || log.action === 'STORAGE_ALLOCATED'
-                                      ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
-                                      : log.action === 'OCR_VERIFIED'
-                                        ? 'bg-teal-100 text-teal-900 border-teal-300'
-                                        : 'bg-slate-200 text-slate-900 border-slate-300'
+                                  ? 'bg-rose-100 text-rose-900 border-rose-300'
+                                  : log.action === 'EMBRYO_STORAGE_ALLOCATED' || log.action === 'STORAGE_ALLOCATED'
+                                    ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                                    : log.action === 'OCR_VERIFIED'
+                                      ? 'bg-teal-100 text-teal-900 border-teal-300'
+                                      : 'bg-slate-200 text-slate-900 border-slate-300'
                                   }`}>
                                   {log.action}
                                 </span>
@@ -2936,8 +2936,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                       type="button"
                       onClick={() => setEditCycleType('SELF')}
                       className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-2 ${editCycleType === 'SELF'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                         }`}
                     >
                       <User className="w-4 h-4" />
@@ -2947,8 +2947,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                       type="button"
                       onClick={() => setEditCycleType('DONOR_RECIPIENT')}
                       className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-2 ${editCycleType === 'DONOR_RECIPIENT'
-                          ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                         }`}
                     >
                       <UserCheck className="w-4 h-4" />
@@ -3417,10 +3417,10 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
         <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto">
           <div
             className={`p-4 rounded-2xl shadow-2xl border flex items-center gap-3.5 backdrop-blur-md transition-all ${deletionStatus.status === 'deleting'
-                ? 'bg-slate-900/95 text-amber-300 border-amber-500/40 shadow-amber-950/40 ring-1 ring-amber-500/20'
-                : deletionStatus.status === 'success'
-                  ? 'bg-slate-900/95 text-emerald-300 border-emerald-500/40 shadow-emerald-950/40 ring-1 ring-emerald-500/20'
-                  : 'bg-slate-900/95 text-rose-300 border-rose-500/40 shadow-rose-950/40 ring-1 ring-rose-500/20'
+              ? 'bg-slate-900/95 text-amber-300 border-amber-500/40 shadow-amber-950/40 ring-1 ring-amber-500/20'
+              : deletionStatus.status === 'success'
+                ? 'bg-slate-900/95 text-emerald-300 border-emerald-500/40 shadow-emerald-950/40 ring-1 ring-emerald-500/20'
+                : 'bg-slate-900/95 text-rose-300 border-rose-500/40 shadow-rose-950/40 ring-1 ring-rose-500/20'
               }`}
           >
             {deletionStatus.status === 'deleting' && (

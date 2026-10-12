@@ -93,6 +93,100 @@ export function parseTankFromRawText(rawText?: string, fallbackJsonTank?: string
   return 'CAN-01';
 }
 
+export function detectVitrificationIndication(rawText?: string, aiValue?: string | null): string {
+  const text = (rawText || '');
+  const aiVal = (aiValue || '').trim().toLowerCase();
+
+  const lines = text.split(/\r?\n/);
+  let isEmergencyChecked = false;
+  let isSocialChecked = false;
+  let isOncoChecked = false;
+  let isDonorChecked = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const hasEmerg = /\bemergency\b/i.test(trimmed);
+    const hasSoc = /\bsocial\b|\belective\s*egg/i.test(trimmed);
+    const hasOnc = /\bonco|\bcancer|\bchemo/i.test(trimmed);
+    const hasDon = /\bsupernumerary|\bdonor\s*egg/i.test(trimmed);
+
+    // If both emergency and social on same line with checkboxes:
+    if (hasEmerg && hasSoc) {
+      const emergDirect = /(?:\[[xX✓✔√v\*]\]|\([xX✓✔√v\*]\)|[✓✔√]|☑|☒)\s*(?:\d[.)]?)?\s*emergency/i.test(trimmed) || /emergency\s*(?:\[[xX✓✔√v\*]\]|\([xX✓✔√v\*]\)|[✓✔√]|☑|☒)/i.test(trimmed);
+      const socDirect = /(?:\[[xX✓✔√v\*]\]|\([xX✓✔√v\*]\)|[✓✔√]|☑|☒)\s*(?:\d[.)]?)?\s*social/i.test(trimmed) || /social\s*(?:\[[xX✓✔√v\*]\]|\([xX✓✔√v\*]\)|[✓✔√]|☑|☒)/i.test(trimmed);
+      if (emergDirect) isEmergencyChecked = true;
+      if (socDirect) isSocialChecked = true;
+      continue;
+    }
+
+    const hasCheckmark = /(?:\[[xX✓✔√v\*]\]|\([xX✓✔√v\*]\)|[✓✔√]|☑|☒|\btick(?:ed)?\b|\bcheck(?:ed)?\b)/i.test(trimmed);
+
+    if (hasCheckmark) {
+      if (hasEmerg) isEmergencyChecked = true;
+      if (hasSoc) isSocialChecked = true;
+      if (hasOnc) isOncoChecked = true;
+      if (hasDon) isDonorChecked = true;
+    }
+  }
+
+  if (isEmergencyChecked && !isSocialChecked) return 'Emergency egg freezing';
+  if (isSocialChecked && !isEmergencyChecked) return 'Social egg freezing';
+  if (isOncoChecked) return 'Onco fertility preservation';
+  if (isDonorChecked) return 'Supernumerary donor egg freezing';
+
+  // Explicit option number: Indication: 1, Indication: 2, etc.
+  const indNumberMatch = text.match(/(?:indication|reason|dx|type|opt(?:ion)?)[:\s#-]+([1-5])\b/i);
+  if (indNumberMatch) {
+    const num = indNumberMatch[1];
+    if (num === '1') return 'Social egg freezing';
+    if (num === '2') return 'Emergency egg freezing';
+    if (num === '3') return 'Onco fertility preservation';
+    if (num === '4') return 'Supernumerary donor egg freezing';
+    if (num === '5') return 'Elective / Other';
+  }
+
+  // Heading check: Indication: Emergency, Indication: Social
+  const emergencyHeading = /(?:indication|reason|dx|diagnosis|type|note|protocol|clinical|remarks)[:\s-]*[^\n\r]*(?:emergency)/i.test(text);
+  const socialHeading = /(?:indication|reason|dx|diagnosis|type|note|protocol|clinical|remarks)[:\s-]*[^\n\r]*(?:social|elective|age\s*related)/i.test(text);
+  const oncoHeading = /(?:indication|reason|dx|diagnosis|type|note|protocol|clinical|remarks)[:\s-]*[^\n\r]*(?:onco|cancer|chemo|medical)/i.test(text);
+
+  if (emergencyHeading && !socialHeading) return 'Emergency egg freezing';
+  if (socialHeading && !emergencyHeading) return 'Social egg freezing';
+  if (oncoHeading) return 'Onco fertility preservation';
+
+  // Clinical context: absent semen
+  const semenAbsent = /(?:absent\s*semen|semen\s*(?:not\s*produc|failure|absent|failed)|failure\s*to\s*produce\s*semen|no\s*sperm\s*on\s*day|husband\s*unable|unable\s*to\s*give\s*semen)/i.test(text);
+  if (semenAbsent) return 'Emergency egg freezing';
+
+  // AI value validation
+  if (aiVal.includes('emergency')) return 'Emergency egg freezing';
+  if (aiVal.includes('social') || aiVal.includes('elective egg') || aiVal.includes('age related')) return 'Social egg freezing';
+  if (aiVal.includes('onco') || aiVal.includes('cancer') || aiVal.includes('chemo') || aiVal.includes('radiation') || aiVal.includes('radiotherapy') || aiVal.includes('malignan')) return 'Onco fertility preservation';
+  if (aiVal.includes('supernumerary') || (aiVal.includes('donor') && (aiVal.includes('egg') || aiVal.includes('oocyte') || aiVal.includes('freez')))) return 'Supernumerary donor egg freezing';
+  if (aiVal === 'elective / other' || aiVal === 'other') return 'Elective / Other';
+
+  const hasEmergency = /\bemergency\b/i.test(text);
+  const hasSocial = /\bsocial\b/i.test(text) || /\belective\s*(?:egg|oocyte)?\s*freez/i.test(text);
+  const hasOnco = /\b(?:onco\s*-?\s*fertility|oncology|cancer|chemotherapy|chemo|malignancy|radiotherapy)\b/i.test(text);
+  const hasSupernumerary = /\b(?:supernumerary\s*(?:donor)?\s*(?:egg|oocyte)?|donor\s*(?:egg|oocyte)\s*freez|donor\s*egg\s*vitrif)/i.test(text);
+
+  if (hasEmergency && hasSocial) {
+    const emergencyCount = (text.match(/\bemergency\b/gi) || []).length;
+    const socialCount = (text.match(/\bsocial\b/gi) || []).length;
+    if (emergencyCount > socialCount) return 'Emergency egg freezing';
+    return 'Social egg freezing'; // default to first indication on printed checklist
+  }
+
+  if (hasEmergency && !hasSocial) return 'Emergency egg freezing';
+  if (hasSocial && !hasEmergency) return 'Social egg freezing';
+  if (hasOnco) return 'Onco fertility preservation';
+  if (hasSupernumerary) return 'Supernumerary donor egg freezing';
+
+  return 'Social egg freezing';
+}
+
 export class OcrService {
   private visionClient: any = null;
   private genAI: GoogleGenerativeAI | null = null;
@@ -441,12 +535,19 @@ STRICT EXTRACTION RULES:
 2. Filter out raw text noise, printed headers, hospital footers, page numbers, legal disclaimers, or un-related margin text.
 3. Viso Tube Color ("visoTubeColor") MUST ONLY be one of these 11 physical colors: Pink, Grey, Red, Black, Green, Rust, Blue, Purple, Yellow, Orange, or Skyblue. If unstated, return null.
 4. DOCTOR / UNIT NAME MATCHING RULE: Analyze any doctor name or unit name extracted from Vision OCR raw text. Fuzzy search and match it to the nearest matching doctor or unit name from this official clinic list: [Dr Abha Majumdar, Dr. Shweta Mittal Gupta, Dr. Neeti Tiwari, Dr. Ruma Satwik, Dr. Sakshi Nayar, Dr. Bhawani Shekhar, Dr. Tejashri Shrotri, GOPD Unit IVA, GOPD Unit IVB]. If a doctor name is close to one of these names, set "doctorName" to the EXACT matched name from this list.
-5. SPECIMEN TYPE ("specimenType"): Return "OOCYTE" if document mentions eggs, oocytes, MII, MI, oocyte freezing, donor eggs, supernumerary donor; otherwise return "EMBRYO".
+5. SPECIMEN TYPE ("specimenType"): Return "OOCYTE" if document mentions eggs, oocytes, MII, MI, GV, oocyte freezing, egg freezing, donor eggs, supernumerary donor, or vitrification of oocytes; otherwise return "EMBRYO".
 6. CYCLE TYPE ("cycleType"): Return "DONOR_RECIPIENT" if document mentions donor, donor reg no, donor egg, donor name; otherwise return "SELF".
-7. Extract Donor fields if present: "donorName", "donorRegNo", "donorAge", "donorPhone", "vitrificationIndication", "oocyteStage" (e.g. "MII" or "MI").
-8. Extract Storage Location fields STRICTLY from document text: "tankName" (e.g. "CAN-01", "CAN-02", "CAN-03", "CAN-04", "CAN-05", "CAN-08", "CAN-10", "CAN-11", "CAN-14" or "Can 1", "Can 2", "Tank 1", "Tank 2". If document mentions a Can/Tank number, return in "CAN-XX" format; if no Can/Tank is mentioned, return null), "canisterName" (e.g. "C01", "C08"), "level" (e.g. "Level 1", "Level 2"), "visoTubeId" (e.g. "V01", "V05"), "visoTubeColor".
-9. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage, grade, fragmentation, freezingDate. Straw colorTag MUST ONLY be one of these 5 clinic straw colors: Pink, Green, Blue, Yellow, or White. If unstated, return null.
-10. Extract Date of Birth ("dob" for Patient, "partnerDob" for Partner/Husband) if present in document text (look for DOB, Date of Birth, D.O.B., Birth Date). Return in YYYY-MM-DD format. If DOB is present and Age is missing, calculate Age from DOB.
+7. VITRIFICATION INDICATION ("vitrificationIndication"): For egg/oocyte freezing, identify the clinical indication. It MUST be mapped to one of these exact values:
+   - "Emergency egg freezing": If document indicates emergency, emergency freezing/vitrification, semen collection failure / no sperm on day of retrieval / husband absent.
+   - "Social egg freezing": If document indicates social egg freezing, elective egg freezing, age-related preservation, social vitrification.
+   - "Onco fertility preservation": If document indicates cancer, chemotherapy, oncology, radiotherapy, or medical fertility preservation.
+   - "Supernumerary donor egg freezing": If document indicates supernumerary donor or excess donor eggs.
+   - "Elective / Other": If other elective reason.
+   IMPORTANT: If the form has a pre-printed checklist of indications (e.g. "1. Social egg freezing", "2. Emergency egg freezing", "3. Onco-fertility"), look carefully for which option is checked ([x], ✓, tick), circled, underlined, or handwritten! DO NOT default to the first printed option! If "Emergency" or "Emergency egg freezing" is indicated/written, return "Emergency egg freezing". If "Social egg freezing" is checked, return "Social egg freezing".
+8. Extract Donor fields if present: "donorName", "donorRegNo", "donorAge", "donorPhone", "oocyteStage" (e.g. "MII" or "MI").
+9. Extract Storage Location fields STRICTLY from document text: "tankName" (e.g. "CAN-01", "CAN-02", "CAN-03", "CAN-04", "CAN-05", "CAN-08", "CAN-10", "CAN-11", "CAN-14" or "Can 1", "Can 2", "Tank 1", "Tank 2". If document mentions a Can/Tank number, return in "CAN-XX" format; if no Can/Tank is mentioned, return null), "canisterName" (e.g. "C01", "C08"), "level" (e.g. "Level 1", "Level 2"), "visoTubeId" (e.g. "V01", "V05"), "visoTubeColor".
+10. Extract all individual Straws ("straws" array) with strawId, colorTag, embryoCount, stage, grade, fragmentation, freezingDate. Straw colorTag MUST ONLY be one of these 5 clinic straw colors: Pink, Green, Blue, Yellow, or White. If unstated, return null.
+11. Extract Date of Birth ("dob" for Patient, "partnerDob" for Partner/Husband) if present in document text (look for DOB, Date of Birth, D.O.B., Birth Date). Return in YYYY-MM-DD format. If DOB is present and Age is missing, calculate Age from DOB.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -522,6 +623,17 @@ ${rawText}`;
                 partnerDobVal = calculateBackendDobFromAgeStr(partnerAgeVal);
               }
 
+              const oocyteScore = (rawText.match(/\b(?:oocyte|oocytes|egg|eggs|mii|mi|gv|m-ii)\b/gi) || []).length;
+              const embryoScore = (rawText.match(/\b(?:embryo|embryos|blastocyst|blastocysts|day\s*[356]|morula|inner\s*cell|troph|pgt|pgs)\b/gi) || []).length;
+              let resolvedSpecimen = (parsed.specimenType || '').toUpperCase();
+              if (resolvedSpecimen !== 'OOCYTE' && resolvedSpecimen !== 'EMBRYO') {
+                resolvedSpecimen = (oocyteScore > embryoScore || (oocyteScore > 0 && embryoScore === 0) || parsed.oocyteStage || parsed.vitrificationIndication) ? 'OOCYTE' : 'EMBRYO';
+              }
+
+              const resolvedIndication = (resolvedSpecimen === 'OOCYTE' || oocyteScore > 0 || /egg|oocyte/i.test(rawText))
+                ? detectVitrificationIndication(rawText, parsed.vitrificationIndication)
+                : (parsed.vitrificationIndication ? detectVitrificationIndication(rawText, parsed.vitrificationIndication) : null);
+
               return {
                 patientId: parsed.patientId || undefined,
                 fullName: parsed.fullName || '',
@@ -540,13 +652,13 @@ ${rawText}`;
                 aspirationDate: parsed.aspirationDate || '',
                 freezingDate: parsed.freezingDate || '',
                 thawDate: parsed.thawDate || '',
-                specimenType: parsed.specimenType || (parsed.oocyteStage || parsed.donorName || parsed.vitrificationIndication ? 'OOCYTE' : 'EMBRYO'),
+                specimenType: resolvedSpecimen,
                 cycleType: parsed.cycleType || (parsed.donorName || parsed.donorRegNo ? 'DONOR_RECIPIENT' : 'SELF'),
                 donorName: parsed.donorName || '',
                 donorRegNo: parsed.donorRegNo || '',
                 donorAge: parsed.donorAge || '',
                 donorPhone: parsed.donorPhone || '',
-                vitrificationIndication: parsed.vitrificationIndication || 'Social egg freezing',
+                vitrificationIndication: resolvedIndication || 'Social egg freezing',
                 oocyteStage: parsed.oocyteStage || 'MII',
                 embryoCount: parsed.embryoCount || undefined,
                 tankName: parseTankFromRawText(rawText, parsed.tankName),
@@ -798,7 +910,10 @@ ${rawText}`;
     let donorRegNo = '';
     let donorAge = '';
     let donorPhone = '';
-    let vitrificationIndication = 'Social egg freezing';
+    const oocyteScore = (rawText.match(/\b(?:oocyte|oocytes|egg|eggs|mii|mi|gv|m-ii)\b/gi) || []).length;
+    const embryoScore = (rawText.match(/\b(?:embryo|embryos|blastocyst|blastocysts|day\s*[356]|morula|inner\s*cell|troph|pgt|pgs)\b/gi) || []).length;
+    const isOocyteSpecimen = oocyteScore > embryoScore || (oocyteScore > 0 && embryoScore === 0) || Boolean(/oocyte|egg|MII|MI|vitrification\s*(?:of\s*)?oocyte/i.test(rawText));
+    const vitrificationIndication = detectVitrificationIndication(rawText);
     let oocyteStage = 'MII';
 
     const donorNameMatch = rawText.match(/(?:Donor\s*Name|Donor)[:\s]*([A-Za-z\s.]+)/i);
@@ -812,7 +927,6 @@ ${rawText}`;
     }
 
     const isDonorCycle = Boolean(donorName || donorRegNo || /donor/i.test(rawText));
-    const isOocyteSpecimen = Boolean(/oocyte|egg|MII|MI|vitrification/i.test(rawText));
 
     return {
       patientId: patientId || undefined,
@@ -837,7 +951,7 @@ ${rawText}`;
       donorRegNo: donorRegNo || '',
       donorAge: donorAge || '',
       donorPhone: donorPhone || '',
-      vitrificationIndication: vitrificationIndication || 'Social egg freezing',
+      vitrificationIndication: isOocyteSpecimen ? vitrificationIndication : (vitrificationIndication || 'Social egg freezing'),
       oocyteStage: oocyteStage || 'MII',
       embryoCount: straws.reduce((acc, s) => acc + (s.embryoCount || 1), 0),
       tankName: tankName || 'CAN-01',
@@ -1244,7 +1358,7 @@ ${rawText}`;
             }
             const eCount = st.embryoCount || 1;
 
-            const isOocyteSpecimen = input.specimenType === 'OOCYTE' || (input.vitrificationIndication && input.vitrificationIndication.toLowerCase().includes('egg'));
+            const isOocyteSpecimen = input.specimenType === 'OOCYTE' || (input.vitrificationIndication && /(?:egg|oocyte|emergency|social|onco)/i.test(input.vitrificationIndication));
             const defaultGradeVal = isOocyteSpecimen ? 'MII' : '4AA';
             const defaultFragVal = isOocyteSpecimen ? '' : 'No';
 

@@ -160,7 +160,7 @@ export function isOocyteSpecimen(obj?: any, specimenTypeParam?: string, vitrific
     if (indLower.includes('recipient') || indLower.includes('donor oocyte recipient') || indLower.includes('donor egg recipient') || indLower.includes('embryo')) {
       return false;
     }
-    if (/(?:egg|oocyte)\s*freezing|social\s*egg|onco\s*fertility|supernumerary\s*donor\s*egg\s*freezing/i.test(indication)) {
+    if (/(?:egg|oocyte)\s*freezing|social\s*egg|emergency|onco\s*fertility|supernumerary\s*donor\s*egg\s*freezing/i.test(indication)) {
       return true;
     }
   }
@@ -1225,22 +1225,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     if (initialPatient) {
       setFormMode('existing');
       handleSelectExistingPatient(initialPatient);
-      if (initialPatient._ocrPrefill) {
-        const prefill = initialPatient._ocrPrefill;
-        if (prefill.aspirationDate) setAspirationDate(prefill.aspirationDate);
-        if (prefill.freezingDate) setFreezingDate(prefill.freezingDate);
-        if (prefill.specimenType) setSpecimenType(prefill.specimenType);
-        if (prefill.cycleType) setCycleType(prefill.cycleType);
-        if (prefill.doctorName) setDoctorName(prefill.doctorName);
-        if (prefill.comments) setComments(prefill.comments);
-        if (prefill.embryoStage) setEmbryoStage(prefill.embryoStage);
-        if (prefill.oocyteStage) setOocyteStage(prefill.oocyteStage);
-        if (prefill.strawItems && prefill.strawItems.length > 0) {
-          setStrawsCount(prefill.strawItems.length);
-          setStrawItems(prefill.strawItems);
-          setAssignStorageEnabled(true);
-        }
-      }
     }
   }, [initialPatient]);
 

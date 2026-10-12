@@ -224,34 +224,13 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
         }
       }
 
-      // 2. Prepare prefill data from OCR form
-      const ocrPrefill = {
-        aspirationDate: visitDate || '',
-        freezingDate: freezingGroups[0]?.freezingDate || '',
-        specimenType,
-        cycleType,
-        doctorName,
-        comments,
-        embryoStage: freezingGroups[0]?.straws[0]?.stage || '',
-        oocyteStage,
-        strawItems: freezingGroups.flatMap((fg) =>
-          fg.straws.map((s) => ({
-            color: s.colorTag || 'Pink',
-            embryoCount: s.embryoCount || 1,
-            grade: s.grade || '',
-            comments: s.stage || '',
-            isPgt: false,
-          }))
-        ),
-      };
-
-      // 3. Remove activeRecord from pending list locally
+      // 2. Remove activeRecord from pending list locally
       setPendingRecords((prev) => prev.filter((r) => r.id !== activeRecord.id));
       setActiveRecord(null);
 
-      // 4. Redirect to existing patient form with details filled
+      // 3. Redirect to existing patient form with only registration number & existing patient loaded (no raw text embryo/egg data)
       if (onNavigateToExistingPatientForm) {
-        onNavigateToExistingPatientForm(existingIdMatch, ocrPrefill);
+        onNavigateToExistingPatientForm(existingIdMatch);
       } else if (onNavigateToPatient) {
         onNavigateToPatient(existingIdMatch.id);
       }
@@ -450,7 +429,9 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     setPatientAge(json.patientAge || (initialDob ? calculateAgeFromDob(initialDob) : ''));
     setPartnerAge(json.partnerAge || (initialPartnerDob ? calculateAgeFromDob(initialPartnerDob) : ''));
     setDoctorName(json.doctorName || '');
-    setSpecimenType((json.specimenType || (json.vitrificationIndication || json.donorName || json.oocyteStage ? 'OOCYTE' : 'EMBRYO')).toUpperCase() as any);
+    const isOocyteFromJson = (json.specimenType === 'OOCYTE') || (json.vitrificationIndication && (json.vitrificationIndication.toLowerCase().includes('egg') || json.vitrificationIndication.toLowerCase().includes('emergency'))) || Boolean(json.oocyteStage);
+    const resolvedSpecimen = (json.specimenType || (isOocyteFromJson ? 'OOCYTE' : 'EMBRYO')).toUpperCase();
+    setSpecimenType(resolvedSpecimen as any);
     setCycleType((json.cycleType || (json.donorName || json.donorRegNo ? 'DONOR_RECIPIENT' : 'SELF')).toUpperCase() as any);
     setDonorName(json.donorName || '');
     setDonorRegNo(json.donorRegNo || '');
