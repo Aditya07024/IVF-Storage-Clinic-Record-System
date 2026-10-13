@@ -1006,10 +1006,19 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
       )}
 
       {/* PATIENT DETAILS MODAL DRAWER */}
-      {viewingPatientModal && (
-        <div className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-xs flex justify-end overflow-y-auto">
-          <div className="w-full max-w-2xl bg-white min-h-screen sm:min-h-0 sm:h-full border-l border-slate-200 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
+      {viewingPatientModal && (() => {
+        const modalDonorName = viewingPatientModal.donorName || viewingPatientModal.batches?.find((b: any) => b.donorName)?.donorName || '';
+        const modalDonorRegNo = viewingPatientModal.donorRegNo || viewingPatientModal.batches?.find((b: any) => b.donorRegNo)?.donorRegNo || '';
+        const modalDonorAge = viewingPatientModal.donorAge || viewingPatientModal.batches?.find((b: any) => b.donorAge)?.donorAge || '';
+        const modalDonorPhone = viewingPatientModal.donorPhone || viewingPatientModal.batches?.find((b: any) => b.donorPhone)?.donorPhone || '';
+        const modalIsDonorCycle = viewingPatientModal.cycleType === 'DONOR_RECIPIENT' ||
+          viewingPatientModal.batches?.some((b: any) => b.cycleType === 'DONOR_RECIPIENT' || b.donorName || b.donorRegNo) ||
+          Boolean(modalDonorName || modalDonorRegNo);
+
+        return (
+          <div className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-xs flex justify-end overflow-y-auto">
+            <div className="w-full max-w-2xl bg-white min-h-screen sm:min-h-0 sm:h-full border-l border-slate-200 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
               {/* Left Column: Patient Photo & Demographics */}
               <div className="flex items-center gap-3.5 flex-1 min-w-0">
                 <div className="relative group shrink-0">
@@ -1041,10 +1050,10 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     </span>
 
                     {/* Cycle Classification Badge */}
-                    {viewingPatientModal.cycleType === 'DONOR_RECIPIENT' || viewingPatientModal.donorName ? (
-                      <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1">
-                        <UserCheck className="w-3 h-3 text-purple-700" />
-                        <span>D-R Cycle {viewingPatientModal.donorName ? `(Donor: ${viewingPatientModal.donorName})` : ''}</span>
+                    {modalIsDonorCycle ? (
+                      <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1 shadow-2xs">
+                        <UserCheck className="w-3.5 h-3.5 text-purple-700" />
+                        <span>D-R Cycle{modalDonorName ? ` (Donor: ${modalDonorName}${modalDonorAge ? ` - ${formatAgeWithY(modalDonorAge)}` : ''})` : modalDonorRegNo ? ` (Donor: ${modalDonorRegNo})` : ''}</span>
                       </span>
                     ) : (
                       <span className="text-blue-950 bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-300 w-fit font-bold flex items-center gap-1">
@@ -1263,7 +1272,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                 </div>
 
                 {/* Egg / Oocyte Donor Card (Shown if D-R Cycle) */}
-                {(viewingPatientModal.cycleType === 'DONOR_RECIPIENT' || viewingPatientModal.donorName) && (
+                {modalIsDonorCycle && (
                   <div className="md:col-span-2 bg-amber-50/90 p-4 rounded-2xl border border-amber-300/80 shadow-2xs space-y-2.5">
                     <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
                       <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
@@ -1278,19 +1287,19 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Reg No. / Code</span>
-                        <strong className="text-amber-950 font-mono font-bold block">{viewingPatientModal.donorRegNo || 'N/A'}</strong>
+                        <strong className="text-amber-950 font-mono font-bold block">{modalDonorRegNo || 'N/A'}</strong>
                       </div>
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Full Name</span>
-                        <strong className="text-amber-950 font-bold block">{viewingPatientModal.donorName || 'N/A'}</strong>
+                        <strong className="text-amber-950 font-bold block">{modalDonorName || 'N/A'}</strong>
                       </div>
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Age</span>
-                        <span className="text-amber-950 font-mono font-bold block">{viewingPatientModal.donorAge || 'N/A'}</span>
+                        <span className="text-amber-950 font-mono font-bold block">{modalDonorAge || 'N/A'}</span>
                       </div>
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Mobile Phone</span>
-                        <span className="text-amber-950 font-mono font-bold block">{formatPhoneNumber(viewingPatientModal.donorPhone)}</span>
+                        <span className="text-amber-950 font-mono font-bold block">{formatPhoneNumber(modalDonorPhone) || '—'}</span>
                       </div>
                     </div>
                   </div>
@@ -1448,7 +1457,8 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

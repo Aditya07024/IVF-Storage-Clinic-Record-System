@@ -637,13 +637,29 @@ export class StorageService {
         });
       }
 
-      // Update patient's aspirationDate & freezingDate on record allocation
+      // Update patient's aspirationDate, freezingDate, cycleType, and donor details on record allocation
+      const patientUpdateData: any = {
+        aspirationDate: aspirationDateObj || undefined,
+        freezingDate: freezingDateObj,
+      };
+      if (input.cycleType) {
+        patientUpdateData.cycleType = input.cycleType.trim();
+      }
+      if (input.donorName) {
+        patientUpdateData.donorName = input.donorName.trim();
+      }
+      if (input.donorRegNo) {
+        patientUpdateData.donorRegNo = input.donorRegNo.trim();
+      }
+      if (input.donorAge) {
+        patientUpdateData.donorAge = input.donorAge.trim();
+      }
+      if (input.donorPhone) {
+        patientUpdateData.donorPhone = input.donorPhone.trim();
+      }
       await tx.patient.update({
         where: { id: input.patientId },
-        data: {
-          aspirationDate: aspirationDateObj || undefined,
-          freezingDate: freezingDateObj,
-        },
+        data: patientUpdateData,
       });
 
       // Determine cycle number for the batch and count existing straws in this cycle

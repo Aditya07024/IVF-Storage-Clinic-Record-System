@@ -639,6 +639,11 @@ export class PatientService {
               freezingDate: true,
               embryoStage: true,
               oocyteStage: true,
+              cycleType: true,
+              donorName: true,
+              donorRegNo: true,
+              donorAge: true,
+              donorPhone: true,
               straws: {
                 orderBy: [{ createdAt: 'asc' }, { strawId: 'asc' }, { id: 'asc' }],
                 select: {

@@ -540,12 +540,16 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
     setEditPartnerAge(patient.partnerAge || calculateAgeFromDob(patient.partnerDob));
     setEditPartnerPhone(patient.partnerPhone || '');
     setEditPartnerEmail(patient.partnerEmail || '');
-    const initialCycleType = (patient.cycleType === 'DONOR_RECIPIENT' || patient.donorName || patient.donorRegNo) ? 'DONOR_RECIPIENT' : 'SELF';
+    const resolvedDonorName = patient.donorName || patient.batches?.find((b: any) => b.donorName)?.donorName || '';
+    const resolvedDonorRegNo = patient.donorRegNo || patient.batches?.find((b: any) => b.donorRegNo)?.donorRegNo || '';
+    const resolvedDonorAge = patient.donorAge || patient.batches?.find((b: any) => b.donorAge)?.donorAge || '';
+    const resolvedDonorPhone = patient.donorPhone || patient.batches?.find((b: any) => b.donorPhone)?.donorPhone || '';
+    const initialCycleType = (patient.cycleType === 'DONOR_RECIPIENT' || resolvedDonorName || resolvedDonorRegNo || patient.batches?.some((b: any) => b.cycleType === 'DONOR_RECIPIENT')) ? 'DONOR_RECIPIENT' : 'SELF';
     setEditCycleType(initialCycleType);
-    setEditDonorName(patient.donorName || '');
-    setEditDonorRegNo(patient.donorRegNo || '');
-    setEditDonorAge(patient.donorAge || '');
-    setEditDonorPhone(patient.donorPhone || '');
+    setEditDonorName(resolvedDonorName);
+    setEditDonorRegNo(resolvedDonorRegNo);
+    setEditDonorAge(resolvedDonorAge);
+    setEditDonorPhone(resolvedDonorPhone);
     setEditDoctorName(patient.doctorName || '');
     setEditComments(patient.comments || '');
     const rawAsp = patient.aspirationDate || patient.batches?.[0]?.aspirationDate || patient.visitDate;
@@ -1100,11 +1104,21 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                                 Partner: <span className="font-semibold text-slate-800">{p.partnerName}</span> {p.partnerAge ? `(${formatAgeWithY(p.partnerAge)})` : ''}
                               </div>
                             )}
-                            {(p.cycleType === 'DONOR_RECIPIENT' || (p.cycleType !== 'SELF' && p.donorName && p.donorName !== 'N/A' && p.donorName !== '—')) && (
-                              <div className="text-xs text-amber-600 font-semibold whitespace-nowrap">
-                                Donor: <span className="font-bold text-amber-700">{p.donorName || 'N/A'}</span> {p.donorAge ? `(${formatAgeWithY(p.donorAge)})` : ''}
-                              </div>
-                            )}
+                            {(() => {
+                              const pDonorName = p.donorName || p.batches?.find((b: any) => b.donorName)?.donorName || '';
+                              const pDonorRegNo = p.donorRegNo || p.batches?.find((b: any) => b.donorRegNo)?.donorRegNo || '';
+                              const pDonorAge = p.donorAge || p.batches?.find((b: any) => b.donorAge)?.donorAge || '';
+                              const pIsDonorCycle = p.cycleType === 'DONOR_RECIPIENT' ||
+                                p.batches?.some((b: any) => b.cycleType === 'DONOR_RECIPIENT' || b.donorName || b.donorRegNo) ||
+                                Boolean(pDonorName || pDonorRegNo);
+                              if (!pIsDonorCycle) return null;
+                              return (
+                                <div className="text-xs text-amber-600 font-semibold whitespace-nowrap flex items-center gap-1">
+                                  <span className="bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded text-[10px] font-bold">D-R</span>
+                                  <span>Donor: <span className="font-bold text-amber-700">{pDonorName || pDonorRegNo || 'N/A'}</span> {pDonorAge ? `(${formatAgeWithY(pDonorAge)})` : ''}</span>
+                                </div>
+                              );
+                            })()}
                             {p.doctorName && (
                               <div className="text-xs text-emerald-800 font-bold whitespace-nowrap">
                                 {p.doctorName}
@@ -1137,12 +1151,18 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                               const pIsOocyte = isOocyteSpecimen(p);
                               const aspDate = batch.aspirationDate || p.aspirationDate || p.visitDate;
                               const frzDate = s.freezingDate || batch.freezingDate || batch.storageDate;
-                              let computedStage = s.stage || (pIsOocyte ? batch.oocyteStage : batch.embryoStage);
+                              let computedStage = s.stage || s.embryoStage;
+                              if (!computedStage && !pIsOocyte && aspDate && s.freezingDate) {
+                                computedStage = calculateEmbryoStage(aspDate, s.freezingDate);
+                              }
+                              if (!computedStage) {
+                                computedStage = pIsOocyte ? (batch.oocyteStage || 'MII') : batch.embryoStage;
+                              }
                               if (!computedStage && !pIsOocyte && aspDate && frzDate) {
                                 computedStage = calculateEmbryoStage(aspDate, frzDate);
                               }
                               if (!computedStage) {
-                                computedStage = pIsOocyte ? (batch.oocyteStage || 'MII') : (batch.embryoStage || 'Day 5');
+                                computedStage = pIsOocyte ? (batch.oocyteStage || 'MII') : 'Day 5';
                               }
 
                               allStraws.push({
@@ -1508,9 +1528,11 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
                           const isOocyte = isOocyteSpecimen(quickThawPatient);
 
+                          const thawAspDate = batch.aspirationDate || quickThawPatient.aspirationDate || quickThawPatient.visitDate;
+                          const strawStage = straw.embryoStage || straw.stage || (!isOocyte && thawAspDate && straw.freezingDate ? calculateEmbryoStage(thawAspDate, straw.freezingDate) : batch.embryoStage);
                           const strawWithBatchStage = {
                             ...straw,
-                            embryoStage: straw.embryoStage || straw.stage || batch.embryoStage
+                            embryoStage: strawStage
                           };
                           const stageSummary = getStrawStageSummary(strawWithBatchStage, quickThawPatient.specimenType, quickThawPatient.vitrificationIndication);
                           const strawKey = straw.id || straw.strawId;
@@ -1640,10 +1662,19 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
         </div>
       )}
       {/* Detail Drawer Modal */}
-      {selectedPatient && (
-        <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[100] bg-slate-950/50 backdrop-blur-xs sm:backdrop-blur-sm flex justify-end overflow-hidden !m-0 !mt-0 !my-0 p-0 [margin-top:0!important]">
-          <div className="w-full max-w-2xl bg-white h-screen min-h-screen h-[100dvh] !m-0 !mt-0 !my-0 [margin-top:0!important] border-l-4 border-slate-900 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
+      {selectedPatient && (() => {
+        const detailDonorName = selectedPatient.donorName || selectedPatient.batches?.find((b: any) => b.donorName)?.donorName || '';
+        const detailDonorRegNo = selectedPatient.donorRegNo || selectedPatient.batches?.find((b: any) => b.donorRegNo)?.donorRegNo || '';
+        const detailDonorAge = selectedPatient.donorAge || selectedPatient.batches?.find((b: any) => b.donorAge)?.donorAge || '';
+        const detailDonorPhone = selectedPatient.donorPhone || selectedPatient.batches?.find((b: any) => b.donorPhone)?.donorPhone || '';
+        const detailIsDonorCycle = selectedPatient.cycleType === 'DONOR_RECIPIENT' ||
+          selectedPatient.batches?.some((b: any) => b.cycleType === 'DONOR_RECIPIENT' || b.donorName || b.donorRegNo) ||
+          Boolean(detailDonorName || detailDonorRegNo);
+
+        return (
+          <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[100] bg-slate-950/50 backdrop-blur-xs sm:backdrop-blur-sm flex justify-end overflow-hidden !m-0 !mt-0 !my-0 p-0 [margin-top:0!important]">
+            <div className="w-full max-w-2xl bg-white h-screen min-h-screen h-[100dvh] !m-0 !mt-0 !my-0 [margin-top:0!important] border-l-4 border-slate-900 p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 shadow-2xl pb-16 sm:pb-6">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
               {/* Left Column: Patient Photo & Demographics */}
               <div className="flex items-center gap-3.5 flex-1 min-w-0">
                 <div className="flex items-center gap-2 shrink-0">
@@ -1754,10 +1785,10 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                     </span>
 
                     {/* Cycle Classification Badge */}
-                    {selectedPatient.cycleType === 'DONOR_RECIPIENT' || (selectedPatient.cycleType !== 'SELF' && selectedPatient.donorName && selectedPatient.donorName !== 'N/A' && selectedPatient.donorName !== '—') ? (
-                      <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1">
-                        <UserCheck className="w-3 h-3 text-purple-700" />
-                        <span>Donor: {selectedPatient.donorName || 'N/A'} {selectedPatient.donorAge ? `(${formatAgeWithY(selectedPatient.donorAge)})` : ''}</span>
+                    {detailIsDonorCycle ? (
+                      <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1 shadow-2xs">
+                        <UserCheck className="w-3.5 h-3.5 text-purple-700" />
+                        <span>D-R Cycle{detailDonorName ? ` (Donor: ${detailDonorName}${detailDonorAge ? ` - ${formatAgeWithY(detailDonorAge)}` : ''})` : detailDonorRegNo ? ` (Donor: ${detailDonorRegNo})` : ''}</span>
                       </span>
                     ) : (
                       <span className="text-blue-950 bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-300 w-fit font-bold flex items-center gap-1">
@@ -1948,7 +1979,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                 </div>
 
                 {/* Egg / Oocyte Donor Card (Shown if D-R Cycle) */}
-                {(selectedPatient.cycleType === 'DONOR_RECIPIENT' || (selectedPatient.cycleType !== 'SELF' && selectedPatient.donorName && selectedPatient.donorName !== 'N/A' && selectedPatient.donorName !== '—')) && (
+                {detailIsDonorCycle && (
                   <div className="md:col-span-2 bg-amber-50/90 p-4 rounded-2xl border border-amber-300/80 shadow-2xs space-y-2.5">
                     <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
                       <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
@@ -1963,19 +1994,19 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Reg No. / Code</span>
-                        <strong className="text-amber-950 font-mono font-bold block">{selectedPatient.donorRegNo || 'N/A'}</strong>
+                        <strong className="text-amber-950 font-mono font-bold block">{detailDonorRegNo || 'N/A'}</strong>
                       </div>
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Full Name</span>
-                        <strong className="text-amber-950 font-bold block">{selectedPatient.donorName || 'N/A'}</strong>
+                        <strong className="text-amber-950 font-bold block">{detailDonorName || 'N/A'}</strong>
                       </div>
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Age</span>
-                        <span className="text-amber-950 font-mono font-bold block">{selectedPatient.donorAge || 'N/A'}</span>
+                        <span className="text-amber-950 font-mono font-bold block">{detailDonorAge || 'N/A'}</span>
                       </div>
                       <div>
                         <span className="text-amber-800 text-[10px] uppercase font-semibold block">Donor Mobile Phone</span>
-                        <span className="text-amber-950 font-mono font-bold block">{formatPhoneNumber(selectedPatient.donorPhone)}</span>
+                        <span className="text-amber-950 font-mono font-bold block">{formatPhoneNumber(detailDonorPhone) || '—'}</span>
                       </div>
                     </div>
                   </div>
@@ -2315,9 +2346,11 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
                           const isOocyte = isOocyteSpecimen(selectedPatient);
 
+                          const cardAspDate = batch.aspirationDate || selectedPatient.aspirationDate || selectedPatient.visitDate;
+                          const strawStage = straw.embryoStage || straw.stage || (!isOocyte && cardAspDate && straw.freezingDate ? calculateEmbryoStage(cardAspDate, straw.freezingDate) : batch.embryoStage);
                           const strawWithBatchStage = {
                             ...straw,
-                            embryoStage: straw.embryoStage || straw.stage || batch.embryoStage
+                            embryoStage: strawStage
                           };
                           const stageSummary = getStrawStageSummary(strawWithBatchStage, selectedPatient.specimenType, selectedPatient.vitrificationIndication);
                           const gradeDetailsStr = formatStrawEmbryosDisplay(straw, isOocyte);
@@ -2662,7 +2695,8 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
 
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Edit Patient Details Modal - Positioned OVER Patient Details Drawer with High Stacking Index */}
       {editingPatient && (

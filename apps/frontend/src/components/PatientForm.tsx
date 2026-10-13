@@ -2231,6 +2231,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
               specimenType: payload.specimenType,
               cycleType: payload.cycleType,
               donorName: payload.donorName || undefined,
+              donorRegNo: payload.donorRegNo || undefined,
               donorAge: payload.donorAge || undefined,
               donorPhone: payload.donorPhone || undefined,
               vitrificationIndication: payload.vitrificationIndication || undefined,
