@@ -121,7 +121,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
     };
   }, []);
 
-  const isDevActive = isDevelopmentMode() || devUnlocked;
+  const isDevActive = devUnlocked;
 
   // Edit Patient Modal States
   const [editingPatient, setEditingPatient] = useState<any | null>(null);
@@ -833,7 +833,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
   };
 
   const handleExecuteDevDeleteStraw = async () => {
-    if (!devDeleteStrawTarget) return;
+    if (!devDeleteStrawTarget || !isDevSandboxUnlocked()) return;
     setDevDeleting(true);
     try {
       const strawId = devDeleteStrawTarget.straw?.id || devDeleteStrawTarget.straw?.strawId;
@@ -858,7 +858,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
   };
 
   const handleExecuteDevDeleteBatch = async () => {
-    if (!devDeleteBatchTarget) return;
+    if (!devDeleteBatchTarget || !isDevSandboxUnlocked()) return;
     setDevDeleting(true);
     try {
       const batchId = devDeleteBatchTarget.batch?.id || devDeleteBatchTarget.batch?.batchId;

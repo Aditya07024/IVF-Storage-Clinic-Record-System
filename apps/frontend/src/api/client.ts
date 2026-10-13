@@ -238,7 +238,15 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  if (isDevSandboxUnlocked()) {
+  // Dev Sandbox security & isolation:
+  // All Dev Sandbox APIs (/api/dev/*) MUST ONLY be called when Dev Sandbox is unlocked.
+  // Never send x-dev-password on standard business/auth API endpoints.
+  const isDevEndpoint = endpoint.startsWith('/api/dev/') || endpoint.includes('/api/dev/');
+  if (isDevEndpoint) {
+    if (!isDevSandboxUnlocked()) {
+      console.warn(`[DevSandbox] Blocked API call to ${endpoint}: Dev Sandbox is currently locked.`);
+      return { success: false, error: 'Developer Sandbox is locked. Access denied.' };
+    }
     headers['x-dev-password'] = 'sgrmIVFdev';
   }
 

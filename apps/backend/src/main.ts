@@ -60,7 +60,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-access-key');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-access-key, x-dev-password');
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
@@ -89,7 +89,7 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-access-key'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-access-key', 'x-dev-password'],
   })
 );
 

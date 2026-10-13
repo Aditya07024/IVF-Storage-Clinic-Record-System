@@ -287,6 +287,7 @@ export const DevSandbox: React.FC = () => {
   };
 
   const fetchServerStatus = async (silent: boolean = false) => {
+    if (!isUnlocked || !isDevSandboxUnlocked()) return;
     if (!silent) setLoadingServerStatus(true);
     try {
       const res = await apiRequest('/api/dev/server-status', { skipCache: true } as any);
@@ -329,6 +330,7 @@ export const DevSandbox: React.FC = () => {
   }, [isUnlocked, activeSandboxTab, liveTracking, liveIntervalSec]);
 
   const fetchStats = async () => {
+    if (!isUnlocked || !isDevSandboxUnlocked()) return;
     setLoadingStats(true);
     try {
       const res = await apiRequest('/api/dev/stats');
@@ -345,6 +347,7 @@ export const DevSandbox: React.FC = () => {
   };
 
   const fetchDbOverview = async () => {
+    if (!isUnlocked || !isDevSandboxUnlocked()) return;
     setLoadingOverview(true);
     try {
       const res = await apiRequest('/api/dev/db/overview');
@@ -363,6 +366,7 @@ export const DevSandbox: React.FC = () => {
   };
 
   const fetchTableRecords = async (tableId: string, page = 1, limit = 25, search = '') => {
+    if (!isUnlocked || !isDevSandboxUnlocked()) return;
     setLoadingTableData(true);
     try {
       const query = new URLSearchParams({
@@ -488,6 +492,7 @@ export const DevSandbox: React.FC = () => {
 
   // Danger Zone Actions
   const executeWipePhotos = async () => {
+    if (!isDevSandboxUnlocked()) return;
     setActionLoading(true);
     try {
       const res = await apiRequest('/api/dev/wipe-photos', { method: 'POST' });
@@ -509,6 +514,7 @@ export const DevSandbox: React.FC = () => {
   };
 
   const executeWipeDatabase = async () => {
+    if (!isDevSandboxUnlocked()) return;
     if (wipeConfirmKey.trim() !== 'WIPE-DEV-DATA') {
       showNotification('error', 'Please type the exact confirmation key "WIPE-DEV-DATA".');
       return;
@@ -542,6 +548,7 @@ export const DevSandbox: React.FC = () => {
   };
 
   const executeFactoryReset = async () => {
+    if (!isDevSandboxUnlocked()) return;
     if (factoryConfirmKey.trim() !== 'FACTORY-RESET-DEV') {
       showNotification('error', 'Please type the exact confirmation key "FACTORY-RESET-DEV".');
       return;
@@ -574,6 +581,7 @@ export const DevSandbox: React.FC = () => {
   };
 
   const handleSeedSamplePatient = async () => {
+    if (!isDevSandboxUnlocked()) return;
     setActionLoading(true);
     try {
       const res = await apiRequest('/api/dev/seed-sample-patient', { method: 'POST' });
