@@ -350,6 +350,129 @@ export function cleanDuplicateGradeString(rawGradeStr?: string): string {
   return parts.join(', ');
 }
 
+export function formatEmbryoDetail(
+  fragmentation?: string | null,
+  remarks?: string | null,
+  isOocyte?: boolean
+): string {
+  if (isOocyte) {
+    let rawRemark = (remarks || '').trim();
+    if (rawRemark) {
+      rawRemark = rawRemark.replace(/\[Fragmentation:\s*([^\]]+)\]\s*/i, '').trim();
+      const cleanRemark = rawRemark.replace(/^\(+|\)+$/g, '').replace(/^[,\s\-]+|[,\s\-]+$/g, '').trim();
+      if (cleanRemark && !['N/A', 'NONE', '-', ','].includes(cleanRemark.toUpperCase())) {
+        return `(${cleanRemark})`;
+      }
+    }
+    return '';
+  }
+
+  // Parse fragmentation if embedded in remarks/notes (e.g. "[Fragmentation: +]" or "[Fragmentation: +] (ICSI)")
+  let rawFrag = (fragmentation || '').trim();
+  let rawRemark = (remarks || '').trim();
+
+  if (rawRemark) {
+    const match = rawRemark.match(/\[Fragmentation:\s*([^\]]+)\]/i);
+    if (match) {
+      if (!rawFrag || rawFrag === 'No' || rawFrag === 'N/A') {
+        rawFrag = match[1].trim();
+      }
+      rawRemark = rawRemark.replace(/\[Fragmentation:\s*([^\]]+)\]\s*/i, '').trim();
+    }
+  }
+
+  // Clean brackets from fragmentation and check if meaningful
+  const cleanFrag = rawFrag.replace(/^\(+|\)+$/g, '').trim();
+  const hasFrag = cleanFrag && !['NO', 'NONE', 'N/A', '-'].includes(cleanFrag.toUpperCase());
+
+  // Clean brackets and separators from remarks
+  const cleanRemark = rawRemark.replace(/^\(+|\)+$/g, '').replace(/^[,\s\-]+|[,\s\-]+$/g, '').trim();
+  const hasRemark = cleanRemark && !['N/A', 'NONE', '-', ','].includes(cleanRemark.toUpperCase());
+
+  if (hasFrag && hasRemark) {
+    return `(${cleanFrag}) - (${cleanRemark})`;
+  } else if (hasFrag) {
+    return `(${cleanFrag})`;
+  } else if (hasRemark) {
+    return `(${cleanRemark})`;
+  }
+
+  return '';
+}
+
+export function formatEmbryoGradeWithDetails(
+  grade?: string | null,
+  fragmentation?: string | null,
+  remarks?: string | null,
+  isOocyte?: boolean
+): string {
+  const cleanGrade = (grade || '').trim().toUpperCase() || (isOocyte ? 'MII' : 'N/A');
+  const detail = formatEmbryoDetail(fragmentation, remarks, isOocyte);
+  return detail ? `${cleanGrade} ${detail}` : cleanGrade;
+}
+
+export function formatStrawEmbryosDisplay(straw: any, isOocyte?: boolean): string {
+  if (!straw) return 'N/A';
+  const defaultGrade = isOocyte ? 'MII' : '4AA';
+
+  if (straw.embryos && Array.isArray(straw.embryos) && straw.embryos.length > 0) {
+    const sorted = [...straw.embryos].sort((a: any, b: any) => (a.embryoNumber || 0) - (b.embryoNumber || 0));
+    const fallbackGrade = (straw.grade || defaultGrade).toString().trim().toUpperCase();
+
+    // 1. Combine all grades separated by comma
+    const grades = sorted
+      .map((emb: any) => (emb.grade || fallbackGrade || defaultGrade).toString().trim().toUpperCase())
+      .filter((g: string) => g && g !== ',');
+    const gradesStr = grades.length > 0 ? grades.join(', ') : defaultGrade;
+
+    // 2. Combine all details separated by comma
+    const strawFrag = (straw.fragmentation || straw.frag || '').toString().trim();
+    const details = sorted
+      .map((emb: any) => {
+        const rawNote = (emb.notes || emb.comments || '').toString().trim();
+        const embFrag = (emb.fragmentation || emb.frag || strawFrag).toString().trim();
+        return formatEmbryoDetail(embFrag, rawNote, isOocyte);
+      })
+      .filter(Boolean);
+
+    if (details.length > 0) {
+      return `${gradesStr} ${details.join(', ')}`;
+    }
+    return gradesStr;
+  }
+
+  // Straw-level fallback
+  const rawGrade = (straw.grade || defaultGrade).toString().trim();
+  const f = (straw.fragmentation || straw.frag || '').toString().trim();
+  const c = (straw.comments || '').toString().trim();
+
+  const gradeParts = rawGrade.split(',').map((p) => p.trim().toUpperCase()).filter((p) => p && p !== ',');
+  const gradesStr = gradeParts.length > 0 ? gradeParts.join(', ') : defaultGrade;
+
+  const count = gradeParts.length || straw.embryoCount || 1;
+  const commentParts = c ? c.split(',').map((p) => p.trim()) : [];
+
+  const details: string[] = [];
+  if (commentParts.length > 1) {
+    for (let i = 0; i < commentParts.length; i++) {
+      const d = formatEmbryoDetail(f, commentParts[i], isOocyte);
+      if (d) details.push(d);
+    }
+  } else {
+    const singleDetail = formatEmbryoDetail(f, c, isOocyte);
+    if (singleDetail) {
+      for (let i = 0; i < count; i++) {
+        details.push(singleDetail);
+      }
+    }
+  }
+
+  if (details.length > 0) {
+    return `${gradesStr} ${details.join(', ')}`;
+  }
+  return gradesStr;
+}
+
 export function extractStrawSequenceNumber(straw: any): number {
   if (!straw) return 999999;
   const rawId = String(straw.strawId || straw.customId || straw.id || '').trim();
@@ -4163,24 +4286,23 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
 
               <div className="space-y-2">
                 {viewDetailStraw.embryos && viewDetailStraw.embryos.length > 0 ? (
-                  viewDetailStraw.embryos.map((emb: any, eIdx: number) => (
-                    <div key={eIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-1 shadow-2xs">
-                      <div className="flex items-center justify-between font-bold">
-                        <span className="text-slate-900">Embryo #{emb.embryoNumber || eIdx + 1}</span>
-                        <span className="font-mono text-emerald-800 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          Grade: {emb.grade || 'N/A'}
-                        </span>
-                      </div>
-                      {emb.notes && (
-                        <div className="text-slate-600 text-[11px] italic">
-                          "{emb.notes}"
+                  viewDetailStraw.embryos.map((emb: any, eIdx: number) => {
+                    const rawNote = (emb.notes || emb.comments || '').toString().trim();
+                    const formatted = formatEmbryoGradeWithDetails(emb.grade, viewDetailStraw.fragmentation, rawNote, false);
+                    return (
+                      <div key={eIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-1 shadow-2xs">
+                        <div className="flex items-center justify-between font-bold">
+                          <span className="text-slate-900">Embryo #{emb.embryoNumber || eIdx + 1}</span>
+                          <span className="font-mono text-emerald-800 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            Grade: {formatted}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  ))
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-700">
-                    Grade: {viewDetailStraw.grade || '4AA'}
+                    Grade: {formatStrawEmbryosDisplay(viewDetailStraw, false)}
                   </div>
                 )}
               </div>
@@ -4521,11 +4643,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                               const eFrag = ((item as any)[eFragKey] || '').trim();
                               const eComment = ((item as any)[eCommentKey] || (eIdx === 0 ? item.comments : '') || '').trim();
 
-                              const gradeStr = eGrade ? eGrade : 'N/A';
-                              const fragStr = (eFrag && eFrag !== 'N/A' && eFrag !== 'NO' && eFrag !== 'NONE') ? ` (${eFrag})` : '';
-                              const commentStr = eComment ? ` - (${eComment})` : '';
                               const itemTypeLabel = specimenType === 'OOCYTE' ? 'Oocyte' : 'Embryo';
                               const stageTypeLabel = specimenType === 'OOCYTE' ? 'Stage' : 'Grade';
+                              const formatted = formatEmbryoGradeWithDetails(eGrade, eFrag, eComment, specimenType === 'OOCYTE');
 
                               return (
                                 <div key={eIdx} className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5">
@@ -4535,7 +4655,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                                       const globalIdx = prevCount + eIdx + 1;
                                       const totalCount = strawItems.reduce((sum, s) => sum + (s.embryoCount || 1), 0);
                                       return totalCount > 1 ? `${itemTypeLabel} #${globalIdx} ${stageTypeLabel}: ` : `${itemTypeLabel} ${stageTypeLabel}: `;
-                                    })()}{gradeStr}{fragStr}{commentStr}
+                                    })()}{formatted}
                                   </span>
                                 </div>
                               );

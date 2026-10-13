@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatPhoneNumber, getImageUrl } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, getSortedFreezingDates, sortStrawsDeterministically, calculateCycleNumbers, buildPatientCycleStrawSequenceMap } from './PatientForm';
+import { getStrawColorBadgeClass, getSortedFreezingDates, sortStrawsDeterministically, calculateCycleNumbers, buildPatientCycleStrawSequenceMap, formatStrawEmbryosDisplay } from './PatientForm';
 import { HEATMAP_8_STEPS, get8StepHeatmapColor } from '../utils/heatmap';
 
 function parseLocationCode(code: string) {
@@ -1388,22 +1388,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                             : (rawStrawId.startsWith('#') ? rawStrawId : `#${rawStrawId}`));
                           const embryoCount = straw.embryoCount || straw.embryos?.length || 1;
 
-                          const eGrade = (straw.grade || '').trim().toUpperCase();
-                          const eFrag = (straw.fragmentation || '').trim();
-                          const eComment = (straw.comments || '').trim();
-
-                          let gradeStr = eGrade ? eGrade : 'N/A';
-                          if (straw.embryos && straw.embryos.length > 0) {
-                            const validGrades = straw.embryos
-                              .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                              .map((emb: any) => (emb.grade || eGrade || 'N/A').trim().toUpperCase())
-                              .filter(Boolean);
-                            if (validGrades.length > 0) gradeStr = validGrades.join(', ');
-                          } else if (embryoCount > 1 && eGrade && !eGrade.includes(',')) {
-                            gradeStr = Array(embryoCount).fill(eGrade).join(', ');
-                          }
-                          const fragStr = (eFrag && eFrag !== 'N/A' && eFrag !== 'NO' && eFrag !== 'NONE') ? ` (${eFrag})` : '';
-                          const commentStr = eComment ? ` - (${eComment})` : '';
+                          const gradeDetailsStr = formatStrawEmbryosDisplay(straw, false);
 
                           return (
                             <div
@@ -1425,7 +1410,7 @@ export const ContainerView: React.FC<ContainerViewProps> = ({ initialCanCode }) 
                                   {straw.color || 'Pink'}
                                 </span>
                                 <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
-                                  Embryo grade: {gradeStr}{fragStr}{commentStr}
+                                  Embryo grade: {gradeDetailsStr}
                                 </span>
                               </div>
                               <div>

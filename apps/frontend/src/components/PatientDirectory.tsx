@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, FileText, ChevronRight, ChevronLeft, ChevronDown, Layers, User, Calendar, ShieldAlert, Phone, AlertTriangle, ArrowUpDown, X, ThermometerSnowflake, CheckCircle2, MoveRight, Trash2, Edit3, Check, Mail, Lock, Camera, Upload, Crop, Eye, UserCheck, Dna, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { apiRequest, clearApiCache, formatDateDDMMYYYY, formatTimestampDDMMYYYY, formatPhoneNumber, getImageUrl, openSecurePdfBlob, calculateEmbryoStage, isDevelopmentMode, isDevSandboxUnlocked } from '../api/client';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
-import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, getSortedRetrievalDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys, sortStrawsDeterministically, extractStrawSequenceNumber, buildPatientCycleStrawSequenceMap } from './PatientForm';
+import { getStrawColorBadgeClass, DoctorSelect, capitalizeWords, getStrawStageSummary, getBatchSummaryText, getSortedFreezingDates, getSortedRetrievalDates, isOocyteSpecimen, calculateAgeFromDob, calculateDobFromAge, calculateCycleNumbers, formatDayStage, DateInputDDMMYYYY, groupBatchesByFreezingDate, cleanDuplicateGradeString, sortStageKeys, sortStrawsDeterministically, extractStrawSequenceNumber, buildPatientCycleStrawSequenceMap, formatEmbryoGradeWithDetails, formatStrawEmbryosDisplay } from './PatientForm';
 import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { EditBatchModal } from './EditBatchModal';
@@ -1513,29 +1513,6 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             embryoStage: straw.embryoStage || straw.stage || batch.embryoStage
                           };
                           const stageSummary = getStrawStageSummary(strawWithBatchStage, quickThawPatient.specimenType, quickThawPatient.vitrificationIndication);
-                          const eGrade = (straw.grade || '').trim().toUpperCase();
-                          const eFrag = (straw.fragmentation || '').trim();
-                          const eComment = (straw.comments || '').trim();
-
-                          const gradeStr = eGrade ? eGrade : 'N/A';
-                          const fragStr = (straw.embryos && straw.embryos.length >= 1) ? '' : (eFrag && eFrag !== 'N/A' && eFrag !== 'NO' && eFrag !== 'NONE' ? ` (${eFrag})` : '');
-                          const commentStr = (() => {
-                            if (straw.embryos && straw.embryos.length >= 1) {
-                              const sortedNotes = straw.embryos
-                                .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                                .map((emb: any) => {
-                                  const note = (emb.notes || emb.comments || '').trim();
-                                  return note.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
-                                })
-                                .filter(Boolean);
-                              if (sortedNotes.length > 0) {
-                                return ` - (${sortedNotes.join(', ')})`;
-                              }
-                            }
-                            const cleanComment = eComment.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
-                            return cleanComment ? ` - (${cleanComment})` : '';
-                          })();
-
                           const strawKey = straw.id || straw.strawId;
                           const cycleStrawNum = thawStrawSeqMap[straw.id] || thawStrawSeqMap[strawKey] || (origIdx + 1);
                           const rawStrawId = (straw.strawId || '').trim();
@@ -1555,16 +1532,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             : (embryoCount === 1 ? `1 embryo` : `${embryoCount} embryos`);
 
                           const locCode = straw.visoTube?.locationCode || batch.visoTube?.locationCode || batch.straws?.[0]?.visoTube?.locationCode || '';
-
-                          const formattedGradeDisplay = cleanDuplicateGradeString((() => {
-                            if (straw.embryos && straw.embryos.length > 0) {
-                              return straw.embryos
-                                .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                                .map((emb: any) => (emb.grade || eGrade || (isOocyte ? 'MII' : 'N/A')).trim().toUpperCase())
-                                .join(', ');
-                            }
-                            return eGrade || gradeStr || (isOocyte ? (quickThawPatient.oocyteStage || 'MII') : 'N/A');
-                          })());
+                          const formattedGradeDisplay = formatStrawEmbryosDisplay(straw, isOocyte);
 
                           return (
                             <div
@@ -1606,7 +1574,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                               {/* Detailed Embryo Grade & Notes */}
                               <div className="mt-2.5 flex items-center gap-2 text-xs flex-wrap font-mono font-bold">
                                 <span className="bg-amber-100/90 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
-                                  {isOocyte ? 'Stage' : 'Grade'}: {formattedGradeDisplay}{fragStr}{commentStr}
+                                  {isOocyte ? 'Stage' : 'Grade'}: {formattedGradeDisplay}
                                 </span>
                                 {straw.isPgt && !isOocyte && (
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-100 text-purple-900 border-purple-300">
@@ -2352,28 +2320,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                             embryoStage: straw.embryoStage || straw.stage || batch.embryoStage
                           };
                           const stageSummary = getStrawStageSummary(strawWithBatchStage, selectedPatient.specimenType, selectedPatient.vitrificationIndication);
-                          const eGrade = (straw.grade || '').trim().toUpperCase();
-                          const eFrag = (straw.fragmentation || '').trim();
-                          const eComment = (straw.comments || '').trim();
-
-                          const gradeStr = eGrade ? eGrade : 'N/A';
-                          const fragStr = (straw.embryos && straw.embryos.length >= 1) ? '' : (eFrag && eFrag !== 'N/A' && eFrag !== 'NO' && eFrag !== 'NONE' ? ` (${eFrag})` : '');
-                          const commentStr = (() => {
-                            if (straw.embryos && straw.embryos.length >= 1) {
-                              const sortedNotes = straw.embryos
-                                .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                                .map((emb: any) => {
-                                  const note = (emb.notes || emb.comments || '').trim();
-                                  return note.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').replace(/^[,\s]+|[,\s]+$/g, '').trim();
-                                })
-                                .filter((n: string) => n && n !== ',' && n !== 'N/A');
-                              if (sortedNotes.length > 0) {
-                                return ` (${sortedNotes.join(', ')})`;
-                              }
-                            }
-                            const cleanComment = eComment.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').replace(/^[,\s]+|[,\s]+$/g, '').trim();
-                            return (cleanComment && cleanComment !== ',' && cleanComment !== 'N/A') ? ` - (${cleanComment})` : '';
-                          })();
+                          const gradeDetailsStr = formatStrawEmbryosDisplay(straw, isOocyte);
                           const orderedStraws = sortStrawsDeterministically(allStraws);
                           const prevCount = orderedStraws.slice(0, origIdx).reduce((sum: number, s: any) => sum + (s.embryoCount || s.embryos?.length || 1), 0);
                           const startNum = prevCount + 1;
@@ -2404,16 +2351,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                                   ({embryoCount} {isOocyte ? (embryoCount === 1 ? 'egg' : 'eggs') : (embryoCount === 1 ? 'embryo' : 'embryos')})
                                 </span>
                                 <span className={`font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 ${!isOccupied ? 'text-slate-500 line-through bg-slate-200/60 group-hover/thawed:no-underline group-hover/thawed:text-slate-900 group-hover/thawed:bg-slate-100' : 'text-slate-900'}`}>
-                                  {isOocyte ? 'Stage' : 'Grade'}: {cleanDuplicateGradeString((() => {
-                                    if (straw.embryos && straw.embryos.length > 0) {
-                                      const validGrades = straw.embryos
-                                        .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                                        .map((emb: any) => (emb.grade || (gradeStr !== 'N/A' && gradeStr !== ',' ? gradeStr : '') || (isOocyte ? 'MII' : '4AA')).trim().toUpperCase())
-                                        .filter((g: string) => g && g !== ',');
-                                      if (validGrades.length > 0) return validGrades.join(', ');
-                                    }
-                                    return (gradeStr && gradeStr !== 'N/A' && gradeStr !== ',') ? gradeStr : (isOocyte ? (selectedPatient.oocyteStage || 'MII') : 'N/A');
-                                  })())}{fragStr}{commentStr}
+                                  {isOocyte ? 'Stage' : 'Grade'}: {gradeDetailsStr}
                                 </span>
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${getStrawColorBadgeClass(straw.color)} ${!isOccupied ? 'opacity-50 group-hover/thawed:opacity-100' : ''}`}>
                                   {straw.color || 'Pink'}

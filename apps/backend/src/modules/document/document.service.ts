@@ -661,37 +661,79 @@ export class DocumentService {
 
             // Grade / Stage & Comments
             const eGrade = (straw.grade || '').trim().toUpperCase();
-            const eComment = (straw.comments || '').trim();
-            const gradeStr = eGrade ? eGrade : 'N/A';
-
-            let gradeFormatted = gradeStr;
+            const defaultGrade = isOocyteDoc ? 'MII' : '4AA';
+            let specDisplay = '';
             if (straw.embryos && straw.embryos.length > 0) {
-              gradeFormatted = straw.embryos
-                .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                .map((emb: any) => (emb.grade || gradeStr || (isOocyteDoc ? 'MII' : 'N/A')).trim().toUpperCase())
-                .join(', ');
-            } else if (embryoCount > 1 && eGrade && !eGrade.includes(',')) {
-              gradeFormatted = Array(embryoCount).fill(eGrade).join(', ');
-            }
+              const sorted = [...straw.embryos].sort((a: any, b: any) => (a.embryoNumber || 0) - (b.embryoNumber || 0));
+              const grades = sorted
+                .map((emb: any) => (emb.grade || eGrade || defaultGrade).trim().toUpperCase())
+                .filter((g: string) => g && g !== ',');
+              const gradesStr = grades.length > 0 ? grades.join(', ') : defaultGrade;
 
-            let commentFormatted = '';
-            if (straw.embryos && straw.embryos.length >= 1) {
-              const sortedNotes = straw.embryos
-                .sort((a: any, b: any) => a.embryoNumber - b.embryoNumber)
-                .map((emb: any) => {
-                  const note = (emb.notes || emb.comments || '').trim();
-                  return note.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
-                })
-                .filter(Boolean);
-              if (sortedNotes.length > 0) {
-                commentFormatted = ` - (${sortedNotes.join(', ')})`;
+              const strawFrag = (straw.fragmentation || '').trim();
+              const details: string[] = [];
+              sorted.forEach((emb: any) => {
+                const rawNote = (emb.notes || emb.comments || '').trim();
+                let f = strawFrag;
+                let c = rawNote;
+                const m = rawNote.match(/\[Fragmentation:\s*([^\]]+)\]/i);
+                if (m) {
+                  if (!f || f === 'No') f = m[1].trim();
+                  c = rawNote.replace(/\[Fragmentation:\s*([^\]]+)\]\s*/i, '').trim();
+                }
+                const cleanF = f.replace(/^\(+|\)+$/g, '').trim();
+                const hasF = !isOocyteDoc && cleanF && !['NO', 'NONE', 'N/A', '-'].includes(cleanF.toUpperCase());
+                const cleanC = c.replace(/^\(+|\)+$/g, '').replace(/^[,\s\-]+|[,\s\-]+$/g, '').trim();
+                const hasC = cleanC && !['N/A', 'NONE', '-', ','].includes(cleanC.toUpperCase());
+
+                if (hasF && hasC) {
+                  details.push(`(${cleanF}) - (${cleanC})`);
+                } else if (hasF) {
+                  details.push(`(${cleanF})`);
+                } else if (hasC) {
+                  details.push(`(${cleanC})`);
+                }
+              });
+
+              if (details.length > 0) {
+                specDisplay = `${gradesStr} ${details.join(', ')}`;
+              } else {
+                specDisplay = gradesStr;
               }
-            } else if (eComment) {
-              const cleanC = eComment.replace(/\[Fragmentation:\s*([^\]]+)\]/gi, '$1').trim();
-              if (cleanC) commentFormatted = ` - (${cleanC})`;
+            } else {
+              const rawGrade = (eGrade || defaultGrade).trim();
+              const gradeParts = rawGrade.split(',').map((p: string) => p.trim()).filter((p: string) => p && p !== ',');
+              const gradesStr = gradeParts.length > 0 ? gradeParts.join(', ') : defaultGrade;
+              const count = gradeParts.length || straw.embryoCount || 1;
+
+              const cleanF = (straw.fragmentation || '').replace(/^\(+|\)+$/g, '').trim();
+              const hasF = !isOocyteDoc && cleanF && !['NO', 'NONE', 'N/A', '-'].includes(cleanF.toUpperCase());
+              let c = (straw.comments || '').trim();
+              const m = c.match(/\[Fragmentation:\s*([^\]]+)\]/i);
+              if (m) {
+                c = c.replace(/\[Fragmentation:\s*([^\]]+)\]\s*/i, '').trim();
+              }
+              const cleanC = c.replace(/^\(+|\)+$/g, '').replace(/^[,\s\-]+|[,\s\-]+$/g, '').trim();
+              const hasC = cleanC && !['N/A', 'NONE', '-', ','].includes(cleanC.toUpperCase());
+
+              let singleDetail = '';
+              if (hasF && hasC) {
+                singleDetail = `(${cleanF}) - (${cleanC})`;
+              } else if (hasF) {
+                singleDetail = `(${cleanF})`;
+              } else if (hasC) {
+                singleDetail = `(${cleanC})`;
+              }
+
+              if (singleDetail) {
+                const details = Array(count).fill(singleDetail);
+                specDisplay = `${gradesStr} ${details.join(', ')}`;
+              } else {
+                specDisplay = gradesStr;
+              }
             }
 
-            const mainSpecText = `${isOocyteDoc ? 'Stage' : 'Grade'}: ${gradeFormatted}${commentFormatted}`;
+            const mainSpecText = `${isOocyteDoc ? 'Stage' : 'Grade'}: ${specDisplay}`;
             doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#0f172a').text(mainSpecText, 160, strawBoxY + 20, { width: 310, lineBreak: false });
 
             // PGT Badge
