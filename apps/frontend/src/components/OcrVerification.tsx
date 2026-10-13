@@ -443,18 +443,66 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     setThawDate(json.thawDate || '');
     setEmbryoCount(json.embryoCount ? String(json.embryoCount) : '');
 
-    // Parse Canister Name directly from raw text (e.g. C01 to C20 or Canister number)
-    let can = (json.canisterName || '').trim();
-    if (can) {
-      const match = can.match(/(\d+)/);
+    // Parse Can No / Cryotank (tankName / canNo) strictly from JSON and raw text (NOT canister!)
+    let parsedTank = (json.tankName || json.canNo || json.canNumber || json.tank || '').trim();
+    if (parsedTank) {
+      const match = parsedTank.match(/(\d+)/);
       if (match) {
         const num = parseInt(match[1], 10);
-        if (num >= 1 && num <= 20) {
-          can = `C${num.toString().padStart(2, '0')}`;
+        if (num >= 1 && num <= 30) {
+          parsedTank = `CAN-${num.toString().padStart(2, '0')}`;
+        }
+      }
+    } else if (record.rawOcrText) {
+      const raw = record.rawOcrText;
+      const comboMatch = raw.match(/(?:Can|Tank)\s*\/\s*Canister[\s#.:-]*(\d{1,2})/i);
+      const canisterComboMatch = raw.match(/Canister\s*\/\s*(?:Can|Tank)[\s#.:-]*\d+[\s\/-]+(\d{1,2})/i);
+      const canNoMatch = raw.match(/\b(?:Cryo\s*(?:Tank|Can)|Cryotank|Cryocan|LN2\s*Tank|\bTank|\bCan(?!\s*ist))\b(?:\s*(?:Number|Num\.?|No\.?|#))?[\s#.:=-]*(\d{1,2})\b/i);
+      const explicitCodeMatch = raw.match(/\b(?:CAN|TANK)-?(\d{1,2})\b/i);
+      const simpleCanMatch = raw.match(/\b(?:Cryo\s*(?:Tank|Can)|Cryotank|Cryocan|LN2\s*Tank|\bTank|\bCan(?!\s*ist))\b[\s#.:=-]+(\d{1,2})\b/i);
+      const numMatch = comboMatch || canisterComboMatch || canNoMatch || explicitCodeMatch || simpleCanMatch;
+      if (numMatch) {
+        const num = parseInt(numMatch[1], 10);
+        if (num >= 1 && num <= 30) {
+          parsedTank = `CAN-${num.toString().padStart(2, '0')}`;
         }
       }
     }
-    setCanisterName(can);
+    setTankName(parsedTank || 'CAN-01');
+
+    // Parse Canister Name (strictly canister, NOT Can No!)
+    let parsedCanister = (json.canisterName || json.canister || '').trim();
+    if (parsedCanister) {
+      const match = parsedCanister.match(/(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num >= 1 && num <= 30) {
+          parsedCanister = `C${num.toString().padStart(2, '0')}`;
+        }
+      }
+    } else if (record.rawOcrText) {
+      const raw = record.rawOcrText;
+      const comboCanister = raw.match(/(?:Can|Tank)\s*\/\s*Canister[\s#.:-]*\d+[\s\/-]+(\d{1,2})/i);
+      const canisterCombo = raw.match(/Canister\s*\/\s*(?:Can|Tank)[\s#.:-]*(\d{1,2})/i);
+      const canisterMatch = raw.match(/(?:Canister|cryo\s*canister)(?:\s*(?:Number|Num\.?|No\.?|#))?[\s#.:=-]*([A-Za-z0-9]+)/i);
+      const cCodeMatch = raw.match(/\bC(0[1-9]|1[0-9]|20)\b/i);
+      if (comboCanister) {
+        const num = parseInt(comboCanister[1], 10);
+        if (num >= 1 && num <= 30) parsedCanister = `C${num.toString().padStart(2, '0')}`;
+      } else if (canisterCombo) {
+        const num = parseInt(canisterCombo[1], 10);
+        if (num >= 1 && num <= 30) parsedCanister = `C${num.toString().padStart(2, '0')}`;
+      } else if (canisterMatch) {
+        const digits = canisterMatch[1].replace(/\D/g, '');
+        if (digits) {
+          const num = parseInt(digits, 10);
+          if (num >= 1 && num <= 30) parsedCanister = `C${num.toString().padStart(2, '0')}`;
+        }
+      } else if (cCodeMatch) {
+        parsedCanister = cCodeMatch[0].toUpperCase();
+      }
+    }
+    setCanisterName(parsedCanister);
 
     // Parse Viso Tube / Straw Color (11 Colors)
     let col = (json.visoTubeColor || '').trim();
@@ -1031,6 +1079,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
       freezingDate: primaryFreezingDate,
       thawDate: thawDate || undefined,
       tankName: tankName.trim() || undefined,
+      canNo: tankName.trim() || undefined,
       canisterName: canisterName.trim() || undefined,
       visoTubeColor: visoTubeColor.trim() || undefined,
       visoTubeId: visoTubeId.trim() || undefined,
@@ -1673,23 +1722,23 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                   </span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {/* Field 1: Cryotank / Can Overview */}
+                  {/* Field 1: Can No / Tank Overview */}
                   <div className="space-y-0.5">
-                    <label className="font-bold text-slate-700 text-[9px] uppercase">Tank / Cryotank</label>
+                    <label className="font-bold text-slate-700 text-[9px] uppercase">Can No / Tank</label>
                     <select
                       value={tankName}
                       onChange={(e) => setTankName(e.target.value)}
                       className="w-full bg-white border border-emerald-300 rounded-lg p-1.5 text-slate-900 font-bold text-[11px] focus:outline-none focus:border-emerald-600 shadow-2xs cursor-pointer"
                     >
-                      <option value="CAN-01">CAN-01 (Tank 1)</option>
-                      <option value="CAN-02">CAN-02 (Tank 2)</option>
-                      <option value="CAN-03">CAN-03 (Tank 3)</option>
-                      <option value="CAN-04">CAN-04 (Tank 4)</option>
-                      <option value="CAN-05">CAN-05 (Tank 5)</option>
-                      <option value="CAN-08">CAN-08 (Tank 8)</option>
-                      <option value="CAN-10">CAN-10 (Tank 10)</option>
-                      <option value="CAN-11">CAN-11 (Tank 11)</option>
-                      <option value="CAN-14">CAN-14 (Tank 14)</option>
+                      <option value="CAN-01">CAN-01 (Can 1 / Tank 1)</option>
+                      <option value="CAN-02">CAN-02 (Can 2 / Tank 2)</option>
+                      <option value="CAN-03">CAN-03 (Can 3 / Tank 3)</option>
+                      <option value="CAN-04">CAN-04 (Can 4 / Tank 4)</option>
+                      <option value="CAN-05">CAN-05 (Can 5 / Tank 5)</option>
+                      <option value="CAN-08">CAN-08 (Can 8 / Tank 8)</option>
+                      <option value="CAN-10">CAN-10 (Can 10 / Tank 10)</option>
+                      <option value="CAN-11">CAN-11 (Can 11 / Tank 11)</option>
+                      <option value="CAN-14">CAN-14 (Can 14 / Tank 14)</option>
                     </select>
                   </div>
 
@@ -2490,7 +2539,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                   <div className="flex justify-between items-center pt-1 border-t border-amber-200/60">
                     <span className="text-slate-500 font-bold">Viso Tube Location:</span>
                     <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-amber-300 text-[10px]">
-                      {savedSummaryModalData.storageLocation?.tankName || 'Tank A'} &gt; {savedSummaryModalData.storageLocation?.canisterName || 'C01'} &gt; {savedSummaryModalData.storageLocation?.level || 'Level 1'} &gt; Viso Tube {VISO_COLOR_TO_TUBE_CODE[savedSummaryModalData.storageLocation?.visoTubeColor] || 'V01'} ({savedSummaryModalData.storageLocation?.visoTubeColor || 'Pink'})
+                      {savedSummaryModalData.storageLocation?.tankName || savedSummaryModalData.storageLocation?.canNo || 'CAN-01'} &gt; {savedSummaryModalData.storageLocation?.canisterName || 'C01'} &gt; {savedSummaryModalData.storageLocation?.level || 'Level 1'} &gt; Viso Tube {VISO_COLOR_TO_TUBE_CODE[savedSummaryModalData.storageLocation?.visoTubeColor] || 'V01'} ({savedSummaryModalData.storageLocation?.visoTubeColor || 'Pink'})
                     </span>
                   </div>
                 </div>

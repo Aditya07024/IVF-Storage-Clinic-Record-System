@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { ocrService } from '../src/modules/ocr/ocr.service.js';
+import { ocrService, parseTankFromRawText, parseCanisterFromRawText } from '../src/modules/ocr/ocr.service.js';
 import { CONFIG } from '../src/common/config.js';
 import sharp from 'sharp';
 
@@ -69,5 +69,74 @@ describe('Google Cloud Vision OCR Integration Test Suite', () => {
       // Confirm that the safe error handler caught it cleanly without exposing credential secrets
       expect(err.message).toMatch(/Google Vision authentication or permission error|Unable to process the image/);
     }
+  });
+
+  describe('Can No vs Canister No Clinical Extraction Suite', () => {
+    it('should extract Can No accurately from various clinical text formats', () => {
+      expect(parseTankFromRawText('Can No: 2')).toBe('CAN-02');
+      expect(parseTankFromRawText('Can No. 04')).toBe('CAN-04');
+      expect(parseTankFromRawText('CAN NO 14')).toBe('CAN-14');
+      expect(parseTankFromRawText('Can Number: 8')).toBe('CAN-08');
+      expect(parseTankFromRawText('Can #5')).toBe('CAN-05');
+      expect(parseTankFromRawText('Can: 3')).toBe('CAN-03');
+      expect(parseTankFromRawText('Can 10')).toBe('CAN-10');
+      expect(parseTankFromRawText('Cryocan No: 2')).toBe('CAN-02');
+      expect(parseTankFromRawText('Tank No: 3')).toBe('CAN-03');
+    });
+
+    it('should NOT confuse Can No with Canister No', () => {
+      // When only canister is present, tank should NOT match canister number
+      expect(parseTankFromRawText('Canister No: 4')).toBe('CAN-01');
+      expect(parseCanisterFromRawText('Canister No: 4')).toBe('C04');
+
+      // When both are present in the document
+      const doc = `
+        PATIENT STORAGE RECORD
+        Can No: 2
+        Canister No: 4
+        Level: 1
+        Viso Tube: Pink
+      `;
+      expect(parseTankFromRawText(doc)).toBe('CAN-02');
+      expect(parseCanisterFromRawText(doc)).toBe('C04');
+    });
+
+    it('should extract Can accurately when written only as Can without No', () => {
+      expect(parseTankFromRawText('Can: 2')).toBe('CAN-02');
+      expect(parseTankFromRawText('Can 2')).toBe('CAN-02');
+      expect(parseTankFromRawText('CAN 02')).toBe('CAN-02');
+      expect(parseTankFromRawText('CAN-2')).toBe('CAN-02');
+      expect(parseTankFromRawText('CAN - 2')).toBe('CAN-02');
+      expect(parseTankFromRawText('Can = 4')).toBe('CAN-04');
+      expect(parseTankFromRawText('Can 14')).toBe('CAN-14');
+      expect(parseTankFromRawText('Can: 08')).toBe('CAN-08');
+
+      // Mixed "Can X, Canister Y" without the word "No"
+      const mixedDoc1 = 'Storage: Can: 2, Canister: 4, Level: 1';
+      expect(parseTankFromRawText(mixedDoc1)).toBe('CAN-02');
+      expect(parseCanisterFromRawText(mixedDoc1)).toBe('C04');
+
+      const mixedDoc2 = 'Can 2\nCanister 4\nLevel 1';
+      expect(parseTankFromRawText(mixedDoc2)).toBe('CAN-02');
+      expect(parseCanisterFromRawText(mixedDoc2)).toBe('C04');
+
+      const mixedDoc3 = 'Canister 4\nCan 2';
+      expect(parseTankFromRawText(mixedDoc3)).toBe('CAN-02');
+      expect(parseCanisterFromRawText(mixedDoc3)).toBe('C04');
+    });
+
+    it('should handle Can/Canister combined format', () => {
+      expect(parseTankFromRawText('Can / Canister: 3 / 5')).toBe('CAN-03');
+      expect(parseCanisterFromRawText('Can / Canister: 3 / 5')).toBe('C05');
+
+      expect(parseTankFromRawText('Canister / Can: 5 / 3')).toBe('CAN-03');
+      expect(parseCanisterFromRawText('Canister / Can: 5 / 3')).toBe('C05');
+    });
+
+    it('should use Gemini fallback when raw text is unparseable', () => {
+      expect(parseTankFromRawText('Unstructured noisy text', 'CAN-04')).toBe('CAN-04');
+      expect(parseTankFromRawText('Unstructured noisy text', 'Can 2')).toBe('CAN-02');
+      expect(parseTankFromRawText('Unstructured noisy text', '8')).toBe('CAN-08');
+    });
   });
 });
