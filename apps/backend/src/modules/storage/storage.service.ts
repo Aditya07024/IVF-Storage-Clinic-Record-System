@@ -31,7 +31,7 @@ function parseFlexibleDate(d?: Date | string | null): Date | null {
   return isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function calculateBatchCycleNumbers(batches: any[]): Map<string, number> {
+export function calculateBatchCycleNumbers(batches: any[]): Map<string, number> {
   const map = new Map<string, number>();
   if (!batches || batches.length === 0) return map;
 
@@ -539,21 +539,63 @@ export class StorageService {
 
       let batch: any = null;
 
-      if (aspirationDateObj && input.patientId) {
-        const startOfDay = new Date(aspirationDateObj);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(aspirationDateObj);
-        endOfDay.setHours(23, 59, 59, 999);
+      if (input.patientId) {
+        let candidateBatches: any[] = [];
+        if (aspirationDateObj) {
+          const startOfDay = new Date(aspirationDateObj);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(aspirationDateObj);
+          endOfDay.setHours(23, 59, 59, 999);
 
-        batch = await tx.storageBatch.findFirst({
-          where: {
-            patientId: input.patientId,
-            aspirationDate: {
-              gte: startOfDay,
-              lte: endOfDay,
+          candidateBatches = await tx.storageBatch.findMany({
+            where: {
+              patientId: input.patientId,
+              aspirationDate: {
+                gte: startOfDay,
+                lte: endOfDay,
+              },
             },
-          },
-        });
+          });
+        } else if (freezingDateObj) {
+          const startOfDay = new Date(freezingDateObj);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(freezingDateObj);
+          endOfDay.setHours(23, 59, 59, 999);
+
+          candidateBatches = await tx.storageBatch.findMany({
+            where: {
+              patientId: input.patientId,
+              aspirationDate: null,
+              storageDate: {
+                gte: startOfDay,
+                lte: endOfDay,
+              },
+            },
+          });
+        }
+
+        const normStage = (s?: string | null) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+        const targetStageNorm = normStage(input.embryoStage || input.oocyteStage);
+        const targetFreezingDay = freezingDateObj ? freezingDateObj.toISOString().split('T')[0] : '';
+        const targetSpecimenType = (input.specimenType || 'EMBRYO').toUpperCase();
+
+        for (const candidate of candidateBatches) {
+          const candFreezingDay = candidate.freezingDate
+            ? candidate.freezingDate.toISOString().split('T')[0]
+            : (candidate.storageDate ? candidate.storageDate.toISOString().split('T')[0] : '');
+          const candStageNorm = normStage(candidate.embryoStage || candidate.oocyteStage);
+          const candSpecimenType = (candidate.specimenType || 'EMBRYO').toUpperCase();
+
+          const freezingMatches = targetFreezingDay ? candFreezingDay === targetFreezingDay : true;
+          const stageMatches = targetStageNorm ? candStageNorm === targetStageNorm : true;
+          const specimenMatches = candSpecimenType === targetSpecimenType;
+          const tubeMatches = !input.visoTubeId || candidate.visoTubeId === input.visoTubeId;
+
+          if (freezingMatches && stageMatches && specimenMatches && tubeMatches) {
+            batch = candidate;
+            break;
+          }
+        }
       }
 
       if (batch) {
@@ -675,6 +717,7 @@ export class StorageService {
             isPgt: item.isPgt ?? false,
             maxCapacity: 3,
             status: 'OCCUPIED',
+            freezingDate: item.freezingDate ? (parseFlexibleDate(item.freezingDate) || freezingDateObj) : freezingDateObj,
           },
         });
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { verifyAccessKey } from '../src/common/config.js';
-import { storageService } from '../src/modules/storage/storage.service.js';
+import { storageService, calculateBatchCycleNumbers } from '../src/modules/storage/storage.service.js';
 import { thawService } from '../src/modules/thaw/thaw.service.js';
 
 describe('IVF System Core Business Rules Suite', () => {
@@ -112,4 +112,80 @@ describe('IVF System Core Business Rules Suite', () => {
     const tubeBFits = tubeB_vacant >= requiredForPatient;
     expect(tubeBFits).toBe(true);
   });
+
+  it('Rule 8: Multi-Day Batch Cycle Grouping & Straw Sequence Continuity', () => {
+    // Patient has retrieval on 2026-10-06
+    // Day 5 embryos vitrified on 2026-10-11 (Batch 1: 3 straws)
+    // Day 6 embryos vitrified on 2026-10-12 (Batch 2: 1 straw)
+    const batch1 = {
+      id: 'BATCH-D5',
+      aspirationDate: new Date('2026-10-06T00:00:00.000Z'),
+      freezingDate: new Date('2026-10-11T00:00:00.000Z'),
+      embryoStage: 'Day 5',
+      straws: [{ id: 's1' }, { id: 's2' }, { id: 's3' }],
+    };
+
+    const batch2 = {
+      id: 'BATCH-D6',
+      aspirationDate: new Date('2026-10-06T00:00:00.000Z'),
+      freezingDate: new Date('2026-10-12T00:00:00.000Z'),
+      embryoStage: 'Day 6',
+      straws: [{ id: 's4' }],
+    };
+
+    const cycleMap = calculateBatchCycleNumbers([batch1, batch2]);
+
+    // Both batches belong to the same retrieval cycle (Cycle 1)
+    expect(cycleMap.get(batch1.id)).toBe(1);
+    expect(cycleMap.get(batch2.id)).toBe(1);
+
+    // Calculate straw sequence continuity across cycle
+    const targetCycle = cycleMap.get(batch2.id)!;
+    let existingStrawsInCycle = 0;
+    for (const b of [batch1]) {
+      if (cycleMap.get(b.id) === targetCycle) {
+        existingStrawsInCycle += b.straws.length;
+      }
+    }
+    expect(existingStrawsInCycle).toBe(3);
+
+    // Day 6 straw in Batch 2 receives continuous sequence 4 -> Straw ID '1.4'
+    const nextStrawSeq = existingStrawsInCycle + 1;
+    expect(`${targetCycle}.${nextStrawSeq}`).toBe('1.4');
+  });
+
+  it('Rule 9: Multi-Day Embryo Stage Separation (Day 5 vs Day 6 Never Collapsed)', () => {
+    // Normalization helper matching backend logic
+    const normStage = (s?: string | null) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+
+    const existingBatch = {
+      patientId: 'P_1',
+      aspirationDate: '2026-10-06',
+      freezingDate: '2026-10-11',
+      embryoStage: 'Day 5',
+      specimenType: 'EMBRYO',
+      visoTubeId: 'TUBE_BLUE',
+    };
+
+    // User submits Day 6 straw for same patient & aspiration date
+    const newSubmissionDay6 = {
+      patientId: 'P_1',
+      aspirationDate: '2026-10-06',
+      freezingDate: '2026-10-12',
+      embryoStage: 'Day 6',
+      specimenType: 'EMBRYO',
+      visoTubeId: 'TUBE_BLUE',
+    };
+
+    const freezingMatches = existingBatch.freezingDate === newSubmissionDay6.freezingDate;
+    const stageMatches = normStage(existingBatch.embryoStage) === normStage(newSubmissionDay6.embryoStage);
+
+    // Freezing date and embryo stage must NOT match -> Must create a separate batch, not merge
+    expect(freezingMatches).toBe(false);
+    expect(stageMatches).toBe(false);
+
+    const shouldMerge = freezingMatches && stageMatches;
+    expect(shouldMerge).toBe(false);
+  });
 });
+

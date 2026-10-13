@@ -202,7 +202,7 @@ export function sortStageKeys(stages: string[]): string[] {
   });
 }
 
-export function getStrawStageSummary(item: any, specimenType?: string, vitrificationIndication?: string): string {
+export function getStrawStageSummary(item: any, specimenType?: string, vitrificationIndication?: string, fallbackStage?: string): string {
   if (!item) return '';
   const count = item.embryoCount || (item.embryos ? item.embryos.length : 1);
   const isOocyte = isOocyteSpecimen(item, specimenType, vitrificationIndication);
@@ -221,9 +221,9 @@ export function getStrawStageSummary(item: any, specimenType?: string, vitrifica
         if (Array.isArray(item.embryoGrades) && item.embryoGrades[i]) {
           rawStg = item.embryoGrades[i].toString().trim().toUpperCase();
         } else {
-          const itemG = item.grade || item.embryoStage || item.stage || '';
+          const itemG = item.grade || item.embryoStage || item.stage || fallbackStage || '';
           const itemGSplit = itemG.includes(',') ? itemG.split(',')[i]?.trim() : itemG;
-          rawStg = ((item as any)[eGradeKey] || itemGSplit || 'MII').toString().trim().toUpperCase();
+          rawStg = ((item as any)[eGradeKey] || itemGSplit || fallbackStage || 'MII').toString().trim().toUpperCase();
         }
       }
       const cleanStg = rawStg.split('(')[0].replace(/\[.*?\]/g, '').trim();
@@ -236,10 +236,10 @@ export function getStrawStageSummary(item: any, specimenType?: string, vitrifica
     const parts = sortStageKeys(stageOrder).map((stg) => `${stageCounts[stg]} ${stg}`);
     return parts.length > 0 ? parts.join(' + ') : `${count} MII`;
   } else {
-    const calculated = (item.aspirationDate || item.visitDate || item.batchAspirationDate) && (item.freezingDate || item.batchFreezingDate)
-      ? calculateEmbryoStage(item.aspirationDate || item.visitDate || item.batchAspirationDate, item.freezingDate || item.batchFreezingDate)
-      : '';
-    const stg = (item.embryoStage || item.stage || calculated || 'Day 5').toString().trim();
+    const asp = item.aspirationDate || item.visitDate || item.batchAspirationDate;
+    const frz = item.freezingDate || item.batchFreezingDate;
+    const calculated = asp && frz ? calculateEmbryoStage(asp, frz) : '';
+    const stg = (item.embryoStage || item.stage || fallbackStage || calculated || 'Day 5').toString().trim();
     return formatDayStage(stg);
   }
 }
@@ -1983,6 +1983,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
       strawsCount,
       strawItems: strawItems.map((item, idx) => ({
         ...item,
+        embryoStage: (item as any).embryoStage || embryoStage,
+        freezingDate: (item as any).freezingDate || freezingDate,
+        aspirationDate: (item as any).aspirationDate || aspirationDate,
         strawCustomId: (item as any).strawCustomId?.trim() || `${currentFormCycleNum}.${currentFormCycleStrawStart + idx + 1}`,
       })),
       totalEmbryosCount,
@@ -3433,7 +3436,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                             )}
                             {specimenType === 'OOCYTE' && (
                               <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200 font-mono">
-                                {item.embryoCount || 1} {(item.embryoCount || 1) === 1 ? 'oocyte' : 'oocytes'} ({getStrawStageSummary(item, specimenType)})
+                                {item.embryoCount || 1} {(item.embryoCount || 1) === 1 ? 'oocyte' : 'oocytes'} ({getStrawStageSummary(item, specimenType, vitrificationIndication, oocyteStage)})
                               </span>
                             )}
                           </div>
@@ -4474,7 +4477,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
                       const strawDisplayNum = `${currentFormCycleNum}.${currentFormCycleStrawStart + sIdx + 1}`;
                       const badgeClass = getStrawColorBadgeClass(item.color);
                       const count = item.embryoCount || 1;
-                      const stageSummary = getStrawStageSummary(item, specimenType);
+                      const strawWithBatchStage = {
+                        ...item,
+                        aspirationDate: item.aspirationDate || aspirationDate,
+                        freezingDate: item.freezingDate || freezingDate,
+                        embryoStage: item.embryoStage || (item as any).stage || embryoStage,
+                      };
+                      const stageSummary = getStrawStageSummary(strawWithBatchStage, specimenType, vitrificationIndication, embryoStage);
 
                       return (
                         <div key={sIdx} className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-2 shadow-2xs">
