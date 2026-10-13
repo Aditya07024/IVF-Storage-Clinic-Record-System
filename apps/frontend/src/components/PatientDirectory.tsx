@@ -1788,7 +1788,7 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                     {detailIsDonorCycle ? (
                       <span className="text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-300 w-fit font-bold flex items-center gap-1 shadow-2xs">
                         <UserCheck className="w-3.5 h-3.5 text-purple-700" />
-                        <span>D-R Cycle{detailDonorName ? ` (Donor: ${detailDonorName}${detailDonorAge ? ` - ${formatAgeWithY(detailDonorAge)}` : ''})` : detailDonorRegNo ? ` (Donor: ${detailDonorRegNo})` : ''}</span>
+                        <span>D-R Cycle</span>
                       </span>
                     ) : (
                       <span className="text-blue-950 bg-blue-100 px-2.5 py-0.5 rounded-lg border border-blue-300 w-fit font-bold flex items-center gap-1">
