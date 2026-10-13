@@ -2262,11 +2262,6 @@ export const PatientDirectory: React.FC<PatientDirectoryProps> = ({
                           <span className={`px-2 py-0.5 rounded border font-bold ${batch.specimenType === 'OOCYTE' ? 'bg-purple-100 text-purple-900 border-purple-300' : 'bg-blue-100 text-blue-900 border-blue-300'}`}>
                             {batch.specimenType === 'OOCYTE' ? '🥚 Egg Freezing' : '🧬 Embryo Freezing'}
                           </span>
-                          {(batch.donorRegNo || batch.donorName) && (
-                            <span className="bg-amber-50 text-amber-900 px-2 py-0.5 rounded border border-amber-300 font-bold">
-                              Donor: {batch.donorRegNo || ''} {batch.donorName ? `(${batch.donorName})` : ''}
-                            </span>
-                          )}
                           <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 font-bold">
                             Frozen: {formatDateDDMMYYYY(batch.freezingDate || batch.storageDate)}
                           </span>
