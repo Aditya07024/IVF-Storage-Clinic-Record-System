@@ -25,6 +25,7 @@ export const AppContent: React.FC = () => {
   const [selectedCanCode, setSelectedCanCode] = useState<string>('CAN-01');
   const [selectedPatientIdForDirectory, setSelectedPatientIdForDirectory] = useState<string | null>(null);
   const [preselectedPatientForAddStraws, setPreselectedPatientForAddStraws] = useState<any | null>(null);
+  const [ocrPrefillForAddStraws, setOcrPrefillForAddStraws] = useState<any | null>(null);
 
   const handleSetActiveTab = (tab: NavTab) => {
     sessionStorage.setItem('activeTab', tab);
@@ -51,11 +52,13 @@ export const AppContent: React.FC = () => {
 
   const handleAddMoreStraws = (patient: any) => {
     setPreselectedPatientForAddStraws(patient);
+    setOcrPrefillForAddStraws(null);
     handleSetActiveTab('new-patient');
   };
 
-  const handleNavigateToExistingPatientForm = (patient: any) => {
+  const handleNavigateToExistingPatientForm = (patient: any, ocrPrefill?: any) => {
     setPreselectedPatientForAddStraws(patient);
+    setOcrPrefillForAddStraws(ocrPrefill || null);
     handleSetActiveTab('new-patient');
   };
 
@@ -128,7 +131,11 @@ export const AppContent: React.FC = () => {
         {activeTab === 'new-patient' && (
           <PatientForm
             initialPatient={preselectedPatientForAddStraws}
-            onSuccess={() => setPreselectedPatientForAddStraws(null)}
+            initialOcrPrefill={ocrPrefillForAddStraws}
+            onSuccess={() => {
+              setPreselectedPatientForAddStraws(null);
+              setOcrPrefillForAddStraws(null);
+            }}
           />
         )}
         {activeTab === 'patients' && (

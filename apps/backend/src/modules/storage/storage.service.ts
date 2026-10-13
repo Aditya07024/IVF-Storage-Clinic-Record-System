@@ -479,12 +479,15 @@ export class StorageService {
       strawItems = input.straws;
     } else if (input.embryoCount && input.strawColors) {
       const count = Math.ceil(input.embryoCount / 2);
+      if (input.strawColors.length < count) {
+        throw new Error(`Invalid straw colors provided: insufficient straw colors for ${input.embryoCount} embryos (requires ${count} straws).`);
+      }
       let rem = input.embryoCount;
       for (let i = 0; i < count; i++) {
         const c = Math.min(2, rem);
         rem -= c;
         strawItems.push({
-          color: input.strawColors[i] || 'Pink',
+          color: input.strawColors[i],
           embryoCount: c,
         });
       }

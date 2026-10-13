@@ -7,6 +7,8 @@ import { ReportPrintMailModal } from './ReportPrintMailModal';
 import { rotateImageFile } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { EditBatchModal } from './EditBatchModal';
+import { detectSpecimenAndCycleFromRawText, SpecimenType, CycleClassificationType } from '../utils/ocrClassification';
+export { detectSpecimenAndCycleFromRawText };
 
 export const VISO_TUBE_COLOR_NAMES: Record<number, string> = {
   1: 'Pink',
@@ -1161,9 +1163,10 @@ export const DateInputDDMMYYYY: React.FC<DateInputDDMMYYYYProps> = ({
 interface PatientFormProps {
   onSuccess: (patient: any) => void;
   initialPatient?: any | null;
+  initialOcrPrefill?: any | null;
 }
 
-export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPatient }) => {
+export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPatient, initialOcrPrefill }) => {
   // Mode: 'new' | 'existing'
   const [formMode, setFormMode] = useState<'new' | 'existing'>('new');
 
@@ -1205,8 +1208,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
   const [embryoStage, setEmbryoStage] = useState('Day 0 / Oocyte Freezing');
 
   // Specimen & Cycle Classification States
-  const [specimenType, setSpecimenType] = useState<'EMBRYO' | 'OOCYTE' | 'SPERM'>('EMBRYO');
-  const [cycleType, setCycleType] = useState<'SELF' | 'DONOR_RECIPIENT'>('SELF');
+  const [specimenType, setSpecimenType] = useState<SpecimenType>('EMBRYO');
+  const [cycleType, setCycleType] = useState<CycleClassificationType>('SELF');
   const [donorName, setDonorName] = useState('');
   const [donorRegNo, setDonorRegNo] = useState('');
   const [donorAge, setDonorAge] = useState('');
@@ -1224,9 +1227,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
   useEffect(() => {
     if (initialPatient) {
       setFormMode('existing');
-      handleSelectExistingPatient(initialPatient);
+      handleSelectExistingPatient(initialPatient, initialOcrPrefill);
     }
-  }, [initialPatient]);
+  }, [initialPatient, initialOcrPrefill]);
 
   const [isIdVerifiedUnique, setIsIdVerifiedUnique] = useState(false);
   const [idChecking, setIdChecking] = useState(false);
@@ -1498,9 +1501,34 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
   };
 
   // Select Existing Patient & Auto-Fill Patient Identity Fields Only (Strictly No Cryo Auto-Fill)
-  const handleSelectExistingPatient = async (p: any) => {
+  const handleSelectExistingPatient = async (p: any, ocrPrefillData?: any) => {
     setSelectedExistingPatient(p);
     populatePatientFields(p);
+
+    // Resolve Specimen Type Frozen and Cycle Classification if provided via OCR prefill or raw text
+    let targetSpecimenType: SpecimenType = 'EMBRYO';
+    let targetCycleType: CycleClassificationType = 'SELF';
+
+    if (ocrPrefillData) {
+      if (ocrPrefillData.specimenType) {
+        targetSpecimenType = ocrPrefillData.specimenType;
+      }
+      if (ocrPrefillData.cycleType) {
+        targetCycleType = ocrPrefillData.cycleType;
+      }
+      if (ocrPrefillData.rawOcrText) {
+        const detected = detectSpecimenAndCycleFromRawText(
+          ocrPrefillData.rawOcrText,
+          ocrPrefillData.structuredFields
+        );
+        if (!ocrPrefillData.specimenType) {
+          targetSpecimenType = detected.specimenType;
+        }
+        if (!ocrPrefillData.cycleType) {
+          targetCycleType = detected.cycleType;
+        }
+      }
+    }
 
     // CRYO & SPECIMEN DETAILS MUST NEVER BE AUTO-FILLED - LEAVE CLEAN FOR MANUAL ENTRY
     setAspirationDate('');
@@ -1508,8 +1536,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess, initialPati
     setStorageDate('');
     setEmbryoStage('');
     setComments('');
-    setSpecimenType('EMBRYO');
-    setCycleType('SELF');
+    setSpecimenType(targetSpecimenType);
+    setCycleType(targetCycleType);
     setDonorName('');
     setDonorRegNo('');
     setDonorAge('');

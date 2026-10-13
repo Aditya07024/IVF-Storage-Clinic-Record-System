@@ -5,6 +5,7 @@ import { DateInputDDMMYYYY, DoctorSelect, capitalizeWords, CLINIC_STRAW_COLORS, 
 import { rotateImageFile, captureUprightCanvasFromVideo } from '../utils/imageUtils';
 import { ImageCropRotateModal } from './ImageCropRotateModal';
 import { useBackgroundTask } from '../context/BackgroundTaskContext';
+import { detectSpecimenAndCycleFromRawText, SpecimenType, CycleClassificationType } from '../utils/ocrClassification';
 
 const VISO_COLOR_TO_TUBE_CODE: Record<string, string> = {
   Pink: 'V01',
@@ -43,9 +44,10 @@ export interface FreezingGroup {
 function calculateStageFromDates(
   retrievalDateStr: string,
   freezingDateStr: string,
-  specimenType: 'EMBRYO' | 'OOCYTE' = 'EMBRYO'
+  specimenType: SpecimenType = 'EMBRYO'
 ): string {
   if (specimenType === 'OOCYTE') return 'MII';
+  if (specimenType === 'SPERM') return 'N/A';
   if (!retrievalDateStr || !freezingDateStr) return 'Day 5';
 
   const { iso: rIso } = normalizeFlexibleDateToDDMMYYYY(retrievalDateStr);
@@ -107,8 +109,8 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
   const [patientAge, setPatientAge] = useState('');
   const [partnerAge, setPartnerAge] = useState('');
   const [doctorName, setDoctorName] = useState('');
-  const [specimenType, setSpecimenType] = useState<'EMBRYO' | 'OOCYTE'>('EMBRYO');
-  const [cycleType, setCycleType] = useState<'SELF' | 'DONOR_RECIPIENT'>('SELF');
+  const [specimenType, setSpecimenType] = useState<SpecimenType>('EMBRYO');
+  const [cycleType, setCycleType] = useState<CycleClassificationType>('SELF');
   const [donorName, setDonorName] = useState('');
   const [donorRegNo, setDonorRegNo] = useState('');
   const [donorAge, setDonorAge] = useState('');
@@ -196,6 +198,35 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
   const handleSavePictureAndFillExisting = async () => {
     if (!existingIdMatch || !activeRecord) return;
     setSavingToExisting(true);
+
+    // Detect Specimen Type Frozen & Cycle Classification according to raw text & structured fields
+    let extractedFieldsObj: any = {};
+    if (activeRecord.structuredFields) {
+      extractedFieldsObj = activeRecord.structuredFields;
+    } else if (typeof activeRecord.extractedJson === 'string') {
+      try {
+        extractedFieldsObj = JSON.parse(activeRecord.extractedJson);
+      } catch {
+        extractedFieldsObj = {};
+      }
+    } else if (typeof activeRecord.extractedJson === 'object' && activeRecord.extractedJson !== null) {
+      extractedFieldsObj = activeRecord.extractedJson;
+    }
+
+    const detected = detectSpecimenAndCycleFromRawText(
+      activeRecord.rawOcrText,
+      extractedFieldsObj
+    );
+    const resolvedSpecimen = specimenType || detected.specimenType;
+    const resolvedCycle = cycleType || detected.cycleType;
+
+    const ocrPrefill = {
+      specimenType: resolvedSpecimen,
+      cycleType: resolvedCycle,
+      rawOcrText: activeRecord.rawOcrText || '',
+      structuredFields: extractedFieldsObj,
+    };
+
     try {
       // 1. Attach picture/OCR record to existing patient
       try {
@@ -228,16 +259,16 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
       setPendingRecords((prev) => prev.filter((r) => r.id !== activeRecord.id));
       setActiveRecord(null);
 
-      // 3. Redirect to existing patient form with only registration number & existing patient loaded (no raw text embryo/egg data)
+      // 3. Redirect to existing patient form with only registration number & existing patient loaded plus detected specimen & cycle selection (no cryo data)
       if (onNavigateToExistingPatientForm) {
-        onNavigateToExistingPatientForm(existingIdMatch);
+        onNavigateToExistingPatientForm(existingIdMatch, ocrPrefill);
       } else if (onNavigateToPatient) {
         onNavigateToPatient(existingIdMatch.id);
       }
     } catch (err: any) {
       console.error('Error saving picture to existing patient:', err);
       if (onNavigateToExistingPatientForm) {
-        onNavigateToExistingPatientForm(existingIdMatch);
+        onNavigateToExistingPatientForm(existingIdMatch, ocrPrefill);
       }
     } finally {
       setSavingToExisting(false);
@@ -429,10 +460,9 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     setPatientAge(json.patientAge || (initialDob ? calculateAgeFromDob(initialDob) : ''));
     setPartnerAge(json.partnerAge || (initialPartnerDob ? calculateAgeFromDob(initialPartnerDob) : ''));
     setDoctorName(json.doctorName || '');
-    const isOocyteFromJson = (json.specimenType === 'OOCYTE') || (json.vitrificationIndication && (json.vitrificationIndication.toLowerCase().includes('egg') || json.vitrificationIndication.toLowerCase().includes('emergency'))) || Boolean(json.oocyteStage);
-    const resolvedSpecimen = (json.specimenType || (isOocyteFromJson ? 'OOCYTE' : 'EMBRYO')).toUpperCase();
-    setSpecimenType(resolvedSpecimen as any);
-    setCycleType((json.cycleType || (json.donorName || json.donorRegNo ? 'DONOR_RECIPIENT' : 'SELF')).toUpperCase() as any);
+    const detected = detectSpecimenAndCycleFromRawText(record.rawOcrText, json);
+    setSpecimenType(detected.specimenType);
+    setCycleType(detected.cycleType);
     setDonorName(json.donorName || '');
     setDonorRegNo(json.donorRegNo || '');
     setDonorAge(json.donorAge || '');
@@ -722,10 +752,10 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
     });
   };
 
-  const handleSpecimenTypeChange = (type: 'EMBRYO' | 'OOCYTE') => {
+  const handleSpecimenTypeChange = (type: SpecimenType) => {
     setSpecimenType(type);
-    const defaultGrade = type === 'OOCYTE' ? (oocyteStage || 'MII') : '4AA';
-    const defaultStage = type === 'OOCYTE' ? (oocyteStage || 'MII') : 'Day 5';
+    const defaultGrade = type === 'OOCYTE' ? (oocyteStage || 'MII') : type === 'SPERM' ? 'N/A' : '4AA';
+    const defaultStage = type === 'OOCYTE' ? (oocyteStage || 'MII') : type === 'SPERM' ? 'N/A' : 'Day 5';
 
     setFreezingGroups((prevGroups) =>
       prevGroups.map((group) => {
@@ -742,6 +772,13 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                 stage: computedStage,
                 grade: newGrades.join(', '),
                 embryoGrades: newGrades,
+              };
+            } else if (type === 'SPERM') {
+              return {
+                ...st,
+                stage: 'N/A',
+                grade: 'N/A',
+                embryoGrades: Array.from({ length: count }, () => 'N/A'),
               };
             } else {
               const newGrades = Array.from({ length: count }, (_, i) => (st.embryoGrades?.[i] && !['MII', 'MI', 'GV'].includes(st.embryoGrades[i]) ? st.embryoGrades[i] : '4AA'));
@@ -1374,7 +1411,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                     <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                       Specimen Type *
                     </label>
-                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-white border border-slate-300 rounded-xl">
+                    <div className="grid grid-cols-3 gap-1.5 p-1 bg-white border border-slate-300 rounded-xl">
                       <button
                         type="button"
                         onClick={() => handleSpecimenTypeChange('EMBRYO')}
@@ -1383,7 +1420,7 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           : 'text-slate-600 hover:text-slate-900'
                           }`}
                       >
-                        Embryo (Embryos)
+                        Embryo
                       </button>
                       <button
                         type="button"
@@ -1394,6 +1431,16 @@ export const OcrVerification: React.FC<OcrVerificationProps> = ({ onNavigateToPa
                           }`}
                       >
                         Egg (Oocyte)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSpecimenTypeChange('SPERM')}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${specimenType === 'SPERM'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                      >
+                        Sperm
                       </button>
                     </div>
                   </div>
