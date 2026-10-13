@@ -122,6 +122,11 @@ export interface StrawItemInput {
   grade?: string;
   comments?: string;
   isPgt?: boolean;
+  freezingDate?: string;
+  aspirationDate?: string;
+  embryoStage?: string;
+  strawCustomId?: string;
+  [key: string]: any;
 }
 
 export interface AssignStorageInput {
